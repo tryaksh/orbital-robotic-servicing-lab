@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  static-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install lightweight test tools
+        run: python -m pip install --upgrade pip pytest ruff numpy pyyaml h5py
+      - name: Install package without Isaac runtime dependencies
+        run: python -m pip install -e . --no-deps
+      - name: Lint
+        run: ruff check src scripts tests
+      - name: Unit tests
+        run: pytest -m "not isaac and not camera and not benchmark"
