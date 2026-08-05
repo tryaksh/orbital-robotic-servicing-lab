@@ -14,7 +14,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install lightweight test tools
-        run: python -m pip install --upgrade pip pytest ruff numpy pyyaml h5py
+        run: python -m pip install --upgrade pip pytest ruff numpy pyyaml "h5py==3.13.0"
       - name: Install package without Isaac runtime dependencies
         run: python -m pip install -e . --no-deps
       - name: Lint

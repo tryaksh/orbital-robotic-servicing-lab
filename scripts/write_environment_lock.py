@@ -33,6 +33,8 @@ def _distribution(name: str) -> dict[str, object | None]:
 
 
 def main() -> int:
+    import h5py
+    import numpy
     import torch
 
     sim_root = Path(os.environ.get("ISAACSIM_PATH", "C:\\isaac-sim"))
@@ -61,6 +63,9 @@ def main() -> int:
             ),
         },
         "torch": torch.__version__,
+        "numpy": numpy.__version__,
+        "h5py": h5py.__version__,
+        "hdf5": h5py.version.hdf5_version,
         "torch_cuda": torch.version.cuda,
         "cuda_available": torch.cuda.is_available(),
         "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
