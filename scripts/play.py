@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import time
 import traceback
@@ -77,6 +78,12 @@ def main() -> dict[str, object]:
     try:
         checkpoint = _checkpoint()
         rl_device = args.device or "cuda:0"
+        if rl_device.startswith("cuda") and not torch.cuda.is_available():
+            raise RuntimeError(f"GPU playback requested on {rl_device}, but PyTorch cannot access CUDA")
+        device_description = (
+            torch.cuda.get_device_name(torch.device(rl_device)) if rl_device.startswith("cuda") else "CPU"
+        )
+        print(f"[INFO] Simulation and policy device: {rl_device} ({device_description})")
         env_cfg = parse_env_cfg(args.task, device=rl_device, num_envs=args.num_envs)
         env_cfg.seed = args.seed
         agent_task = f"Isaac-ZeroG-BladeSwap-{'Teacher' if args.policy == 'teacher' else 'Vision'}-v0"
@@ -123,12 +130,27 @@ def main() -> dict[str, object]:
         player.get_batch_size(obs, 1)
         step = 0
         dt = env.unwrapped.step_dt
+        termination_names = ("full_success", "time_out", "blade_lost", "mount_unstable", "non_finite")
+        termination_counts = {name: 0 for name in termination_names}
+        episodes_completed = 0
+        maximum_phase = int(env.unwrapped._swap_phase.max())
+        reward_sum = torch.zeros(args.num_envs, device=rl_device)
         while simulation_app.is_running() and (args.steps <= 0 or step < args.steps):
             started = time.perf_counter()
             with torch.inference_mode():
                 network_obs = player.obs_to_torch(obs)
                 actions = player.get_action(network_obs, is_deterministic=True)
-                obs, _, dones, _ = env.step(actions)
+                if not bool(torch.isfinite(actions).all()):
+                    raise RuntimeError(f"Policy produced a non-finite action at step {step}")
+                obs, rewards, dones, _ = env.step(actions)
+                observation_tensor = obs["obs"] if isinstance(obs, dict) and "obs" in obs else obs
+                if not bool(torch.isfinite(observation_tensor).all()):
+                    raise RuntimeError(f"Environment produced a non-finite observation at step {step}")
+                reward_sum += rewards
+                episodes_completed += int(dones.sum())
+                maximum_phase = max(maximum_phase, int(env.unwrapped._swap_phase.max()))
+                for name in termination_names:
+                    termination_counts[name] += int(env.unwrapped.termination_manager.get_term(name).sum())
                 if player.is_rnn and player.states is not None:
                     for state in player.states:
                         state[:, dones, :] = 0.0
@@ -140,13 +162,22 @@ def main() -> dict[str, object]:
                 time.sleep(delay)
         if args.steps > 0 and step != args.steps:
             raise RuntimeError(f"Simulation stopped after {step} of {args.steps} requested steps")
+        final_phases = torch.bincount(env.unwrapped._swap_phase, minlength=8)
         return {
             "status": "passed",
             "task": args.task,
             "policy": args.policy,
             "checkpoint": str(checkpoint),
+            "checkpoint_sha256": hashlib.sha256(checkpoint.read_bytes()).hexdigest().upper(),
+            "device": rl_device,
+            "gpu": device_description,
             "num_envs": args.num_envs,
             "steps": step,
+            "episodes_completed": episodes_completed,
+            "termination_counts": termination_counts,
+            "maximum_phase_reached": maximum_phase,
+            "final_phase_histogram": {str(index): int(count) for index, count in enumerate(final_phases)},
+            "mean_cumulative_reward_per_environment": float(reward_sum.mean()),
         }
     finally:
         if env is not None:

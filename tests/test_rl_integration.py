@@ -10,6 +10,7 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
 AGENTS = ROOT / "src/zero_g_blade_swap/tasks/blade_swap/agents"
 SCRIPTS = ROOT / "scripts"
 
@@ -62,10 +63,41 @@ def test_smoke_script_has_both_hardware_profiles_and_machine_output() -> None:
     source = (SCRIPTS / "smoke_env.py").read_text(encoding="utf-8")
     assert 'choices=("teacher", "vision", "all")' in source
     assert "--teacher_steps" in source and "default=100" in source
-    assert "num_envs=1" in source
+    assert '"--teacher_envs", type=int, default=1' in source
     assert "num_envs=8" in source
     assert "artifacts/smoke_report.json" in source
     assert "sys.argv = [sys.argv[0]]" in source
+
+
+def test_geometry_and_reward_guards_cover_pilot_failure_modes() -> None:
+    assets = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "assets.py").read_text(encoding="utf-8")
+    commands = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "mdp" / "commands.py").read_text(
+        encoding="utf-8"
+    )
+    randomization = (
+        SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "mdp" / "randomization.py"
+    ).read_text(encoding="utf-8")
+    env_cfg = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "env_cfg.py").read_text(encoding="utf-8")
+
+    assert '"shoulder_pan_joint": 0.35' in assets
+    assert "TRANSFER_BLADE_X = 0.18" in assets
+    assert "GUIDE_CENTER_OFFSET_Y = 0.08975" in assets
+    assert "_handle_goal_from_blade_goal" in commands
+    assert "preinsert_blade_goal[:, 0] = TRANSFER_BLADE_X" in commands
+    assert "env._last_rewarded_phase[ids] = phase[ids]" in randomization
+    assert "self._forces[due, 0]" in randomization
+    assert "terminal_failure = RewTerm" in env_cfg
+
+
+def test_training_and_playback_make_gpu_and_safety_evidence_explicit() -> None:
+    train = (SCRIPTS / "train.py").read_text(encoding="utf-8")
+    play = (SCRIPTS / "play.py").read_text(encoding="utf-8")
+
+    assert "Simulation and PPO device" in train
+    assert "torch.cuda.is_available()" in train
+    assert '"termination_counts"' in play
+    assert '"maximum_phase_reached"' in play
+    assert '"checkpoint_sha256"' in play
 
 
 def test_benchmark_uses_descending_first_fit_without_aborting_on_failure() -> None:

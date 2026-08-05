@@ -17,6 +17,8 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", choices=("teacher", "vision", "all"), default="all")
     parser.add_argument("--teacher_steps", type=int, default=100)
+    parser.add_argument("--teacher_envs", type=int, default=1)
+    parser.add_argument("--mount_stability_steps", type=int, default=300)
     parser.add_argument("--vision_steps", type=int, default=32)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output", type=Path, default=Path("artifacts/smoke_report.json"))
@@ -41,9 +43,12 @@ simulation_app = app_launcher.app
 import gymnasium as gym
 import torch
 
+from isaaclab.utils.math import axis_angle_from_quat, combine_frame_transforms, subtract_frame_transforms
 from isaaclab_tasks.utils import parse_env_cfg
 
 import zero_g_blade_swap.tasks.blade_swap  # noqa: F401
+from zero_g_blade_swap.tasks.blade_swap.assets import BLADE_HANDLE_OFFSET
+from zero_g_blade_swap.tasks.blade_swap.mdp.observations import end_effector_pose_world
 
 
 def _assert(condition: bool, message: str) -> None:
@@ -100,25 +105,168 @@ def _observation_shapes(observations: dict[str, torch.Tensor]) -> dict[str, list
     return {name: list(value.shape) for name, value in observations.items()}
 
 
+def _geometry_snapshot(env) -> dict[str, object]:
+    ee_position, ee_rotation = end_effector_pose_world(env.unwrapped)
+    ee_position = ee_position - env.unwrapped.scene.env_origins
+    handle_offset = ee_position.new_tensor(BLADE_HANDLE_OFFSET).expand(env.unwrapped.num_envs, -1)
+
+    handles: dict[str, torch.Tensor] = {}
+    for name in ("blade", "spare_blade"):
+        blade = env.unwrapped.scene[name]
+        local_position = blade.data.root_pos_w - env.unwrapped.scene.env_origins
+        handle_position, _ = combine_frame_transforms(
+            local_position,
+            blade.data.root_quat_w,
+            handle_offset,
+        )
+        handles[name] = handle_position
+
+    command = env.unwrapped.command_manager.get_command("blade_goal")
+    phase = env.unwrapped._swap_phase
+    return {
+        "robot_joint_positions_first_env": [float(value) for value in env.unwrapped.scene["robot"].data.joint_pos[0]],
+        "end_effector_position_first_env_m": [float(value) for value in ee_position[0]],
+        "end_effector_rotation_first_env_wxyz": [float(value) for value in ee_rotation[0]],
+        "failed_handle_position_first_env_m": [float(value) for value in handles["blade"][0]],
+        "spare_handle_position_first_env_m": [float(value) for value in handles["spare_blade"][0]],
+        "active_goal_position_first_env_m": [float(value) for value in command[0, :3]],
+        "active_goal_rotation_first_env_wxyz": [float(value) for value in command[0, 3:7]],
+        "phase_first_env": int(phase[0]),
+        "distance_to_spare_handle_first_env_m": float(torch.linalg.vector_norm(ee_position[0] - handles["spare_blade"][0])),
+    }
+
+
+def _mount_relative_pose(env) -> tuple[torch.Tensor, torch.Tensor]:
+    robot = env.unwrapped.scene["robot"]
+    anchor = env.unwrapped.scene["mount_anchor"]
+    relative_position, relative_quaternion = subtract_frame_transforms(
+        anchor.data.root_pos_w,
+        anchor.data.root_quat_w,
+        robot.data.root_pos_w,
+        robot.data.root_quat_w,
+    )
+    return relative_position, axis_angle_from_quat(relative_quaternion)
+
+
+def _natural_mount_stability_check(env) -> dict[str, object]:
+    zero_actions = torch.zeros(
+        (env.unwrapped.num_envs, env.unwrapped.action_manager.total_action_dim), device=env.unwrapped.device
+    )
+    termination_counts = {name: 0 for name in ("mount_unstable", "blade_lost", "non_finite")}
+    maximum_translation_axis = 0.0
+    maximum_rotation_axis = 0.0
+    maximum_blade_speed = {name: 0.0 for name in ("blade", "spare_blade")}
+    first_loss_pre_step: dict[str, object] | None = None
+    first_milestone_rate = None
+    for step in range(args.mount_stability_steps):
+        pre_step = {
+            name: {
+                "position": (env.unwrapped.scene[name].data.root_pos_w - env.unwrapped.scene.env_origins).clone(),
+                "velocity": env.unwrapped.scene[name].data.root_lin_vel_w.clone(),
+            }
+            for name in ("blade", "spare_blade")
+        }
+        _step_and_validate(env, zero_actions)
+        for name in termination_counts:
+            termination_counts[name] += int(env.unwrapped.termination_manager.get_term(name).sum())
+        relative_position, relative_rotation = _mount_relative_pose(env)
+        maximum_translation_axis = max(maximum_translation_axis, float(relative_position.abs().max()))
+        maximum_rotation_axis = max(maximum_rotation_axis, float(relative_rotation.abs().max()))
+        for name in maximum_blade_speed:
+            maximum_blade_speed[name] = max(
+                maximum_blade_speed[name],
+                float(torch.linalg.vector_norm(pre_step[name]["velocity"], dim=-1).max()),
+            )
+        lost_mask = env.unwrapped.termination_manager.get_term("blade_lost")
+        if bool(lost_mask.any()) and first_loss_pre_step is None:
+            lost_ids = lost_mask.nonzero().flatten()
+            first_loss_pre_step = {
+                "step": step,
+                "environment_ids": [int(value) for value in lost_ids],
+                **{
+                    name: {
+                        "positions_m": pre_step[name]["position"][lost_ids].tolist(),
+                        "velocities_mps": pre_step[name]["velocity"][lost_ids].tolist(),
+                    }
+                    for name in pre_step
+                },
+            }
+        if step == 0:
+            reward_terms = dict(env.unwrapped.reward_manager.get_active_iterable_terms(0))
+            first_milestone_rate = float(reward_terms["phase_milestone"][0])
+
+    _assert(termination_counts["mount_unstable"] == 0, f"Natural wobble tripped mount: {termination_counts}")
+    _assert(
+        termination_counts["blade_lost"] == 0,
+        f"Stable scene lost a blade: {termination_counts}; pre-step={first_loss_pre_step}",
+    )
+    _assert(termination_counts["non_finite"] == 0, f"Stable scene became non-finite: {termination_counts}")
+    _assert(abs(float(first_milestone_rate)) < 1.0e-8, f"Reset leaked phase reward: {first_milestone_rate}")
+    return {
+        "steps": args.mount_stability_steps,
+        "mount_terminations": termination_counts["mount_unstable"],
+        "maximum_translation_axis_m": maximum_translation_axis,
+        "maximum_rotation_axis_rad": maximum_rotation_axis,
+        "maximum_blade_speed_mps": maximum_blade_speed,
+        "first_step_phase_milestone_rate": float(first_milestone_rate),
+    }
+
+
 def _mount_compliance_check(env) -> dict[str, float]:
     robot = env.unwrapped.scene["robot"]
+    env.reset()
     body_ids, _ = robot.find_bodies("base_link")
     _assert(len(body_ids) == 1, f"Expected one base_link, found {body_ids}")
     base_id = int(body_ids[0])
+    # Pause the recurring random pulse so this response measurement isolates
+    # the D6 spring.  Natural randomized stability is tested separately above.
+    interval_names = env.unwrapped.event_manager.active_terms["interval"]
+    wobble_index = interval_names.index("base_wobble_excitation")
+    env.unwrapped.event_manager._interval_term_time_left[wobble_index].fill_(1.0e6)  # noqa: SLF001
+    wobble_cfg = env.unwrapped.event_manager.get_term_cfg("base_wobble_excitation")
+    wobble_cfg.func.reset()
+
+    zero_actions = torch.zeros(
+        (env.unwrapped.num_envs, env.unwrapped.action_manager.total_action_dim), device=env.unwrapped.device
+    )
+    robot.set_external_force_and_torque(
+        torch.zeros((env.unwrapped.num_envs, 1, 3), device=env.unwrapped.device),
+        torch.zeros((env.unwrapped.num_envs, 1, 3), device=env.unwrapped.device),
+        body_ids=[base_id],
+        is_global=True,
+    )
+    _step_and_validate(env, zero_actions)
     start = robot.data.root_pos_w.clone()
+    initial_position, initial_rotation_vector = _mount_relative_pose(env)
+    initial_displacement = torch.linalg.vector_norm(initial_position, dim=-1)
+    initial_rotation = torch.linalg.vector_norm(initial_rotation_vector, dim=-1)
+    anchor_offset = initial_displacement
+    _assert(
+        float(initial_displacement.max()) <= 0.018,
+        "Robot begins outside its mount translation envelope: "
+        f"relative_position={initial_position.tolist()}, displacement={initial_displacement.tolist()}",
+    )
+    _assert(
+        float(initial_rotation.max()) <= 0.0436332313,
+        "Robot begins outside its mount rotation envelope: "
+        f"relative_axis_angle={initial_rotation_vector.tolist()}, rotation={initial_rotation.tolist()}",
+    )
+    _assert(
+        float(anchor_offset.max()) <= 1.0e-3,
+        f"Robot base and mount anchor frames do not coincide: offset={anchor_offset.tolist()}",
+    )
+
     forces = torch.zeros((env.unwrapped.num_envs, 1, 3), device=env.unwrapped.device)
     torques = torch.zeros_like(forces)
     forces[..., 1] = 30.0
     robot.set_external_force_and_torque(forces, torques, body_ids=[base_id], is_global=True)
-    zero_actions = torch.zeros(
-        (env.unwrapped.num_envs, env.unwrapped.action_manager.total_action_dim), device=env.unwrapped.device
-    )
     for _ in range(5):
-        _step_and_validate(env, zero_actions)
+        _, _, terminated, truncated, _ = _step_and_validate(env, zero_actions)
+        _assert(not bool((terminated | truncated).any()), "Bounded 30 N mount pulse caused a termination")
     displaced = torch.linalg.vector_norm(robot.data.root_pos_w - start, dim=-1).max()
 
     robot.set_external_force_and_torque(torch.zeros_like(forces), torch.zeros_like(torques), body_ids=[base_id])
-    for _ in range(15):
+    for _ in range(30):
         _step_and_validate(env, zero_actions)
     restored = torch.linalg.vector_norm(robot.data.root_pos_w - start, dim=-1).max()
     displaced_value = float(displaced)
@@ -126,12 +274,18 @@ def _mount_compliance_check(env) -> dict[str, float]:
     _assert(displaced_value > 1.0e-6, f"Compliant mount did not respond to 30 N wrench: {displaced_value}")
     _assert(restored_value < displaced_value, f"Mount did not restore: {displaced_value} -> {restored_value}")
     _assert(displaced_value < 0.04, f"Mount exceeded 40 mm safety envelope: {displaced_value}")
-    return {"forced_displacement_m": displaced_value, "restored_displacement_m": restored_value}
+    return {
+        "initial_displacement_max_m": float(initial_displacement.max()),
+        "initial_rotation_max_rad": float(initial_rotation.max()),
+        "anchor_offset_max_m": float(anchor_offset.max()),
+        "forced_displacement_m": displaced_value,
+        "restored_displacement_m": restored_value,
+    }
 
 
 def _teacher_smoke() -> dict[str, object]:
     task = "Isaac-ZeroG-BladeSwap-Teacher-v0"
-    cfg = parse_env_cfg(task, device=args.device or "cuda:0", num_envs=1)
+    cfg = parse_env_cfg(task, device=args.device or "cuda:0", num_envs=args.teacher_envs)
     _assert(tuple(cfg.sim.gravity) == (0.0, 0.0, 0.0), f"Gravity is not zero: {cfg.sim.gravity}")
     _assert(cfg.scene.camera is None, "Teacher config unexpectedly allocates a camera")
     env = gym.make(task, cfg=cfg)
@@ -139,6 +293,10 @@ def _teacher_smoke() -> dict[str, object]:
         observations, _ = env.reset(seed=args.seed)
         _assert(set(observations) >= {"policy", "critic"}, f"Teacher groups are {sorted(observations)}")
         _assert_finite(observations, "reset observations")
+        _assert(
+            bool(torch.equal(env.unwrapped._last_rewarded_phase, env.unwrapped._swap_phase)),
+            "Curriculum reset did not initialize milestone bookkeeping to the active phase",
+        )
         action_dim = int(env.unwrapped.action_manager.total_action_dim)
         _assert(action_dim == 7, f"Expected seven actions, received {action_dim}")
         robot = env.unwrapped.scene["robot"]
@@ -168,24 +326,28 @@ def _teacher_smoke() -> dict[str, object]:
             bool(((dynamic_friction >= 0.20) & (dynamic_friction <= 1.50)).all()),
             f"Dynamic friction out of range: {dynamic_friction}",
         )
-        mount = _mount_compliance_check(env)
+        geometry = _geometry_snapshot(env)
+        stability = _natural_mount_stability_check(env)
 
-        completed = 20
+        completed = 0
         terminations = 0
         while completed < args.teacher_steps:
             _, _, terminated, truncated, _ = _step_and_validate(env, _random_actions(env))
             terminations += int((terminated | truncated).sum())
             completed += 1
+        mount = _mount_compliance_check(env)
         return {
             "ok": True,
             "task": task,
-            "num_envs": 1,
+            "num_envs": args.teacher_envs,
             "steps": completed,
             "action_dim": action_dim,
             "observation_shapes": _observation_shapes(observations),
             "blade_mass_kg": [float(value) for value in masses],
             "dynamic_friction": [float(value) for value in dynamic_friction],
             "mount": mount,
+            "natural_mount_stability": stability,
+            "geometry": geometry,
             "episode_terminations": terminations,
             "gpu_memory_mib": _gpu_memory_mib(),
         }

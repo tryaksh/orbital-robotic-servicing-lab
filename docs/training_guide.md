@@ -66,6 +66,10 @@ Set-Location D:\6axis-space-robotics
 
 ## Stage 0: short teacher learning test
 
+Do not resume or reuse `teacher_pilot_seed42`. That run exposed the old
+geometry and learned to end episodes by destabilizing the mount; it is invalid
+training evidence. Start the corrected environment from a fresh policy.
+
 This is longer than the two-iteration software smoke test but short enough to
 confirm that learning, checkpointing, VRAM, and temperature behave normally:
 
@@ -75,14 +79,15 @@ C:\isaac-sim\python.bat scripts\train.py `
   --num_envs 512 `
   --max_iterations 200 `
   --seed 42 `
+  --device cuda:0 `
   --headless `
-  --run_name teacher_pilot_seed42
+  --run_name teacher_pilot_fixed_seed42
 ```
 
 Outputs are written under:
 
 ```text
-logs/rl_games/zero_g_blade_swap_teacher/teacher_pilot_seed42/
+logs/rl_games/zero_g_blade_swap_teacher/teacher_pilot_fixed_seed42/
   nn/           policy checkpoints
   params/       exact environment and PPO configuration
   summaries/    TensorBoard-compatible learning events
@@ -102,6 +107,7 @@ C:\isaac-sim\python.bat scripts\train.py `
   --num_envs 512 `
   --max_iterations 3000 `
   --seed 42 `
+  --device cuda:0 `
   --headless `
   --run_name teacher_full_seed42
 ```
@@ -115,6 +121,7 @@ C:\isaac-sim\python.bat scripts\train.py `
   --num_envs 1024 `
   --max_iterations 3000 `
   --seed 42 `
+  --device cuda:0 `
   --headless `
   --run_name teacher_1024_seed42
 ```

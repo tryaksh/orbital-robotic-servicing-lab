@@ -134,14 +134,15 @@ def robot_root_pose_local(
 def robot_mount_state(
     env,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    anchor_cfg: SceneEntityCfg = SceneEntityCfg("mount_anchor"),
 ) -> torch.Tensor:
     """Return D6 mount deflection pose plus root linear/angular velocity."""
 
     robot = env.scene[asset_cfg.name]
-    default_pos_w = robot.data.default_root_state[:, :3] + env.scene.env_origins
+    anchor = env.scene[anchor_cfg.name]
     relative_pos, relative_quat = subtract_frame_transforms(
-        default_pos_w,
-        robot.data.default_root_state[:, 3:7],
+        anchor.data.root_pos_w,
+        anchor.data.root_quat_w,
         robot.data.root_pos_w,
         robot.data.root_quat_w,
     )

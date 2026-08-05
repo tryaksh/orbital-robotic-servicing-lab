@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import torch
 from isaaclab.managers import SceneEntityCfg
-from isaaclab.utils.math import quat_error_magnitude
+from isaaclab.utils.math import axis_angle_from_quat, subtract_frame_transforms
 
 from .commands import swap_complete_mask
 
@@ -38,16 +38,24 @@ def blade_out_of_workspace(
 def robot_mount_unstable(
     env,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
-    maximum_displacement: float = 0.018,
-    maximum_rotation: float = 0.0436332313,
+    anchor_cfg: SceneEntityCfg = SceneEntityCfg("mount_anchor"),
+    maximum_translation_axis: float = 0.0165,
+    maximum_rotation_axis: float = 0.0383972435,
 ) -> torch.Tensor:
-    """Fail loudly if the simulated mount leaves its intended compliance envelope."""
+    """Fail if any D6 axis exceeds its authored limit plus solver tolerance."""
 
     robot = env.scene[asset_cfg.name]
-    position = robot.data.root_pos_w - env.scene.env_origins
-    displacement = torch.linalg.vector_norm(position - robot.data.default_root_state[:, :3], dim=-1)
-    rotation = quat_error_magnitude(robot.data.root_quat_w, robot.data.default_root_state[:, 3:7])
-    return (displacement > maximum_displacement) | (rotation > maximum_rotation)
+    anchor = env.scene[anchor_cfg.name]
+    relative_pos, relative_quat = subtract_frame_transforms(
+        anchor.data.root_pos_w,
+        anchor.data.root_quat_w,
+        robot.data.root_pos_w,
+        robot.data.root_quat_w,
+    )
+    relative_rotation = axis_angle_from_quat(relative_quat)
+    translation_trip = (relative_pos.abs() > maximum_translation_axis).any(dim=-1)
+    rotation_trip = (relative_rotation.abs() > maximum_rotation_axis).any(dim=-1)
+    return translation_trip | rotation_trip
 
 
 def non_finite_state(env) -> torch.Tensor:

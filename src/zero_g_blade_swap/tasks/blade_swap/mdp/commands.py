@@ -10,7 +10,13 @@ from isaaclab.managers import CommandTerm, CommandTermCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.math import combine_frame_transforms, quat_error_magnitude
 
-from ..assets import BLADE_INSERTED_POS, BLADE_SIZE, SERVICE_CADDY_POS, SPARE_BLADE_POS
+from ..assets import (
+    BLADE_HANDLE_OFFSET,
+    BLADE_INSERTED_POS,
+    SERVICE_CADDY_POS,
+    SPARE_BLADE_POS,
+    TRANSFER_BLADE_X,
+)
 
 PHASE_APPROACH_FAILED = 0
 PHASE_GRASP_FAILED = 1
@@ -22,12 +28,13 @@ PHASE_INSERT_SPARE = 6
 PHASE_RELEASE_RETREAT = 7
 NUM_SWAP_PHASES = 8
 
-FAILED_EXTRACTION_X = BLADE_INSERTED_POS[0] - 0.30
-SPARE_EXTRACTION_X = SPARE_BLADE_POS[0] - 0.28
-INSERTION_POSITION_TOLERANCE = 0.035
-INSERTION_ORIENTATION_TOLERANCE = 0.12
-INSERTION_SPEED_TOLERANCE = 0.10
-BLADE_HANDLE_OFFSET = (-BLADE_SIZE[0] / 2.0 - 0.018, 0.0, 0.0)
+FAILED_EXTRACTION_X = TRANSFER_BLADE_X
+SPARE_EXTRACTION_X = TRANSFER_BLADE_X
+INSERTION_AXIAL_TOLERANCE = 0.020
+INSERTION_LATERAL_TOLERANCE = 0.0025
+INSERTION_ORIENTATION_TOLERANCE = math.radians(3.0)
+INSERTION_LINEAR_SPEED_TOLERANCE = 0.020
+INSERTION_ANGULAR_SPEED_TOLERANCE = 0.050
 
 
 def _phase_buffer(env) -> torch.Tensor:
@@ -47,6 +54,14 @@ def _blade_handle_pose_local(env, asset_name: str) -> tuple[torch.Tensor, torch.
     position, orientation = _local_pose(env, asset_name)
     offset = torch.tensor(BLADE_HANDLE_OFFSET, device=env.device).expand(env.num_envs, -1)
     return combine_frame_transforms(position, orientation, offset)
+
+
+def _handle_goal_from_blade_goal(blade_goal: torch.Tensor) -> torch.Tensor:
+    """Convert a desired blade-center pose into the matching gripper pose."""
+
+    offset = blade_goal.new_tensor(BLADE_HANDLE_OFFSET).expand(blade_goal.shape[0], -1)
+    position, orientation = combine_frame_transforms(blade_goal[:, :3], blade_goal[:, 3:7], offset)
+    return torch.cat((position, orientation), dim=-1)
 
 
 def _gripper_close_command(env) -> torch.Tensor:
@@ -107,22 +122,51 @@ class BladeSwapCommand(CommandTerm):
         phase = update_swap_phase(self._env)
         failed_handle_pos, failed_handle_rot = _blade_handle_pose_local(self._env, "blade")
         spare_handle_pos, spare_handle_rot = _blade_handle_pose_local(self._env, "spare_blade")
+        failed_pos, failed_rot = _local_pose(self._env, "blade")
+        close = _gripper_close_command(self._env)
 
-        self._command.copy_(self._rack_goal)
-        failed_mask = phase <= PHASE_EXTRACT_FAILED
+        rack_handle_goal = _handle_goal_from_blade_goal(self._rack_goal)
+        service_handle_goal = _handle_goal_from_blade_goal(self._service_goal)
+        self._command.copy_(rack_handle_goal)
+        failed_mask = phase <= PHASE_GRASP_FAILED
         self._command[failed_mask, :3] = failed_handle_pos[failed_mask]
         self._command[failed_mask, 3:7] = failed_handle_rot[failed_mask]
 
+        rack_transfer_blade_goal = self._rack_goal.clone()
+        rack_transfer_blade_goal[:, 0] = TRANSFER_BLADE_X
+        rack_transfer_handle_goal = _handle_goal_from_blade_goal(rack_transfer_blade_goal)
+        extract_mask = phase == PHASE_EXTRACT_FAILED
+        self._command[extract_mask] = rack_transfer_handle_goal[extract_mask]
+
+        service_preinsert_blade_goal = self._service_goal.clone()
+        service_preinsert_blade_goal[:, 0] = TRANSFER_BLADE_X
+        service_preinsert_handle_goal = _handle_goal_from_blade_goal(service_preinsert_blade_goal)
         stow_mask = phase == PHASE_STOW_FAILED
-        self._command[stow_mask] = self._service_goal[stow_mask]
+        service_aligned = (
+            (torch.linalg.vector_norm(failed_pos[:, 1:3] - self._service_goal[:, 1:3], dim=-1) < 0.025)
+            & (quat_error_magnitude(failed_rot, self._service_goal[:, 3:7]) < 0.20)
+        )
+        stow_preinsert = stow_mask & ~service_aligned
+        stow_insert = stow_mask & service_aligned
+        self._command[stow_preinsert] = service_preinsert_handle_goal[stow_preinsert]
+        self._command[stow_insert] = service_handle_goal[stow_insert]
 
         acquire_mask = phase == PHASE_ACQUIRE_SPARE
         self._command[acquire_mask, :3] = spare_handle_pos[acquire_mask]
         self._command[acquire_mask, 3:7] = spare_handle_rot[acquire_mask]
+        supply_transfer_blade_goal = self._rack_goal.clone()
+        supply_transfer_blade_goal[:, :3] = supply_transfer_blade_goal.new_tensor(
+            (TRANSFER_BLADE_X, SPARE_BLADE_POS[1], SPARE_BLADE_POS[2])
+        )
+        supply_transfer_handle_goal = _handle_goal_from_blade_goal(supply_transfer_blade_goal)
+        acquire_extract = acquire_mask & close
+        self._command[acquire_extract] = supply_transfer_handle_goal[acquire_extract]
 
         align_mask = phase == PHASE_ALIGN_SPARE
-        self._command[align_mask] = self._rack_goal[align_mask]
-        self._command[align_mask, 0] -= 0.24
+        preinsert_blade_goal = self._rack_goal.clone()
+        preinsert_blade_goal[:, 0] = TRANSFER_BLADE_X
+        preinsert_handle_goal = _handle_goal_from_blade_goal(preinsert_blade_goal)
+        self._command[align_mask] = preinsert_handle_goal[align_mask]
 
         retreat_mask = phase == PHASE_RELEASE_RETREAT
         safe_pose = torch.tensor(self.cfg.safe_retreat_pose, device=self.device)
@@ -136,7 +180,9 @@ class BladeSwapCommandCfg(CommandTermCfg):
     rack_goal_pos: tuple[float, float, float] = BLADE_INSERTED_POS
     service_goal_pos: tuple[float, float, float] = SERVICE_CADDY_POS
     goal_rot: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
-    position_jitter: tuple[float, float, float] = (0.006, 0.004, 0.003)
+    # The fixtures themselves are not moved, so transverse jitter must remain
+    # inside the authored 1.5 mm rail clearance.
+    position_jitter: tuple[float, float, float] = (0.003, 0.0004, 0.0003)
     safe_retreat_pose: tuple[float, float, float, float, float, float, float] = (
         0.25,
         0.0,
@@ -193,37 +239,52 @@ def update_swap_phase(env, command_name: str = "blade_goal") -> torch.Tensor:
     spare_handle_pos, spare_handle_rot = _blade_handle_pose_local(env, "spare_blade")
     close = _gripper_close_command(env)
 
-    failed_reach = (torch.linalg.vector_norm(ee_pos - failed_handle_pos, dim=-1) < 0.075) & (
-        quat_error_magnitude(ee_rot, failed_handle_rot) < 0.45
+    failed_distance = torch.linalg.vector_norm(ee_pos - failed_handle_pos, dim=-1)
+    failed_orientation = quat_error_magnitude(ee_rot, failed_handle_rot)
+    failed_reach = (failed_distance < 0.075) & (
+        failed_orientation < 0.45
     )
     phase[(phase == PHASE_APPROACH_FAILED) & failed_reach] = PHASE_GRASP_FAILED
-    phase[(phase == PHASE_GRASP_FAILED) & failed_reach & close] = PHASE_EXTRACT_FAILED
+    failed_grasp_aligned = (failed_distance < 0.025) & (failed_orientation < 0.25)
+    phase[(phase == PHASE_GRASP_FAILED) & failed_grasp_aligned & close] = PHASE_EXTRACT_FAILED
 
     failed_extracted = failed_pos[:, 0] <= FAILED_EXTRACTION_X
     phase[(phase == PHASE_EXTRACT_FAILED) & failed_extracted] = PHASE_STOW_FAILED
 
     failed_stowed = (
         (torch.linalg.vector_norm(failed_pos - service_goal[:, :3], dim=-1) < 0.055)
+        & (quat_error_magnitude(failed_rot, service_goal[:, 3:7]) < 0.20)
         & (torch.linalg.vector_norm(failed_vel, dim=-1) < 0.12)
         & ~close
     )
     phase[(phase == PHASE_STOW_FAILED) & failed_stowed] = PHASE_ACQUIRE_SPARE
 
-    spare_near = torch.linalg.vector_norm(ee_pos - spare_handle_pos, dim=-1) < 0.080
+    spare_near = (torch.linalg.vector_norm(ee_pos - spare_handle_pos, dim=-1) < 0.030) & (
+        quat_error_magnitude(ee_rot, spare_handle_rot) < 0.25
+    )
     spare_extracted = spare_pos[:, 0] <= SPARE_EXTRACTION_X
     phase[(phase == PHASE_ACQUIRE_SPARE) & spare_near & close & spare_extracted] = PHASE_ALIGN_SPARE
 
     preinsert = rack_goal[:, :3].clone()
-    preinsert[:, 0] -= 0.24
-    spare_aligned = (torch.linalg.vector_norm(spare_pos - preinsert, dim=-1) < 0.075) & (
-        quat_error_magnitude(spare_rot, rack_goal[:, 3:7]) < 0.30
+    preinsert[:, 0] = TRANSFER_BLADE_X
+    preinsert_delta = spare_pos - preinsert
+    spare_aligned = (
+        (preinsert_delta[:, 0].abs() < 0.030)
+        & (torch.linalg.vector_norm(preinsert_delta[:, 1:3], dim=-1) < 0.010)
+        & (quat_error_magnitude(spare_rot, rack_goal[:, 3:7]) < 0.15)
     )
     phase[(phase == PHASE_ALIGN_SPARE) & spare_aligned] = PHASE_INSERT_SPARE
 
+    spare_delta = spare_pos - rack_goal[:, :3]
     inserted = (
-        (torch.linalg.vector_norm(spare_pos - rack_goal[:, :3], dim=-1) < INSERTION_POSITION_TOLERANCE)
-        & (quat_error_magnitude(spare_rot, rack_goal[:, 3:7]) < INSERTION_ORIENTATION_TOLERANCE)
-        & (torch.linalg.vector_norm(spare_vel, dim=-1) < INSERTION_SPEED_TOLERANCE)
+        (spare_delta[:, 0].abs() <= INSERTION_AXIAL_TOLERANCE)
+        & (torch.linalg.vector_norm(spare_delta[:, 1:3], dim=-1) <= INSERTION_LATERAL_TOLERANCE)
+        & (quat_error_magnitude(spare_rot, rack_goal[:, 3:7]) <= INSERTION_ORIENTATION_TOLERANCE)
+        & (torch.linalg.vector_norm(spare_vel, dim=-1) <= INSERTION_LINEAR_SPEED_TOLERANCE)
+        & (
+            torch.linalg.vector_norm(env.scene["spare_blade"].data.root_ang_vel_w, dim=-1)
+            <= INSERTION_ANGULAR_SPEED_TOLERANCE
+        )
     )
     phase[(phase == PHASE_INSERT_SPARE) & inserted] = PHASE_RELEASE_RETREAT
     return phase
@@ -260,11 +321,17 @@ def swap_complete_mask(env, command_name: str = "blade_goal") -> torch.Tensor:
     )
     spare_delta = spare_pos - rack_goal[:, :3]
     spare_seated = (
-        (spare_delta[:, 0].abs() <= 0.02)
-        & (torch.linalg.vector_norm(spare_delta[:, 1:3], dim=-1) <= 0.0025)
-        & (quat_error_magnitude(spare_rot, rack_goal[:, 3:7]) <= math.radians(3.0))
-        & (torch.linalg.vector_norm(env.scene["spare_blade"].data.root_lin_vel_w, dim=-1) <= 0.02)
-        & (torch.linalg.vector_norm(env.scene["spare_blade"].data.root_ang_vel_w, dim=-1) <= 0.05)
+        (spare_delta[:, 0].abs() <= INSERTION_AXIAL_TOLERANCE)
+        & (torch.linalg.vector_norm(spare_delta[:, 1:3], dim=-1) <= INSERTION_LATERAL_TOLERANCE)
+        & (quat_error_magnitude(spare_rot, rack_goal[:, 3:7]) <= INSERTION_ORIENTATION_TOLERANCE)
+        & (
+            torch.linalg.vector_norm(env.scene["spare_blade"].data.root_lin_vel_w, dim=-1)
+            <= INSERTION_LINEAR_SPEED_TOLERANCE
+        )
+        & (
+            torch.linalg.vector_norm(env.scene["spare_blade"].data.root_ang_vel_w, dim=-1)
+            <= INSERTION_ANGULAR_SPEED_TOLERANCE
+        )
     )
     geometric_success = (
         (phase == PHASE_RELEASE_RETREAT)
