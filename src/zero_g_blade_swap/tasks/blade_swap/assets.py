@@ -24,7 +24,7 @@ BLADE_INSERTED_POS = (0.75, 0.0, 0.72)
 SPARE_BLADE_POS = (0.70, -0.42, 0.50)
 SERVICE_CADDY_POS = (0.70, 0.42, 0.50)
 BLADE_SIZE = (0.45, 0.16, 0.035)
-BLADE_HANDLE_OFFSET = (-0.235, 0.0, 0.0)
+BLADE_HANDLE_OFFSET = (-0.250, 0.0, 0.0)
 TRANSFER_BLADE_X = 0.18
 GUIDE_CENTER_OFFSET_Y = 0.08975  # 1.5 mm total clearance around the 160 mm blade.
 
@@ -286,7 +286,8 @@ def spawn_blade_with_handle(
             orientation=(1.0, 0.0, 0.0, 0.0),
             scale=cfg.handle_size,
         )
-        sim_utils.define_collision_properties(handle_path, cfg.collision_props, stage=stage)
+        if cfg.handle_collision_enabled:
+            sim_utils.define_collision_properties(handle_path, cfg.collision_props, stage=stage)
         material_path = f"{root_path}/geometry/{cfg.visual_material_path}"
         if stage.GetPrimAtPath(material_path).IsValid():
             sim_utils.bind_visual_material(handle_path, material_path, stage=stage)
@@ -299,7 +300,10 @@ class BladeCuboidCfg(sim_utils.CuboidCfg):
 
     func: Callable[..., Usd.Prim] = spawn_blade_with_handle
     handle_offset: tuple[float, float, float] = BLADE_HANDLE_OFFSET
-    handle_size: tuple[float, float, float] = (0.020, 0.075, 0.025)
+    # A 55 mm grip width leaves 15 mm clearance inside the 2F-85 aperture;
+    # 50 mm depth gives both finger pads meaningful contact area.
+    handle_size: tuple[float, float, float] = (0.050, 0.055, 0.025)
+    handle_collision_enabled: bool = True
 
 
 def _blade_cfg(

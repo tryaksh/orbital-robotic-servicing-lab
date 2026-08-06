@@ -54,7 +54,10 @@ class ActionsCfg:
         asset_name="robot",
         joint_names=ROBOTIQ_2F85_JOINT_NAMES,
         open_position=0.0,
-        closed_position=0.785,
+        # Isaac Lab's official UR10e/2F-85 gear task uses 0.45 for a
+        # large-object close.  The previous 0.785 hard-stop command squeezed
+        # this wide handle hard enough to rotate the blade before insertion.
+        closed_position=0.45,
         threshold=0.0,
         close_on_positive=True,
     )

@@ -1,5 +1,11 @@
 # Training Guide: Teacher to Vision Student
 
+For the currently validated nominal insertion demonstration, start with
+[`demo_guide.md`](demo_guide.md). It uses a transparent scripted Cartesian
+expert and kinematic grasp attachment; it is presentation/reference behavior,
+not a learned-policy result. Do not resume the 200-epoch stationary PPO
+checkpoint as an overnight run.
+
 ## What is transferred?
 
 There are two PPO training sessions with an imitation-learning step between

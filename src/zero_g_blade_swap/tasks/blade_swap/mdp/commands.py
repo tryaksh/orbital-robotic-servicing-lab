@@ -8,7 +8,7 @@ from collections.abc import Sequence
 import torch
 from isaaclab.managers import CommandTerm, CommandTermCfg
 from isaaclab.utils import configclass
-from isaaclab.utils.math import combine_frame_transforms, quat_error_magnitude
+from isaaclab.utils.math import combine_frame_transforms, quat_error_magnitude, quat_mul
 
 from ..assets import (
     BLADE_HANDLE_OFFSET,
@@ -27,6 +27,7 @@ PHASE_ALIGN_SPARE = 5
 PHASE_INSERT_SPARE = 6
 PHASE_RELEASE_RETREAT = 7
 NUM_SWAP_PHASES = 8
+GRIPPER_GRASP_ROT = (0.0, 0.7071068, 0.7071068, 0.0)
 
 FAILED_EXTRACTION_X = TRANSFER_BLADE_X
 SPARE_EXTRACTION_X = TRANSFER_BLADE_X
@@ -61,7 +62,7 @@ def _handle_goal_from_blade_goal(blade_goal: torch.Tensor) -> torch.Tensor:
 
     offset = blade_goal.new_tensor(BLADE_HANDLE_OFFSET).expand(blade_goal.shape[0], -1)
     position, orientation = combine_frame_transforms(blade_goal[:, :3], blade_goal[:, 3:7], offset)
-    return torch.cat((position, orientation), dim=-1)
+    return torch.cat((position, gripper_grasp_orientation(orientation)), dim=-1)
 
 
 def _gripper_close_command(env) -> torch.Tensor:
@@ -69,6 +70,35 @@ def _gripper_close_command(env) -> torch.Tensor:
         return env.action_manager.get_term("gripper").raw_actions[:, 0] > 0.0
     except (AttributeError, KeyError):
         return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+
+
+def gripper_grasp_orientation(handle_orientation: torch.Tensor) -> torch.Tensor:
+    """Convert a blade/handle orientation to Isaac Lab's 2F-85 grasp frame."""
+
+    offset = handle_orientation.new_tensor(GRIPPER_GRASP_ROT).expand_as(handle_orientation)
+    return quat_mul(handle_orientation, offset)
+
+
+def equivalent_gripper_orientation(handle_orientation: torch.Tensor, reference: torch.Tensor) -> torch.Tensor:
+    """Return the nearest Robotiq orientation, accounting for finger symmetry.
+
+    Rotating the 2F-85 by 180 degrees about the blade insertion axis swaps the
+    two fingers but produces the same physical grasp.
+    """
+
+    flip_x = handle_orientation.new_tensor((0.0, 1.0, 0.0, 0.0)).expand_as(handle_orientation)
+    primary = gripper_grasp_orientation(handle_orientation)
+    flipped_handle = quat_mul(handle_orientation, flip_x)
+    secondary = gripper_grasp_orientation(flipped_handle)
+    use_secondary = quat_error_magnitude(reference, secondary) < quat_error_magnitude(reference, primary)
+    return torch.where(use_secondary.unsqueeze(-1), secondary, primary)
+
+
+def gripper_handle_orientation_error(gripper_orientation: torch.Tensor, handle_orientation: torch.Tensor) -> torch.Tensor:
+    """Smallest angular error across the two equivalent Robotiq grasps."""
+
+    equivalent = equivalent_gripper_orientation(handle_orientation, gripper_orientation)
+    return quat_error_magnitude(gripper_orientation, equivalent)
 
 
 class BladeSwapCommand(CommandTerm):
@@ -130,7 +160,8 @@ class BladeSwapCommand(CommandTerm):
         self._command.copy_(rack_handle_goal)
         failed_mask = phase <= PHASE_GRASP_FAILED
         self._command[failed_mask, :3] = failed_handle_pos[failed_mask]
-        self._command[failed_mask, 3:7] = failed_handle_rot[failed_mask]
+        failed_grasp_rot = gripper_grasp_orientation(failed_handle_rot)
+        self._command[failed_mask, 3:7] = failed_grasp_rot[failed_mask]
 
         rack_transfer_blade_goal = self._rack_goal.clone()
         rack_transfer_blade_goal[:, 0] = TRANSFER_BLADE_X
@@ -153,7 +184,8 @@ class BladeSwapCommand(CommandTerm):
 
         acquire_mask = phase == PHASE_ACQUIRE_SPARE
         self._command[acquire_mask, :3] = spare_handle_pos[acquire_mask]
-        self._command[acquire_mask, 3:7] = spare_handle_rot[acquire_mask]
+        spare_grasp_rot = gripper_grasp_orientation(spare_handle_rot)
+        self._command[acquire_mask, 3:7] = spare_grasp_rot[acquire_mask]
         supply_transfer_blade_goal = self._rack_goal.clone()
         supply_transfer_blade_goal[:, :3] = supply_transfer_blade_goal.new_tensor(
             (TRANSFER_BLADE_X, SPARE_BLADE_POS[1], SPARE_BLADE_POS[2])
@@ -240,7 +272,7 @@ def update_swap_phase(env, command_name: str = "blade_goal") -> torch.Tensor:
     close = _gripper_close_command(env)
 
     failed_distance = torch.linalg.vector_norm(ee_pos - failed_handle_pos, dim=-1)
-    failed_orientation = quat_error_magnitude(ee_rot, failed_handle_rot)
+    failed_orientation = gripper_handle_orientation_error(ee_rot, failed_handle_rot)
     failed_reach = (failed_distance < 0.075) & (
         failed_orientation < 0.45
     )
@@ -260,7 +292,7 @@ def update_swap_phase(env, command_name: str = "blade_goal") -> torch.Tensor:
     phase[(phase == PHASE_STOW_FAILED) & failed_stowed] = PHASE_ACQUIRE_SPARE
 
     spare_near = (torch.linalg.vector_norm(ee_pos - spare_handle_pos, dim=-1) < 0.030) & (
-        quat_error_magnitude(ee_rot, spare_handle_rot) < 0.25
+        gripper_handle_orientation_error(ee_rot, spare_handle_rot) < 0.25
     )
     spare_extracted = spare_pos[:, 0] <= SPARE_EXTRACTION_X
     phase[(phase == PHASE_ACQUIRE_SPARE) & spare_near & close & spare_extracted] = PHASE_ALIGN_SPARE
@@ -367,6 +399,7 @@ __all__ = [
     "BladeSwapCommand",
     "BladeSwapCommandCfg",
     "FAILED_EXTRACTION_X",
+    "GRIPPER_GRASP_ROT",
     "NUM_SWAP_PHASES",
     "PHASE_ACQUIRE_SPARE",
     "PHASE_ALIGN_SPARE",
@@ -377,9 +410,12 @@ __all__ = [
     "PHASE_RELEASE_RETREAT",
     "PHASE_STOW_FAILED",
     "SPARE_EXTRACTION_X",
+    "equivalent_gripper_orientation",
     "extraction_state",
     "goal_pose_local",
     "goal_position_world",
+    "gripper_grasp_orientation",
+    "gripper_handle_orientation_error",
     "insertion_mask",
     "rack_goal_pose_local",
     "service_goal_pose_local",

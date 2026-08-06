@@ -101,7 +101,7 @@ class RobotiqBinaryActionCfg(ActionTermCfg):
     class_type: type[ActionTerm] = RobotiqBinaryAction
     joint_names: tuple[str, ...] = ROBOTIQ_2F85_JOINT_NAMES
     open_position: float = 0.0
-    closed_position: float = 0.785
+    closed_position: float = 0.45
     threshold: float = 0.0
     close_on_positive: bool = True
 

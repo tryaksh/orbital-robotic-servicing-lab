@@ -17,6 +17,7 @@ from .commands import (
     PHASE_ACQUIRE_SPARE,
     PHASE_EXTRACT_FAILED,
     SPARE_EXTRACTION_X,
+    gripper_handle_orientation_error,
     insertion_mask,
     rack_goal_pose_local,
     swap_complete_mask,
@@ -61,7 +62,7 @@ def alignment_error(
     ee_pos, ee_rot = end_effector_pose_world(env, robot_cfg)
     grasp_pos, grasp_rot = _active_grasp_pose(env)
     proximity = torch.exp(-torch.linalg.vector_norm(ee_pos - grasp_pos, dim=-1) / proximity_std)
-    return quat_error_magnitude(ee_rot, grasp_rot) * proximity
+    return gripper_handle_orientation_error(ee_rot, grasp_rot) * proximity
 
 
 def alignment_reward(
@@ -75,7 +76,7 @@ def alignment_reward(
     ee_pos, ee_rot = end_effector_pose_world(env, robot_cfg)
     grasp_pos, grasp_rot = _active_grasp_pose(env)
     position_score = torch.exp(-torch.linalg.vector_norm(ee_pos - grasp_pos, dim=-1) / position_std)
-    orientation_score = torch.exp(-quat_error_magnitude(ee_rot, grasp_rot) / orientation_std)
+    orientation_score = torch.exp(-gripper_handle_orientation_error(ee_rot, grasp_rot) / orientation_std)
     return position_score * orientation_score
 
 
@@ -92,7 +93,7 @@ def lateral_orientation_penalty(
     ee_pos, ee_rot = end_effector_pose_world(env, robot_cfg)
     grasp_pos, grasp_rot = _active_grasp_pose(env)
     lateral = torch.linalg.vector_norm((ee_pos - grasp_pos)[:, 1:3], dim=-1) / 0.05
-    orientation = quat_error_magnitude(ee_rot, grasp_rot) / 0.35
+    orientation = gripper_handle_orientation_error(ee_rot, grasp_rot) / 0.35
     proximity = torch.exp(-torch.linalg.vector_norm(ee_pos - grasp_pos, dim=-1) / 0.30)
     return (lateral + orientation) * proximity
 

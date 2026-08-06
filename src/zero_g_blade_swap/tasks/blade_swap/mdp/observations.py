@@ -6,8 +6,10 @@ import torch
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils.math import combine_frame_transforms, subtract_frame_transforms
 
-TOOL_OFFSET_POS = (0.0, 0.0, 0.18)
-TOOL_OFFSET_ROT = (0.0, -0.7071068, 0.0, -0.7071068)
+# Isaac Lab's UR10e/Robotiq reference task places the 2F-85 grasp point
+# approximately 190 mm along wrist_3_link's +Z axis and keeps its orientation.
+TOOL_OFFSET_POS = (0.0, 0.0, 0.19)
+TOOL_OFFSET_ROT = (1.0, 0.0, 0.0, 0.0)
 
 
 def _single_body_id(asset, asset_cfg: SceneEntityCfg) -> int:

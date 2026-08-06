@@ -100,6 +100,21 @@ def test_training_and_playback_make_gpu_and_safety_evidence_explicit() -> None:
     assert '"checkpoint_sha256"' in play
 
 
+def test_scripted_expert_is_available_as_a_nominal_task_gate() -> None:
+    expert = (
+        SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "mdp" / "expert.py"
+    ).read_text(encoding="utf-8")
+    demo = (SCRIPTS / "scripted_demo.py").read_text(encoding="utf-8")
+
+    assert "class ScriptedBladeSwapExpert" in expert
+    assert "compute_pose_error" in expert
+    assert '"full_success"' in demo
+    assert '"maximum_phase_reached"' in demo
+    assert "base_wobble_excitation" in demo
+    assert 'choices=("kinematic", "compliant", "none")' in demo
+    assert '"handle_collision_enabled"' in demo
+
+
 def test_benchmark_uses_descending_first_fit_without_aborting_on_failure() -> None:
     source = (SCRIPTS / "benchmark.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
