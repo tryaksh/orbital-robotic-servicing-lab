@@ -43,6 +43,7 @@ import math
 from datetime import datetime
 
 import gymnasium as gym
+import torch
 from rl_games.common import env_configurations, vecenv
 from rl_games.common.algo_observer import IsaacAlgoObserver
 from rl_games.torch_runner import Runner
@@ -70,6 +71,12 @@ def main() -> None:
     env = None
     try:
         rl_device = args.device or "cuda:0"
+        if rl_device.startswith("cuda") and not torch.cuda.is_available():
+            raise RuntimeError(f"GPU training requested on {rl_device}, but PyTorch cannot access CUDA")
+        device_description = (
+            torch.cuda.get_device_name(torch.device(rl_device)) if rl_device.startswith("cuda") else "CPU"
+        )
+        print(f"[INFO] Simulation and PPO device: {rl_device} ({device_description})")
         env_cfg = parse_env_cfg(args.task, device=rl_device, num_envs=args.num_envs)
         agent_cfg = load_cfg_from_registry(args.task, "rl_games_cfg_entry_point")
         agent_cfg["params"]["seed"] = args.seed

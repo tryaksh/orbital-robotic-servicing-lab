@@ -47,7 +47,7 @@ def apply_curriculum_initial_state(env, env_ids: torch.Tensor | None) -> None:
     if stages is None or stages.shape[0] != env.num_envs:
         stages = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
         env._curriculum_stage = stages
-    from ..assets import BLADE_INSERTED_POS, SERVICE_CADDY_POS, SPARE_BLADE_POS
+    from ..assets import BLADE_INSERTED_POS, SERVICE_CADDY_POS, SPARE_BLADE_POS, TRANSFER_BLADE_X
     from .commands import PHASE_ACQUIRE_SPARE, PHASE_INSERT_SPARE, PHASE_STOW_FAILED
 
     def write_pose(asset_name: str, selected: torch.Tensor, position: tuple[float, float, float]) -> None:
@@ -64,7 +64,7 @@ def apply_curriculum_initial_state(env, env_ids: torch.Tensor | None) -> None:
     # Stage 0: replacement is pre-aligned immediately in front of the slot.
     stage_ids = ids[stages[ids] == 0]
     write_pose("blade", stage_ids, SERVICE_CADDY_POS)
-    write_pose("spare_blade", stage_ids, (BLADE_INSERTED_POS[0] - 0.12, BLADE_INSERTED_POS[1], BLADE_INSERTED_POS[2]))
+    write_pose("spare_blade", stage_ids, (TRANSFER_BLADE_X, BLADE_INSERTED_POS[1], BLADE_INSERTED_POS[2]))
     phase[stage_ids] = PHASE_INSERT_SPARE
     # Stage 1: acquire the spare from its supply caddy, align, and insert.
     stage_ids = ids[stages[ids] == 1]
@@ -73,10 +73,14 @@ def apply_curriculum_initial_state(env, env_ids: torch.Tensor | None) -> None:
     phase[stage_ids] = PHASE_ACQUIRE_SPARE
     # Stage 2: begin with the failed blade extracted; stow then complete replacement.
     stage_ids = ids[stages[ids] == 2]
-    write_pose("blade", stage_ids, (BLADE_INSERTED_POS[0] - 0.32, 0.0, BLADE_INSERTED_POS[2]))
+    write_pose("blade", stage_ids, (TRANSFER_BLADE_X, 0.0, BLADE_INSERTED_POS[2]))
     write_pose("spare_blade", stage_ids, SPARE_BLADE_POS)
     phase[stage_ids] = PHASE_STOW_FAILED
     # Stage 3 is the complete swap and keeps the normal randomized reset.
+
+    # Curriculum initialization is not task progress.  Starting stage 0 at
+    # phase 6 must not award six free phase milestones on the first step.
+    env._last_rewarded_phase[ids] = phase[ids]
 
 
 class MountWobblePulse(ManagerTermBase):
@@ -86,11 +90,19 @@ class MountWobblePulse(ManagerTermBase):
         super().__init__(cfg, env)
         self._remaining = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
         self._until_next = torch.zeros_like(self._remaining)
+        self._forces = torch.zeros((env.num_envs, 1, 3), device=env.device)
+        self._torques = torch.zeros_like(self._forces)
+        self._step_dt = float(env.step_dt)
+        self._quiet_range_s = tuple(cfg.params["quiet_range_s"])
 
     def reset(self, env_ids=None) -> None:
-        ids = slice(None) if env_ids is None else env_ids
+        ids = torch.arange(len(self._remaining), device=self._remaining.device) if env_ids is None else env_ids
         self._remaining[ids] = 0
-        self._until_next[ids] = 1
+        quiet_min = max(1, math.ceil(self._quiet_range_s[0] / self._step_dt))
+        quiet_max = max(quiet_min + 1, math.ceil(self._quiet_range_s[1] / self._step_dt) + 1)
+        self._until_next[ids] = torch.randint(quiet_min, quiet_max, (len(ids),), device=self._remaining.device)
+        self._forces[ids] = 0.0
+        self._torques[ids] = 0.0
 
     def __call__(
         self,
@@ -105,6 +117,9 @@ class MountWobblePulse(ManagerTermBase):
         ids = torch.arange(env.num_envs, device=env.device) if env_ids is None else env_ids
         self._remaining[ids] -= 1
         self._until_next[ids] -= 1
+        finished = ids[self._remaining[ids] <= 0]
+        self._forces[finished] = 0.0
+        self._torques[finished] = 0.0
         due = ids[(self._remaining[ids] <= 0) & (self._until_next[ids] <= 0)]
         if len(due) > 0:
             minimum = max(1, math.ceil(duration_range_s[0] / float(env.step_dt)))
@@ -115,18 +130,13 @@ class MountWobblePulse(ManagerTermBase):
             self._until_next[due] = self._remaining[due] + torch.randint(
                 quiet_min, quiet_max, (len(due),), device=env.device
             )
+            self._forces[due, 0] = torch.empty((len(due), 3), device=env.device).uniform_(*force_range)
+            self._torques[due, 0] = torch.empty((len(due), 3), device=env.device).uniform_(*torque_range)
 
-        active = self._remaining[ids] > 0
-        forces = torch.zeros((len(ids), 1, 3), device=env.device)
-        torques = torch.zeros_like(forces)
-        active_count = int(active.sum())
-        if active_count:
-            forces[active, 0] = torch.empty((active_count, 3), device=env.device).uniform_(*force_range)
-            torques[active, 0] = torch.empty((active_count, 3), device=env.device).uniform_(*torque_range)
         robot = env.scene[asset_cfg.name]
         robot.permanent_wrench_composer.set_forces_and_torques(
-            forces=forces,
-            torques=torques,
+            forces=self._forces[ids],
+            torques=self._torques[ids],
             body_ids=asset_cfg.body_ids,
             env_ids=ids,
             is_global=True,

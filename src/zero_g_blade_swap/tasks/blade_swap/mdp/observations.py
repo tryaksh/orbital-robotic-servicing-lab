@@ -6,8 +6,10 @@ import torch
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils.math import combine_frame_transforms, subtract_frame_transforms
 
-TOOL_OFFSET_POS = (0.0, 0.0, 0.18)
-TOOL_OFFSET_ROT = (0.0, -0.7071068, 0.0, -0.7071068)
+# Isaac Lab's UR10e/Robotiq reference task places the 2F-85 grasp point
+# approximately 190 mm along wrist_3_link's +Z axis and keeps its orientation.
+TOOL_OFFSET_POS = (0.0, 0.0, 0.19)
+TOOL_OFFSET_ROT = (1.0, 0.0, 0.0, 0.0)
 
 
 def _single_body_id(asset, asset_cfg: SceneEntityCfg) -> int:
@@ -134,14 +136,15 @@ def robot_root_pose_local(
 def robot_mount_state(
     env,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    anchor_cfg: SceneEntityCfg = SceneEntityCfg("mount_anchor"),
 ) -> torch.Tensor:
     """Return D6 mount deflection pose plus root linear/angular velocity."""
 
     robot = env.scene[asset_cfg.name]
-    default_pos_w = robot.data.default_root_state[:, :3] + env.scene.env_origins
+    anchor = env.scene[anchor_cfg.name]
     relative_pos, relative_quat = subtract_frame_transforms(
-        default_pos_w,
-        robot.data.default_root_state[:, 3:7],
+        anchor.data.root_pos_w,
+        anchor.data.root_quat_w,
         robot.data.root_pos_w,
         robot.data.root_quat_w,
     )

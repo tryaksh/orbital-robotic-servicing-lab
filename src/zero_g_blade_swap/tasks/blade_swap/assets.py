@@ -21,9 +21,12 @@ from pxr import Gf, PhysxSchema, Sdf, Usd, UsdGeom, UsdPhysics
 
 ROBOT_ROOT_POS = (-0.45, 0.0, 0.15)
 BLADE_INSERTED_POS = (0.75, 0.0, 0.72)
-SPARE_BLADE_POS = (0.42, -0.42, 0.50)
-SERVICE_CADDY_POS = (0.42, 0.42, 0.50)
+SPARE_BLADE_POS = (0.70, -0.42, 0.50)
+SERVICE_CADDY_POS = (0.70, 0.42, 0.50)
 BLADE_SIZE = (0.45, 0.16, 0.035)
+BLADE_HANDLE_OFFSET = (-0.250, 0.0, 0.0)
+TRANSFER_BLADE_X = 0.18
+GUIDE_CENTER_OFFSET_Y = 0.08975  # 1.5 mm total clearance around the 160 mm blade.
 
 
 def _relocate_ur10e_articulation_root(stage: Usd.Stage, environment_path: str) -> None:
@@ -71,6 +74,10 @@ def _relocate_ur10e_articulation_root(stage: Usd.Stage, environment_path: str) -
     source_prim.RemoveAPI(UsdPhysics.ArticulationRootAPI)
     if source_physx_api:
         source_prim.RemoveAPI(PhysxSchema.PhysxArticulationAPI)
+    # The stock world-fixed joint is no longer part of the floating-base
+    # articulation.  Deactivate it so PhysX does not parse its stale local
+    # frames and snap the base before the external D6 mount takes control.
+    source_prim.SetActive(False)
 
 
 def _define_compliant_d6(
@@ -212,7 +219,11 @@ def make_robot_cfg() -> ArticulationCfg:
             pos=ROBOT_ROOT_POS,
             rot=(1.0, 0.0, 0.0, 0.0),
             joint_pos={
-                "shoulder_pan_joint": math.pi,
+                # Face the rack (+X).  The stock USD convention points the arm
+                # away from the workcell when this joint is initialized at pi.
+                # A small +Y staging angle keeps the open Robotiq geometry
+                # clear of the pre-insertion blade while still facing +X.
+                "shoulder_pan_joint": 0.35,
                 "shoulder_lift_joint": -math.pi / 2.0,
                 "elbow_joint": math.pi / 2.0,
                 "wrist_1_joint": -math.pi / 2.0,
@@ -275,7 +286,8 @@ def spawn_blade_with_handle(
             orientation=(1.0, 0.0, 0.0, 0.0),
             scale=cfg.handle_size,
         )
-        sim_utils.define_collision_properties(handle_path, cfg.collision_props, stage=stage)
+        if cfg.handle_collision_enabled:
+            sim_utils.define_collision_properties(handle_path, cfg.collision_props, stage=stage)
         material_path = f"{root_path}/geometry/{cfg.visual_material_path}"
         if stage.GetPrimAtPath(material_path).IsValid():
             sim_utils.bind_visual_material(handle_path, material_path, stage=stage)
@@ -287,8 +299,11 @@ class BladeCuboidCfg(sim_utils.CuboidCfg):
     """Cuboid chassis with one collision handle sharing the root rigid body."""
 
     func: Callable[..., Usd.Prim] = spawn_blade_with_handle
-    handle_offset: tuple[float, float, float] = (-0.235, 0.0, 0.0)
-    handle_size: tuple[float, float, float] = (0.020, 0.075, 0.025)
+    handle_offset: tuple[float, float, float] = BLADE_HANDLE_OFFSET
+    # A 55 mm grip width leaves 15 mm clearance inside the 2F-85 aperture;
+    # 50 mm depth gives both finger pads meaningful contact area.
+    handle_size: tuple[float, float, float] = (0.050, 0.055, 0.025)
+    handle_collision_enabled: bool = True
 
 
 def _blade_cfg(
@@ -347,12 +362,11 @@ def _slot_guide_cfg(
     position: tuple[float, float, float],
     length: float = 0.60,
 ) -> RigidObjectCfg:
-    """Create a side guide with a small interference fit for axial friction.
+    """Create a side guide around the nominal 1.5 mm slot clearance.
 
-    In zero gravity a shelf alone produces almost no normal force and therefore
-    almost no Coulomb friction.  The two guides preload the blade by roughly
-    0.25 mm per side, making randomized sliding friction physically meaningful
-    as a thermal-welding/stiction proxy while retaining contact-based motion.
+    The contact offset gives PhysX an early contact envelope at the guide faces;
+    the explicit axial stiction term supplies the zero-g breakaway/drag load.
+    This avoids starting the rigid blade in an impossible interpenetrating pose.
     """
 
     return RigidObjectCfg(
@@ -375,8 +389,12 @@ def _slot_guide_cfg(
     )
 
 
-SLOT_LEFT_GUIDE_CFG = _slot_guide_cfg("BladeSlotLeftGuide", (BLADE_INSERTED_POS[0], 0.08875, BLADE_INSERTED_POS[2]))
-SLOT_RIGHT_GUIDE_CFG = _slot_guide_cfg("BladeSlotRightGuide", (BLADE_INSERTED_POS[0], -0.08875, BLADE_INSERTED_POS[2]))
+SLOT_LEFT_GUIDE_CFG = _slot_guide_cfg(
+    "BladeSlotLeftGuide", (BLADE_INSERTED_POS[0], GUIDE_CENTER_OFFSET_Y, BLADE_INSERTED_POS[2])
+)
+SLOT_RIGHT_GUIDE_CFG = _slot_guide_cfg(
+    "BladeSlotRightGuide", (BLADE_INSERTED_POS[0], -GUIDE_CENTER_OFFSET_Y, BLADE_INSERTED_POS[2])
+)
 
 
 def _caddy_shelf_cfg(name: str, center: tuple[float, float, float]) -> RigidObjectCfg:
@@ -406,19 +424,23 @@ def _caddy_shelf_cfg(name: str, center: tuple[float, float, float]) -> RigidObje
 SUPPLY_CADDY_CFG = _caddy_shelf_cfg("SupplyCaddy", SPARE_BLADE_POS)
 SERVICE_CADDY_CFG = _caddy_shelf_cfg("ServiceCaddy", SERVICE_CADDY_POS)
 SUPPLY_CADDY_LEFT_GUIDE_CFG = _slot_guide_cfg(
-    "SupplyCaddyLeftGuide", (SPARE_BLADE_POS[0], SPARE_BLADE_POS[1] + 0.08875, SPARE_BLADE_POS[2]), 0.55
+    "SupplyCaddyLeftGuide",
+    (SPARE_BLADE_POS[0], SPARE_BLADE_POS[1] + GUIDE_CENTER_OFFSET_Y, SPARE_BLADE_POS[2]),
+    0.55,
 )
 SUPPLY_CADDY_RIGHT_GUIDE_CFG = _slot_guide_cfg(
-    "SupplyCaddyRightGuide", (SPARE_BLADE_POS[0], SPARE_BLADE_POS[1] - 0.08875, SPARE_BLADE_POS[2]), 0.55
+    "SupplyCaddyRightGuide",
+    (SPARE_BLADE_POS[0], SPARE_BLADE_POS[1] - GUIDE_CENTER_OFFSET_Y, SPARE_BLADE_POS[2]),
+    0.55,
 )
 SERVICE_CADDY_LEFT_GUIDE_CFG = _slot_guide_cfg(
     "ServiceCaddyLeftGuide",
-    (SERVICE_CADDY_POS[0], SERVICE_CADDY_POS[1] + 0.08875, SERVICE_CADDY_POS[2]),
+    (SERVICE_CADDY_POS[0], SERVICE_CADDY_POS[1] + GUIDE_CENTER_OFFSET_Y, SERVICE_CADDY_POS[2]),
     0.55,
 )
 SERVICE_CADDY_RIGHT_GUIDE_CFG = _slot_guide_cfg(
     "ServiceCaddyRightGuide",
-    (SERVICE_CADDY_POS[0], SERVICE_CADDY_POS[1] - 0.08875, SERVICE_CADDY_POS[2]),
+    (SERVICE_CADDY_POS[0], SERVICE_CADDY_POS[1] - GUIDE_CENTER_OFFSET_Y, SERVICE_CADDY_POS[2]),
     0.55,
 )
 
@@ -459,6 +481,7 @@ MOUNT_ANCHOR_CFG = RigidObjectCfg(
 
 __all__ = [
     "BLADE_CFG",
+    "BLADE_HANDLE_OFFSET",
     "BLADE_INSERTED_POS",
     "BLADE_SIZE",
     "CompliantD6JointCfg",
@@ -477,6 +500,7 @@ __all__ = [
     "SUPPLY_CADDY_CFG",
     "SUPPLY_CADDY_LEFT_GUIDE_CFG",
     "SUPPLY_CADDY_RIGHT_GUIDE_CFG",
+    "TRANSFER_BLADE_X",
     "make_robot_cfg",
     "spawn_compliant_d6_joint",
 ]

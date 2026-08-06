@@ -4,14 +4,20 @@ from __future__ import annotations
 
 import torch
 from isaaclab.managers import SceneEntityCfg
-from isaaclab.utils.math import combine_frame_transforms, quat_error_magnitude
+from isaaclab.utils.math import (
+    axis_angle_from_quat,
+    combine_frame_transforms,
+    quat_error_magnitude,
+    subtract_frame_transforms,
+)
 
-from ..assets import BLADE_INSERTED_POS, BLADE_SIZE, SPARE_BLADE_POS
+from ..assets import BLADE_HANDLE_OFFSET, BLADE_INSERTED_POS, SPARE_BLADE_POS
 from .commands import (
     FAILED_EXTRACTION_X,
     PHASE_ACQUIRE_SPARE,
     PHASE_EXTRACT_FAILED,
     SPARE_EXTRACTION_X,
+    gripper_handle_orientation_error,
     insertion_mask,
     rack_goal_pose_local,
     swap_complete_mask,
@@ -19,12 +25,10 @@ from .commands import (
 )
 from .observations import end_effector_pose_world
 
-BLADE_GRASP_OFFSET = (-BLADE_SIZE[0] / 2.0 - 0.018, 0.0, 0.0)
-
 
 def blade_grasp_pose_world(env, asset_cfg: SceneEntityCfg) -> tuple[torch.Tensor, torch.Tensor]:
     blade = env.scene[asset_cfg.name]
-    offset = torch.tensor(BLADE_GRASP_OFFSET, device=env.device).expand(env.num_envs, -1)
+    offset = torch.tensor(BLADE_HANDLE_OFFSET, device=env.device).expand(env.num_envs, -1)
     return combine_frame_transforms(blade.data.root_pos_w, blade.data.root_quat_w, offset)
 
 
@@ -58,7 +62,7 @@ def alignment_error(
     ee_pos, ee_rot = end_effector_pose_world(env, robot_cfg)
     grasp_pos, grasp_rot = _active_grasp_pose(env)
     proximity = torch.exp(-torch.linalg.vector_norm(ee_pos - grasp_pos, dim=-1) / proximity_std)
-    return quat_error_magnitude(ee_rot, grasp_rot) * proximity
+    return gripper_handle_orientation_error(ee_rot, grasp_rot) * proximity
 
 
 def alignment_reward(
@@ -72,7 +76,7 @@ def alignment_reward(
     ee_pos, ee_rot = end_effector_pose_world(env, robot_cfg)
     grasp_pos, grasp_rot = _active_grasp_pose(env)
     position_score = torch.exp(-torch.linalg.vector_norm(ee_pos - grasp_pos, dim=-1) / position_std)
-    orientation_score = torch.exp(-quat_error_magnitude(ee_rot, grasp_rot) / orientation_std)
+    orientation_score = torch.exp(-gripper_handle_orientation_error(ee_rot, grasp_rot) / orientation_std)
     return position_score * orientation_score
 
 
@@ -80,13 +84,18 @@ def lateral_orientation_penalty(
     env,
     robot_cfg: SceneEntityCfg = SceneEntityCfg("robot", body_names=["wrist_3_link"]),
 ) -> torch.Tensor:
-    """Explicit lateral and angular misalignment in the active grasp frame."""
+    """Explicit near-target lateral and angular misalignment.
+
+    Gating by proximity prevents a distant initial pose from accumulating a
+    large negative return that makes deliberate early termination attractive.
+    """
 
     ee_pos, ee_rot = end_effector_pose_world(env, robot_cfg)
     grasp_pos, grasp_rot = _active_grasp_pose(env)
     lateral = torch.linalg.vector_norm((ee_pos - grasp_pos)[:, 1:3], dim=-1) / 0.05
-    orientation = quat_error_magnitude(ee_rot, grasp_rot) / 0.35
-    return lateral + orientation
+    orientation = gripper_handle_orientation_error(ee_rot, grasp_rot) / 0.35
+    proximity = torch.exp(-torch.linalg.vector_norm(ee_pos - grasp_pos, dim=-1) / 0.30)
+    return (lateral + orientation) * proximity
 
 
 def extraction_progress(env, blade_cfg: SceneEntityCfg | None = None) -> torch.Tensor:
@@ -176,11 +185,30 @@ def blade_motion_penalty(env, blade_cfg: SceneEntityCfg | None = None) -> torch.
     return penalty
 
 
-def mount_deflection_penalty(env, robot_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def mount_deflection_penalty(
+    env,
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    anchor_cfg: SceneEntityCfg = SceneEntityCfg("mount_anchor"),
+) -> torch.Tensor:
     robot = env.scene[robot_cfg.name]
-    default_local = robot.data.default_root_state[:, :3]
-    current_local = robot.data.root_pos_w - env.scene.env_origins
-    return torch.sum(torch.square(current_local - default_local), dim=-1)
+    anchor = env.scene[anchor_cfg.name]
+    relative_pos, relative_quat = subtract_frame_transforms(
+        anchor.data.root_pos_w,
+        anchor.data.root_quat_w,
+        robot.data.root_pos_w,
+        robot.data.root_quat_w,
+    )
+    relative_rotation = axis_angle_from_quat(relative_quat)
+    return torch.sum(torch.square(relative_pos), dim=-1) + torch.sum(torch.square(relative_rotation), dim=-1)
+
+
+def undesired_termination_penalty(env, term_keys: tuple[str, ...]) -> torch.Tensor:
+    """Return a one-time, timestep-independent penalty for unsafe endings."""
+
+    failures = torch.zeros(env.num_envs, device=env.device)
+    for term_name in term_keys:
+        failures += env.termination_manager.get_term(term_name).to(torch.float32)
+    return failures / float(env.step_dt)
 
 
 def workspace_violation_penalty(env) -> torch.Tensor:
@@ -209,6 +237,7 @@ __all__ = [
     "full_swap_reward",
     "lateral_orientation_penalty",
     "mount_deflection_penalty",
+    "undesired_termination_penalty",
     "phase_completion_reward",
     "stable_grasp_reward",
     "workspace_violation_penalty",

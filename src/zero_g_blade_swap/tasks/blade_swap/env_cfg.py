@@ -54,7 +54,10 @@ class ActionsCfg:
         asset_name="robot",
         joint_names=ROBOTIQ_2F85_JOINT_NAMES,
         open_position=0.0,
-        closed_position=0.785,
+        # Isaac Lab's official UR10e/2F-85 gear task uses 0.45 for a
+        # large-object close.  The previous 0.785 hard-stop command squeezed
+        # this wide handle hard enough to rotate the blade before insertion.
+        closed_position=0.45,
         threshold=0.0,
         close_on_positive=True,
     )
@@ -281,12 +284,12 @@ class PhysicsRandomizationCfg:
         mode="reset",
         params={
             "pose_range": {
-                "x": (-0.006, 0.006),
-                "y": (-0.006, 0.006),
-                "z": (-0.002, 0.002),
-                "roll": (-0.015, 0.015),
-                "pitch": (-0.015, 0.015),
-                "yaw": (-0.02, 0.02),
+                "x": (-0.004, 0.004),
+                "y": (-0.0004, 0.0004),
+                "z": (-0.0002, 0.0002),
+                "roll": (-0.001, 0.001),
+                "pitch": (-0.001, 0.001),
+                "yaw": (-0.002, 0.002),
             },
             "velocity_range": {
                 "x": (-0.01, 0.01),
@@ -303,7 +306,12 @@ class PhysicsRandomizationCfg:
         func=mdp.reset_root_state_uniform,
         mode="reset",
         params={
-            "pose_range": {"x": (-0.006, 0.006), "y": (-0.004, 0.004), "z": (-0.002, 0.002), "yaw": (-0.02, 0.02)},
+            "pose_range": {
+                "x": (-0.004, 0.004),
+                "y": (-0.0004, 0.0004),
+                "z": (-0.0002, 0.0002),
+                "yaw": (-0.002, 0.002),
+            },
             "velocity_range": {"x": (-0.01, 0.01), "y": (-0.01, 0.01), "z": (-0.005, 0.005)},
             "asset_cfg": SceneEntityCfg("spare_blade"),
         },
@@ -357,7 +365,7 @@ class PhysicsRandomizationCfg:
             "asset_cfg": SceneEntityCfg("blade"),
             "rail_center_y": 0.0,
             "rail_center_z": 0.72,
-            "engagement_x_range": (0.46, 1.0),
+            "engagement_x_range": (0.225, 1.0),
         },
     )
     supply_stiction = EventTerm(
@@ -368,7 +376,7 @@ class PhysicsRandomizationCfg:
             "asset_cfg": SceneEntityCfg("spare_blade"),
             "rail_center_y": -0.42,
             "rail_center_z": 0.50,
-            "engagement_x_range": (0.13, 0.70),
+            "engagement_x_range": (0.20, 0.95),
         },
     )
 
@@ -444,6 +452,11 @@ class RewardsCfg:
     blade_motion = RewTerm(func=mdp.blade_motion_penalty, weight=-0.015)
     workspace = RewTerm(func=mdp.workspace_violation_penalty, weight=-2.0)
     mount_deflection = RewTerm(func=mdp.mount_deflection_penalty, weight=-20.0)
+    terminal_failure = RewTerm(
+        func=mdp.undesired_termination_penalty,
+        weight=-50.0,
+        params={"term_keys": ("blade_lost", "mount_unstable", "non_finite")},
+    )
 
 
 @configclass
@@ -456,7 +469,7 @@ class TerminationsCfg:
     blade_lost = DoneTerm(func=mdp.blade_out_of_workspace)
     mount_unstable = DoneTerm(
         func=mdp.robot_mount_unstable,
-        params={"maximum_displacement": 0.018, "maximum_rotation": 0.0436332313},
+        params={"maximum_translation_axis": 0.0165, "maximum_rotation_axis": 0.0383972435},
     )
     non_finite = DoneTerm(func=mdp.non_finite_state)
 
@@ -591,8 +604,8 @@ class ZeroGBladeSwapPlayEnvCfg(ZeroGBladeSwapVisionEnvCfg):
         super().__post_init__()
         self.scene.num_envs = 8
         self.observations = PlayObservationsCfg()
-        self.viewer.eye = (2.2, -2.4, 1.8)
-        self.viewer.lookat = (0.45, 0.0, 0.72)
+        self.viewer.eye = (-0.9, -2.2, 1.6)
+        self.viewer.lookat = (0.35, 0.0, 0.65)
 
 
 __all__ = [
