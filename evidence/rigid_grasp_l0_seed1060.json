@@ -1,0 +1,22 @@
+{
+  "task": "Isaac-ZeroG-Blade-Insertion-RigidGrasp-Play-v0",
+  "checkpoint_epoch": 700,
+  "checkpoint_sha256": "1635C0DA6464A34DE5D5D423D45D272AD0E19D808EA35B8502068F68B5043332",
+  "training_seed": 60,
+  "evaluation_seed": 1060,
+  "robustness_level": 0,
+  "grasp_model": "physx_fixed_joint_already_secured_abstraction",
+  "evaluations": {
+    "near_stage_0": {"successes": 1021, "episodes": 1021, "success_rate": 1.0},
+    "medium_stage_1": {"successes": 1006, "episodes": 1006, "success_rate": 1.0},
+    "full_stage_2": {"successes": 1001, "episodes": 1001, "success_rate": 1.0}
+  },
+  "termination_totals": {
+    "insertion_success": 3028,
+    "time_out": 0,
+    "insertion_failed": 0,
+    "mount_unstable": 0,
+    "non_finite": 0
+  },
+  "scope": "One held-out seed in collision-free Level 0. Not evidence of physical grasping, rail-contact robustness, perception, or Sim2Real transfer."
+}

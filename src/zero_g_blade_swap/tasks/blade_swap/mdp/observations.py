@@ -6,10 +6,7 @@ import torch
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils.math import combine_frame_transforms, subtract_frame_transforms
 
-# Isaac Lab's UR10e/Robotiq reference task places the 2F-85 grasp point
-# approximately 190 mm along wrist_3_link's +Z axis and keeps its orientation.
-TOOL_OFFSET_POS = (0.0, 0.0, 0.19)
-TOOL_OFFSET_ROT = (1.0, 0.0, 0.0, 0.0)
+from ..assets import TOOL_OFFSET_POS, TOOL_OFFSET_ROT
 
 
 def _single_body_id(asset, asset_cfg: SceneEntityCfg) -> int:
@@ -37,7 +34,8 @@ def end_effector_pose_world(
     body_id = _single_body_id(robot, asset_cfg)
     wrist_pos = robot.data.body_pos_w[:, body_id]
     wrist_rot = robot.data.body_quat_w[:, body_id]
-    offset_pos = torch.tensor(TOOL_OFFSET_POS, device=env.device).expand(env.num_envs, -1)
+    offset_pos_cfg = getattr(env.cfg, "tool_offset_pos", TOOL_OFFSET_POS)
+    offset_pos = torch.tensor(offset_pos_cfg, device=env.device).expand(env.num_envs, -1)
     offset_rot = torch.tensor(TOOL_OFFSET_ROT, device=env.device).expand(env.num_envs, -1)
     return combine_frame_transforms(wrist_pos, wrist_rot, offset_pos, offset_rot)
 

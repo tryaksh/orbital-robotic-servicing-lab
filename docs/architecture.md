@@ -37,11 +37,12 @@ The policy runs at 30 Hz while physics runs at 120 Hz. The vision profile render
 at 15 Hz and reuses each frame for two policy steps. The teacher profile does not
 instantiate a camera.
 
-The physical action has seven values. Values 0-5 command a relative Cartesian
+The full-swap scaffold action has seven values. Values 0-5 command a relative Cartesian
 pose through damped-least-squares differential IK. Value 6 opens or closes the
 2F-85 and is expanded to six explicit gripper-joint targets with coupling signs
-`[+,+,-,+,-,-]`. There is no simulated magic attachment; blade retention
-depends on PhysX collision and friction.
+`[+,+,-,+,-,-]`. The currently promoted insertion task instead has six
+Cartesian actions and explicitly uses a PhysX fixed joint to represent a blade
+that was already secured. This is not learned grasping.
 
 ## Full-swap state machine
 
@@ -58,7 +59,8 @@ The phase command is a batched tensor. Transitions use geometry and velocity
 thresholds rather than CPU callbacks, allowing all environments to advance
 independently on the GPU.
 
-Training starts with the replacement pre-aligned for insertion. A rolling
+The eight-phase composition below is roadmap scaffolding, not a converged
+policy. Training starts with the replacement pre-aligned for insertion. A rolling
 success curriculum promotes to spare acquisition, failed-blade stow plus
 replacement, and finally the complete swap after each stage sustains at least
 70% success over 100 completed episodes. Terminal success requires the failed

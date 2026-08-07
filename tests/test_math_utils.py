@@ -9,6 +9,7 @@ from zero_g_blade_swap.math_utils import (
     exponential_distance_reward,
     full_swap_success,
     gaussian_camera_noise,
+    insertion_curriculum_probabilities,
     quaternion_angular_error,
     robotiq_2f85_coupled_positions,
     transform_points,
@@ -105,6 +106,24 @@ def test_curriculum_requires_full_window_and_respects_threshold_and_cap() -> Non
     stage, rolling, promoted = update_curriculum_stage(1, [True] * 69 + [False] * 31)
     assert stage == 1 and rolling == pytest.approx(0.69) and not promoted
     assert update_curriculum_stage(3, [True] * 100) == (3, 1.0, False)
+
+
+def test_curriculum_requires_practice_time_before_promotion() -> None:
+    outcomes = [True] * 90 + [False] * 10
+    assert update_curriculum_stage(0, outcomes, threshold=0.8, steps_elapsed=1599, minimum_steps=1600) == (
+        0,
+        pytest.approx(0.9),
+        False,
+    )
+    assert update_curriculum_stage(0, outcomes, threshold=0.8, steps_elapsed=1600, minimum_steps=1600) == (1, 0.0, True)
+
+
+def test_insertion_curriculum_retains_earlier_reset_stages() -> None:
+    np.testing.assert_allclose(insertion_curriculum_probabilities(0), [1.0, 0.0, 0.0])
+    np.testing.assert_allclose(insertion_curriculum_probabilities(1), [0.25, 0.75, 0.0])
+    np.testing.assert_allclose(insertion_curriculum_probabilities(2), [0.20, 0.20, 0.60])
+    with pytest.raises(ValueError, match="locked"):
+        insertion_curriculum_probabilities(1, ((1, 0, 0), (0, 1, 1), (1, 1, 1)))
 
 
 def test_invalid_physical_inputs_raise() -> None:

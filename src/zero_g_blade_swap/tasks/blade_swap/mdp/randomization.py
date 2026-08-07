@@ -220,6 +220,34 @@ def randomize_rail_stiction(
     viscous[ids] = torch.empty(len(ids), device=env.device).uniform_(*viscous_coefficient_range)
 
 
+def rail_stiction_resistance(
+    env,
+    asset_cfg: SceneEntityCfg,
+    env_ids: torch.Tensor,
+    rail_center_y: float,
+    rail_center_z: float,
+    engagement_x_range: tuple[float, float],
+    velocity_smoothing: float = 0.01,
+) -> torch.Tensor:
+    """Return the axial rail force without writing a PhysX wrench."""
+
+    asset = env.scene[asset_cfg.name]
+    params = getattr(env, "_rail_stiction", {}).get(asset_cfg.name)
+    if params is None:
+        return torch.zeros(len(env_ids), device=env.device)
+    breakaway, viscous = params
+    local_position = asset.data.root_pos_w[env_ids] - env.scene.env_origins[env_ids]
+    velocity_x = asset.data.root_lin_vel_w[env_ids, 0]
+    engaged = (
+        (local_position[:, 0] >= engagement_x_range[0])
+        & (local_position[:, 0] <= engagement_x_range[1])
+        & ((local_position[:, 1] - rail_center_y).abs() < 0.10)
+        & ((local_position[:, 2] - rail_center_z).abs() < 0.07)
+    )
+    resistance = -breakaway[env_ids] * torch.tanh(velocity_x / velocity_smoothing) - viscous[env_ids] * velocity_x
+    return torch.where(engaged, resistance.clamp(-160.0, 160.0), torch.zeros_like(resistance))
+
+
 def apply_rail_stiction(
     env,
     env_ids: torch.Tensor | None,
@@ -233,20 +261,17 @@ def apply_rail_stiction(
 
     asset = env.scene[asset_cfg.name]
     ids = torch.arange(env.num_envs, device=env.device) if env_ids is None else env_ids
-    params = getattr(env, "_rail_stiction", {}).get(asset_cfg.name)
-    if params is None:
+    if getattr(env, "_rail_stiction", {}).get(asset_cfg.name) is None:
         raise RuntimeError(f"Rail stiction for '{asset_cfg.name}' was not sampled at reset.")
-    breakaway, viscous = params
-    local_position = asset.data.root_pos_w[ids] - env.scene.env_origins[ids]
-    velocity_x = asset.data.root_lin_vel_w[ids, 0]
-    engaged = (
-        (local_position[:, 0] >= engagement_x_range[0])
-        & (local_position[:, 0] <= engagement_x_range[1])
-        & ((local_position[:, 1] - rail_center_y).abs() < 0.10)
-        & ((local_position[:, 2] - rail_center_z).abs() < 0.07)
+    resistance = rail_stiction_resistance(
+        env,
+        asset_cfg,
+        ids,
+        rail_center_y,
+        rail_center_z,
+        engagement_x_range,
+        velocity_smoothing,
     )
-    resistance = -breakaway[ids] * torch.tanh(velocity_x / velocity_smoothing) - viscous[ids] * velocity_x
-    resistance = torch.where(engaged, resistance.clamp(-160.0, 160.0), torch.zeros_like(resistance))
     forces = torch.zeros((len(ids), 1, 3), device=env.device)
     torques = torch.zeros_like(forces)
     forces[:, 0, 0] = resistance
@@ -332,6 +357,7 @@ __all__ = [
     "RackMaterialRandomizer",
     "apply_curriculum_initial_state",
     "apply_rail_stiction",
+    "rail_stiction_resistance",
     "randomize_rail_stiction",
     "reset_task_progress",
 ]

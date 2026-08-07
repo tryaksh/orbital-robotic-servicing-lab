@@ -10,8 +10,21 @@ from isaaclab.utils import configclass
 
 from .assets import (
     BLADE_CFG,
+    CONTACT_INSERTION_BLADE_CFG,
+    INSERTION_BLADE_CFG,
+    INSERTION_SLOT_CFG,
+    INSERTION_SLOT_LEFT_GUIDE_CFG,
+    INSERTION_SLOT_RIGHT_GUIDE_CFG,
     MOUNT_ANCHOR_CFG,
     RACK_CFG,
+    RIGID_GRASP_BLADE_CFG,
+    RIGID_GRASP_SLOT_CFG,
+    RIGID_GRASP_SLOT_LEFT_GUIDE_CFG,
+    RIGID_GRASP_SLOT_RIGHT_GUIDE_CFG,
+    ROBUST_INSERTION_BLADE_CFG,
+    ROBUST_INSERTION_SLOT_CFG,
+    ROBUST_INSERTION_SLOT_LEFT_GUIDE_CFG,
+    ROBUST_INSERTION_SLOT_RIGHT_GUIDE_CFG,
     SERVICE_CADDY_CFG,
     SERVICE_CADDY_LEFT_GUIDE_CFG,
     SERVICE_CADDY_RIGHT_GUIDE_CFG,
@@ -23,6 +36,9 @@ from .assets import (
     SUPPLY_CADDY_LEFT_GUIDE_CFG,
     SUPPLY_CADDY_RIGHT_GUIDE_CFG,
     CompliantD6JointCfg,
+    FixedGraspJointCfg,
+    make_contact_insertion_robot_cfg,
+    make_insertion_robot_cfg,
     make_robot_cfg,
 )
 
@@ -61,6 +77,67 @@ class ZeroGBladeSwapSceneCfg(InteractiveSceneCfg):
     camera: TiledCameraCfg | None = None
 
 
+@configclass
+class ZeroGInsertionSceneCfg(InteractiveSceneCfg):
+    """Lean Stage-1 scene containing only the assets needed for insertion."""
+
+    robot = make_insertion_robot_cfg()
+    spare_blade = INSERTION_BLADE_CFG
+    blade_slot = INSERTION_SLOT_CFG
+    blade_slot_left_guide = INSERTION_SLOT_LEFT_GUIDE_CFG
+    blade_slot_right_guide = INSERTION_SLOT_RIGHT_GUIDE_CFG
+    rack = RACK_CFG
+    camera: TiledCameraCfg | None = None
+
+
+@configclass
+class ZeroGRobustInsertionSceneCfg(InteractiveSceneCfg):
+    """Lean Phase-2 scene with tight rails and a profile-selectable mount."""
+
+    # The anchor remains present at every robustness level so observation
+    # dimensions never change when a checkpoint is resumed at a harder level.
+    mount_anchor = MOUNT_ANCHOR_CFG
+    robot = make_insertion_robot_cfg()
+    # Declare this as a concrete asset to preserve creation order (anchor,
+    # robot, then joint). Lower robustness profiles replace it with ``None``.
+    base_compliance = AssetBaseCfg(
+        prim_path="{ENV_REGEX_NS}/BaseCompliance",
+        spawn=CompliantD6JointCfg(),
+    )
+    spare_blade = ROBUST_INSERTION_BLADE_CFG
+    blade_slot = ROBUST_INSERTION_SLOT_CFG
+    blade_slot_left_guide = ROBUST_INSERTION_SLOT_LEFT_GUIDE_CFG
+    blade_slot_right_guide = ROBUST_INSERTION_SLOT_RIGHT_GUIDE_CFG
+    rack = RACK_CFG
+    # These are populated only by the Play configuration.  Training stays
+    # render-free, while live inspection gets deliberate showcase lighting.
+    showcase_key_light: AssetBaseCfg | None = None
+    showcase_fill_light: AssetBaseCfg | None = None
+    camera: TiledCameraCfg | None = None
+
+
+@configclass
+class ZeroGContactInsertionSceneCfg(ZeroGRobustInsertionSceneCfg):
+    """Phase-2.5 scene where finger/handle contacts carry the blade."""
+
+    robot = make_contact_insertion_robot_cfg()
+    spare_blade = CONTACT_INSERTION_BLADE_CFG
+
+
+@configclass
+class ZeroGRigidGraspInsertionSceneCfg(ZeroGContactInsertionSceneCfg):
+    """Insertion scene with a real PhysX fixed joint for a secured grasp."""
+
+    grasp_joint = AssetBaseCfg(
+        prim_path="{ENV_REGEX_NS}/GraspJoint",
+        spawn=FixedGraspJointCfg(),
+    )
+    spare_blade = RIGID_GRASP_BLADE_CFG
+    blade_slot = RIGID_GRASP_SLOT_CFG
+    blade_slot_left_guide = RIGID_GRASP_SLOT_LEFT_GUIDE_CFG
+    blade_slot_right_guide = RIGID_GRASP_SLOT_RIGHT_GUIDE_CFG
+
+
 def make_tiled_camera_cfg() -> TiledCameraCfg:
     """Create the 64x64, 15 Hz camera used by vision and data collection."""
 
@@ -85,4 +162,10 @@ def make_tiled_camera_cfg() -> TiledCameraCfg:
     )
 
 
-__all__ = ["ZeroGBladeSwapSceneCfg", "make_tiled_camera_cfg"]
+__all__ = [
+    "ZeroGBladeSwapSceneCfg",
+    "ZeroGInsertionSceneCfg",
+    "ZeroGRobustInsertionSceneCfg",
+    "ZeroGContactInsertionSceneCfg",
+    "make_tiled_camera_cfg",
+]

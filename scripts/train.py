@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import traceback
 from pathlib import Path
 
 import jinja2  # Preload before Kit extensions to avoid a partially initialized module.
@@ -15,10 +16,17 @@ assert hasattr(jinja2, "Environment"), "The Jinja2 installation is incomplete."
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--task", default="Isaac-ZeroG-BladeSwap-Teacher-v0")
+    parser.add_argument("--task", default="Isaac-ZeroG-Blade-Insertion-v0")
     parser.add_argument("--num_envs", type=int, default=None)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max_iterations", type=int, default=None)
+    parser.add_argument(
+        "--robustness_level",
+        type=int,
+        choices=range(5),
+        default=None,
+        help="Insertion profile: 0=tight/6D, 1=pose, 2=mass, 3=friction, 4=mount wobble.",
+    )
     parser.add_argument("--checkpoint", type=Path, default=None, help="Resume an RL-Games .pth checkpoint.")
     parser.add_argument("--bc_checkpoint", type=Path, default=None, help="Initialize the vision actor from BC.")
     parser.add_argument("--smoke", action="store_true", help="Run two PPO epochs with small batches.")
@@ -49,11 +57,19 @@ from rl_games.common.algo_observer import IsaacAlgoObserver
 from rl_games.torch_runner import Runner
 
 from isaaclab.utils.io import dump_yaml
+from isaaclab.sim.utils import get_current_stage
 from isaaclab_rl.rl_games import RlGamesGpuEnv, RlGamesVecEnvWrapper
 from isaaclab_tasks.utils import load_cfg_from_registry, parse_env_cfg
+from pxr import UsdPhysics
 
 import zero_g_blade_swap.tasks.blade_swap  # noqa: F401
 from zero_g_blade_swap.tasks.blade_swap.agents import register_rl_games_networks
+from zero_g_blade_swap.tasks.blade_swap.mdp.insertion import (
+    insertion_error_metrics,
+    insertion_goal_error,
+    secured_blade_error_metrics,
+    secured_blade_pose_error,
+)
 
 
 def _fit_minibatch(agent_cfg: dict, num_envs: int) -> None:
@@ -67,6 +83,87 @@ def _fit_minibatch(agent_cfg: dict, num_envs: int) -> None:
         central["minibatch_size"] = config["minibatch_size"]
 
 
+def _validate_robust_smoke_contract(env, robustness_level: int) -> None:
+    """Fail a smoke run if a Phase-2 profile was only nominally configured."""
+
+    task = env.unwrapped
+    if task.action_manager.total_action_dim != 6:
+        raise RuntimeError(f"Phase 2 requires six actions, got {task.action_manager.total_action_dim}")
+    if tuple(float(value) for value in task.cfg.sim.gravity) != (0.0, 0.0, 0.0):
+        raise RuntimeError(f"Phase-2 gravity is not zero: {task.cfg.sim.gravity}")
+    if task.scene.sensors:
+        raise RuntimeError(f"State-only Phase 2 unexpectedly created sensors: {tuple(task.scene.sensors)}")
+    if getattr(task.cfg, "contact_grasp", False):
+        if task.cfg.events.secured_blade_constraint is not None:
+            raise RuntimeError("Contact insertion unexpectedly enabled the secured-blade fixture")
+        if not task.cfg.scene.spare_blade.spawn.handle_collision_enabled:
+            raise RuntimeError("Contact insertion handle collision is disabled")
+        handle_prim = get_current_stage().GetPrimAtPath("/World/envs/env_0/SpareBlade/Handle")
+        collision_api = UsdPhysics.CollisionAPI(handle_prim)
+        collision_enabled = collision_api.GetCollisionEnabledAttr().Get() if collision_api else None
+        if not handle_prim.IsValid() or not collision_api or collision_enabled is False:
+            raise RuntimeError(
+                "Contact insertion handle collider is not active at runtime: "
+                f"valid={handle_prim.IsValid()}, collision_enabled={collision_enabled}"
+            )
+        print("[INFO] Physical-grasp contract passed: handle collision on, software fixture off")
+    if getattr(task.cfg, "rigid_grasp", False):
+        joint_prim = get_current_stage().GetPrimAtPath("/World/envs/env_0/GraspJoint/Joint")
+        if not joint_prim.IsValid() or not UsdPhysics.FixedJoint(joint_prim):
+            raise RuntimeError("Rigid-grasp task did not author its PhysX fixed joint")
+        if task.cfg.events.secured_blade_constraint is not None:
+            raise RuntimeError("Rigid-grasp task unexpectedly enabled the old wrench fixture")
+        if task.cfg.scene.spare_blade.spawn.handle_collision_enabled:
+            raise RuntimeError("Rigid-grasp task must disable redundant finger/handle collision")
+        collision = {
+            "floor": bool(task.cfg.scene.blade_slot.spawn.collision_props.collision_enabled),
+            "left": bool(task.cfg.scene.blade_slot_left_guide.spawn.collision_props.collision_enabled),
+            "right": bool(task.cfg.scene.blade_slot_right_guide.spawn.collision_props.collision_enabled),
+        }
+        expected = (
+            {"floor": False, "left": False, "right": False}
+            if robustness_level == 0
+            else {"floor": False, "left": True, "right": True}
+            if robustness_level in (1, 2)
+            else {"floor": False, "left": True, "right": True}
+        )
+        if collision != expected:
+            raise RuntimeError(
+                f"Rigid-grasp rail profile mismatch at level {robustness_level}: {collision} != {expected}"
+            )
+        print(
+            "[INFO] Rigid-grasp contract passed: PhysX fixed joint on, "
+            f"redundant handle collision off, rail collision={collision}"
+        )
+    if robustness_level >= 2:
+        masses = task.scene["spare_blade"].root_physx_view.get_masses()
+        if not bool(((masses >= 5.0) & (masses <= 15.0)).all()):
+            raise RuntimeError(f"Phase-2 blade mass escaped [5, 15] kg: {masses}")
+    if robustness_level >= 3:
+        material_asset = "blade_slot_left_guide" if getattr(task.cfg, "rigid_grasp", False) else "blade_slot"
+        material = task.scene[material_asset].root_physx_view.get_material_properties()
+        valid_material = (
+            (material[..., 0] >= 0.25)
+            & (material[..., 0] <= 2.0)
+            & (material[..., 1] >= 0.20)
+            & (material[..., 1] <= 1.5)
+            & (material[..., 1] <= material[..., 0])
+            & (material[..., 2] >= 0.0)
+            & (material[..., 2] <= 0.05)
+        )
+        if not bool(valid_material.all()):
+            raise RuntimeError(f"Phase-2 guide material escaped its configured buckets: {material}")
+        breakaway, viscous = task._rail_stiction["spare_blade"]
+        if not bool(((breakaway >= 10.0) & (breakaway <= 120.0)).all()):
+            raise RuntimeError("Phase-2 breakaway force escaped [10, 120] N")
+        if not bool(((viscous >= 2.0) & (viscous <= 25.0)).all()):
+            raise RuntimeError("Phase-2 viscous drag escaped [2, 25] N s/m")
+    print(
+        "[INFO] Phase-2 smoke contract passed: six actions, zero gravity, no sensors"
+        f", robustness level {robustness_level}"
+    )
+
+
 def main() -> None:
     env = None
     try:
@@ -78,6 +175,14 @@ def main() -> None:
         )
         print(f"[INFO] Simulation and PPO device: {rl_device} ({device_description})")
         env_cfg = parse_env_cfg(args.task, device=rl_device, num_envs=args.num_envs)
+        if args.robustness_level is not None:
+            valid_profile_task = any(
+                label in args.task for label in ("Insertion-Robust", "Insertion-Contact", "Insertion-RigidGrasp")
+            )
+            if not valid_profile_task:
+                raise ValueError("--robustness_level is valid only for a robust/contact insertion task")
+            env_cfg.configure_robustness(args.robustness_level)
+            print(f"[INFO] Insertion robustness level: {args.robustness_level}")
         agent_cfg = load_cfg_from_registry(args.task, "rl_games_cfg_entry_point")
         agent_cfg["params"]["seed"] = args.seed
         agent_cfg["params"]["config"]["device"] = rl_device
@@ -111,6 +216,153 @@ def main() -> None:
 
         render_mode = "rgb_array" if args.video else None
         env = gym.make(args.task, cfg=env_cfg, render_mode=render_mode)
+        print(f"[INFO] Created Gym environment for {args.task}")
+        if args.smoke:
+            smoke_observations, _ = env.reset()
+            if any(label in args.task for label in ("Insertion-Robust", "Insertion-Contact", "Insertion-RigidGrasp")):
+                _validate_robust_smoke_contract(env, int(env_cfg.robustness_level))
+            if not all(torch.isfinite(value).all() for value in smoke_observations.values()):
+                raise RuntimeError("Smoke reset produced a non-finite observation")
+            print("[INFO] Smoke reset produced finite observations")
+            smoke_actions = torch.zeros(
+                (num_envs, env.unwrapped.action_manager.total_action_dim),
+                device=env.unwrapped.device,
+            )
+            try:
+                smoke_observations, smoke_rewards, _, _, _ = env.step(smoke_actions)
+            except BaseException:
+                traceback.print_exc()
+                raise
+            if not all(torch.isfinite(value).all() for value in smoke_observations.values()):
+                raise RuntimeError("Smoke step produced a non-finite observation")
+            if not torch.isfinite(smoke_rewards).all():
+                raise RuntimeError("Smoke step produced a non-finite reward")
+            print("[INFO] Smoke environment step produced finite observations and rewards")
+            if getattr(env_cfg, "contact_grasp", False) or getattr(env_cfg, "rigid_grasp", False):
+                stationary_reward = smoke_rewards.clone()
+                for _ in range(19):
+                    _, reward, _, _, _ = env.step(smoke_actions)
+                    stationary_reward += reward
+                if not bool((stationary_reward < 0.0).all()):
+                    raise RuntimeError(
+                        "Contact reward contract failed: standing still must have negative cumulative reward, "
+                        f"got {stationary_reward}"
+                    )
+                print("[INFO] Contact reward contract passed: standing still is net-negative")
+                grasp_vector, grasp_angle = secured_blade_pose_error(env.unwrapped)
+                print(
+                    "[INFO] Settled tool-to-handle error: "
+                    f"xyz={grasp_vector[0].tolist()} m, orientation={float(grasp_angle[0]):.4f} rad",
+                    flush=True,
+                )
+                # Pull a short distance away from the rails. The contact task
+                # must transmit this through its pads; the secured-grasp task
+                # must transmit it through its audited PhysX fixed joint.
+                contact_actions = torch.zeros_like(smoke_actions)
+                contact_actions[:, 0] = -0.50
+                blade_x_before_pull = env.unwrapped.scene["spare_blade"].data.root_pos_w[:, 0].clone()
+                for _ in range(20):
+                    env.step(contact_actions)
+                blade_x_after_pull = env.unwrapped.scene["spare_blade"].data.root_pos_w[:, 0]
+                blade_pull_distance = blade_x_before_pull - blade_x_after_pull
+                grasp_position, grasp_orientation = secured_blade_error_metrics(env.unwrapped)
+                max_position = float(grasp_position.max())
+                max_orientation = float(grasp_orientation.max())
+                min_pull_distance = float(blade_pull_distance.min())
+                contact_motion_failed = getattr(env_cfg, "contact_grasp", False) and min_pull_distance < 0.003
+                if contact_motion_failed or max_position > 0.012 or max_orientation > 0.12:
+                    raise RuntimeError(
+                        "Physical-grasp pull test failed: "
+                        f"blade_motion={min_pull_distance:.4f} m, position={max_position:.4f} m, "
+                        f"orientation={max_orientation:.4f} rad"
+                    )
+                print(
+                    "[INFO] Physical-grasp pull test passed: "
+                    f"blade_motion={min_pull_distance:.4f} m, position={max_position:.4f} m, "
+                    f"orientation={max_orientation:.4f} rad"
+                )
+                env.reset()
+                # Physics-feasibility check only: a slow axial command must be
+                # able to complete the near insertion through pad contact.
+                # This is never used by PPO or the live demonstration.
+                for _ in range(10):
+                    env.step(smoke_actions)
+                insertion_actions = torch.zeros_like(smoke_actions)
+                inserted = False
+                insertion_reward = torch.zeros(num_envs, device=env.unwrapped.device)
+                for insertion_step in range(300):
+                    axial_error, lateral_error, orientation_error = insertion_error_metrics(env.unwrapped)
+                    pose_error = insertion_goal_error(env.unwrapped)
+                    # Quasi-static closed-loop insertion: taper the tool speed
+                    # near the target and correct small rail-induced lateral
+                    # and angular errors. This proves controllability only;
+                    # PPO never receives these test actions.
+                    insertion_speed = ((axial_error - 0.0105) / 0.0195 * 0.20).clamp(0.0, 0.20)
+                    insertion_actions[:, 0] = torch.where(
+                        axial_error > 0.0105,
+                        insertion_speed.clamp_min(0.08),
+                        torch.zeros_like(axial_error),
+                    )
+                    lateral_action = (0.20 * pose_error[:, 1:3] / 0.010).clamp(-0.25, 0.25)
+                    lateral_action = torch.sign(lateral_action) * torch.where(
+                        lateral_action.abs() > 0.0,
+                        lateral_action.abs().clamp_min(0.08),
+                        torch.zeros_like(lateral_action),
+                    )
+                    lateral_aligned = torch.linalg.vector_norm(pose_error[:, 1:3], dim=-1) <= 0.0023
+                    insertion_actions[:, 1:3] = torch.where(
+                        lateral_aligned.unsqueeze(-1), torch.zeros_like(lateral_action), lateral_action
+                    )
+                    angular_action = (0.15 * pose_error[:, 3:6] / 0.10).clamp(-0.20, 0.20)
+                    angular_aligned = torch.linalg.vector_norm(pose_error[:, 3:6], dim=-1) <= 0.040
+                    insertion_actions[:, 3:6] = torch.where(
+                        angular_aligned.unsqueeze(-1), torch.zeros_like(angular_action), angular_action
+                    )
+                    geometry_valid = (
+                        (axial_error <= 0.0115)
+                        & (lateral_error <= 0.0023)
+                        & (orientation_error <= 0.045)
+                    )
+                    insertion_actions[:] = torch.where(
+                        geometry_valid.unsqueeze(-1), torch.zeros_like(insertion_actions), insertion_actions
+                    )
+                    _, reward, _, _, _ = env.step(insertion_actions)
+                    insertion_reward += reward
+                    if bool(env.unwrapped.termination_manager.get_term("insertion_failed").any()):
+                        conditions = env.unwrapped._insertion_latest_failure_conditions
+                        metrics = env.unwrapped._insertion_latest_failure_metrics
+                        failed = [name for name, value in conditions.items() if bool(value.any())]
+                        raise RuntimeError(
+                            "Physical-grasp axial feasibility test failed at "
+                            f"step {insertion_step}: conditions={failed}, "
+                            f"axial={float(metrics['axial'].max()):.4f} m, "
+                            f"lateral={float(metrics['lateral'].max()):.4f} m, "
+                            f"grasp_position={float(metrics['grasp_position'].max()):.4f} m, "
+                            f"grasp_orientation={float(metrics['grasp_orientation'].max()):.4f} rad"
+                        )
+                    if bool(env.unwrapped.termination_manager.get_term("insertion_success").all()):
+                        inserted = True
+                        break
+                if not inserted:
+                    axial, lateral, orientation = insertion_error_metrics(env.unwrapped)
+                    grasp_position, grasp_orientation = secured_blade_error_metrics(env.unwrapped)
+                    conditions = getattr(env.unwrapped, "_insertion_latest_success_conditions", {})
+                    unmet = [name for name, value in conditions.items() if not bool(value.all())]
+                    raise RuntimeError(
+                        "Physical-grasp axial feasibility test did not complete insertion: "
+                        f"unmet={unmet}, axial={float(axial.max()):.4f} m, "
+                        f"lateral={float(lateral.max()):.4f} m, orientation={float(orientation.max()):.4f} rad, "
+                        f"grasp_position={float(grasp_position.max()):.4f} m, "
+                        f"grasp_orientation={float(grasp_orientation.max()):.4f} rad"
+                    )
+                if not bool((insertion_reward > 0.0).all()):
+                    raise RuntimeError(
+                        "Insertion reward contract failed: a successful insertion must be net-positive, "
+                        f"got {insertion_reward}"
+                    )
+                print(f"[INFO] Insertion reward contract passed: return={float(insertion_reward.min()):.3f}")
+                print("[INFO] Physical-grasp axial feasibility test passed")
+                env.reset()
         if args.video:
             env = gym.wrappers.RecordVideo(
                 env,
@@ -130,6 +382,7 @@ def main() -> None:
             env_options.get("obs_groups"),
             env_options.get("concate_obs_groups", True),
         )
+        print("[INFO] Wrapped environment for RL-Games")
         vecenv.register(
             "IsaacRlgWrapper",
             lambda config_name, num_actors, **kwargs: RlGamesGpuEnv(config_name, num_actors, **kwargs),
@@ -139,8 +392,10 @@ def main() -> None:
 
         register_rl_games_networks()
         runner = Runner(IsaacAlgoObserver())
+        print("[INFO] Loading RL-Games PPO configuration")
         runner.load(agent_cfg)
         runner.reset()
+        print("[INFO] RL-Games runner initialized")
         run_args = {"train": True, "play": False, "sigma": None}
         if args.checkpoint is not None:
             if not args.checkpoint.is_file():
@@ -156,5 +411,8 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
+    except BaseException:
+        traceback.print_exc()
+        raise
     finally:
         simulation_app.close()

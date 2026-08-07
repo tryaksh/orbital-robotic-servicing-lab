@@ -27,6 +27,57 @@ BLADE_SIZE = (0.45, 0.16, 0.035)
 BLADE_HANDLE_OFFSET = (-0.250, 0.0, 0.0)
 TRANSFER_BLADE_X = 0.18
 GUIDE_CENTER_OFFSET_Y = 0.08975  # 1.5 mm total clearance around the 160 mm blade.
+TOOL_OFFSET_POS = (0.0, 0.0, 0.19)
+TOOL_OFFSET_ROT = (1.0, 0.0, 0.0, 0.0)
+CONTACT_TOOL_OFFSET_POS = (0.0, 0.0, 0.179)
+CONTACT_BLADE_HANDLE_OFFSET = (-0.250, 0.0, 0.0185)
+GRIPPER_GRASP_ROT = (0.0, 0.7071068, 0.7071068, 0.0)
+
+# Captured from the validated differential-IK controller with the replacement
+# blade centered and aligned 17 cm outside the rack.  Stage-1 PPO starts here
+# instead of being asked to discover reaching, grasping, and insertion at once.
+INSERTION_STAGING_ARM_JOINT_POS = (
+    -0.2243491,
+    -1.4427882,
+    1.2887669,
+    -1.4181530,
+    -1.5709217,
+    -3.3751323,
+)
+INSERTION_STAGING_BLADE_POS = (0.5829, 0.0, 0.72)
+
+# Collision-valid poses sampled from the actual Isaac Lab differential-IK
+# controller.  PPO starts near the goal, then the curriculum expands to the
+# medium and full insertion distances.  The ordering is curriculum stage 0..2.
+INSERTION_STAGE_ARM_JOINT_POS = (
+    (-0.1899274, -1.1798824, 0.9525735, -1.3510975, -1.5791576, -3.3388975),
+    (-0.2028731, -1.2927203, 1.1056069, -1.3898116, -1.5796102, -3.3510907),
+    INSERTION_STAGING_ARM_JOINT_POS,
+)
+INSERTION_STAGE_BLADE_POSE = (
+    (0.7194748, -0.0019335, 0.7216659, 0.9999804, -0.0046558, -0.0020612, 0.0036348),
+    (0.6597763, -0.0020708, 0.7210070, 0.9999847, -0.0047566, -0.0005572, 0.0027788),
+    (*INSERTION_STAGING_BLADE_POS, 1.0, 0.0, 0.0, 0.0),
+)
+
+# Tight-contact insertion must not begin interpenetrating a 0.75 mm-per-side
+# slot.  The earlier curriculum poses contain roughly 2 mm lateral offsets
+# that were tolerable only while a software fixture forced the blade.  Contact
+# Phase 2.5 varies approach distance first and adds pose error in a later level.
+CONTACT_INSERTION_STAGE_BLADE_POSE = (
+    (INSERTION_STAGE_BLADE_POSE[0][0], 0.0, BLADE_INSERTED_POS[2], 1.0, 0.0, 0.0, 0.0),
+    (INSERTION_STAGE_BLADE_POSE[1][0], 0.0, BLADE_INSERTED_POS[2], 1.0, 0.0, 0.0, 0.0),
+    (*INSERTION_STAGING_BLADE_POS, 1.0, 0.0, 0.0, 0.0),
+)
+
+# The secured-grasp curriculum tolerated a small tool/handle offset. These
+# contact-stage poses apply the measured IK correction so the real finger pads
+# start centered on the handle instead of relying on the old spring.
+CONTACT_INSERTION_STAGE_ARM_JOINT_POS = (
+    (-0.1854645, -1.1956091, 0.9665422, -1.3518567, -1.5877903, -3.3365624),
+    (-0.1984102, -1.3084470, 1.1195756, -1.3905708, -1.5882429, -3.3487556),
+    (-0.2198862, -1.4585149, 1.3027356, -1.4189122, -1.5795544, -3.3727972),
+)
 
 
 def _relocate_ur10e_articulation_root(stage: Usd.Stage, environment_path: str) -> None:
@@ -210,6 +261,66 @@ class CompliantD6JointCfg(SpawnerCfg):
     max_force: float = 20_000.0
 
 
+def spawn_fixed_grasp_joint(
+    prim_path: str,
+    cfg: FixedGraspJointCfg,
+    translation: tuple[float, float, float] | None = None,
+    orientation: tuple[float, float, float, float] | None = None,
+    **_: object,
+) -> Usd.Prim:
+    """Author one external PhysX fixed grasp joint per environment."""
+
+    if translation not in (None, (0.0, 0.0, 0.0)) or orientation not in (
+        None,
+        (1.0, 0.0, 0.0, 0.0),
+    ):
+        raise ValueError("FixedGraspJointCfg must be spawned at the identity pose.")
+    root_path, leaf = str(prim_path).rsplit("/", 1)
+    is_regex = re.match(r"^[a-zA-Z0-9/_]+$", root_path) is None
+    parent_paths = find_matching_prim_paths(root_path) if is_regex else [root_path]
+    if not parent_paths:
+        raise RuntimeError(f"No environment parents matched fixed-grasp path '{prim_path}'.")
+
+    stage = get_current_stage()
+    source_prim: Usd.Prim | None = None
+    for parent_path in parent_paths:
+        container_path = f"{parent_path}/{leaf}"
+        body0_path = f"{parent_path}/{cfg.body0_relative_path}"
+        body1_path = f"{parent_path}/{cfg.body1_relative_path}"
+        for body_path in (body0_path, body1_path):
+            body = stage.GetPrimAtPath(body_path)
+            if not body.IsValid() or not body.HasAPI(UsdPhysics.RigidBodyAPI):
+                raise RuntimeError(f"Fixed grasp expected a rigid body at '{body_path}'.")
+
+        container = UsdGeom.Xform.Define(stage, container_path)
+        sim_utils.standardize_xform_ops(container.GetPrim())
+        joint = UsdPhysics.FixedJoint.Define(stage, f"{container_path}/Joint")
+        joint.CreateBody0Rel().SetTargets([Sdf.Path(body0_path)])
+        joint.CreateBody1Rel().SetTargets([Sdf.Path(body1_path)])
+        joint.CreateExcludeFromArticulationAttr().Set(True)
+        joint.CreateCollisionEnabledAttr().Set(False)
+        joint.CreateLocalPos0Attr().Set(Gf.Vec3f(*cfg.local_pos0))
+        joint.CreateLocalPos1Attr().Set(Gf.Vec3f(*cfg.local_pos1))
+        joint.CreateLocalRot0Attr().Set(Gf.Quatf(cfg.local_rot0[0], Gf.Vec3f(*cfg.local_rot0[1:])))
+        joint.CreateLocalRot1Attr().Set(Gf.Quatf(cfg.local_rot1[0], Gf.Vec3f(*cfg.local_rot1[1:])))
+        source_prim = source_prim or container.GetPrim()
+    assert source_prim is not None
+    return source_prim
+
+
+@configclass
+class FixedGraspJointCfg(SpawnerCfg):
+    """Rigid, gap-free abstraction for an already-secured gripper."""
+
+    func: Callable[..., Usd.Prim] = spawn_fixed_grasp_joint
+    body0_relative_path: str = "Robot/wrist_3_link"
+    body1_relative_path: str = "SpareBlade"
+    local_pos0: tuple[float, float, float] = CONTACT_TOOL_OFFSET_POS
+    local_rot0: tuple[float, float, float, float] = TOOL_OFFSET_ROT
+    local_pos1: tuple[float, float, float] = CONTACT_BLADE_HANDLE_OFFSET
+    local_rot1: tuple[float, float, float, float] = GRIPPER_GRASP_ROT
+
+
 def make_robot_cfg() -> ArticulationCfg:
     """Return the canonical UR10e/Robotiq asset with a compliant root."""
 
@@ -243,6 +354,93 @@ def make_robot_cfg() -> ArticulationCfg:
     cfg.spawn.rigid_props.disable_gravity = True
     cfg.spawn.activate_contact_sensors = False
     cfg.articulation_root_prim_path = "/base_link"
+    return cfg
+
+
+def make_insertion_robot_cfg() -> ArticulationCfg:
+    """Return the fixed-base robot for nominal axial insertion training."""
+
+    cfg = UR10e_ROBOTIQ_2F_85_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Robot",
+        init_state=ArticulationCfg.InitialStateCfg(
+            pos=ROBOT_ROOT_POS,
+            rot=(1.0, 0.0, 0.0, 0.0),
+            joint_pos={
+            "shoulder_pan_joint": INSERTION_STAGING_ARM_JOINT_POS[0],
+            "shoulder_lift_joint": INSERTION_STAGING_ARM_JOINT_POS[1],
+            "elbow_joint": INSERTION_STAGING_ARM_JOINT_POS[2],
+            "wrist_1_joint": INSERTION_STAGING_ARM_JOINT_POS[3],
+            "wrist_2_joint": INSERTION_STAGING_ARM_JOINT_POS[4],
+            "wrist_3_joint": INSERTION_STAGING_ARM_JOINT_POS[5],
+            "finger_joint": 0.0,
+            ".*_inner_finger_joint": 0.0,
+            ".*_inner_finger_knuckle_joint": 0.0,
+            ".*_outer_.*_joint": 0.0,
+            },
+            joint_vel={".*": 0.0},
+        ),
+    )
+    cfg.spawn.articulation_props.fix_root_link = True
+    cfg.spawn.rigid_props.disable_gravity = True
+    cfg.spawn.activate_contact_sensors = False
+    return cfg
+
+
+def make_robust_insertion_robot_cfg() -> ArticulationCfg:
+    """Return the insertion-staged robot with a floating compliant root."""
+
+    cfg = make_insertion_robot_cfg()
+    cfg.spawn.articulation_props.fix_root_link = False
+    # The compliant-joint spawner relocates the stock articulation-root API
+    # onto this rigid body before PhysX parses the floating articulation.
+    cfg.articulation_root_prim_path = "/base_link"
+    return cfg
+
+
+def make_contact_insertion_robot_cfg(*, floating: bool = False) -> ArticulationCfg:
+    """Return the insertion robot tuned for a real Robotiq contact grasp.
+
+    The actuator values follow NVIDIA's Isaac Lab 2F-85 gear-assembly setup.
+    They are stronger than the generic asset defaults but retain its 10 N-m
+    simulated effort limit.  Extra solver iterations improve thin finger-pad
+    contacts without adding contact sensors or changing the arm controller.
+    """
+
+    cfg = make_insertion_robot_cfg()
+    # The external grasp joint is authored before the first manager reset.
+    # Spawn the wrist at the same calibrated full-distance pose used by the
+    # contact curriculum so PhysX does not begin by correcting a large joint
+    # frame mismatch.
+    for joint_name, position in zip(
+        (
+            "shoulder_pan_joint",
+            "shoulder_lift_joint",
+            "elbow_joint",
+            "wrist_1_joint",
+            "wrist_2_joint",
+            "wrist_3_joint",
+        ),
+        CONTACT_INSERTION_STAGE_ARM_JOINT_POS[2],
+        strict=True,
+    ):
+        cfg.init_state.joint_pos[joint_name] = position
+    drive = cfg.actuators["gripper_drive"]
+    drive.effort_limit_sim = 10.0
+    drive.velocity_limit_sim = 1.0
+    drive.stiffness = 40.0
+    drive.damping = 1.0
+    fingers = cfg.actuators["gripper_finger"]
+    fingers.effort_limit_sim = 10.0
+    fingers.velocity_limit_sim = 10.0
+    fingers.stiffness = 10.0
+    fingers.damping = 0.05
+    cfg.spawn.rigid_props.solver_position_iteration_count = 8
+    cfg.spawn.rigid_props.solver_velocity_iteration_count = 2
+    cfg.spawn.articulation_props.solver_position_iteration_count = 8
+    cfg.spawn.articulation_props.solver_velocity_iteration_count = 2
+    if floating:
+        cfg.spawn.articulation_props.fix_root_link = False
+        cfg.articulation_root_prim_path = "/base_link"
     return cfg
 
 
@@ -288,6 +486,10 @@ def spawn_blade_with_handle(
         )
         if cfg.handle_collision_enabled:
             sim_utils.define_collision_properties(handle_path, cfg.collision_props, stage=stage)
+            if cfg.handle_physics_material is not None:
+                material_path = f"{root_path}/{cfg.handle_physics_material_path}"
+                cfg.handle_physics_material.func(material_path, cfg.handle_physics_material)
+                sim_utils.bind_physics_material(handle_path, material_path, stage=stage)
         material_path = f"{root_path}/geometry/{cfg.visual_material_path}"
         if stage.GetPrimAtPath(material_path).IsValid():
             sim_utils.bind_visual_material(handle_path, material_path, stage=stage)
@@ -304,6 +506,8 @@ class BladeCuboidCfg(sim_utils.CuboidCfg):
     # 50 mm depth gives both finger pads meaningful contact area.
     handle_size: tuple[float, float, float] = (0.050, 0.055, 0.025)
     handle_collision_enabled: bool = True
+    handle_physics_material_path: str = "handlePhysicsMaterial"
+    handle_physics_material: sim_utils.RigidBodyMaterialCfg | None = None
 
 
 def _blade_cfg(
@@ -335,6 +539,16 @@ def _blade_cfg(
 
 BLADE_CFG = _blade_cfg("Blade", BLADE_INSERTED_POS, (0.28, 0.05, 0.04), "failed_server_blade")
 SPARE_BLADE_CFG = _blade_cfg("SpareBlade", SPARE_BLADE_POS, (0.04, 0.18, 0.30), "spare_server_blade")
+INSERTION_BLADE_CFG = _blade_cfg(
+    "SpareBlade",
+    INSERTION_STAGING_BLADE_POS,
+    (0.04, 0.18, 0.30),
+    "rigidly_attached_replacement_blade",
+)
+INSERTION_BLADE_CFG.spawn.handle_collision_enabled = False
+INSERTION_BLADE_CFG.spawn.physics_material.static_friction = 0.12
+INSERTION_BLADE_CFG.spawn.physics_material.dynamic_friction = 0.08
+INSERTION_BLADE_CFG.spawn.physics_material.friction_combine_mode = "min"
 
 
 SLOT_CFG = RigidObjectCfg(
@@ -395,6 +609,128 @@ SLOT_LEFT_GUIDE_CFG = _slot_guide_cfg(
 SLOT_RIGHT_GUIDE_CFG = _slot_guide_cfg(
     "BladeSlotRightGuide", (BLADE_INSERTED_POS[0], -GUIDE_CENTER_OFFSET_Y, BLADE_INSERTED_POS[2])
 )
+
+# Phase 1 deliberately teaches nominal axial motion before tight-tolerance
+# contact.  Five millimetres per side and a one-millimetre contact envelope
+# avoid the impossible overlap in which a 0.75 mm clearance was smaller than
+# the old 3 mm contact envelope.  Later phases restore production clearance.
+INSERTION_GUIDE_CENTER_OFFSET_Y = 0.094
+INSERTION_SLOT_CFG = SLOT_CFG.copy()
+INSERTION_SLOT_CFG.spawn.collision_props.contact_offset = 0.001
+INSERTION_SLOT_CFG.spawn.physics_material.static_friction = 0.12
+INSERTION_SLOT_CFG.spawn.physics_material.dynamic_friction = 0.08
+INSERTION_SLOT_CFG.spawn.physics_material.friction_combine_mode = "min"
+INSERTION_SLOT_LEFT_GUIDE_CFG = _slot_guide_cfg(
+    "BladeSlotLeftGuide",
+    (BLADE_INSERTED_POS[0], INSERTION_GUIDE_CENTER_OFFSET_Y, BLADE_INSERTED_POS[2]),
+)
+INSERTION_SLOT_RIGHT_GUIDE_CFG = _slot_guide_cfg(
+    "BladeSlotRightGuide",
+    (BLADE_INSERTED_POS[0], -INSERTION_GUIDE_CENTER_OFFSET_Y, BLADE_INSERTED_POS[2]),
+)
+for _insertion_guide_cfg in (INSERTION_SLOT_LEFT_GUIDE_CFG, INSERTION_SLOT_RIGHT_GUIDE_CFG):
+    _insertion_guide_cfg.spawn.collision_props.contact_offset = 0.001
+    _insertion_guide_cfg.spawn.physics_material.static_friction = 0.12
+    _insertion_guide_cfg.spawn.physics_material.dynamic_friction = 0.08
+    _insertion_guide_cfg.spawn.physics_material.friction_combine_mode = "min"
+
+# Phase 2 restores the nominal 1.5 mm total slot clearance, but uses a contact
+# envelope smaller than the 0.75 mm clearance on each side.  The old 3 mm
+# envelope made the geometry overlap before the blade touched either rail.
+ROBUST_INSERTION_BLADE_CFG = INSERTION_BLADE_CFG.copy()
+ROBUST_INSERTION_BLADE_CFG.spawn.collision_props.contact_offset = 0.0003
+ROBUST_INSERTION_BLADE_CFG.spawn.physics_material.static_friction = 0.55
+ROBUST_INSERTION_BLADE_CFG.spawn.physics_material.dynamic_friction = 0.45
+ROBUST_INSERTION_BLADE_CFG.spawn.physics_material.friction_combine_mode = "max"
+ROBUST_INSERTION_SLOT_CFG = SLOT_CFG.copy()
+ROBUST_INSERTION_SLOT_CFG.spawn.collision_props.contact_offset = 0.0004
+ROBUST_INSERTION_SLOT_CFG.spawn.physics_material.static_friction = 0.12
+ROBUST_INSERTION_SLOT_CFG.spawn.physics_material.dynamic_friction = 0.08
+ROBUST_INSERTION_SLOT_CFG.spawn.physics_material.friction_combine_mode = "min"
+ROBUST_INSERTION_SLOT_LEFT_GUIDE_CFG = _slot_guide_cfg(
+    "BladeSlotLeftGuide",
+    (BLADE_INSERTED_POS[0], GUIDE_CENTER_OFFSET_Y, BLADE_INSERTED_POS[2]),
+)
+ROBUST_INSERTION_SLOT_RIGHT_GUIDE_CFG = _slot_guide_cfg(
+    "BladeSlotRightGuide",
+    (BLADE_INSERTED_POS[0], -GUIDE_CENTER_OFFSET_Y, BLADE_INSERTED_POS[2]),
+)
+for _robust_guide_cfg in (ROBUST_INSERTION_SLOT_LEFT_GUIDE_CFG, ROBUST_INSERTION_SLOT_RIGHT_GUIDE_CFG):
+    _robust_guide_cfg.spawn.collision_props.contact_offset = 0.0004
+    _robust_guide_cfg.spawn.physics_material.static_friction = 0.12
+    _robust_guide_cfg.spawn.physics_material.dynamic_friction = 0.08
+    _robust_guide_cfg.spawn.physics_material.friction_combine_mode = "min"
+
+# Rigid-grasp level 0 is deliberately collision-free.  The visibly identical
+# wide and tight assets below let the fixed-joint policy add real rail contact
+# only after it can solve free-space insertion on held-out episodes.
+RIGID_GRASP_SLOT_CFG = ROBUST_INSERTION_SLOT_CFG.copy()
+RIGID_GRASP_SLOT_CFG.init_state.pos = (BLADE_INSERTED_POS[0], 0.0, 0.6940)
+RIGID_GRASP_SLOT_CFG.spawn.collision_props.collision_enabled = False
+RIGID_GRASP_GUIDE_CENTER_OFFSET_Y = 0.095
+RIGID_GRASP_SLOT_LEFT_GUIDE_CFG = _slot_guide_cfg(
+    "BladeSlotLeftGuide", (BLADE_INSERTED_POS[0], RIGID_GRASP_GUIDE_CENTER_OFFSET_Y, BLADE_INSERTED_POS[2])
+)
+RIGID_GRASP_SLOT_RIGHT_GUIDE_CFG = _slot_guide_cfg(
+    "BladeSlotRightGuide", (BLADE_INSERTED_POS[0], -RIGID_GRASP_GUIDE_CENTER_OFFSET_Y, BLADE_INSERTED_POS[2])
+)
+for _rigid_grasp_guide_cfg in (RIGID_GRASP_SLOT_LEFT_GUIDE_CFG, RIGID_GRASP_SLOT_RIGHT_GUIDE_CFG):
+    _rigid_grasp_guide_cfg.spawn.collision_props.collision_enabled = False
+    _rigid_grasp_guide_cfg.spawn.collision_props.contact_offset = 0.0004
+    _rigid_grasp_guide_cfg.spawn.physics_material.static_friction = 0.12
+    _rigid_grasp_guide_cfg.spawn.physics_material.dynamic_friction = 0.08
+    _rigid_grasp_guide_cfg.spawn.physics_material.friction_combine_mode = "min"
+
+RIGID_GRASP_WIDE_SLOT_CFG = RIGID_GRASP_SLOT_CFG.copy()
+RIGID_GRASP_WIDE_LEFT_GUIDE_CFG = RIGID_GRASP_SLOT_LEFT_GUIDE_CFG.copy()
+RIGID_GRASP_WIDE_RIGHT_GUIDE_CFG = RIGID_GRASP_SLOT_RIGHT_GUIDE_CFG.copy()
+for _rigid_grasp_wide_guide_cfg in (
+    RIGID_GRASP_WIDE_LEFT_GUIDE_CFG,
+    RIGID_GRASP_WIDE_RIGHT_GUIDE_CFG,
+):
+    _rigid_grasp_wide_guide_cfg.spawn.collision_props.collision_enabled = True
+
+RIGID_GRASP_TIGHT_SLOT_CFG = ROBUST_INSERTION_SLOT_CFG.copy()
+RIGID_GRASP_TIGHT_LEFT_GUIDE_CFG = ROBUST_INSERTION_SLOT_LEFT_GUIDE_CFG.copy()
+RIGID_GRASP_TIGHT_RIGHT_GUIDE_CFG = ROBUST_INSERTION_SLOT_RIGHT_GUIDE_CFG.copy()
+for _rigid_grasp_tight_guide_cfg in (
+    RIGID_GRASP_TIGHT_LEFT_GUIDE_CFG,
+    RIGID_GRASP_TIGHT_RIGHT_GUIDE_CFG,
+):
+    # Do not rely on Isaac Lab's ``None means enabled`` default here: the
+    # profile contract and saved env configuration must be unambiguous.
+    _rigid_grasp_tight_guide_cfg.spawn.collision_props.collision_enabled = True
+
+# Phase 2.5 removes the compliant software grasp.  Its handle is a little
+# taller than the chassis so both Robotiq pads visibly surround it, and its
+# collider is deliberately re-enabled after the secured-blade curriculum.
+CONTACT_INSERTION_BLADE_CFG = ROBUST_INSERTION_BLADE_CFG.copy()
+CONTACT_INSERTION_BLADE_CFG.spawn.handle_collision_enabled = True
+# Keep the handle short enough that its raised lower surface cannot
+# interpenetrate the slot floor while the blade is rail-aligned.
+CONTACT_INSERTION_BLADE_CFG.spawn.handle_size = (0.060, 0.075, 0.030)
+# Raise the service tab into the imported fingertip-pad workspace. Its lower
+# surface remains well clear of the slot floor at the nominal blade pose.
+CONTACT_INSERTION_BLADE_CFG.spawn.handle_offset = CONTACT_BLADE_HANDLE_OFFSET
+# Keep the metal chassis easy to slide at contact-curriculum level 0.  The
+# handle below has its own high-friction material, so stronger finger grip no
+# longer also makes the chassis unrealistically sticky against the guide rails.
+CONTACT_INSERTION_BLADE_CFG.spawn.physics_material.static_friction = 0.12
+CONTACT_INSERTION_BLADE_CFG.spawn.physics_material.dynamic_friction = 0.08
+CONTACT_INSERTION_BLADE_CFG.spawn.physics_material.friction_combine_mode = "min"
+CONTACT_INSERTION_BLADE_CFG.spawn.handle_physics_material = sim_utils.RigidBodyMaterialCfg(
+    static_friction=1.2,
+    dynamic_friction=1.0,
+    restitution=0.0,
+    friction_combine_mode="max",
+)
+
+# The fixed joint already models a secured grasp.  Keeping a second collider
+# inside the closed fingers makes PhysX solve contradictory internal contacts,
+# which previously tilted/ejected the blade when rail collision was enabled.
+# The handle remains visible; only its collision is disabled for this task.
+RIGID_GRASP_BLADE_CFG = CONTACT_INSERTION_BLADE_CFG.copy()
+RIGID_GRASP_BLADE_CFG.spawn.handle_collision_enabled = False
 
 
 def _caddy_shelf_cfg(name: str, center: tuple[float, float, float]) -> RigidObjectCfg:
@@ -485,8 +821,38 @@ __all__ = [
     "BLADE_INSERTED_POS",
     "BLADE_SIZE",
     "CompliantD6JointCfg",
+    "FixedGraspJointCfg",
+    "CONTACT_BLADE_HANDLE_OFFSET",
+    "CONTACT_INSERTION_STAGE_ARM_JOINT_POS",
+    "CONTACT_INSERTION_STAGE_BLADE_POSE",
+    "CONTACT_TOOL_OFFSET_POS",
+    "GRIPPER_GRASP_ROT",
+    "INSERTION_BLADE_CFG",
+    "INSERTION_GUIDE_CENTER_OFFSET_Y",
+    "INSERTION_SLOT_CFG",
+    "INSERTION_SLOT_LEFT_GUIDE_CFG",
+    "INSERTION_SLOT_RIGHT_GUIDE_CFG",
+    "INSERTION_STAGE_ARM_JOINT_POS",
+    "INSERTION_STAGE_BLADE_POSE",
+    "INSERTION_STAGING_ARM_JOINT_POS",
+    "INSERTION_STAGING_BLADE_POS",
     "MOUNT_ANCHOR_CFG",
     "RACK_CFG",
+    "CONTACT_INSERTION_BLADE_CFG",
+    "ROBUST_INSERTION_BLADE_CFG",
+    "ROBUST_INSERTION_SLOT_CFG",
+    "ROBUST_INSERTION_SLOT_LEFT_GUIDE_CFG",
+    "ROBUST_INSERTION_SLOT_RIGHT_GUIDE_CFG",
+    "RIGID_GRASP_SLOT_CFG",
+    "RIGID_GRASP_SLOT_LEFT_GUIDE_CFG",
+    "RIGID_GRASP_SLOT_RIGHT_GUIDE_CFG",
+    "RIGID_GRASP_BLADE_CFG",
+    "RIGID_GRASP_TIGHT_LEFT_GUIDE_CFG",
+    "RIGID_GRASP_TIGHT_RIGHT_GUIDE_CFG",
+    "RIGID_GRASP_TIGHT_SLOT_CFG",
+    "RIGID_GRASP_WIDE_LEFT_GUIDE_CFG",
+    "RIGID_GRASP_WIDE_RIGHT_GUIDE_CFG",
+    "RIGID_GRASP_WIDE_SLOT_CFG",
     "ROBOT_ROOT_POS",
     "SERVICE_CADDY_CFG",
     "SERVICE_CADDY_LEFT_GUIDE_CFG",
@@ -501,6 +867,12 @@ __all__ = [
     "SUPPLY_CADDY_LEFT_GUIDE_CFG",
     "SUPPLY_CADDY_RIGHT_GUIDE_CFG",
     "TRANSFER_BLADE_X",
+    "TOOL_OFFSET_POS",
+    "TOOL_OFFSET_ROT",
+    "make_insertion_robot_cfg",
+    "make_contact_insertion_robot_cfg",
+    "make_robust_insertion_robot_cfg",
     "make_robot_cfg",
     "spawn_compliant_d6_joint",
+    "spawn_fixed_grasp_joint",
 ]

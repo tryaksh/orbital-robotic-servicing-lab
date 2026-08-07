@@ -487,7 +487,7 @@ class CurriculumCfg:
     )
 
 
-def _simulation_cfg(render_interval: int) -> sim_utils.SimulationCfg:
+def make_simulation_cfg(render_interval: int) -> sim_utils.SimulationCfg:
     """Build one VRAM-conscious PhysX configuration for the 12 GB target."""
 
     return sim_utils.SimulationCfg(
@@ -550,7 +550,7 @@ class ZeroGBladeSwapEnvCfg(ManagerBasedRLEnvCfg):
     terminations: TerminationsCfg = TerminationsCfg()
     curriculum: CurriculumCfg = CurriculumCfg()
 
-    sim: sim_utils.SimulationCfg = _simulation_cfg(render_interval=4)
+    sim: sim_utils.SimulationCfg = make_simulation_cfg(render_interval=4)
     decimation: int = 4
     episode_length_s: float = 45.0
     is_finite_horizon: bool = False
@@ -613,4 +613,5 @@ __all__ = [
     "ZeroGBladeSwapPlayEnvCfg",
     "ZeroGBladeSwapTeacherEnvCfg",
     "ZeroGBladeSwapVisionEnvCfg",
+    "make_simulation_cfg",
 ]

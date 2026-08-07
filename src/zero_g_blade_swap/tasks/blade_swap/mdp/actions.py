@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+import isaaclab.utils.math as math_utils
 import torch
 from isaaclab.assets import Articulation
+from isaaclab.envs.mdp.actions.actions_cfg import DifferentialInverseKinematicsActionCfg
+from isaaclab.envs.mdp.actions.task_space_actions import DifferentialInverseKinematicsAction
 from isaaclab.managers import ActionTerm, ActionTermCfg
 from isaaclab.utils import configclass
 
@@ -18,6 +21,74 @@ ROBOTIQ_2F85_JOINT_NAMES = (
     "left_inner_finger_knuckle_joint",
 )
 ROBOTIQ_2F85_COUPLING_SIGNS = (1.0, 1.0, -1.0, 1.0, -1.0, -1.0)
+
+
+class TranslationalDifferentialInverseKinematicsAction(DifferentialInverseKinematicsAction):
+    """Expose base-frame XYZ translation while retaining the reset orientation."""
+
+    def __init__(self, cfg: TranslationalDifferentialInverseKinematicsActionCfg, env) -> None:
+        super().__init__(cfg, env)
+        self._cartesian_command = torch.zeros((self.num_envs, 6), device=self.device)
+        self._reference_orientation = torch.zeros((self.num_envs, 4), device=self.device)
+        self._reference_valid = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+
+    @property
+    def action_dim(self) -> int:
+        return 3
+
+    def process_actions(self, actions: torch.Tensor) -> None:
+        if actions.shape != self._raw_actions.shape:
+            raise ValueError(
+                f"Translational IK action must have shape {tuple(self._raw_actions.shape)}, got {actions.shape}."
+            )
+        self._raw_actions.copy_(actions)
+        self._processed_actions.copy_(actions * self._scale)
+        ee_position, ee_orientation = self._compute_frame_pose()
+        initialize = ~self._reference_valid
+        self._reference_orientation[initialize] = ee_orientation[initialize]
+        self._reference_valid[initialize] = True
+
+        target_position = ee_position + self._processed_actions
+        position_error, orientation_error = math_utils.compute_pose_error(
+            ee_position,
+            ee_orientation,
+            target_position,
+            self._reference_orientation,
+        )
+        self._cartesian_command[:, :3] = position_error.clamp(-0.012, 0.012)
+        self._cartesian_command[:, 3:] = orientation_error.clamp(-0.05, 0.05)
+        self._ik_controller.set_command(self._cartesian_command, ee_position, ee_orientation)
+
+    def reset(self, env_ids: Sequence[int] | None = None) -> None:
+        super().reset(env_ids)
+        ids = slice(None) if env_ids is None else env_ids
+        self._reference_valid[ids] = False
+
+
+@configclass
+class TranslationalDifferentialInverseKinematicsActionCfg(DifferentialInverseKinematicsActionCfg):
+    class_type: type[ActionTerm] = TranslationalDifferentialInverseKinematicsAction
+
+
+class GraspSettlingDifferentialInverseKinematicsAction(DifferentialInverseKinematicsAction):
+    """Hold the arm briefly while the physical gripper establishes contact."""
+
+    cfg: GraspSettlingDifferentialInverseKinematicsActionCfg
+
+    def process_actions(self, actions: torch.Tensor) -> None:
+        if self.cfg.settling_time_s <= 0.0:
+            super().process_actions(actions)
+            return
+        safe_actions = actions.clone()
+        settling = self._env.episode_length_buf.to(torch.float32) * float(self._env.step_dt) < self.cfg.settling_time_s
+        safe_actions[settling] = 0.0
+        super().process_actions(safe_actions)
+
+
+@configclass
+class GraspSettlingDifferentialInverseKinematicsActionCfg(DifferentialInverseKinematicsActionCfg):
+    class_type: type[ActionTerm] = GraspSettlingDifferentialInverseKinematicsAction
+    settling_time_s: float = 0.30
 
 
 def robotiq_2f85_coupled_targets(command: torch.Tensor) -> torch.Tensor:
@@ -109,7 +180,11 @@ class RobotiqBinaryActionCfg(ActionTermCfg):
 __all__ = [
     "ROBOTIQ_2F85_COUPLING_SIGNS",
     "ROBOTIQ_2F85_JOINT_NAMES",
+    "GraspSettlingDifferentialInverseKinematicsAction",
+    "GraspSettlingDifferentialInverseKinematicsActionCfg",
     "RobotiqBinaryAction",
     "RobotiqBinaryActionCfg",
+    "TranslationalDifferentialInverseKinematicsAction",
+    "TranslationalDifferentialInverseKinematicsActionCfg",
     "robotiq_2f85_coupled_targets",
 ]

@@ -12,6 +12,11 @@ from numpy.typing import ArrayLike, NDArray
 
 GRIPPER_COUPLING = np.asarray((1.0, 1.0, -1.0, 1.0, -1.0, -1.0), dtype=np.float32)
 NUM_SWAP_PHASES = 8
+INSERTION_CURRICULUM_MIXTURES = (
+    (1.00, 0.00, 0.00),
+    (0.25, 0.75, 0.00),
+    (0.20, 0.20, 0.60),
+)
 
 
 def transform_points(
@@ -177,6 +182,8 @@ def update_curriculum_stage(
     threshold: float = 0.70,
     window_size: int = 100,
     max_stage: int = 3,
+    steps_elapsed: int = 0,
+    minimum_steps: int = 0,
 ) -> tuple[int, float, bool]:
     """Return the next curriculum stage from the latest completed episodes.
 
@@ -186,6 +193,8 @@ def update_curriculum_stage(
 
     if window_size <= 0:
         raise ValueError("window_size must be positive")
+    if steps_elapsed < 0 or minimum_steps < 0:
+        raise ValueError("steps_elapsed and minimum_steps must be non-negative")
     if not 0.0 <= threshold <= 1.0:
         raise ValueError("threshold must be in [0, 1]")
     if not 0 <= stage <= max_stage:
@@ -194,5 +203,33 @@ def update_curriculum_stage(
     if np.any((outcomes < 0.0) | (outcomes > 1.0)):
         raise ValueError("completed_successes must contain values in [0, 1]")
     rolling = float(outcomes.mean()) if outcomes.size else 0.0
-    promoted = outcomes.size == window_size and rolling >= threshold and stage < max_stage
+    promoted = (
+        outcomes.size == window_size and rolling >= threshold and steps_elapsed >= minimum_steps and stage < max_stage
+    )
     return (stage + 1, 0.0, True) if promoted else (stage, rolling, False)
+
+
+def insertion_curriculum_probabilities(
+    level: int,
+    mixtures: ArrayLike = INSERTION_CURRICULUM_MIXTURES,
+) -> NDArray[np.float64]:
+    """Return a validated reset-stage distribution for a curriculum level.
+
+    A level may retain easier reset stages, but it may not sample a harder stage
+    that has not yet been unlocked.
+    """
+
+    weights = np.asarray(mixtures, dtype=np.float64)
+    if weights.ndim != 2 or weights.shape[0] != weights.shape[1]:
+        raise ValueError("curriculum mixtures must be a square level-by-stage matrix")
+    if not 0 <= level < weights.shape[0]:
+        raise ValueError("curriculum level is outside the mixture matrix")
+    if np.any(~np.isfinite(weights)) or np.any(weights < 0.0):
+        raise ValueError("curriculum mixture weights must be finite and non-negative")
+    selected = weights[level]
+    if selected[level + 1 :].sum() > 0.0:
+        raise ValueError("a curriculum level cannot sample locked harder stages")
+    total = float(selected.sum())
+    if total <= 0.0 or selected[level] <= 0.0:
+        raise ValueError("a curriculum level must sample itself with positive weight")
+    return selected / total
