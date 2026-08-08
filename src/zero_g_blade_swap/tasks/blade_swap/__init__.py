@@ -4,9 +4,14 @@ import gymnasium as gym
 
 from . import agents
 
+# Insertion tasks use a subclass that can snapshot terminal metrics before
+# Isaac Lab automatically resets a finished episode.  The hook stays inert
+# unless an evaluator enables it, so training behaviour is unchanged.
+INSERTION_ENTRY_POINT = f"{__name__}.terminal_metrics_env:TerminalMetricsManagerBasedRLEnv"
+
 gym.register(
     id="Isaac-ZeroG-Blade-Insertion-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=INSERTION_ENTRY_POINT,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.insertion_env_cfg:ZeroGBladeInsertionEnvCfg",
@@ -16,7 +21,7 @@ gym.register(
 
 gym.register(
     id="Isaac-ZeroG-Blade-Insertion-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=INSERTION_ENTRY_POINT,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.insertion_env_cfg:ZeroGBladeInsertionPlayEnvCfg",
@@ -26,7 +31,7 @@ gym.register(
 
 gym.register(
     id="Isaac-ZeroG-Blade-Insertion-Robust-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=INSERTION_ENTRY_POINT,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.robust_insertion_env_cfg:ZeroGBladeRobustInsertionEnvCfg",
@@ -36,7 +41,7 @@ gym.register(
 
 gym.register(
     id="Isaac-ZeroG-Blade-Insertion-Robust-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=INSERTION_ENTRY_POINT,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.robust_insertion_env_cfg:ZeroGBladeRobustInsertionPlayEnvCfg",
@@ -46,7 +51,7 @@ gym.register(
 
 gym.register(
     id="Isaac-ZeroG-Blade-Insertion-Contact-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=INSERTION_ENTRY_POINT,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.contact_insertion_env_cfg:ZeroGBladeContactInsertionEnvCfg",
@@ -56,7 +61,7 @@ gym.register(
 
 gym.register(
     id="Isaac-ZeroG-Blade-Insertion-Contact-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=INSERTION_ENTRY_POINT,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.contact_insertion_env_cfg:ZeroGBladeContactInsertionPlayEnvCfg",
@@ -66,7 +71,7 @@ gym.register(
 
 gym.register(
     id="Isaac-ZeroG-Blade-Insertion-RigidGrasp-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=INSERTION_ENTRY_POINT,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.rigid_grasp_insertion_env_cfg:ZeroGBladeRigidGraspInsertionEnvCfg",
@@ -76,7 +81,7 @@ gym.register(
 
 gym.register(
     id="Isaac-ZeroG-Blade-Insertion-RigidGrasp-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=INSERTION_ENTRY_POINT,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": (

@@ -64,6 +64,12 @@ def _parser() -> argparse.ArgumentParser:
         default=Path("artifacts/play_report.json"),
         help="Machine-readable checkpoint load/play validation result.",
     )
+    parser.add_argument(
+        "--episode_metrics",
+        type=Path,
+        default=None,
+        help="Write the raw per-episode terminal metric rows here (.npz) for pooled multi-run statistics.",
+    )
     AppLauncher.add_app_launcher_args(parser)
     return parser
 
@@ -82,6 +88,7 @@ simulation_app = app_launcher.app
 import math
 
 import gymnasium as gym
+import numpy as np
 import torch
 from rl_games.common import env_configurations, vecenv
 from rl_games.torch_runner import Runner
@@ -90,11 +97,14 @@ from isaaclab_rl.rl_games import RlGamesGpuEnv, RlGamesVecEnvWrapper
 from isaaclab_tasks.utils import load_cfg_from_registry, parse_env_cfg
 
 import zero_g_blade_swap.tasks.blade_swap  # noqa: F401
-from zero_g_blade_swap.tasks.blade_swap.agents import register_rl_games_networks
-from zero_g_blade_swap.tasks.blade_swap.mdp.insertion import (
-    insertion_error_metrics,
-    secured_blade_error_metrics,
+from zero_g_blade_swap.evaluation import (
+    TERMINAL_METRIC_FIELDS,
+    group_rows,
+    round_floats,
+    summarize_terminal_episodes,
 )
+from zero_g_blade_swap.tasks.blade_swap.agents import register_rl_games_networks
+from zero_g_blade_swap.tasks.blade_swap.mdp.terminal_metrics import InsertionTerminalMetrics
 
 
 def _checkpoint() -> Path:
@@ -180,6 +190,40 @@ def _summarize_robust_buckets(stats: dict[str, list[dict[str, int]]]) -> dict[st
     return output
 
 
+def _write_episode_metrics(path: Path, rows, metadata: dict[str, object]) -> None:
+    """Persist raw per-episode rows so several runs can be pooled exactly."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        path,
+        rows=np.asarray(rows, dtype=np.float32),
+        fields=np.asarray(TERMINAL_METRIC_FIELDS),
+        metadata=np.asarray(json.dumps(metadata)),
+    )
+
+
+def _terminal_metrics_report(collector: InsertionTerminalMetrics, episodes_completed: int) -> dict[str, object]:
+    """Summarize episodes captured before Isaac Lab's automatic reset."""
+
+    rows = collector.recorder.rows
+    report: dict[str, object] = {
+        "source": "captured_before_auto_reset",
+        "recorded_episodes": len(collector.recorder),
+        "matches_step_done_count": len(collector.recorder) == episodes_completed,
+    }
+    report.update(summarize_terminal_episodes(rows))
+    stages = group_rows(rows, "curriculum_stage")
+    if len(stages) > 1:
+        # A stage-forced evaluation would only duplicate the pooled block.
+        report["by_curriculum_stage"] = {
+            str(stage): summarize_terminal_episodes(block, include_successful_metrics=False)
+            for stage, block in stages.items()
+        }
+    else:
+        report["curriculum_stages_present"] = sorted(stages)
+    return report
+
+
 def main() -> dict[str, object]:
     env = None
     try:
@@ -239,6 +283,16 @@ def main() -> dict[str, object]:
             ):
                 if name == "pose_noise":
                     term_cfg.func.force_reset_stage(args.curriculum_stage)
+        terminal_metrics = None
+        if insertion_task:
+            task_env = env.unwrapped
+            if not hasattr(task_env, "enable_terminal_metrics"):
+                raise RuntimeError(
+                    f"{args.task} is not registered on TerminalMetricsManagerBasedRLEnv; "
+                    "terminal metrics would be read after the automatic reset"
+                )
+            terminal_metrics = InsertionTerminalMetrics(task_env)
+            task_env.enable_terminal_metrics(terminal_metrics)
         if args.video:
             env = gym.wrappers.RecordVideo(
                 env,
@@ -350,6 +404,13 @@ def main() -> dict[str, object]:
             raise RuntimeError(f"Simulation stopped after {step} of {args.steps} requested steps")
         success_name = "insertion_success" if insertion_task else "full_success"
         success_rate = termination_counts[success_name] / max(episodes_completed, 1)
+        success_rate_source = "termination_term_counts"
+        if terminal_metrics is not None and len(terminal_metrics.recorder) > 0:
+            # Prefer the reset-safe count.  It also demotes an episode that hit a
+            # non-finite or mount failure in the same control step as a success.
+            successes = float(terminal_metrics.recorder.column("success").sum())
+            success_rate = successes / len(terminal_metrics.recorder)
+            success_rate_source = "terminal_metrics_captured_before_reset"
         meets_threshold = args.minimum_success_rate is None or success_rate >= args.minimum_success_rate
         result = {
             "status": "passed",
@@ -364,6 +425,7 @@ def main() -> dict[str, object]:
             "episodes_completed": episodes_completed,
             "termination_counts": termination_counts,
             "success_rate": success_rate,
+            "success_rate_source": success_rate_source,
             "minimum_success_rate": args.minimum_success_rate,
             "meets_threshold": meets_threshold,
             "curriculum_stage": args.curriculum_stage,
@@ -380,15 +442,25 @@ def main() -> dict[str, object]:
             "mean_cumulative_reward_per_environment": float(reward_sum.mean()),
         }
         if insertion_task:
-            axial, lateral, orientation = insertion_error_metrics(env.unwrapped)
-            grasp_position, grasp_orientation = secured_blade_error_metrics(env.unwrapped)
-            result["final_mean_errors"] = {
-                "axial_m": float(axial.mean()),
-                "lateral_m": float(lateral.mean()),
-                "orientation_rad": float(orientation.mean()),
-                "tool_to_handle_m": float(grasp_position.mean()),
-                "tool_to_handle_orientation_rad": float(grasp_orientation.mean()),
-            }
+            # Terminal axial/lateral/orientation/velocity/tool-to-handle errors
+            # come from the pre-reset snapshot.  Reading them from the live
+            # scene here would measure the freshly reset episode instead.
+            if terminal_metrics is not None:
+                result["terminal_metrics"] = _terminal_metrics_report(terminal_metrics, episodes_completed)
+                if args.episode_metrics is not None:
+                    _write_episode_metrics(
+                        args.episode_metrics,
+                        terminal_metrics.recorder.rows,
+                        {
+                            "task": args.task,
+                            "seed": args.seed,
+                            "curriculum_stage": args.curriculum_stage,
+                            "robustness_level": getattr(env_cfg, "robustness_level", None),
+                            "checkpoint": str(checkpoint),
+                            "checkpoint_sha256": result["checkpoint_sha256"],
+                            "num_envs": args.num_envs,
+                        },
+                    )
             timeout_failures = getattr(env.unwrapped, "_insertion_timeout_failure_counts", {})
             result["timeout_failed_conditions"] = {name: int(count.item()) for name, count in timeout_failures.items()}
             result["failure_condition_counts"] = failure_condition_counts
@@ -422,7 +494,7 @@ if __name__ == "__main__":
         raise
     finally:
         args.report.parent.mkdir(parents=True, exist_ok=True)
-        args.report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        args.report.write_text(json.dumps(round_floats(report), indent=2) + "\n", encoding="utf-8")
         simulation_app.close()
     if report.get("status") == "passed" and not report.get("meets_threshold", True):
         raise SystemExit(2)
