@@ -107,4 +107,39 @@ The implementation deliberately follows established patterns rather than claimin
 - Do not advance to Phase 3 while L1/L2 are unpromoted and L3 settling is physically blocked.
 - Keep `.deps`, logs, datasets, checkpoints, artifacts, and videos out of Git.
 
-Begin by auditing the terminal-metric bug and producing a concise proposal for L1 evaluation/training. Do not redesign the entire repository in the first turn.
+## Immediate two-shot execution mandate
+
+You have at most two implementation shots. Do not return only a plan. Inspect the code, make the narrow changes, test them, and report measured results. Preserve the task physics, observations, actions, reward contract, and checkpoint compatibility unless a discovered correctness bug makes that impossible.
+
+### Shot 1 - trustworthy Level-0 certification (execute first)
+
+1. Fix the evaluation correctness bug: `scripts/play.py` currently risks reading pose errors from the automatically reset environment instead of the terminal state. Cache each completed environment's metrics before reset in the task/termination path, then consume those cached values in `play.py`.
+2. Record terminal axial, lateral, and orientation error; blade linear/angular velocity; tool-to-handle position/orientation error; episode control steps and simulated cycle time; success flag; and categorized termination reason. Aggregate count, mean, p50, p95, maximum, success rate, and Wilson 95% confidence interval. Keep this vectorized and lightweight.
+3. Add focused tests proving terminal values survive reset and aggregation math is correct. Run Ruff, the complete non-Sim pytest suite, and one short Isaac smoke test.
+4. Re-evaluate the existing epoch-700 Level-0 checkpoint across all three curriculum stages and seeds 1060, 2060, and 3060. Save one compact, recruiter-safe JSON report under `evidence/`; do not commit logs or the checkpoint.
+5. Gate: proceed only if every stage has at least 95% held-out success, no non-finite/physics-instability terminations, and credible terminal/cycle-time distributions. If it fails, identify and correct the single dominant failure in the evaluation or Level-0 task, then rerun the smallest decisive test. Do not hide failures by weakening thresholds.
+
+Refactor only the evaluation/terminal-metrics path where useful. Avoid broad architecture changes. End Shot 1 with changed files, tests run, exact metrics, and the pass/fail decision.
+
+### Shot 2 - Level-1 robustness promotion (only after Shot 1 passes)
+
+1. Fine-tune, rather than restart, the compatible epoch-700 checkpoint at robustness Level 1 (wide real side-rail contacts plus larger initial pose error). Use seed 61, 512 environments, and target epoch 1200, which is approximately 500 additional epochs from this checkpoint:
+
+```powershell
+C:\isaac-sim\python.bat scripts\train.py `
+  --task Isaac-ZeroG-Blade-Insertion-RigidGrasp-v0 `
+  --checkpoint "D:\6axis-space-robotics\logs\rl_games\zero_g_blade_insertion_rigid_grasp\rigid_grasp_l0_fresh_seed60\nn\last_zero_g_blade_insertion_rigid_grasp_ep_700_rew_74.81321.pth" `
+  --robustness_level 1 `
+  --num_envs 512 `
+  --max_iterations 1200 `
+  --seed 61 `
+  --device cuda:0 `
+  --headless `
+  --run_name rigid_grasp_l1_wide_rails_seed61
+```
+
+2. Evaluate the resulting checkpoint on all three stages and at least three held-out seeds using the corrected evaluator. Require at least 90% overall and per-stage success, zero non-finite/physics-instability terminations, and stable terminal pose/velocity metrics.
+3. If the gate fails, diagnose the single dominant failure and stop with an evidence-backed next experiment. Do not proceed to Level 2, Level 3 stiction, vision, or the full blade-swap task in these two shots.
+4. If it passes, update the evidence and README claims conservatively and commit a clean milestone. Clearly distinguish simulation evidence from real-hardware validation.
+
+The highest-value outcome is not another training curve; it is a reproducible claim that the learned PPO policy succeeds across held-out initial conditions with terminal-state evidence that cannot be corrupted by auto-reset.
