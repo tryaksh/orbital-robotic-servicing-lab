@@ -17,7 +17,10 @@ from typing import Any
 import numpy as np
 
 from zero_g_blade_swap.evaluation import (
+    BLADE_MASS_FIELD,
     TERMINAL_METRIC_FIELDS,
+    align_rows,
+    bucket_success_rates,
     concatenate_rows,
     group_rows,
     round_floats,
@@ -26,6 +29,8 @@ from zero_g_blade_swap.evaluation import (
 )
 
 STAGE_NAMES = {0: "near_stage_0", 1: "medium_stage_1", 2: "full_stage_2"}
+# The project's documented promotion rule for randomized physics buckets.
+MASS_BUCKET_MINIMUM = 0.80
 STAGE_METRIC_FIELDS = (
     "axial_error_m",
     "lateral_error_m",
@@ -81,17 +86,23 @@ def _resolve_inputs(patterns: list[str]) -> list[Path]:
 
 
 def load_runs(paths: list[Path]) -> list[dict[str, Any]]:
-    """Read each run's rows and metadata, checking the recorded field order."""
+    """Read each run's rows, field names, and metadata.
+
+    Runs may carry extra optional columns, so the core fields are required but
+    the full field list is kept per run and aligned by name when pooling.
+    """
 
     runs: list[dict[str, Any]] = []
     for path in paths:
         with np.load(path, allow_pickle=False) as data:
             fields = tuple(str(name) for name in data["fields"])
-            if fields != TERMINAL_METRIC_FIELDS:
-                raise ValueError(f"{path} recorded fields {fields}, expected {TERMINAL_METRIC_FIELDS}")
+            missing = [name for name in TERMINAL_METRIC_FIELDS if name not in fields]
+            if missing:
+                raise ValueError(f"{path} is missing required fields {missing}")
             runs.append(
                 {
                     "path": path,
+                    "fields": fields,
                     "rows": np.asarray(data["rows"], dtype=np.float64),
                     "metadata": json.loads(str(data["metadata"].item())),
                 }
@@ -99,9 +110,16 @@ def load_runs(paths: list[Path]) -> list[dict[str, Any]]:
     return runs
 
 
-def _counts(rows: np.ndarray) -> dict[str, Any]:
+def pooled_fields(runs: list[dict[str, Any]]) -> tuple[str, ...]:
+    """Core fields first, then any optional column that some run recorded."""
+
+    extra = sorted({name for run in runs for name in run["fields"]} - set(TERMINAL_METRIC_FIELDS))
+    return (*TERMINAL_METRIC_FIELDS, *extra)
+
+
+def _counts(rows: np.ndarray, fields: tuple[str, ...] = TERMINAL_METRIC_FIELDS) -> dict[str, Any]:
     episodes = int(rows.shape[0])
-    successes = int((rows[:, TERMINAL_METRIC_FIELDS.index("success")] > 0.5).sum())
+    successes = int((rows[:, fields.index("success")] > 0.5).sum())
     low, high = wilson_interval(successes, episodes)
     return {
         "episodes": episodes,
@@ -114,7 +132,9 @@ def _counts(rows: np.ndarray) -> dict[str, Any]:
 def build_report(runs: list[dict[str, Any]], title: str, minimum_stage_success_rate: float) -> dict[str, Any]:
     """Pool every run and apply the documented promotion gate."""
 
-    rows = concatenate_rows(run["rows"] for run in runs)
+    fields = pooled_fields(runs)
+    aligned = [align_rows(run["rows"], run["fields"], fields) for run in runs]
+    rows = concatenate_rows(aligned, fields)
     if rows.shape[0] == 0:
         raise ValueError("no episodes were recorded across the supplied runs")
 
@@ -125,40 +145,47 @@ def build_report(runs: list[dict[str, Any]], title: str, minimum_stage_success_r
     seeds = sorted({int(run["metadata"]["seed"]) for run in runs})
     levels = sorted({run["metadata"].get("robustness_level") for run in runs})
 
-    overall = summarize_terminal_episodes(rows, include_successful_metrics=False)
+    overall = summarize_terminal_episodes(rows, fields, include_successful_metrics=False)
     if overall["successes"] < overall["episodes"]:
         # Only meaningful when failures exist; otherwise it repeats the pooled block.
-        overall["successful_episode_metrics"] = summarize_terminal_episodes(rows)["successful_episode_metrics"]
+        overall["successful_episode_metrics"] = summarize_terminal_episodes(rows, fields)[
+            "successful_episode_metrics"
+        ]
     by_stage = {
         STAGE_NAMES.get(stage, f"stage_{stage}"): {
-            **_counts(block),
+            **_counts(block, fields),
             **{
                 key: value
                 for key, value in summarize_terminal_episodes(
                     block,
+                    fields,
                     metric_fields=STAGE_METRIC_FIELDS,
                     include_successful_metrics=False,
                 ).items()
                 if key in ("termination_reasons", "instability_terminations", "terminal_metrics")
             },
         }
-        for stage, block in group_rows(rows, "curriculum_stage").items()
+        for stage, block in group_rows(rows, "curriculum_stage", fields).items()
     }
 
     by_seed: dict[str, Any] = {}
     by_stage_and_seed: list[dict[str, Any]] = []
-    for run in runs:
+    for run, table in zip(runs, aligned, strict=True):
         seed = str(int(run["metadata"]["seed"]))
-        by_seed.setdefault(seed, []).append(run["rows"])
-        for stage, block in group_rows(run["rows"], "curriculum_stage").items():
+        by_seed.setdefault(seed, []).append(table)
+        for stage, block in group_rows(table, "curriculum_stage", fields).items():
             by_stage_and_seed.append(
                 {
                     "stage": STAGE_NAMES.get(stage, f"stage_{stage}"),
                     "seed": int(run["metadata"]["seed"]),
-                    **_counts(block),
+                    **_counts(block, fields),
                 }
             )
-    by_seed = {seed: _counts(concatenate_rows(blocks)) for seed, blocks in sorted(by_seed.items())}
+    by_seed = {seed: _counts(concatenate_rows(blocks, fields), fields) for seed, blocks in sorted(by_seed.items())}
+
+    mass_buckets = (
+        bucket_success_rates(rows, BLADE_MASS_FIELD, 5.0, 15.0, fields) if BLADE_MASS_FIELD in fields else None
+    )
 
     stage_rates = [entry["success_rate"] for entry in by_stage.values() if entry["success_rate"] is not None]
     instability = int(overall["instability_terminations"])
@@ -173,11 +200,19 @@ def build_report(runs: list[dict[str, Any]], title: str, minimum_stage_success_r
         "zero_instability_terminations": instability == 0,
         "zero_non_finite_metric_episodes": non_finite == 0,
     }
+    if mass_buckets is not None:
+        # Level 2 onward must also hold up across the randomized mass range,
+        # not just on average, so a heavy-blade weakness cannot hide in a pool.
+        worst_bucket = mass_buckets["minimum_observed_success_rate"]
+        gate["minimum_mass_bucket_success_rate"] = MASS_BUCKET_MINIMUM
+        gate["worst_mass_bucket_success_rate"] = worst_bucket
+        gate["every_mass_bucket_meets_minimum"] = worst_bucket is not None and worst_bucket >= MASS_BUCKET_MINIMUM
     gate["passed"] = bool(
         gate["every_stage_meets_minimum"]
         and gate["pooled_meets_minimum"]
         and gate["zero_instability_terminations"]
         and gate["zero_non_finite_metric_episodes"]
+        and gate.get("every_mass_bucket_meets_minimum", True)
     )
 
     return {
@@ -209,6 +244,7 @@ def build_report(runs: list[dict[str, Any]], title: str, minimum_stage_success_r
             ),
         },
         "overall": overall,
+        **({"by_blade_mass_bucket": mass_buckets} if mass_buckets is not None else {}),
         "by_curriculum_stage": by_stage,
         "by_evaluation_seed": by_seed,
         "by_stage_and_seed": sorted(by_stage_and_seed, key=lambda entry: (entry["stage"], entry["seed"])),

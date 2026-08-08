@@ -11,6 +11,7 @@ from __future__ import annotations
 import torch
 
 from zero_g_blade_swap.evaluation import (
+    BLADE_MASS_FIELD,
     TERMINAL_METRIC_FIELDS,
     TERMINATION_PRIORITY,
     TERMINATION_REASONS,
@@ -32,7 +33,13 @@ class InsertionTerminalMetrics:
     """Record one reset-safe metric row per completed insertion episode."""
 
     def __init__(self, env, recorder: TerminalEpisodeRecorder | None = None) -> None:
-        self.recorder = TerminalEpisodeRecorder(TERMINAL_METRIC_FIELDS) if recorder is None else recorder
+        # Blade mass is randomized only from robustness level 2 upward.  Record
+        # it as an extra column there so pooled reports can gate success per
+        # mass band; runs without it stay loadable because reports align by name.
+        self._records_mass = getattr(getattr(env.cfg, "events", None), "blade_mass", None) is not None
+        fields = (*TERMINAL_METRIC_FIELDS, BLADE_MASS_FIELD) if self._records_mass else TERMINAL_METRIC_FIELDS
+        self.recorder = TerminalEpisodeRecorder(fields) if recorder is None else recorder
+        self._blade_mass: torch.Tensor | None = None
         active = set(env.termination_manager.active_terms)
         missing = active.difference(TERMINATION_REASONS)
         if missing:
@@ -67,24 +74,32 @@ class InsertionTerminalMetrics:
             else stage.to(dtype=torch.float32)
         )
         control_steps = env.episode_length_buf.to(dtype=torch.float32)
-        rows = torch.stack(
-            (
-                (reason == SUCCESS_REASON_ID).to(dtype=torch.float32),
-                reason,
-                stage_values,
-                control_steps,
-                control_steps * float(env.step_dt),
-                axial.to(dtype=torch.float32),
-                lateral.to(dtype=torch.float32),
-                orientation.to(dtype=torch.float32),
-                torch.linalg.vector_norm(velocity[:, :3], dim=-1).to(dtype=torch.float32),
-                torch.linalg.vector_norm(velocity[:, 3:], dim=-1).to(dtype=torch.float32),
-                grasp_position.to(dtype=torch.float32),
-                grasp_orientation.to(dtype=torch.float32),
-            ),
-            dim=-1,
-        )
+        columns = [
+            (reason == SUCCESS_REASON_ID).to(dtype=torch.float32),
+            reason,
+            stage_values,
+            control_steps,
+            control_steps * float(env.step_dt),
+            axial.to(dtype=torch.float32),
+            lateral.to(dtype=torch.float32),
+            orientation.to(dtype=torch.float32),
+            torch.linalg.vector_norm(velocity[:, :3], dim=-1).to(dtype=torch.float32),
+            torch.linalg.vector_norm(velocity[:, 3:], dim=-1).to(dtype=torch.float32),
+            grasp_position.to(dtype=torch.float32),
+            grasp_orientation.to(dtype=torch.float32),
+        ]
+        if self._records_mass:
+            columns.append(self.blade_mass(env))
+        rows = torch.stack(tuple(columns), dim=-1)
         return self.recorder.record(rows[env_ids].detach().cpu())
+
+    def blade_mass(self, env) -> torch.Tensor:
+        """Per-environment blade mass, read once because startup sets it."""
+
+        if self._blade_mass is None:
+            masses = env.scene["spare_blade"].root_physx_view.get_masses()[:, 0]
+            self._blade_mass = masses.to(device=env.device, dtype=torch.float32).clone()
+        return self._blade_mass
 
 
 __all__ = ["InsertionTerminalMetrics"]

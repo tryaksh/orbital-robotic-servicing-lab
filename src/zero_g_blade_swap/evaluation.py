@@ -36,6 +36,10 @@ TERMINAL_METRIC_FIELDS = (
     "tool_to_handle_orientation_rad",
 )
 
+# Columns a task may add on top of the core row.  Recording them is optional,
+# so reports must align runs by column *name* rather than by position.
+BLADE_MASS_FIELD = "blade_mass_kg"
+
 # Highest priority first.  A physics blow-up or a mount failure in the same
 # control step as a geometric success must never be reported as a success.
 TERMINATION_PRIORITY = (
@@ -64,7 +68,9 @@ DEFAULT_METRIC_FIELDS = (
     "cycle_time_s",
 )
 
+CATEGORICAL_FIELDS = ("success", "termination_reason", "curriculum_stage")
 NORMAL_95_PERCENT_Z = 1.959963984540054
+BUCKET_LABELS = ("low", "mid", "high")
 
 
 def _to_numpy(value: Any) -> NDArray[np.float64]:
@@ -246,6 +252,10 @@ def summarize_terminal_episodes(
     instability = sum(reasons.get(name, 0) for name in INSTABILITY_TERMINATIONS)
 
     metric_columns = [name for name in metric_fields if name in names]
+    # Check finiteness over physical and categorical columns only.  Optional
+    # columns are NaN for runs that did not record them, which is missing data
+    # rather than a physics instability.
+    checked = [names.index(name) for name in (*metric_columns, *CATEGORICAL_FIELDS) if name in names]
     report: dict[str, Any] = {
         "episodes": episodes,
         "successes": successes,
@@ -253,7 +263,7 @@ def summarize_terminal_episodes(
         "success_rate_wilson_95": {"low": low, "high": high},
         "termination_reasons": reasons,
         "instability_terminations": instability,
-        "non_finite_metric_episodes": int((~np.isfinite(table)).any(axis=1).sum()),
+        "non_finite_metric_episodes": int((~np.isfinite(table[:, checked])).any(axis=1).sum()),
         "terminal_metrics": {name: summarize_distribution(table[:, names.index(name)]) for name in metric_columns},
     }
     if include_successful_metrics:
@@ -261,6 +271,70 @@ def summarize_terminal_episodes(
         report["successful_episode_metrics"] = {
             name: summarize_distribution(successful[:, names.index(name)]) for name in metric_columns
         }
+    return report
+
+
+def align_rows(rows: Any, source_fields: Sequence[str], target_fields: Sequence[str]) -> NDArray[np.float64]:
+    """Reorder a run's columns into ``target_fields``, filling gaps with NaN.
+
+    Runs recorded at different robustness levels carry different optional
+    columns.  Aligning by name lets one report pool them without silently
+    mixing, for example, blade mass into the cycle-time column.
+    """
+
+    table = _to_numpy(rows)
+    source = tuple(source_fields)
+    if table.ndim != 2 or table.shape[1] != len(source):
+        raise ValueError(f"expected a (n, {len(source)}) table, got shape {table.shape}")
+    aligned = np.full((table.shape[0], len(target_fields)), np.nan, dtype=np.float64)
+    for index, name in enumerate(target_fields):
+        if name in source:
+            aligned[:, index] = table[:, source.index(name)]
+    return aligned
+
+
+def bucket_success_rates(
+    rows: Any,
+    name: str,
+    low: float,
+    high: float,
+    fields: Sequence[str] = TERMINAL_METRIC_FIELDS,
+    labels: Sequence[str] = BUCKET_LABELS,
+) -> dict[str, Any]:
+    """Split success by equal bands of a continuous randomized parameter."""
+
+    names = tuple(fields)
+    table = _to_numpy(rows)
+    if high <= low:
+        raise ValueError("high must exceed low")
+    values = table[:, names.index(name)]
+    success = table[:, names.index("success")] > 0.5
+    observed = np.isfinite(values)
+    # Substitute a placeholder for unrecorded values so the cast stays valid;
+    # ``observed`` excludes them from every bucket below.
+    normalized = np.clip((np.where(observed, values, low) - low) / (high - low), 0.0, 1.0 - 1.0e-9)
+    indices = np.floor(len(labels) * normalized).astype(int)
+
+    report: dict[str, Any] = {"range": [low, high], "episodes_without_value": int((~observed).sum())}
+    rates: list[float] = []
+    for index, label in enumerate(labels):
+        selected = observed & (indices == index)
+        episodes = int(selected.sum())
+        successes = int((success & selected).sum())
+        rate = successes / episodes if episodes else None
+        interval_low, interval_high = wilson_interval(successes, episodes)
+        report[label] = {
+            "episodes": episodes,
+            "successes": successes,
+            "success_rate": rate,
+            "success_rate_wilson_95": {"low": interval_low, "high": interval_high},
+        }
+        if rate is not None:
+            rates.append(rate)
+    report["minimum_observed_success_rate"] = min(rates) if rates else None
+    report["observed_value_range"] = (
+        [float(values[observed].min()), float(values[observed].max())] if observed.any() else None
+    )
     return report
 
 
@@ -290,6 +364,9 @@ def round_floats(value: Any, digits: int = 6) -> Any:
 
 
 __all__ = [
+    "BLADE_MASS_FIELD",
+    "BUCKET_LABELS",
+    "CATEGORICAL_FIELDS",
     "DEFAULT_METRIC_FIELDS",
     "INSTABILITY_TERMINATIONS",
     "NORMAL_95_PERCENT_Z",
@@ -300,6 +377,8 @@ __all__ = [
     "UNCATEGORIZED_TERMINATION",
     "TerminalEpisodeRecorder",
     "TerminalMetricsMixin",
+    "align_rows",
+    "bucket_success_rates",
     "concatenate_rows",
     "group_rows",
     "round_floats",
