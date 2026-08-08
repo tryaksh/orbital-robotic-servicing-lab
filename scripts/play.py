@@ -60,6 +60,12 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--video", action="store_true")
     parser.add_argument("--video_length", type=int, default=600)
+    parser.add_argument(
+        "--video_dir",
+        type=Path,
+        default=None,
+        help="Where to write the recording; defaults to <checkpoint>/../../videos/play, which successive runs overwrite.",
+    )
     parser.add_argument("--real_time", action="store_true")
     parser.add_argument(
         "--report",
@@ -261,14 +267,14 @@ def main() -> dict[str, object]:
             "top": ((0.58, -0.05, 1.55), (0.58, 0.0, 0.70)),
             "workcell": ((-0.50, -1.80, 1.25), (0.55, 0.0, 0.72)),
         }
-        if args.inspection_view == "array":
-            # Isaac Lab centres the cloned grid on the origin, so pull the
-            # camera back proportionally to how wide that grid actually is.
-            span = float(env_cfg.scene.env_spacing) * math.ceil(math.sqrt(max(args.num_envs, 1)))
-            env_cfg.viewer.eye = (-0.9 * span, -1.15 * span, 0.55 * span)
-            env_cfg.viewer.lookat = (0.3 * span, 0.0, 0.7)
-            print(f"[INFO] Inspection view: array across {args.num_envs} environments")
-        elif args.inspection_view != "task":
+        if args.video and args.num_envs > 1:
+            # Fabric-cloned prims do not all reach the RTX renderer, so a
+            # multi-environment recording shows empty workcells. Recording is
+            # presentation only and uses few environments, so trade the cloning
+            # speedup for correct visuals. Physics is unchanged.
+            env_cfg.scene.clone_in_fabric = False
+            print("[INFO] Disabled Fabric cloning so every recorded environment renders")
+        if args.inspection_view != "task" and args.inspection_view != "array":
             env_cfg.viewer.eye, env_cfg.viewer.lookat = inspection_views[args.inspection_view]
             print(f"[INFO] Inspection view: {args.inspection_view}")
         env_cfg.seed = args.seed
@@ -302,6 +308,18 @@ def main() -> dict[str, object]:
             ):
                 if name == "pose_noise":
                     term_cfg.func.force_reset_stage(args.curriculum_stage)
+        if args.inspection_view == "array":
+            # Frame whatever grid the cloner actually produced instead of
+            # assuming a layout; a wrong guess renders empty space.
+            origins = env.unwrapped.scene.env_origins
+            centre = origins.mean(dim=0).tolist()
+            extent = float((origins.max(dim=0).values - origins.min(dim=0).values).max())
+            distance = max(extent, 1.0) * 1.15 + 2.5
+            env.unwrapped.sim.set_camera_view(
+                eye=(centre[0] - 0.45 * distance, centre[1] - 0.95 * distance, 0.62 * distance),
+                target=(centre[0], centre[1], centre[2] + 0.72),
+            )
+            print(f"[INFO] Inspection view: array framing {args.num_envs} environments over {extent:.1f} m")
         terminal_metrics = None
         if insertion_task:
             task_env = env.unwrapped
@@ -313,9 +331,11 @@ def main() -> dict[str, object]:
             terminal_metrics = InsertionTerminalMetrics(task_env)
             task_env.enable_terminal_metrics(terminal_metrics)
         if args.video:
+            video_dir = args.video_dir or (checkpoint.parent.parent / "videos" / "play")
+            print(f"[INFO] Recording to {video_dir}")
             env = gym.wrappers.RecordVideo(
                 env,
-                video_folder=str(checkpoint.parent.parent / "videos" / "play"),
+                video_folder=str(video_dir),
                 step_trigger=lambda step: step == 0,
                 video_length=args.video_length,
                 disable_logger=True,
