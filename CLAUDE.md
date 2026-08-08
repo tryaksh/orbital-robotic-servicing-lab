@@ -45,7 +45,24 @@ Deterministic evaluation on unseen seeds 1060, 2060, and 3060, 128 parallel envi
 
 Zero timeout, insertion-failure, mount-instability, non-finite, or uncategorized termination. Terminal metrics are captured in `_reset_idx` before Isaac Lab's automatic reset, so they cannot be corrupted by it. Committed report: `evidence/rigid_grasp_l0_ep700_certification.json`.
 
-This promotes **Level-0 secured-grasp insertion across three held-out evaluation seeds**. It does not prove rail-contact robustness, learned grasping, perception, cross-seed *training* repeatability, or real transfer. Because every episode succeeded, the terminal error distribution is bounded by the success criterion; it shows where inside the tolerance box the policy lands, not accuracy independent of it. Margin is thin on axial depth (11.96 of 12 mm) and orientation (0.0484 of 0.0524 rad), which is where Level-1 rail contact should break first.
+### Level 1 promoted on 2026-08-08
+
+`rigid_grasp_l1_wide_rails_seed61` fine-tuned the epoch-700 checkpoint for 500 more PPO epochs at 512 environments, seed 61, robustness level 1 (physical wide side rails plus doubled reset joint noise). Reward went 56.6 at epoch 800, through 78.2 at epoch 1000, to 74.4 at epoch 1200; the dip is the contact shock and the recovery is re-adaptation.
+
+Deterministic evaluation of epoch 1200 on unseen seeds 1061, 2061, and 3061:
+
+| Reset distance | Result | Terminal axial p95 / max | Cycle time p50 |
+| --- | ---: | ---: | ---: |
+| Near / stage 0 | 3,003 / 3,003 (100%) | 2.32 / 3.07 mm | 1.23 s |
+| Medium / stage 1 | 3,006 / 3,006 (100%) | 8.38 / 8.46 mm | 3.65 s |
+| Full / stage 2 | 3,005 / 3,005 (100%) | 10.02 / 11.56 mm | — |
+| Total | 9,014 / 9,014, Wilson 95% lower bound 0.9996 | — | — |
+
+Zero instability and zero non-finite terminations. Report: `evidence/rigid_grasp_l1_ep1200_certification.json`. Fine-tuning improved terminal precision rather than merely preserving success: stage-0 axial error fell from 4.15 mm mean at Level 0 to 1.65 mm at Level 1. Terminal angular velocity roughly doubled (0.013 to 0.025 rad/s), which is the expected signature of real rail contact and stays well inside the 0.080 rad/s limit.
+
+### Scope of both promotions
+
+This promotes **Level-0 and Level-1 secured-grasp insertion across three held-out evaluation seeds each**. It does not prove rail-contact robustness, learned grasping, perception, cross-seed *training* repeatability, or real transfer. Because every episode succeeded, the terminal error distribution is bounded by the success criterion; it shows where inside the tolerance box the policy lands, not accuracy independent of it. Margin is thin on axial depth (11.96 of 12 mm) and orientation (0.0484 of 0.0524 rad), which is where Level-1 rail contact should break first.
 
 Static validation: Ruff passed and 47/47 non-Sim tests passed. Isaac smoke passed for the corrected evaluator and for a two-iteration checkpoint-resume training run through the new entry point. GPU physics smoke previously passed for Levels 0, 1, and 2.
 
@@ -60,8 +77,8 @@ Known pre-existing defect, unrelated to the evaluator: `train.py --smoke` runs a
 - A three-distance success curriculum and deterministic JSON evaluation.
 - Five cumulative secured-grasp profiles:
   - L0 collision-free insertion — trained and promoted on seed 1060.
-  - L1 wide side rails and larger pose error — physics smoke passed, untrained.
-  - L2 tight 1.5 mm side clearance plus 5–15 kg mass — physics smoke passed, untrained.
+  - L1 wide side rails and larger pose error — trained and promoted on seeds 1061/2061/3061.
+  - L2 tight 1.5 mm side clearance plus 5–15 kg mass — physics smoke passed, training in progress.
   - L3 randomized side-rail friction and 10–120 N breakaway/viscous stiction — implemented but blocked.
   - L4 compliant floating mount and wrench pulses — implemented but blocked behind L3.
 - Full-swap teacher/vision scaffolding, tiled RGB, orbital lighting/material/noise randomization, data collection and BC hooks. These are integration scaffolds, not converged policies.
