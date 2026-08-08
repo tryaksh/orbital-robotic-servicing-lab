@@ -51,9 +51,9 @@ Deterministic evaluation of epoch 1200 on unseen seeds 1061, 2061, 3061:
 
 | Reset distance | Result | Terminal axial p95 / max | Cycle time p50 |
 | --- | ---: | ---: | ---: |
-| Near / stage 0 | 3,003 / 3,003 (100%) | 2.32 / 3.07 mm | 1.23 s |
-| Medium / stage 1 | 3,006 / 3,006 (100%) | 8.38 / 8.46 mm | 3.65 s |
-| Full / stage 2 | 3,005 / 3,005 (100%) | 10.02 / 11.56 mm | 7.9 s |
+| Near / stage 0 | 3,006 / 3,006 (100%) | 2.32 / 3.07 mm | 1.23 s |
+| Medium / stage 1 | 3,007 / 3,007 (100%) | 8.38 / 8.46 mm | 3.67 s |
+| Full / stage 2 | 3,001 / 3,001 (100%) | 10.02 / 11.56 mm | 7.57 s |
 | Total | 9,014 / 9,014, Wilson 95% lower bound 0.9996 | — | — |
 
 Report: `evidence/rigid_grasp_l1_ep1200_certification.json`.
@@ -64,18 +64,53 @@ Level 1. Terminal angular velocity roughly doubled, from 0.013 to 0.025 rad/s,
 which is the expected signature of real rail contact and stays well inside the
 0.080 rad/s limit.
 
-### What both promotions do and do not show
+### Level 2, tight rails plus randomized 5–15 kg mass, promoted 2026-08-08
 
-Both runs had zero timeout, insertion-failure, mount-instability, non-finite,
-and uncategorized terminations. Terminal metrics are captured in `_reset_idx`
-before Isaac Lab's automatic reset, so auto-reset cannot corrupt them.
+`rigid_grasp_l2_tight_mass_seed62` fine-tuned the Level-1 epoch-1200 checkpoint
+for 600 more PPO epochs at 512 environments, seed 62, robustness level 2: tight
+1.5 mm side-rail clearance plus blade mass randomized over 5–15 kg with
+recomputed inertia. Reward went 56.9 at epoch 1300 to 75.8 at 1400 and held
+between 74.7 and 75.8 through epoch 1800.
+
+Deterministic evaluation of epoch 1800 on unseen seeds 1062, 2062, 3062:
+
+| Reset distance | Result | Terminal axial p95 / max | Cycle time p50 |
+| --- | ---: | ---: | ---: |
+| Near / stage 0 | 3,009 / 3,009 (100%) | 4.49 / 5.84 mm | 1.20 s |
+| Medium / stage 1 | 3,012 / 3,012 (100%) | 9.41 / 10.12 mm | 3.30 s |
+| Full / stage 2 | 3,000 / 3,000 (100%) | 9.70 / 10.59 mm | 7.20 s |
+| Total | 9,021 / 9,021, Wilson 95% lower bound 0.9996 | — | — |
+
+Success by blade mass band, over an observed 5.00–14.97 kg range:
+
+| Mass band | Result |
+| --- | ---: |
+| Low | 3,114 / 3,114 (100%) |
+| Mid | 2,889 / 2,889 (100%) |
+| High | 3,018 / 3,018 (100%) |
+
+Report: `evidence/rigid_grasp_l2_ep1800_certification.json`. Full-distance cycle
+time improved to 7.20 s median from 7.90 s at Level 0, despite tighter clearance
+and a threefold payload mass range.
+
+**Margin warning.** Terminal orientation error at Level 2 reaches 0.0512 rad
+against the 0.0524 rad success limit, which is 97.8% of the budget, at both
+stage 1 and stage 2. Orientation is the axis with the least headroom and is the
+most likely first failure mode when Level-3 rail stiction is enabled.
+
+### What the three promotions do and do not show
+
+All three runs had zero timeout, insertion-failure, mount-instability,
+non-finite, and uncategorized terminations across 27,121 held-out episodes.
+Terminal metrics are captured in `_reset_idx` before Isaac Lab's automatic
+reset, so auto-reset cannot corrupt them.
 
 They do not prove learned grasping, perception, cross-seed *training*
 repeatability, or real transfer. Because every episode succeeded, the terminal
 error distribution is bounded by the success criterion itself: it shows where
 inside the tolerance box the policy lands, not accuracy independent of that box.
-Level-0 margin is thin on axial depth (11.96 of 12 mm) and orientation (0.0484
-of 0.0524 rad).
+Margin is thin on axial depth at Level 0 (11.96 of 12 mm) and on orientation at
+Level 2 (0.0512 of 0.0524 rad).
 
 ## Static validation
 
@@ -93,7 +128,7 @@ Cumulative secured-grasp profiles:
 | --- | --- | --- |
 | L0 | Collision-free insertion | Promoted, seeds 1060/2060/3060 |
 | L1 | Wide side rails, larger pose error | Promoted, seeds 1061/2061/3061 |
-| L2 | Tight 1.5 mm side clearance, 5–15 kg mass | Training |
+| L2 | Tight 1.5 mm side clearance, 5–15 kg mass | Promoted, seeds 1062/2062/3062 |
 | L3 | Rail friction, 10–120 N breakaway/viscous stiction | Implemented, blocked |
 | L4 | Compliant floating mount, wrench pulses | Implemented, blocked behind L3 |
 

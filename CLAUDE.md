@@ -23,13 +23,15 @@ Sim2Real plan.
 
 ## Current state in one paragraph
 
-Levels 0 and 1 of the secured-grasp insertion curriculum are promoted, each on
-three held-out evaluation seeds, at 100% success over roughly 9,000 episodes per
-level with terminal metrics captured before Isaac Lab's automatic reset. Level 2
-is next. Level 3 stiction is physically blocked. The blade is held by a PhysX
-fixed joint standing in for an already-secured grasp; that is not learned
-grasping. Full numbers, limitations, and the pre-existing `train.py --smoke`
-probe defect live in `docs/status.md`.
+Levels 0, 1, and 2 of the secured-grasp insertion curriculum are promoted, each
+on three held-out evaluation seeds, at 100% success over roughly 9,000 episodes
+per level (27,121 total) with terminal metrics captured before Isaac Lab's
+automatic reset. Level 2 covers 1.5 mm side clearance and 5–15 kg payload mass.
+Level 3 stiction is physically blocked; terminal orientation error already
+consumes 97.8% of its tolerance, so that is the axis to instrument first. The
+blade is held by a PhysX fixed joint standing in for an already-secured grasp;
+that is not learned grasping. Full numbers, limitations, and the pre-existing
+`train.py --smoke` probe defect live in `docs/status.md`.
 
 ## Operating rules
 
