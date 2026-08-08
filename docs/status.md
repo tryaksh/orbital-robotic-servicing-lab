@@ -120,6 +120,21 @@ evaluator and for a two-iteration checkpoint-resume training run through the
 passed for Levels 0, 1, and 2. Sustained environment-only benchmarks passed at
 1024 state and 256 vision environments; full PPO memory differs.
 
+## Demonstration assets
+
+Recorded from the promoted Level-2 checkpoint at full reset distance, 300
+control steps each, all episodes successful:
+
+| Clip | View | Environments |
+| --- | --- | ---: |
+| `artifacts/demo/closeup/` | `grasp`, tool and slot | 1 |
+| `artifacts/demo/side/` | `side`, blade entering the rails | 1 |
+| `artifacts/demo/array/` | `array`, parallel grid running one policy | 9 |
+
+`artifacts/` is untracked. Publish clips through a GitHub Release. Headless RTX
+recording shows visible denoiser speckle; re-record in the Isaac Sim GUI if a
+cleaner master is needed.
+
 ## Robustness profiles
 
 Cumulative secured-grasp profiles:
