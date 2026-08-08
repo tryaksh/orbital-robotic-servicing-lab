@@ -16,10 +16,13 @@ import numpy as np
 import pytest
 
 from zero_g_blade_swap.evaluation import (
+    BLADE_MASS_FIELD,
     TERMINAL_METRIC_FIELDS,
     TERMINATION_REASONS,
     TerminalEpisodeRecorder,
     TerminalMetricsMixin,
+    align_rows,
+    bucket_success_rates,
     concatenate_rows,
     group_rows,
     round_floats,
@@ -242,6 +245,69 @@ def test_pooled_statistics_equal_single_pass_statistics() -> None:
 
     with pytest.raises(ValueError):
         concatenate_rows([np.zeros((2, 3))])
+
+
+def test_align_rows_maps_optional_columns_by_name() -> None:
+    source = (*TERMINAL_METRIC_FIELDS, BLADE_MASS_FIELD)
+    rich = np.array([_row(success=1.0, axial_error_m=0.004) + [12.5]])
+    plain = np.array([_row(success=1.0, axial_error_m=0.009)])
+
+    # A run that recorded mass keeps it; one that did not gets NaN, never a
+    # silently shifted column.
+    kept = align_rows(rich, source, source)
+    assert kept[0, source.index(BLADE_MASS_FIELD)] == 12.5
+    assert kept[0, source.index("axial_error_m")] == pytest.approx(0.004)
+
+    widened = align_rows(plain, TERMINAL_METRIC_FIELDS, source)
+    assert widened.shape == (1, len(source))
+    assert math.isnan(widened[0, source.index(BLADE_MASS_FIELD)])
+    assert widened[0, source.index("axial_error_m")] == pytest.approx(0.009)
+
+    narrowed = align_rows(rich, source, TERMINAL_METRIC_FIELDS)
+    assert narrowed.shape == (1, len(TERMINAL_METRIC_FIELDS))
+    assert narrowed[0, TERMINAL_METRIC_FIELDS.index("axial_error_m")] == pytest.approx(0.004)
+
+    with pytest.raises(ValueError):
+        align_rows(plain, source, source)
+
+
+def test_missing_optional_column_is_not_counted_as_instability() -> None:
+    source = (*TERMINAL_METRIC_FIELDS, BLADE_MASS_FIELD)
+    rows = align_rows(np.array([_row(success=1.0)]), TERMINAL_METRIC_FIELDS, source)
+
+    report = summarize_terminal_episodes(rows, source)
+    assert report["non_finite_metric_episodes"] == 0
+    assert report["successes"] == 1
+
+
+def test_bucket_success_rates_splits_the_randomized_range() -> None:
+    source = (*TERMINAL_METRIC_FIELDS, BLADE_MASS_FIELD)
+    rows = np.array(
+        [
+            _row(success=1.0) + [5.0],    # low band
+            _row(success=1.0) + [7.9],    # low band
+            _row(success=1.0) + [9.0],    # mid band
+            _row(success=0.0) + [11.0],   # mid band
+            _row(success=1.0) + [15.0],   # high band, clamped inside
+        ]
+    )
+
+    report = bucket_success_rates(rows, BLADE_MASS_FIELD, 5.0, 15.0, source)
+    assert report["low"]["episodes"] == 2 and report["low"]["success_rate"] == pytest.approx(1.0)
+    assert report["mid"]["episodes"] == 2 and report["mid"]["success_rate"] == pytest.approx(0.5)
+    assert report["high"]["episodes"] == 1 and report["high"]["success_rate"] == pytest.approx(1.0)
+    assert report["minimum_observed_success_rate"] == pytest.approx(0.5)
+    assert report["observed_value_range"] == [5.0, 15.0]
+    assert report["episodes_without_value"] == 0
+
+    # Rows from a run that never recorded mass must not be counted anywhere.
+    widened = align_rows(np.array([_row(success=0.0)]), TERMINAL_METRIC_FIELDS, source)
+    mixed = bucket_success_rates(np.concatenate([rows, widened]), BLADE_MASS_FIELD, 5.0, 15.0, source)
+    assert mixed["episodes_without_value"] == 1
+    assert sum(mixed[label]["episodes"] for label in ("low", "mid", "high")) == 5
+
+    with pytest.raises(ValueError):
+        bucket_success_rates(rows, BLADE_MASS_FIELD, 15.0, 5.0, source)
 
 
 def test_round_floats_keeps_structure_and_non_finite_values() -> None:

@@ -98,7 +98,8 @@ from isaaclab_tasks.utils import load_cfg_from_registry, parse_env_cfg
 
 import zero_g_blade_swap.tasks.blade_swap  # noqa: F401
 from zero_g_blade_swap.evaluation import (
-    TERMINAL_METRIC_FIELDS,
+    BLADE_MASS_FIELD,
+    bucket_success_rates,
     group_rows,
     round_floats,
     summarize_terminal_episodes,
@@ -190,14 +191,18 @@ def _summarize_robust_buckets(stats: dict[str, list[dict[str, int]]]) -> dict[st
     return output
 
 
-def _write_episode_metrics(path: Path, rows, metadata: dict[str, object]) -> None:
-    """Persist raw per-episode rows so several runs can be pooled exactly."""
+def _write_episode_metrics(path: Path, recorder, metadata: dict[str, object]) -> None:
+    """Persist raw per-episode rows so several runs can be pooled exactly.
+
+    The field list is stored alongside the rows because a task may record extra
+    columns, such as randomized blade mass, that other runs do not have.
+    """
 
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         path,
-        rows=np.asarray(rows, dtype=np.float32),
-        fields=np.asarray(TERMINAL_METRIC_FIELDS),
+        rows=np.asarray(recorder.rows, dtype=np.float32),
+        fields=np.asarray(recorder.fields),
         metadata=np.asarray(json.dumps(metadata)),
     )
 
@@ -206,17 +211,21 @@ def _terminal_metrics_report(collector: InsertionTerminalMetrics, episodes_compl
     """Summarize episodes captured before Isaac Lab's automatic reset."""
 
     rows = collector.recorder.rows
+    fields = collector.recorder.fields
     report: dict[str, object] = {
         "source": "captured_before_auto_reset",
         "recorded_episodes": len(collector.recorder),
         "matches_step_done_count": len(collector.recorder) == episodes_completed,
+        "fields": list(fields),
     }
-    report.update(summarize_terminal_episodes(rows))
-    stages = group_rows(rows, "curriculum_stage")
+    report.update(summarize_terminal_episodes(rows, fields))
+    if BLADE_MASS_FIELD in fields:
+        report["by_blade_mass_bucket"] = bucket_success_rates(rows, BLADE_MASS_FIELD, 5.0, 15.0, fields)
+    stages = group_rows(rows, "curriculum_stage", fields)
     if len(stages) > 1:
         # A stage-forced evaluation would only duplicate the pooled block.
         report["by_curriculum_stage"] = {
-            str(stage): summarize_terminal_episodes(block, include_successful_metrics=False)
+            str(stage): summarize_terminal_episodes(block, fields, include_successful_metrics=False)
             for stage, block in stages.items()
         }
     else:
@@ -450,7 +459,7 @@ def main() -> dict[str, object]:
                 if args.episode_metrics is not None:
                     _write_episode_metrics(
                         args.episode_metrics,
-                        terminal_metrics.recorder.rows,
+                        terminal_metrics.recorder,
                         {
                             "task": args.task,
                             "seed": args.seed,
