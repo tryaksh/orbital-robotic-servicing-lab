@@ -51,9 +51,12 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--inspection_view",
-        choices=("task", "grasp", "side", "top", "workcell"),
+        choices=("task", "grasp", "side", "top", "workcell", "array"),
         default="task",
-        help="Presentation-only viewport angle; it does not change policy inputs or physics.",
+        help=(
+            "Presentation-only viewport angle; it does not change policy inputs or physics. "
+            "'array' frames the whole parallel environment grid instead of one workcell."
+        ),
     )
     parser.add_argument("--video", action="store_true")
     parser.add_argument("--video_length", type=int, default=600)
@@ -258,7 +261,14 @@ def main() -> dict[str, object]:
             "top": ((0.58, -0.05, 1.55), (0.58, 0.0, 0.70)),
             "workcell": ((-0.50, -1.80, 1.25), (0.55, 0.0, 0.72)),
         }
-        if args.inspection_view != "task":
+        if args.inspection_view == "array":
+            # Isaac Lab centres the cloned grid on the origin, so pull the
+            # camera back proportionally to how wide that grid actually is.
+            span = float(env_cfg.scene.env_spacing) * math.ceil(math.sqrt(max(args.num_envs, 1)))
+            env_cfg.viewer.eye = (-0.9 * span, -1.15 * span, 0.55 * span)
+            env_cfg.viewer.lookat = (0.3 * span, 0.0, 0.7)
+            print(f"[INFO] Inspection view: array across {args.num_envs} environments")
+        elif args.inspection_view != "task":
             env_cfg.viewer.eye, env_cfg.viewer.lookat = inspection_views[args.inspection_view]
             print(f"[INFO] Inspection view: {args.inspection_view}")
         env_cfg.seed = args.seed

@@ -7,14 +7,14 @@
    `InsertionTerminalMetrics` records one row per completed episode;
    `scripts/aggregate_evaluation.py` pools runs and applies the gate.
 2. ~~**Promote L1.**~~ Done 2026-08-08. See `docs/status.md`.
-3. **Promote L2.** Fine-tune the L1 checkpoint at tight side clearance plus
-   5–15 kg mass. Require at least 90% overall and per-stage, and at least 80% in
-   every mass bucket. Never skip a held-out gate.
+3. ~~**Promote L2.**~~ Done 2026-08-08. See `docs/status.md`.
 4. **Resolve L3 physically before training.** Plot rail force, blade velocity,
    contact impulse, and action versus time. Check whether the stiction
    implementation injects energy or chatters at zero velocity. Prefer a
    continuous, measured friction/connector force curve and force/admittance-
-   limited insertion over arbitrary reward changes.
+   limited insertion over arbitrary reward changes. The Level-2 certification
+   predicts where this breaks: terminal orientation error already consumes 97.8%
+   of its tolerance, so orientation is the axis to instrument first.
 5. **Add industrially meaningful hardware proxies.** Replace primitive
    rail/handle geometry with measured, non-proprietary CAD; add chamfers,
    latch/connector engagement, wrench sensing, peak force/impulse limits, and
