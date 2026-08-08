@@ -67,7 +67,12 @@ def test_stage_one_is_learned_and_has_no_scripted_motion_path() -> None:
     assert "def insertion_settling_penalty" in insertion
     assert insertion.count("write_root_pose_to_sim") == 1
     assert "def reset_insertion_blade" in insertion
-    assert "tool_to_handle" in (SCRIPTS / "play.py").read_text(encoding="utf-8")
+    # The grasp-abstraction audit moved into the reset-safe terminal metric
+    # row that play.py now reports; it must still be measured every episode.
+    assert "tool_to_handle_error_m" in (SRC / "zero_g_blade_swap" / "evaluation.py").read_text(encoding="utf-8")
+    assert "secured_blade_error_metrics" in (
+        SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "mdp" / "terminal_metrics.py"
+    ).read_text(encoding="utf-8")
     assert "learn insertion and lateral/vertical alignment" in env_cfg.lower()
     assert "TranslationalDifferentialInverseKinematicsActionCfg" in env_cfg
     assert "scale=(0.006, 0.002, 0.002)" in env_cfg
@@ -220,6 +225,53 @@ def test_geometry_and_reward_guards_cover_pilot_failure_modes() -> None:
     assert "env._last_rewarded_phase[ids] = phase[ids]" in randomization
     assert "self._forces[due, 0]" in randomization
     assert "terminal_failure = RewTerm" in env_cfg
+
+
+def test_insertion_tasks_capture_terminal_metrics_before_auto_reset() -> None:
+    registration = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "__init__.py").read_text(encoding="utf-8")
+    env_module = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "terminal_metrics_env.py").read_text(
+        encoding="utf-8"
+    )
+    collector = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "mdp" / "terminal_metrics.py").read_text(
+        encoding="utf-8"
+    )
+    play = (SCRIPTS / "play.py").read_text(encoding="utf-8")
+
+    # Every insertion task must route through the pre-reset capture subclass.
+    insertion_ids = [line for line in registration.splitlines() if 'id="Isaac-ZeroG-Blade-Insertion' in line]
+    assert len(insertion_ids) == 8
+    assert registration.count("entry_point=INSERTION_ENTRY_POINT,") == len(insertion_ids)
+    assert "TerminalMetricsManagerBasedRLEnv" in registration
+    assert "class TerminalMetricsManagerBasedRLEnv(TerminalMetricsMixin, ManagerBasedRLEnv)" in env_module
+
+    # The collector must read the terminal state, not re-derive it after reset.
+    assert "insertion_error_metrics" in collector
+    assert "secured_blade_error_metrics" in collector
+    assert "attached_blade_velocity" in collector
+    assert "env.episode_length_buf" in collector
+
+    assert "enable_terminal_metrics(terminal_metrics)" in play
+    assert 'result["terminal_metrics"]' in play
+    assert "terminal_metrics_captured_before_reset" in play
+    assert '"--episode_metrics"' in play
+    # The corrupt post-reset error read must not come back.
+    assert "insertion_error_metrics(env.unwrapped)" not in play
+    assert '"final_mean_errors"' not in play
+
+
+def test_evaluation_statistics_are_isaac_free_and_gate_is_explicit() -> None:
+    evaluation = (SRC / "zero_g_blade_swap" / "evaluation.py").read_text(encoding="utf-8")
+    aggregate = (SCRIPTS / "aggregate_evaluation.py").read_text(encoding="utf-8")
+
+    assert "isaaclab" not in evaluation and "import torch" not in evaluation
+    assert "def wilson_interval" in evaluation
+    assert '"p95"' in evaluation
+    assert 'TERMINATION_PRIORITY = (\n    "non_finite",\n    "mount_unstable",' in evaluation
+    assert '"zero_instability_terminations"' in aggregate
+    assert '"zero_non_finite_metric_episodes"' in aggregate
+    assert '"every_stage_meets_minimum"' in aggregate
+    assert '"evidence_type": "simulation_only"' in aggregate
+    assert '"grasp_model": "physx_fixed_joint_already_secured_abstraction"' in aggregate
 
 
 def test_training_and_playback_make_gpu_and_safety_evidence_explicit() -> None:

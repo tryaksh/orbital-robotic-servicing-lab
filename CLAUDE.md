@@ -34,18 +34,22 @@ last_zero_g_blade_insertion_rigid_grasp_ep_700_rew_74.81321.pth
 
 SHA-256: `1635C0DA6464A34DE5D5D423D45D272AD0E19D808EA35B8502068F68B5043332`.
 
-Deterministic evaluation on unseen seed 1060, 128 parallel environments:
+Deterministic evaluation on unseen seeds 1060, 2060, and 3060, 128 parallel environments, nine runs:
 
-| Reset distance | Result |
-| --- | ---: |
-| Near / curriculum stage 0 | 1,021 / 1,021 (100%) |
-| Medium / stage 1 | 1,006 / 1,006 (100%) |
-| Full / stage 2 | 1,001 / 1,001 (100%) |
-| Total | 3,028 / 3,028, zero timeout/failure/non-finite termination |
+| Reset distance | Result | Terminal axial p95 / max | Cycle time p50 |
+| --- | ---: | ---: | ---: |
+| Near / curriculum stage 0 | 3,052 / 3,052 (100%) | 4.37 / 4.81 mm | 1.17 s |
+| Medium / stage 1 | 3,032 / 3,032 (100%) | 9.31 / 9.34 mm | 3.67 s |
+| Full / stage 2 | 3,002 / 3,002 (100%) | 11.95 / 11.96 mm | 7.90 s |
+| Total | 9,086 / 9,086, Wilson 95% lower bound 0.9996 | — | — |
 
-This promotes **Level-0 secured-grasp insertion on one held-out seed**. It does not prove rail-contact robustness, learned grasping, perception, cross-seed repeatability, or real transfer. Repeat the three evaluations on at least two more unseen seeds before making a release artifact. `play.py` currently reports final live-state errors after automatic resets; fix it to accumulate terminal metrics before using those error fields as evidence.
+Zero timeout, insertion-failure, mount-instability, non-finite, or uncategorized termination. Terminal metrics are captured in `_reset_idx` before Isaac Lab's automatic reset, so they cannot be corrupted by it. Committed report: `evidence/rigid_grasp_l0_ep700_certification.json`.
 
-Static validation: Ruff passed and 36/36 tests passed. GPU physics smoke passed for Levels 0, 1, and 2.
+This promotes **Level-0 secured-grasp insertion across three held-out evaluation seeds**. It does not prove rail-contact robustness, learned grasping, perception, cross-seed *training* repeatability, or real transfer. Because every episode succeeded, the terminal error distribution is bounded by the success criterion; it shows where inside the tolerance box the policy lands, not accuracy independent of it. Margin is thin on axial depth (11.96 of 12 mm) and orientation (0.0484 of 0.0524 rad), which is where Level-1 rail contact should break first.
+
+Static validation: Ruff passed and 47/47 non-Sim tests passed. Isaac smoke passed for the corrected evaluator and for a two-iteration checkpoint-resume training run through the new entry point. GPU physics smoke previously passed for Levels 0, 1, and 2.
+
+Known pre-existing defect, unrelated to the evaluator: `train.py --smoke` runs a scripted axial feasibility probe tuned for the contact task. On the rigid-grasp task it exhausts its 300-step budget with 23.5 mm residual axial error. Verified identical before and after the evaluator change, so it is a probe defect rather than a task defect; the learned policy inserts in 35 control steps at stage 0.
 
 ## What is implemented
 
@@ -77,7 +81,7 @@ Static validation: Ruff passed and 36/36 tests passed. GPU physics smoke passed 
 
 ## Recommended next work, in order
 
-1. **Make evaluation release-grade.** Capture terminal pose/velocity metrics before reset, evaluate seeds 1060/2060/3060, report Wilson confidence intervals, cycle-time distribution, and categorized failures.
+1. ~~**Make evaluation release-grade.**~~ Done. `TerminalMetricsMixin` (`src/zero_g_blade_swap/evaluation.py`) intercepts `_reset_idx`; `InsertionTerminalMetrics` records one row per completed episode; `scripts/aggregate_evaluation.py` pools runs and applies the gate.
 2. **Promote L1 then L2.** Fine-tune the epoch-700 checkpoint sequentially, never skipping held-out gates. Require at least 90% overall and 80% in every mass/contact bucket.
 3. **Resolve L3 physically before training.** Plot rail force, blade velocity, contact impulse, and action versus time. Check whether the stiction implementation injects energy or chatters at zero velocity. Prefer a continuous, measured friction/connector force curve and force/admittance-limited insertion over arbitrary reward changes.
 4. **Add industrially meaningful hardware proxies.** Replace primitive rail/handle geometry with measured, non-proprietary CAD; add chamfers, latch/connector engagement, wrench sensing, peak force/impulse limits, and abort/recovery behavior.
