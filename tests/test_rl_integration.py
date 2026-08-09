@@ -239,7 +239,9 @@ def test_insertion_tasks_capture_terminal_metrics_before_auto_reset() -> None:
 
     # Every insertion task must route through the pre-reset capture subclass.
     insertion_ids = [line for line in registration.splitlines() if 'id="Isaac-ZeroG-Blade-Insertion' in line]
-    assert len(insertion_ids) == 8
+    # The invariant is that *every* insertion task routes through the capture
+    # entry point, not that there is a particular number of them.
+    assert len(insertion_ids) >= 8
     assert registration.count("entry_point=INSERTION_ENTRY_POINT,") == len(insertion_ids)
     assert "TerminalMetricsManagerBasedRLEnv" in registration
     assert "class TerminalMetricsManagerBasedRLEnv(TerminalMetricsMixin, ManagerBasedRLEnv)" in env_module
@@ -257,6 +259,52 @@ def test_insertion_tasks_capture_terminal_metrics_before_auto_reset() -> None:
     # The corrupt post-reset error read must not come back.
     assert "insertion_error_metrics(env.unwrapped)" not in play
     assert '"final_mean_errors"' not in play
+
+
+def test_force_limited_task_constrains_contact_and_keeps_policy_shape() -> None:
+    force = (
+        SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "force_limited_insertion_env_cfg.py"
+    ).read_text(encoding="utf-8")
+    insertion = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "mdp" / "insertion.py").read_text(
+        encoding="utf-8"
+    )
+    registration = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "__init__.py").read_text(encoding="utf-8")
+    evaluation = (SRC / "zero_g_blade_swap" / "evaluation.py").read_text(encoding="utf-8")
+
+    # Contact load must be both penalised and abortable.
+    assert "def contact_force_penalty" in insertion
+    assert "def excessive_contact_force" in insertion
+    assert "contact_force = RewTerm" in force
+    assert "excessive_contact_force = DoneTerm" in force
+    assert "ContactSensorCfg" in force
+    # The sensor needs real USD clones, and the parent config rebuilds the blade.
+    assert "clone_in_fabric=False" in force
+    assert "self.scene.spare_blade.spawn.activate_contact_sensors = True" in force
+    # The config must not redeclare the observation or action fields, so a
+    # promoted checkpoint can be fine-tuned rather than retrained.
+    assert "observations:" not in force
+    assert "actions:" not in force
+    assert "Isaac-ZeroG-Blade-Insertion-ForceLimited-v0" in registration
+
+    assert "TERMINATION_PRIORITY" in evaluation
+
+    # Reason ids are stored as integers in published evidence, so the first five
+    # entries must never move and the new reason must be appended after them.
+    from zero_g_blade_swap.evaluation import TERMINATION_PRIORITY, TERMINATION_REASONS
+
+    assert TERMINATION_REASONS[:6] == (
+        "non_finite",
+        "mount_unstable",
+        "insertion_failed",
+        "insertion_success",
+        "time_out",
+        "uncategorized",
+    )
+    assert TERMINATION_REASONS[6] == "excessive_contact_force"
+    # Priority is declared separately from storage order, and a force abort must
+    # outrank a geometric success in the same control step.
+    assert TERMINATION_PRIORITY.index("excessive_contact_force") < TERMINATION_PRIORITY.index("insertion_success")
+    assert set(TERMINATION_PRIORITY).issubset(set(TERMINATION_REASONS))
 
 
 def test_evaluation_statistics_are_isaac_free_and_gate_is_explicit() -> None:

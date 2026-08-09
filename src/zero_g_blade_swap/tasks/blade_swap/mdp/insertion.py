@@ -625,6 +625,60 @@ def insertion_timeout_error_penalty(
     return timed_out * remaining / float(env.step_dt)
 
 
+BLADE_CONTACT_SENSOR = "blade_contact"
+
+
+def blade_contact_force(env, sensor_name: str = BLADE_CONTACT_SENSOR) -> torch.Tensor:
+    """Largest net contact force on any blade body this control step, in newtons.
+
+    Returns zeros when the task carries no contact sensor, so terms that read it
+    stay safe on configurations that do not pay for contact reporting.
+    """
+
+    sensor = env.scene.sensors.get(sensor_name)
+    if sensor is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    forces = sensor.data.net_forces_w
+    if forces is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    return torch.linalg.vector_norm(forces, dim=-1).amax(dim=-1)
+
+
+def contact_force_penalty(
+    env,
+    free_force_n: float = 5.0,
+    force_scale_n: float = 20.0,
+    sensor_name: str = BLADE_CONTACT_SENSOR,
+) -> torch.Tensor:
+    """Charge for contact load above a free allowance.
+
+    Insertion through real rails cannot be contact-free, so light contact is
+    free and the cost grows quadratically past ``free_force_n``. Rewarding zero
+    contact instead would pay the policy to stop short of the slot.
+    """
+
+    excess = ((blade_contact_force(env, sensor_name) - free_force_n) / max(force_scale_n, 1.0e-6)).clamp_min(0.0)
+    return excess.square().clamp(max=25.0)
+
+
+def excessive_contact_force(
+    env,
+    force_limit_n: float = 60.0,
+    sensor_name: str = BLADE_CONTACT_SENSOR,
+) -> torch.Tensor:
+    """Abort an insertion that exceeds the damage-proxy force budget.
+
+    This is the simulated stand-in for a real servicing arm's force limit: stop
+    rather than push through a jam that would deform a connector.
+    """
+
+    return blade_contact_force(env, sensor_name) > force_limit_n
+
+
+def excessive_contact_force_reward(env) -> torch.Tensor:
+    return env.termination_manager.get_term("excessive_contact_force").to(torch.float32) / float(env.step_dt)
+
+
 def insertion_non_finite_state(env) -> torch.Tensor:
     robot = env.scene["robot"]
     blade_position, blade_orientation = attached_blade_pose_world(env)
@@ -754,6 +808,10 @@ __all__ = [
     "SecuredBladeConstraint",
     "attached_blade_pose_world",
     "attached_blade_velocity",
+    "blade_contact_force",
+    "contact_force_penalty",
+    "excessive_contact_force",
+    "excessive_contact_force_reward",
     "elapsed_time_penalty",
     "contact_insertion_success_mask",
     "contact_insertion_success_reward",

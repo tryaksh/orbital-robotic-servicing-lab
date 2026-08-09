@@ -11,6 +11,14 @@ from pathlib import Path
 import jinja2  # Preload before Kit extensions to avoid a partially initialized module.
 from isaaclab.app import AppLauncher
 
+# Tasks that expose cumulative robustness profiles.
+ROBUST_FAMILY_TASKS = (
+    "Insertion-Robust",
+    "Insertion-Contact",
+    "Insertion-RigidGrasp",
+    "Insertion-ForceLimited",
+)
+
 assert hasattr(jinja2, "Environment"), "The Jinja2 installation is incomplete."
 
 
@@ -177,7 +185,7 @@ def main() -> None:
         env_cfg = parse_env_cfg(args.task, device=rl_device, num_envs=args.num_envs)
         if args.robustness_level is not None:
             valid_profile_task = any(
-                label in args.task for label in ("Insertion-Robust", "Insertion-Contact", "Insertion-RigidGrasp")
+                label in args.task for label in ROBUST_FAMILY_TASKS
             )
             if not valid_profile_task:
                 raise ValueError("--robustness_level is valid only for a robust/contact insertion task")
@@ -219,7 +227,7 @@ def main() -> None:
         print(f"[INFO] Created Gym environment for {args.task}")
         if args.smoke:
             smoke_observations, _ = env.reset()
-            if any(label in args.task for label in ("Insertion-Robust", "Insertion-Contact", "Insertion-RigidGrasp")):
+            if any(label in args.task for label in ROBUST_FAMILY_TASKS):
                 _validate_robust_smoke_contract(env, int(env_cfg.robustness_level))
             if not all(torch.isfinite(value).all() for value in smoke_observations.values()):
                 raise RuntimeError("Smoke reset produced a non-finite observation")

@@ -42,18 +42,36 @@ BLADE_MASS_FIELD = "blade_mass_kg"
 PEAK_CONTACT_FORCE_FIELD = "peak_contact_force_n"
 CONTACT_IMPULSE_FIELD = "contact_impulse_ns"
 
-# Highest priority first.  A physics blow-up or a mount failure in the same
-# control step as a geometric success must never be reported as a success.
-TERMINATION_PRIORITY = (
+UNCATEGORIZED_TERMINATION = "uncategorized"
+
+# Recorded rows store the termination reason as an index into this tuple, and
+# published evidence files already contain those indices.  Only ever *append*
+# here; reordering would silently re-label every archived run.
+TERMINATION_REASONS = (
     "non_finite",
     "mount_unstable",
     "insertion_failed",
     "insertion_success",
     "time_out",
+    UNCATEGORIZED_TERMINATION,
+    "excessive_contact_force",
 )
-UNCATEGORIZED_TERMINATION = "uncategorized"
-TERMINATION_REASONS = (*TERMINATION_PRIORITY, UNCATEGORIZED_TERMINATION)
+
+# Highest priority first, independent of the storage order above.  A physics
+# blow-up, a mount failure, or a force-limit abort in the same control step as a
+# geometric success must never be reported as a success.
+TERMINATION_PRIORITY = (
+    "non_finite",
+    "mount_unstable",
+    "excessive_contact_force",
+    "insertion_failed",
+    "insertion_success",
+    "time_out",
+)
 INSTABILITY_TERMINATIONS = ("non_finite", "mount_unstable")
+# A force-limit abort is a deliberate safety stop, not a solver failure, so it
+# is counted separately from instability.
+SAFETY_ABORT_TERMINATIONS = ("excessive_contact_force",)
 SUCCESS_TERMINATION = "insertion_success"
 
 # Distributions worth reporting; ``success`` and ``termination_reason`` are
@@ -256,6 +274,7 @@ def summarize_terminal_episodes(
         if count:
             reasons[reason] = count
     instability = sum(reasons.get(name, 0) for name in INSTABILITY_TERMINATIONS)
+    safety_aborts = sum(reasons.get(name, 0) for name in SAFETY_ABORT_TERMINATIONS)
 
     metric_columns = [name for name in metric_fields if name in names]
     # Check finiteness over physical and categorical columns only.  Optional
@@ -269,6 +288,7 @@ def summarize_terminal_episodes(
         "success_rate_wilson_95": {"low": low, "high": high},
         "termination_reasons": reasons,
         "instability_terminations": instability,
+        "safety_abort_terminations": safety_aborts,
         "non_finite_metric_episodes": int((~np.isfinite(table[:, checked])).any(axis=1).sum()),
         "terminal_metrics": {name: summarize_distribution(table[:, names.index(name)]) for name in metric_columns},
     }
@@ -378,6 +398,7 @@ __all__ = [
     "DEFAULT_METRIC_FIELDS",
     "INSTABILITY_TERMINATIONS",
     "NORMAL_95_PERCENT_Z",
+    "SAFETY_ABORT_TERMINATIONS",
     "SUCCESS_TERMINATION",
     "TERMINAL_METRIC_FIELDS",
     "TERMINATION_PRIORITY",

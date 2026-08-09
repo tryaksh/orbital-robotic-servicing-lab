@@ -148,6 +148,15 @@ from zero_g_blade_swap.tasks.blade_swap.agents import register_rl_games_networks
 from zero_g_blade_swap.tasks.blade_swap.mdp.terminal_metrics import InsertionTerminalMetrics
 
 
+# Tasks that expose cumulative robustness profiles and a mount-stability term.
+ROBUST_FAMILY_TASKS = (
+    "Insertion-Robust",
+    "Insertion-Contact",
+    "Insertion-RigidGrasp",
+    "Insertion-ForceLimited",
+)
+
+
 def _checkpoint() -> Path:
     if args.checkpoint is not None:
         path = args.checkpoint.expanduser().resolve()
@@ -156,7 +165,7 @@ def _checkpoint() -> Path:
         return path
     default_experiment = (
         "zero_g_blade_insertion_rigid_grasp"
-        if "Insertion-RigidGrasp" in args.task
+        if "Insertion-RigidGrasp" in args.task or "Insertion-ForceLimited" in args.task
         else "zero_g_blade_insertion_contact"
         if "Insertion-Contact" in args.task
         else "zero_g_blade_insertion_robust"
@@ -340,7 +349,7 @@ def main() -> dict[str, object]:
         env_cfg = parse_env_cfg(args.task, device=rl_device, num_envs=args.num_envs)
         if args.robustness_level is not None:
             if not any(
-                label in args.task for label in ("Insertion-Robust", "Insertion-Contact", "Insertion-RigidGrasp")
+                label in args.task for label in ROBUST_FAMILY_TASKS
             ):
                 raise ValueError("--robustness_level is valid only for a robust or contact insertion task")
             env_cfg.configure_robustness(args.robustness_level)
@@ -348,7 +357,9 @@ def main() -> dict[str, object]:
         # Stress knobs must be applied after configure_robustness, which rebuilds
         # the event configuration and would otherwise discard them.
         stress = _apply_stress(env_cfg)
-        if args.contact_metrics:
+        if args.contact_metrics and getattr(env_cfg.scene, "blade_contact", None) is not None:
+            print("[INFO] Task already reports blade contacts; --contact_metrics is redundant")
+        elif args.contact_metrics:
             if "Insertion" not in args.task:
                 raise ValueError("--contact_metrics is valid only for an insertion task")
             # PhysX already solves these contacts; this only asks it to report
@@ -384,7 +395,7 @@ def main() -> dict[str, object]:
         insertion_task = "Insertion" in args.task
         agent_task = (
             "Isaac-ZeroG-Blade-Insertion-RigidGrasp-v0"
-            if "Insertion-RigidGrasp" in args.task
+            if "Insertion-RigidGrasp" in args.task or "Insertion-ForceLimited" in args.task
             else "Isaac-ZeroG-Blade-Insertion-Contact-v0"
             if "Insertion-Contact" in args.task
             else "Isaac-ZeroG-Blade-Insertion-Robust-v0"
@@ -472,18 +483,9 @@ def main() -> dict[str, object]:
         player.get_batch_size(obs, 1)
         step = 0
         dt = env.unwrapped.step_dt
-        termination_names = (
-            (
-                ("insertion_success", "time_out", "insertion_failed", "mount_unstable", "non_finite")
-                if any(
-                    label in args.task
-                    for label in ("Insertion-Robust", "Insertion-Contact", "Insertion-RigidGrasp")
-                )
-                else ("insertion_success", "time_out", "insertion_failed", "non_finite")
-            )
-            if insertion_task
-            else ("full_success", "time_out", "blade_lost", "mount_unstable", "non_finite")
-        )
+        # Read the terms the task actually declares. A hardcoded list silently
+        # drops any new termination, such as a force-limit abort.
+        termination_names = tuple(env.unwrapped.termination_manager.active_terms)
         termination_counts = {name: 0 for name in termination_names}
         failure_condition_counts: dict[str, int] = {}
         episodes_completed = 0
@@ -500,7 +502,7 @@ def main() -> dict[str, object]:
                 _robust_parameter_values(env)
                 if any(
                     label in args.task
-                    for label in ("Insertion-Robust", "Insertion-Contact", "Insertion-RigidGrasp")
+                    for label in ROBUST_FAMILY_TASKS
                 )
                 else {}
             )
@@ -615,7 +617,7 @@ def main() -> dict[str, object]:
             result["timeout_failed_conditions"] = {name: int(count.item()) for name, count in timeout_failures.items()}
             result["failure_condition_counts"] = failure_condition_counts
             if any(
-                label in args.task for label in ("Insertion-Robust", "Insertion-Contact", "Insertion-RigidGrasp")
+                label in args.task for label in ROBUST_FAMILY_TASKS
             ):
                 result["randomization_buckets"] = _summarize_robust_buckets(robust_bucket_stats)
         else:
