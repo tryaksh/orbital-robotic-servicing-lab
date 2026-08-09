@@ -216,6 +216,51 @@ These are simulated contacts against primitive rail geometry with no connector,
 latch, chamfer, or measured force-displacement curve. Treat them as a relative
 damage proxy for comparing policies, not an absolute force budget for hardware.
 
+## Force-limited insertion: a negative result
+
+Contact load was measured but not constrained, so two force-aware policies were
+fine-tuned from the Level-2 checkpoint and all three were judged on the same
+force-limited task, 4,500+ episodes each, three stages by three held-out seeds.
+Observations and actions are unchanged throughout, so every policy is the same
+network shape.
+
+| Policy | Success | Aborts | Peak force mean | p95 | max | Impulse p95 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Baseline, no force objective | 99.98% | 1 | 6.64 N | 16.73 N | 67.97 N | 16.10 N·s |
+| Mild penalty (5 N free, 60 N abort) | 100% | 0 | 6.62 N | 16.83 N | 57.57 N | 16.11 N·s |
+| Strict penalty (1.5 N free, 30 N abort) | 100% | 0 | 6.47 N | 16.06 N | 58.22 N | 16.18 N·s |
+
+Reports: `evidence/force_limit_baseline_l2.json`,
+`evidence/force_limited_ep2500_certification.json`,
+`evidence/force_strict_ep2500_certification.json`.
+
+**Reward shaping on contact force did not work here.** The mild profile was too
+weak by construction: at the measured median contact of 4.7 N its penalty is
+exactly zero, and at p95 it is 0.17 per step against a success reward of 35. The
+strict profile fixed that arithmetic, charging about 19.5 per step at p95, the
+same order as the success term. It still moved almost nothing: mean fell 2.6%,
+p95 fell 4%, impulse and cycle time did not move at all. The only real change is
+the worst case, and that is the abort termination clipping the tail rather than
+the policy learning to be gentle.
+
+Two explanations fit the data, and they compound:
+
+1. **The policy cannot perceive what it is being asked to regulate.** Contact
+   force is not in the observation space, so PPO can only reduce it by changing
+   state-conditioned motion. If contact is close to a deterministic function of
+   geometry and approach, there is no gradient to exploit. This is the ordinary
+   robotics lesson that force control needs force feedback.
+2. **Much of the contact looks irreducible for this action space.** Near-start
+   episodes sit at about 4 N mean and never go lower across all three policies,
+   which is consistent with a geometric floor: a blade crossing a 1.5 mm
+   clearance slot under position-based differential IK has to touch the rails.
+
+The next experiment follows directly: put contact force into the observation
+space, or replace position-based IK with an admittance or impedance action
+space, and retrain rather than fine-tune, because either change alters the
+policy interface. Do not simply raise the penalty weight again; the strict
+profile already shows that is not the binding constraint.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300

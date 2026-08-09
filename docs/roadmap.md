@@ -12,14 +12,18 @@
    the binding axis (half-success near 7× trained noise, failing by lateral
    divergence); blade mass is not a meaningful axis in this regime. See
    `docs/status.md`.
-5. **Constrain contact force.** Measurement is done (2026-08-09): peak force is
-   recorded per episode and rises about sevenfold from the near start to the
-   full start while success stays 100%, so success rate hides contact load
-   entirely. Now make it a first-class objective: penalize peak force or impulse
-   in the reward, add a force-limit termination and abort-and-retry, and report
-   the success/force Pareto front instead of success alone. This is the
-   difference between an academic insertion demo and an industrial one.
-6. **Resolve L3 physically before training.** Plot rail force, blade velocity,
+5. ~~**Constrain contact force by reward shaping.**~~ Tried 2026-08-09 and it did
+   not work. A force budget and abort exist and hold 100% success, but two
+   penalty strengths changed mean contact by 2.6% and impulse not at all. See
+   `docs/status.md` for the arithmetic and the two surviving hypotheses.
+6. **Give the policy force feedback, or change the action space.** The evidence
+   says the policy cannot regulate a quantity it cannot perceive, and that some
+   contact is geometrically irreducible under position-based differential IK.
+   Put contact force or a wrist wrench estimate into the observation space, or
+   move to an admittance/impedance action space, and retrain rather than
+   fine-tune, because either change alters the policy interface. Do not just
+   raise the penalty weight again.
+7. **Resolve L3 physically before training.** Plot rail force, blade velocity,
    contact impulse, and action versus time. Check whether the stiction
    implementation injects energy or chatters at zero velocity. Prefer a
    continuous, measured friction/connector force curve and force/admittance-
@@ -27,22 +31,22 @@
    first: the envelope sweep showed lateral divergence, not orientation, is what
    actually terminates failing episodes, even though orientation consumes 97.8%
    of its tolerance at Level 2.
-7. **Add industrially meaningful hardware proxies.** Replace primitive
+8. **Add industrially meaningful hardware proxies.** Replace primitive
    rail/handle geometry with measured, non-proprietary CAD; add chamfers,
    latch/connector engagement, wrench sensing, peak force/impulse limits, and
    abort/recovery behavior.
-8. **Learn grasp/extraction as a separate skill.** Validate force closure and
+9. **Learn grasp/extraction as a separate skill.** Validate force closure and
    axial pull with real pad collision before PPO. Do not remove the fixed joint
    from insertion until that gate passes.
-9. **Compose skills under a task manager.** Prefer separately validated
+10. **Compose skills under a task manager.** Prefer separately validated
    reach/grasp/extract/stow/insert policies over one monolithic sparse-reward
    policy.
-10. **Perception and adaptation.** Collect RGB/proprio/action data from the
+11. **Perception and adaptation.** Collect RGB/proprio/action data from the
    robust state policy, behavior-clone a vision policy, then fine-tune with
    asymmetric PPO. Keep ground-truth blade pose out of the deployable actor.
    Consider a real-world residual/adaptation layer only after safe hardware
    instrumentation exists.
-11. **Portfolio release.** Publish a short side-by-side video, learning curve,
+12. **Portfolio release.** Publish a short side-by-side video, learning curve,
    held-out failure montage, benchmark JSON, model card, and the one-page claim
    versus evidence table. Put checkpoints and videos in GitHub Releases, not Git
    history.

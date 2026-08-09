@@ -47,7 +47,8 @@ insertion of an already-secured replacement blade into a rack in microgravity**.
 | Accuracy independent of the success criterion | Because every certification episode succeeded, the terminal error distribution is bounded by the success box. It shows where inside tolerance the policy lands, not error it was free to exceed |
 | Robustness to rail stiction or mount compliance | Level 3 stiction reaches valid geometry but cannot settle below velocity limits and is documented as blocked, not hidden. Level 4 floating-mount wobble is blocked behind it |
 | Payload-mass robustness in any meaningful sense | The task is nearly mass-insensitive in this regime, so the mass sweep is flat. A real mass axis needs faster motion, real grasp friction where weight sets slip margin, or gravity |
-| Damage safety | Contact force is now measured but still not *limited*. There is no force budget, no abort-and-retry, and no connector model, so nothing here shows the insertion would not bend a real pin |
+| Damage safety | A force budget and abort now exist and hold at 100% success, but reward shaping did **not** reduce typical contact load. Only the worst case moved, and that is the abort clipping the tail. There is still no connector model, so nothing here shows the insertion would not bend a real pin |
+| That force can be regulated without force feedback | Two penalty strengths, the stronger charging the same order as the success reward, changed mean contact by 2.6% and impulse not at all. The evidence says force control needs force sensing, which this policy does not have |
 | Cross-seed training repeatability | Each promoted policy comes from one training seed. The three certification seeds vary *evaluation* initial conditions only |
 | Perception | The policy consumes ground-truth blade pose. The vision student is scaffolding and has not been trained from the promoted policy |
 | Industrial fidelity | Rack, blade, and rail are primitive proxies with no connector, latch, cable, chamfer, measured tolerance, or force-displacement curve |
@@ -78,6 +79,10 @@ insertion of an already-secured replacement blade into a rack in microgravity**.
 - **A failed prediction is recorded, not quietly dropped.** Margin analysis said
   orientation would break first. The sweep showed lateral divergence. Both are
   in `docs/status.md`.
+- **A failed experiment is published with its diagnosis.** Force-penalty shaping
+  did not reduce contact load at either strength tried. The result, the
+  arithmetic showing why the first attempt was too weak, and the two hypotheses
+  that survive the second attempt are all in `docs/status.md`.
 
 ## Honest one-line summary
 
