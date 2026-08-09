@@ -40,6 +40,7 @@ STAGE_METRIC_FIELDS = (
     "blade_linear_velocity_mps",
     "blade_angular_velocity_radps",
     "cycle_time_s",
+    "peak_contact_force_n",
 )
 
 

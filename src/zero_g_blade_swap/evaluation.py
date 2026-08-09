@@ -39,6 +39,8 @@ TERMINAL_METRIC_FIELDS = (
 # Columns a task may add on top of the core row.  Recording them is optional,
 # so reports must align runs by column *name* rather than by position.
 BLADE_MASS_FIELD = "blade_mass_kg"
+PEAK_CONTACT_FORCE_FIELD = "peak_contact_force_n"
+CONTACT_IMPULSE_FIELD = "contact_impulse_ns"
 
 # Highest priority first.  A physics blow-up or a mount failure in the same
 # control step as a geometric success must never be reported as a success.
@@ -66,6 +68,10 @@ DEFAULT_METRIC_FIELDS = (
     "tool_to_handle_orientation_rad",
     "control_steps",
     "cycle_time_s",
+    # Present only when a run enabled contact reporting. Columns a run did not
+    # record are skipped, so this list is safe for every run.
+    PEAK_CONTACT_FORCE_FIELD,
+    CONTACT_IMPULSE_FIELD,
 )
 
 CATEGORICAL_FIELDS = ("success", "termination_reason", "curriculum_stage")
@@ -366,6 +372,8 @@ def round_floats(value: Any, digits: int = 6) -> Any:
 __all__ = [
     "BLADE_MASS_FIELD",
     "BUCKET_LABELS",
+    "CONTACT_IMPULSE_FIELD",
+    "PEAK_CONTACT_FORCE_FIELD",
     "CATEGORICAL_FIELDS",
     "DEFAULT_METRIC_FIELDS",
     "INSTABILITY_TERMINATIONS",

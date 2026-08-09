@@ -50,6 +50,14 @@ def _parser() -> argparse.ArgumentParser:
         help="Insertion profile: 0=tight/6D, 1=pose, 2=mass, 3=friction, 4=mount wobble.",
     )
     parser.add_argument(
+        "--contact_metrics",
+        action="store_true",
+        help=(
+            "Attach a contact sensor to the blade and record peak contact force and impulse per episode. "
+            "Off by default because contact reporting costs throughput; training never enables it."
+        ),
+    )
+    parser.add_argument(
         "--pose_noise_scale",
         type=float,
         default=1.0,
@@ -122,6 +130,8 @@ import numpy as np
 import torch
 from rl_games.common import env_configurations, vecenv
 from rl_games.torch_runner import Runner
+
+from isaaclab.sensors import ContactSensorCfg
 
 from isaaclab_rl.rl_games import RlGamesGpuEnv, RlGamesVecEnvWrapper
 from isaaclab_tasks.utils import load_cfg_from_registry, parse_env_cfg
@@ -338,6 +348,22 @@ def main() -> dict[str, object]:
         # Stress knobs must be applied after configure_robustness, which rebuilds
         # the event configuration and would otherwise discard them.
         stress = _apply_stress(env_cfg)
+        if args.contact_metrics:
+            if "Insertion" not in args.task:
+                raise ValueError("--contact_metrics is valid only for an insertion task")
+            # PhysX already solves these contacts; this only asks it to report
+            # them. The sensor is evaluation-only, so training throughput and
+            # the trained policy are untouched.
+            env_cfg.scene.spare_blade.spawn.activate_contact_sensors = True
+            # Fabric-cloned prims do not carry the contact-report API, so the
+            # sensor would resolve zero bodies on every clone but env 0.
+            env_cfg.scene.clone_in_fabric = False
+            env_cfg.scene.blade_contact = ContactSensorCfg(
+                prim_path="{ENV_REGEX_NS}/SpareBlade",
+                update_period=0.0,
+                history_length=0,
+            )
+            print("[INFO] Contact reporting enabled on the blade")
         inspection_views = {
             "grasp": ((0.18, -1.05, 1.02), (0.52, 0.0, 0.72)),
             "side": ((0.52, -1.20, 0.82), (0.58, 0.0, 0.72)),
@@ -479,6 +505,10 @@ def main() -> dict[str, object]:
                 else {}
             )
             with torch.inference_mode():
+                if terminal_metrics is not None:
+                    # Sample the contact left by the previous step before this
+                    # one overwrites it; the terminal step is folded in at reset.
+                    terminal_metrics.accumulate(env.unwrapped)
                 network_obs = player.obs_to_torch(obs)
                 actions = player.get_action(network_obs, is_deterministic=True)
                 if not bool(torch.isfinite(actions).all()):
