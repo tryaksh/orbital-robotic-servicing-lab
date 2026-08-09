@@ -12,12 +12,13 @@
    the binding axis (half-success near 7× trained noise, failing by lateral
    divergence); blade mass is not a meaningful axis in this regime. See
    `docs/status.md`.
-5. **Make contact force a measured quantity, then a constraint.** PhysX solves
-   contact forces but nothing observes, limits, or reports them, so there is no
-   damage-safety claim at all. Add a contact sensor on the blade, record peak
-   force and accumulated impulse into the terminal metric row, then train a
-   force-limited variant with abort-and-retry. This is the difference between an
-   academic insertion demo and an industrial one.
+5. **Constrain contact force.** Measurement is done (2026-08-09): peak force is
+   recorded per episode and rises about sevenfold from the near start to the
+   full start while success stays 100%, so success rate hides contact load
+   entirely. Now make it a first-class objective: penalize peak force or impulse
+   in the reward, add a force-limit termination and abort-and-retry, and report
+   the success/force Pareto front instead of success alone. This is the
+   difference between an academic insertion demo and an industrial one.
 6. **Resolve L3 physically before training.** Plot rail force, blade velocity,
    contact impulse, and action versus time. Check whether the stiction
    implementation injects energy or chatters at zero velocity. Prefer a

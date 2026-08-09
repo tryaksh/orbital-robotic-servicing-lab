@@ -177,6 +177,45 @@ task is insensitive to mass, not because the policy learned mass robustness. A
 mass axis only becomes meaningful with faster motion, real grasp friction where
 weight sets slip margin, or gravity.
 
+## Contact force, the damage proxy
+
+PhysX solved these contacts all along; until now nothing observed or reported
+them, so the project could not answer the first question a servicing reviewer
+asks: would this insertion damage the connector. `play.py --contact_metrics`
+attaches a contact sensor to the blade and records peak contact force and
+accumulated impulse per episode. It is off by default, so training throughput
+and the trained policy are unaffected.
+
+Promoted Level-2 policy, three stages by three held-out seeds, 4,513 episodes,
+all successful:
+
+| Metric | mean | p50 | p95 | max |
+| --- | ---: | ---: | ---: | ---: |
+| Peak contact force (N) | 6.73 | 4.71 | 16.56 | 66.36 |
+| Contact impulse (N·s) | 6.96 | 4.67 | 16.29 | 19.91 |
+
+Peak force by reset distance:
+
+| Stage | Episodes | mean | p95 | max |
+| --- | ---: | ---: | ---: | ---: |
+| Near / stage 0 | 1,503 | 4.06 | 6.70 | 9.75 |
+| Medium / stage 1 | 1,510 | 5.10 | 9.02 | 17.49 |
+| Full / stage 2 | 1,500 | 11.03 | 31.60 | 66.36 |
+
+Report: `evidence/rigid_grasp_l2_contact_forces.json`.
+
+**Contact load scales strongly with approach length.** Worst-case peak force
+rises about sevenfold from the near start to the full start, and the single
+worst full-distance episode reaches 66 N against a 9.75 N worst case at the near
+start. Success rate hides this completely: every one of these episodes
+succeeded. Nothing in the reward, the termination set, or the action space
+currently bounds contact force, so the policy has no reason to prefer a gentle
+insertion over a hard one.
+
+These are simulated contacts against primitive rail geometry with no connector,
+latch, chamfer, or measured force-displacement curve. Treat them as a relative
+damage proxy for comparing policies, not an absolute force budget for hardware.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300

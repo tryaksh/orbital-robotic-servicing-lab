@@ -32,8 +32,10 @@ near 7× trained noise, failing by lateral divergence, never by numerical
 instability), while blade mass is not a meaningful axis in this regime, which
 weakens the Level-2 mass claim. Level 3 stiction is physically blocked. The
 blade is held by a PhysX fixed joint standing in for an already-secured grasp;
-that is not learned grasping. Contact forces are solved but never observed or
-limited, so there is no damage-safety claim. Full numbers, limitations, and the
+that is not learned grasping. Contact force is now measured per episode
+(Level-2 peak p95 16.6 N, max 66.4 N, rising about sevenfold with approach
+length while success stays 100%) but is not yet constrained, so there is still
+no damage-safety claim. Full numbers, limitations, and the
 pre-existing `train.py --smoke` probe defect live in `docs/status.md`.
 
 ## Operating rules
