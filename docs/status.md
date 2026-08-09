@@ -261,6 +261,128 @@ space, and retrain rather than fine-tune, because either change alters the
 policy interface. Do not simply raise the penalty weight again; the strict
 profile already shows that is not the binding constraint.
 
+## Force feedback: the diagnosis was half right
+
+The force-shaping negative result above left two hypotheses: the policy cannot
+regulate a force it cannot sense, and some contact is geometrically
+irreducible. Both were tested at once by adding contact force to the
+observation vector and retraining.
+
+Seven values were added to the 50-value observation, taking it to 57: the
+contact force in tool axes, the same force through a 100 ms first-order filter
+standing in for a real force/torque signal chain, and the exact scalar the
+penalty and the abort key on. Nothing else changed. Because the observation
+width changed, no earlier checkpoint could be resumed.
+
+A matched **control** was trained as well: the identical strict force task with
+the observation left alone. Both arms were trained from scratch on the same
+L0 → L1 → L2 schedule that produced the promoted policy (700 / +500 / +600 PPO
+epochs, 512 environments, training seed 65, one shared PPO configuration), so
+the only difference between them is whether the policy can sense contact. The
+control exists because the earlier force policies were *fine-tuned*; without it,
+any difference could be attributed to training from scratch instead.
+
+Both arms were judged under the 60 N abort limit every earlier force policy was
+measured under, on held-out seeds 1065/2065/3065:
+
+| Policy | Episodes | Success | Aborts | Peak force mean / p95 / max | Impulse mean / p50 / p95 | Cycle p50 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Control, no force feedback | 4,524 | 100% | 0 | 6.31 / 15.78 / 59.71 N | 7.55 / 6.26 / 16.55 N·s | 3.30 s |
+| Force feedback | 4,518 | 99.93% | 3 | 6.24 / 14.70 / 66.10 N | 3.06 / 0.70 / 9.94 N·s | 3.47 s |
+
+Reports: `evidence/force_feedback_control_certification.json`,
+`evidence/force_feedback_certification.json`.
+
+**Force feedback moved contact impulse and did not move peak force.** Impulse
+fell 59% at the mean, 89% at the median, and 40% at p95, while peak contact
+force changed by roughly 1% at the mean and stayed identical per stage (full
+distance: 10.55 N mean without feedback, 10.48 N with). Mean cycle time was
+unchanged, 3.87 s against 3.89 s, so this is not speed traded for gentleness.
+No earlier intervention moved impulse at all: it sat at 16.1, 16.1, and 16.2 N·s
+p95 across the baseline and both penalty strengths.
+
+That splits the two hypotheses cleanly, and **both turn out to be correct about
+different quantities**:
+
+- *Sensing was the binding constraint on sustained contact.* Impulse is the
+  accumulated force-time the blade spends rubbing the rails. Once the policy
+  could see contact, it learned to stop rubbing, and the median episode now
+  delivers 0.70 N·s where the control delivers 6.26.
+- *Peak force is geometrically irreducible in this action space.* The first
+  strike as the blade crosses a 1.5 mm clearance slot under position-based
+  differential IK did not change. Testing that further needs the other half of
+  roadmap item 6, an admittance or impedance action space, not more sensing.
+
+The cost is honest and small: three force-limit aborts in 4,518 episodes, all at
+full reset distance, so the force-feedback policy is 99.93% rather than 100% and
+its worst case is slightly worse (66.10 N against 59.71 N). It clears the 0.95
+promotion gate with zero instability and zero non-finite terminations, but it no
+longer holds the perfect record the earlier policies hold. A policy that
+regulates sustained load and occasionally trips a safety limit is the more
+useful servicing behaviour, but that is a judgement, not a measurement.
+
+## Learned grasping is blocked by a 165 mm tool-frame error, not by friction
+
+`docs/status.md` previously recorded only that the real Robotiq pad/handle
+contact task "failed its axial pull gate". `scripts/grasp_diagnostics.py`
+replaces that pass/fail with a measurement, and the measurement says the gate
+was never close to passing for a reason nobody had looked for.
+
+The script holds the arm still, closes the fingers, then applies a constant
+axial pull to the blade. Environment `i` takes one point of a 4 closure x 32
+force grid from 0 to 120 N, so 128 environments sweep the surface in one run.
+
+| Quantity | Measured |
+| --- | ---: |
+| Tool frame used by the IK, to actual finger-pad midpoint | 165.6 mm |
+| Finger-pad midpoint to handle centre | 164.6 mm |
+| Distance at which the pads could touch a 75 mm handle | 37.5 mm |
+| Environments with pads in reach of the handle | 0 of 128 |
+| Peak gripper drive torque, against a 10 N·m limit | 0.39 N·m |
+| Axial force held before slip | 0 N |
+| Axial force the promoted insertion policy's contact reaction demands | 66.4 N |
+
+Report: `evidence/grasp_axial_pull_gate.json`.
+
+**There is no grasp to characterise.** The finger pads settle 165 mm away from
+the handle and never touch it, the drive joints reach their commanded closure
+without developing torque, and the blade is a free-floating body in zero
+gravity. Its motion under load confirms this arithmetically rather than by
+inspection: 120 N on a 10 kg blade for 1.5 s predicts 13.5 m of free travel, and
+the measurement is 12.5 m. The earlier "failed pull gate" was not a weak grip.
+
+The root cause is a frame error, and it is present in the promoted task too. The
+tool offset is authored 190 mm along the wrist for the rigid-grasp task and
+179 mm for the contact task, while the real pad midpoint sits about 13 mm from
+`wrist_3_link`. Both configurations therefore drive a tool frame 165.6 mm away
+from the fingers that are supposed to be holding the blade. Two consequences:
+
+- **This is the PhysX startup warning, not a cosmetic issue.** The simulator
+  already reports that the fixed joint "connects disjoint transforms and will
+  snap them together". The disjoint distance is 165.6 mm. That warning was
+  filed as a frame-consistency cleanup; it is the same defect.
+- **`tool_to_handle_error_m` cannot detect a grasp problem.** In the rigid-grasp
+  task it measures exactly 0.0000 m, because the fixed joint welds the blade to
+  the tool frame that the metric compares against. It is a self-consistent
+  tautology, not an audit of a grip. `docs/claim_vs_evidence.md` already said
+  the near-zero value is "a property of that joint, not of a grip"; the number
+  behind that sentence is now measured.
+
+A secondary observation needs confirming before it is acted on: finger-pad body
+separation grows monotonically with the commanded value, from 0 mm at 0.00 rad
+through 42.7 mm at 0.45 to 58.9 mm at 0.60. The task calls 0.45 "pregrasp" and
+0.60 "closed", so the command it treats as closed separates the pad bodies
+further than the one it treats as open. That was measured between pad *body
+origins*, not certified pad faces, so it is a lead rather than a result.
+
+**What this does and does not invalidate.** It does not touch the promoted
+Level-0/1/2 insertion results. Those depend on blade-versus-slot geometry, rail
+contact, and blade dynamics, all of which are real, and the fixed joint is
+documented throughout as an abstraction rather than a grasp. What it invalidates
+is the assumption that the contact-grasp task was a nearly working grasp needing
+tuning. It is not: the gripper and the handle are not in the same place, so
+Phase-3 grasping starts with a geometry fix, not with PPO.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
@@ -297,11 +419,15 @@ Cumulative secured-grasp profiles:
 - The visible lower shelf collider is disabled in the rigid-grasp task. Tight
   floor contact plus randomized friction caused non-physical lateral ejection.
   Side rails remain physical. Re-enable only after geometry/contact calibration.
-- PhysX logs a startup warning that the fixed joint connects disjoint transforms
-  and will snap them together. The settled gap is effectively zero, but the
-  authored/reset joint frames should eventually be made consistent.
+- The tool frame the differential IK drives sits 165.6 mm from the physical
+  Robotiq finger pads in both the rigid-grasp and contact tasks. This is the
+  cause of the PhysX "disjoint body transforms" startup warning and of the
+  failed grasp gate; the blade hangs 165 mm below the fingers that appear to
+  hold it. Insertion is unaffected because the fixed joint welds the blade to
+  the tool frame, but no physical grasp can work until this is corrected.
 - The fixed joint is a task abstraction. The real Robotiq pad/handle contact
-  task failed its axial pull gate and must not be called learned grasping.
+  task holds 0 N of axial pull because the pads never reach the handle, and must
+  not be called learned grasping.
 - Primitive blade/rack geometry has no connector, latch, cable, chamfer,
   measured tolerance, or force-displacement curve.
 - No wrist force/torque sensing, force limit, damage proxy, real UR10e, HIL rig,

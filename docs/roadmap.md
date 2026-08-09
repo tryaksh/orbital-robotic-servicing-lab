@@ -16,14 +16,32 @@
    not work. A force budget and abort exist and hold 100% success, but two
    penalty strengths changed mean contact by 2.6% and impulse not at all. See
    `docs/status.md` for the arithmetic and the two surviving hypotheses.
-6. **Give the policy force feedback, or change the action space.** The evidence
-   says the policy cannot regulate a quantity it cannot perceive, and that some
-   contact is geometrically irreducible under position-based differential IK.
-   Put contact force or a wrist wrench estimate into the observation space, or
-   move to an admittance/impedance action space, and retrain rather than
-   fine-tune, because either change alters the policy interface. Do not just
-   raise the penalty weight again.
-7. **Resolve L3 physically before training.** Plot rail force, blade velocity,
+6. ~~**Give the policy force feedback.**~~ Done 2026-08-09, and it worked on one
+   axis of two. Seven contact-force values were added to the observation and the
+   policy was retrained from scratch against a matched no-feedback control on an
+   identical schedule. Contact impulse fell 59% at the mean and 89% at the
+   median; peak contact force did not move. Sensing was the binding constraint
+   on sustained rubbing, and peak force really is geometrically irreducible in
+   this action space. See `docs/status.md`.
+7. **Try an admittance or impedance action space.** This is the untested half of
+   the item above and the only remaining lever on *peak* contact force, which
+   force feedback left unchanged at about 10.5 N mean and 31 N p95 at full
+   reset distance. Replace position-based differential IK with a controller
+   whose commanded motion yields to measured force, and retrain; the action
+   interface changes, so no checkpoint can be resumed. Compare against
+   `evidence/force_feedback_certification.json` on identical axes.
+8. **Fix the 165.6 mm tool-frame error, then learn grasping.** Measured 2026-08-09
+   and blocking: the tool frame the IK drives is 165.6 mm from the physical
+   finger pads, so the pads never reach the handle and the axial pull gate holds
+   0 N of the 66.4 N it must hold. See `evidence/grasp_axial_pull_gate.json`.
+   In order: correct the tool offset against the real pad midpoint; re-verify
+   with `scripts/grasp_diagnostics.py` that the pads are within reach and that
+   drive torque rises off zero; confirm the finger command's sign and aperture
+   mapping, since pad-body separation currently *grows* with the value the task
+   calls "closed"; only then re-measure axial holding capacity and, if it clears
+   66.4 N, train a grasp policy. Do not remove the fixed joint from insertion
+   until that gate passes on three held-out seeds.
+9. **Resolve L3 physically before training.** Plot rail force, blade velocity,
    contact impulse, and action versus time. Check whether the stiction
    implementation injects energy or chatters at zero velocity. Prefer a
    continuous, measured friction/connector force curve and force/admittance-
@@ -31,22 +49,19 @@
    first: the envelope sweep showed lateral divergence, not orientation, is what
    actually terminates failing episodes, even though orientation consumes 97.8%
    of its tolerance at Level 2.
-8. **Add industrially meaningful hardware proxies.** Replace primitive
+10. **Add industrially meaningful hardware proxies.** Replace primitive
    rail/handle geometry with measured, non-proprietary CAD; add chamfers,
    latch/connector engagement, wrench sensing, peak force/impulse limits, and
    abort/recovery behavior.
-9. **Learn grasp/extraction as a separate skill.** Validate force closure and
-   axial pull with real pad collision before PPO. Do not remove the fixed joint
-   from insertion until that gate passes.
-10. **Compose skills under a task manager.** Prefer separately validated
+11. **Compose skills under a task manager.** Prefer separately validated
    reach/grasp/extract/stow/insert policies over one monolithic sparse-reward
    policy.
-11. **Perception and adaptation.** Collect RGB/proprio/action data from the
+12. **Perception and adaptation.** Collect RGB/proprio/action data from the
    robust state policy, behavior-clone a vision policy, then fine-tune with
    asymmetric PPO. Keep ground-truth blade pose out of the deployable actor.
    Consider a real-world residual/adaptation layer only after safe hardware
    instrumentation exists.
-12. **Portfolio release.** Publish a short side-by-side video, learning curve,
+13. **Portfolio release.** Publish a short side-by-side video, learning curve,
    held-out failure montage, benchmark JSON, model card, and the one-page claim
    versus evidence table. Put checkpoints and videos in GitHub Releases, not Git
    history.

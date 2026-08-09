@@ -6,14 +6,20 @@ gentle insertion. This profile adds the missing objective: contact load above a
 free allowance is penalised, and an episode that exceeds the force limit aborts
 instead of pushing through.
 
-Observations and actions are byte-identical to the rigid-grasp task, so a
-promoted Level-2 checkpoint can be fine-tuned here rather than retrained. The
-policy does not observe contact force; it has to learn a gentler motion, which
-is what a wrench-limited real controller would demand of it.
+The two penalty profiles below keep observations and actions byte-identical to
+the rigid-grasp task, so a promoted Level-2 checkpoint can be fine-tuned into
+them rather than retrained. Neither policy observes contact force; both had to
+learn a gentler motion blind, and measured contact barely moved.
+
+The force-feedback profile at the end of this file closes that gap by putting
+contact force into the observation vector. It is deliberately the *only* change
+from the strict profile, and it widens the observation, so its policies must be
+trained from scratch rather than resumed.
 """
 
 from __future__ import annotations
 
+from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.sensors import ContactSensorCfg
@@ -24,7 +30,10 @@ from .rigid_grasp_insertion_env_cfg import (
     RigidGraspInsertionRewardsCfg,
     ZeroGBladeRigidGraspInsertionEnvCfg,
 )
-from .robust_insertion_env_cfg import configure_insertion_play_presentation
+from .robust_insertion_env_cfg import (
+    RobustInsertionPolicyObsCfg,
+    configure_insertion_play_presentation,
+)
 from .scene_cfg import ZeroGRigidGraspInsertionSceneCfg
 
 # Measured Level-2 contact load, pooled over 4,513 successful episodes, was
@@ -146,9 +155,75 @@ class ZeroGBladeStrictForceLimitedInsertionPlayEnvCfg(ZeroGBladeStrictForceLimit
         configure_insertion_play_presentation(self)
 
 
+# The measured Level-2 peak-force p95 is 16.6 N, so dividing by 20 N puts the
+# ordinary working range inside the unit interval and leaves the 66 N worst case
+# well under the agent's 10.0 observation clip.
+FORCE_OBSERVATION_SCALE_N = 20.0
+# One control step is 33 ms, so a 100 ms constant averages roughly three steps:
+# enough to survive a single-step contact dropout, short enough that the policy
+# still sees a rail strike in the step it happens.
+FORCE_OBSERVATION_FILTER_S = 0.10
+
+
+@configclass
+class ForceFeedbackPolicyObsCfg(RobustInsertionPolicyObsCfg):
+    """The Level-2 observation vector plus seven contact-force values."""
+
+    contact_wrench = ObsTerm(
+        func=mdp.BladeContactWrenchObservation,
+        params={
+            "force_scale_n": FORCE_OBSERVATION_SCALE_N,
+            "filter_time_constant_s": FORCE_OBSERVATION_FILTER_S,
+        },
+    )
+
+
+@configclass
+class ForceFeedbackObservationsCfg:
+    policy: ForceFeedbackPolicyObsCfg = ForceFeedbackPolicyObsCfg()
+
+
+@configclass
+class ZeroGBladeForceFeedbackInsertionEnvCfg(ZeroGBladeStrictForceLimitedInsertionEnvCfg):
+    """Strict force-limited insertion by a policy that can sense contact.
+
+    Identical to :class:`ZeroGBladeStrictForceLimitedInsertionEnvCfg` in scene,
+    physics, actions, reward, and terminations. The only difference is that
+    contact force enters the observation vector, which is the single variable
+    this experiment tests. The wider observation forbids resuming any earlier
+    checkpoint, so a policy for this task must be trained from scratch.
+    """
+
+    observations: ForceFeedbackObservationsCfg = ForceFeedbackObservationsCfg()
+
+
+@configclass
+class ZeroGBladeForceFeedbackInsertionPlayEnvCfg(ZeroGBladeForceFeedbackInsertionEnvCfg):
+    """Evaluation profile: force feedback judged under the 60 N abort limit.
+
+    Every previously published force policy was measured on the 60 N task, so
+    this profile holds that limit rather than inheriting the 30 N training
+    abort. Aborting at 30 N here would truncate this policy's force
+    distribution and manufacture an improvement out of a termination rule.
+    """
+
+    terminations: ForceLimitedInsertionTerminationsCfg = ForceLimitedInsertionTerminationsCfg()
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.scene.num_envs = 1
+        configure_insertion_play_presentation(self)
+
+
 __all__ = [
     "CONTACT_FORCE_LIMIT_N",
+    "FORCE_OBSERVATION_FILTER_S",
+    "FORCE_OBSERVATION_SCALE_N",
     "STRICT_CONTACT_FORCE_LIMIT_N",
+    "ForceFeedbackObservationsCfg",
+    "ForceFeedbackPolicyObsCfg",
+    "ZeroGBladeForceFeedbackInsertionEnvCfg",
+    "ZeroGBladeForceFeedbackInsertionPlayEnvCfg",
     "ZeroGBladeStrictForceLimitedInsertionEnvCfg",
     "ZeroGBladeStrictForceLimitedInsertionPlayEnvCfg",
     "ForceLimitedInsertionRewardsCfg",

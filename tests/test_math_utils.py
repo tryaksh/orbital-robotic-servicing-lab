@@ -7,6 +7,8 @@ from zero_g_blade_swap.math_utils import (
     advance_swap_phase,
     axial_stiction_force,
     exponential_distance_reward,
+    exponential_moving_average,
+    first_order_filter_alpha,
     full_swap_success,
     gaussian_camera_noise,
     insertion_curriculum_probabilities,
@@ -126,7 +128,36 @@ def test_insertion_curriculum_retains_earlier_reset_stages() -> None:
         insertion_curriculum_probabilities(1, ((1, 0, 0), (0, 1, 1), (1, 1, 1)))
 
 
+def test_force_filter_alpha_matches_its_time_constant() -> None:
+    control_step = 1.0 / 30.0
+    alpha = first_order_filter_alpha(control_step, 0.10)
+    assert alpha == pytest.approx(1.0 - np.exp(-1.0 / 3.0))
+    # A step input must reach roughly 1 - 1/e of its final value after exactly
+    # one time constant, which is what makes the constant physically readable.
+    value = 0.0
+    for _ in range(3):
+        value = float(exponential_moving_average(value, 1.0, alpha))
+    assert value == pytest.approx(1.0 - np.exp(-1.0), abs=0.01)
+    # A shorter constant must track faster than a longer one.
+    assert first_order_filter_alpha(control_step, 0.05) > alpha
+
+
+def test_exponential_moving_average_is_batched_and_bounded() -> None:
+    filtered = exponential_moving_average([[0.0, 4.0, -2.0]], [[10.0, 4.0, 2.0]], 0.25)
+    np.testing.assert_allclose(filtered, [[2.5, 4.0, -1.0]])
+    # Alpha of one is a pass-through, so the term degrades to the raw signal.
+    np.testing.assert_allclose(exponential_moving_average([3.0], [-7.0], 1.0), [-7.0])
+
+
 def test_invalid_physical_inputs_raise() -> None:
+    with pytest.raises(ValueError):
+        first_order_filter_alpha(0.0, 0.1)
+    with pytest.raises(ValueError):
+        first_order_filter_alpha(1.0 / 30.0, -0.1)
+    with pytest.raises(ValueError):
+        exponential_moving_average([0.0], [1.0], 0.0)
+    with pytest.raises(ValueError):
+        exponential_moving_average([0.0], [1.0], 1.5)
     with pytest.raises(ValueError):
         exponential_distance_reward([-0.01])
     with pytest.raises(ValueError):

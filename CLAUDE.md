@@ -34,10 +34,15 @@ weakens the Level-2 mass claim. Level 3 stiction is physically blocked. The
 blade is held by a PhysX fixed joint standing in for an already-secured grasp;
 that is not learned grasping. Contact force is measured per episode (Level-2 peak
 p95 16.6 N, max 66.4 N, rising about sevenfold with approach length while
-success stays 100%). Constraining it by reward shaping was tried at two
-strengths and failed: mean contact moved 2.6%, impulse not at all. The evidence
-says the policy cannot regulate a force it cannot sense, so the next step is
-force feedback or an admittance action space, not a bigger penalty. Full numbers, limitations, and the
+success stays 100%). Reward shaping at two strengths failed to constrain it, but
+adding contact force to the observation and retraining from scratch against a
+matched control cut contact impulse 59% at the mean and 89% at the median while
+leaving peak force and cycle time unchanged: sensing binds sustained rubbing,
+and peak force is geometrically irreducible under position-based IK, so the
+remaining lever is an admittance action space. Learned grasping is blocked by a
+measured bug, not by training: the tool frame the IK drives sits 165.6 mm from
+the physical Robotiq pads, so the pads never reach the handle and hold 0 N of
+the 66.4 N required. Full numbers, limitations, and the
 pre-existing `train.py --smoke` probe defect live in `docs/status.md`.
 
 ## Operating rules
@@ -68,6 +73,8 @@ checkpoints, or every task file.
 | Physics gaps, missing measurements | `docs/sim2real_matrix.md` |
 | Public claim and commands | `README.md` |
 | Insertion task physics | `src/zero_g_blade_swap/tasks/blade_swap/rigid_grasp_insertion_env_cfg.py` |
+| Force penalties, force feedback | `src/zero_g_blade_swap/tasks/blade_swap/force_limited_insertion_env_cfg.py` |
+| Grasp physics before any grasp PPO | `scripts/grasp_diagnostics.py`, `evidence/grasp_axial_pull_gate.json` |
 | Rewards, terminations, curriculum | `src/zero_g_blade_swap/tasks/blade_swap/mdp/insertion.py` |
 | Evaluation statistics and gates | `src/zero_g_blade_swap/evaluation.py`, `scripts/aggregate_evaluation.py` |
 | Training and playback entry points | `scripts/train.py`, `scripts/play.py` |

@@ -155,7 +155,11 @@ ROBUST_FAMILY_TASKS = (
     "Insertion-RigidGrasp",
     "Insertion-ForceLimited",
     "Insertion-StrictForceLimited",
+    "Insertion-ForceFeedback",
 )
+
+# Task labels that share the rigid-grasp PPO configuration and checkpoint tree.
+RIGID_GRASP_AGENT_TASKS = ("Insertion-RigidGrasp", "ForceLimited", "ForceFeedback")
 
 
 def _checkpoint() -> Path:
@@ -166,7 +170,7 @@ def _checkpoint() -> Path:
         return path
     default_experiment = (
         "zero_g_blade_insertion_rigid_grasp"
-        if "Insertion-RigidGrasp" in args.task or "ForceLimited" in args.task
+        if any(label in args.task for label in RIGID_GRASP_AGENT_TASKS)
         else "zero_g_blade_insertion_contact"
         if "Insertion-Contact" in args.task
         else "zero_g_blade_insertion_robust"
@@ -396,7 +400,7 @@ def main() -> dict[str, object]:
         insertion_task = "Insertion" in args.task
         agent_task = (
             "Isaac-ZeroG-Blade-Insertion-RigidGrasp-v0"
-            if "Insertion-RigidGrasp" in args.task or "ForceLimited" in args.task
+            if any(label in args.task for label in RIGID_GRASP_AGENT_TASKS)
             else "Isaac-ZeroG-Blade-Insertion-Contact-v0"
             if "Insertion-Contact" in args.task
             else "Isaac-ZeroG-Blade-Insertion-Robust-v0"
@@ -587,6 +591,16 @@ def main() -> dict[str, object]:
                 else "secured_fixture"
             ),
             "inspection_view": args.inspection_view,
+            # Force policies are compared against each other, and a tighter
+            # abort limit truncates the force distribution being compared, so
+            # record the limit each run was actually judged under.
+            "contact_force_limit_n": (
+                float(
+                    env.unwrapped.termination_manager.get_term_cfg("excessive_contact_force").params["force_limit_n"]
+                )
+                if "excessive_contact_force" in termination_names
+                else None
+            ),
             "stress": stress,
             "maximum_phase_reached": maximum_phase,
             "mean_cumulative_reward_per_environment": float(reward_sum.mean()),
@@ -611,6 +625,7 @@ def main() -> dict[str, object]:
                             "checkpoint": str(checkpoint),
                             "checkpoint_sha256": result["checkpoint_sha256"],
                             "num_envs": args.num_envs,
+                            "contact_force_limit_n": result["contact_force_limit_n"],
                             "stress": stress,
                         },
                     )

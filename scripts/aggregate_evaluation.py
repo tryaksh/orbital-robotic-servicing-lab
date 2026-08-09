@@ -286,6 +286,16 @@ def build_report(runs: list[dict[str, Any]], title: str, minimum_stage_success_r
             "physics_rate_hz": 120,
             "metric_capture": "per-episode terminal state recorded before Isaac Lab's automatic reset",
             "environments_per_run": sorted({run["metadata"].get("num_envs") for run in runs}),
+            # Force policies are only comparable when the abort limit that
+            # truncates their force distribution is the same.
+            "contact_force_limit_n": sorted(
+                {
+                    run["metadata"]["contact_force_limit_n"]
+                    for run in runs
+                    if run["metadata"].get("contact_force_limit_n") is not None
+                }
+            )
+            or None,
             # Point at the single source of truth instead of restating thresholds
             # that could silently drift away from the task definition.
             "success_definition": (

@@ -92,6 +92,30 @@ def axial_stiction_force(
     return np.where(moving, -np.sign(velocity) * magnitude, 0.0)
 
 
+def first_order_filter_alpha(time_step_s: float, time_constant_s: float) -> float:
+    """Return the exponential-filter coefficient for one control step.
+
+    A real wrist force/torque signal is low-pass filtered before a controller
+    ever sees it, so the policy's force observation is filtered too. Expressing
+    the coefficient as a time constant keeps it meaningful if the control rate
+    changes, which a raw per-step alpha would not.
+    """
+
+    if time_step_s <= 0.0 or time_constant_s <= 0.0:
+        raise ValueError("time_step_s and time_constant_s must be positive")
+    return float(1.0 - np.exp(-time_step_s / time_constant_s))
+
+
+def exponential_moving_average(previous: ArrayLike, sample: ArrayLike, alpha: float) -> NDArray[np.float64]:
+    """Blend one new sample into a running exponential average."""
+
+    if not 0.0 < alpha <= 1.0:
+        raise ValueError("alpha must be in (0, 1]")
+    history = np.asarray(previous, dtype=np.float64)
+    latest = np.asarray(sample, dtype=np.float64)
+    return history + alpha * (latest - history)
+
+
 def full_swap_success(
     faulty_position_error: ArrayLike,
     faulty_angle_error: ArrayLike,

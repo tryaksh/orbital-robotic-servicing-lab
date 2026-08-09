@@ -19,6 +19,20 @@ def _yaml(name: str) -> dict:
     return yaml.safe_load((AGENTS / name).read_text(encoding="utf-8"))
 
 
+def _class_def(source: str, name: str) -> ast.ClassDef:
+    return next(node for node in ast.walk(ast.parse(source)) if isinstance(node, ast.ClassDef) and node.name == name)
+
+
+def _declared_fields(source: str, name: str) -> set[str]:
+    """Names a config class redeclares, ignoring anything it only inherits."""
+
+    return {
+        node.target.id
+        for node in _class_def(source, name).body
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name)
+    }
+
+
 def test_teacher_ppo_and_asymmetric_critic_contract() -> None:
     params = _yaml("rl_games_teacher.yaml")["params"]
     assert params["network"]["name"] == "blade_swap_teacher"
@@ -190,7 +204,7 @@ def test_vision_dictionary_actor_and_critic_contract() -> None:
 
 @pytest.mark.parametrize(
     "name",
-    ("train.py", "play.py", "benchmark.py", "collect_teacher.py", "smoke_env.py"),
+    ("train.py", "play.py", "benchmark.py", "collect_teacher.py", "smoke_env.py", "grasp_diagnostics.py"),
 )
 def test_app_launcher_precedes_isaac_dependent_imports(name: str) -> None:
     source = (SCRIPTS / name).read_text(encoding="utf-8")
@@ -280,10 +294,16 @@ def test_force_limited_task_constrains_contact_and_keeps_policy_shape() -> None:
     # The sensor needs real USD clones, and the parent config rebuilds the blade.
     assert "clone_in_fabric=False" in force
     assert "self.scene.spare_blade.spawn.activate_contact_sensors = True" in force
-    # The config must not redeclare the observation or action fields, so a
-    # promoted checkpoint can be fine-tuned rather than retrained.
-    assert "observations:" not in force
-    assert "actions:" not in force
+    # The penalty profiles must not redeclare the observation or action fields,
+    # so a promoted checkpoint can be fine-tuned rather than retrained.  The
+    # force-feedback profile below deliberately breaks this and is excluded.
+    for name in (
+        "ZeroGBladeForceLimitedInsertionEnvCfg",
+        "ZeroGBladeForceLimitedInsertionPlayEnvCfg",
+        "ZeroGBladeStrictForceLimitedInsertionEnvCfg",
+        "ZeroGBladeStrictForceLimitedInsertionPlayEnvCfg",
+    ):
+        assert not {"observations", "actions"} & _declared_fields(force, name)
     assert "Isaac-ZeroG-Blade-Insertion-ForceLimited-v0" in registration
 
     assert "TERMINATION_PRIORITY" in evaluation
@@ -305,6 +325,106 @@ def test_force_limited_task_constrains_contact_and_keeps_policy_shape() -> None:
     # outrank a geometric success in the same control step.
     assert TERMINATION_PRIORITY.index("excessive_contact_force") < TERMINATION_PRIORITY.index("insertion_success")
     assert set(TERMINATION_PRIORITY).issubset(set(TERMINATION_REASONS))
+
+
+def test_force_feedback_task_changes_only_the_observation_space() -> None:
+    force = (
+        SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "force_limited_insertion_env_cfg.py"
+    ).read_text(encoding="utf-8")
+    insertion = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "mdp" / "insertion.py").read_text(
+        encoding="utf-8"
+    )
+    registration = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "__init__.py").read_text(encoding="utf-8")
+    train = (SCRIPTS / "train.py").read_text(encoding="utf-8")
+    play = (SCRIPTS / "play.py").read_text(encoding="utf-8")
+
+    # The single variable under test: same scene, actions, reward, and
+    # terminations as the strict profile, with contact force added to the
+    # observation vector and nothing else.
+    training_cfg = _class_def(force, "ZeroGBladeForceFeedbackInsertionEnvCfg")
+    assert [base.id for base in training_cfg.bases] == ["ZeroGBladeStrictForceLimitedInsertionEnvCfg"]
+    assert _declared_fields(force, "ZeroGBladeForceFeedbackInsertionEnvCfg") == {"observations"}
+
+    # The observation term must reuse the same scalar the penalty and abort read.
+    assert "class BladeContactWrenchObservation(ManagerTermBase)" in insertion
+    assert "blade_contact_force(env, sensor_name).unsqueeze(-1)" in insertion
+    assert "def blade_contact_force_vector" in insertion
+    assert "forces.sum(dim=1)" in insertion
+    # Per-episode filter state must be cleared on reset and mutated in place, or
+    # evaluation under inference mode fails on the following reset.
+    assert "def reset(self, env_ids: Sequence[int] | None = None) -> None:" in insertion
+    assert "self._filtered_force.mul_(1.0 - alpha).add_(tool_force, alpha=alpha)" in insertion
+    assert "first_order_filter_alpha" in insertion
+
+    # Evaluation must keep the 60 N limit the earlier force policies were judged
+    # under; a 30 N abort here would truncate the distribution being compared.
+    assert _declared_fields(force, "ZeroGBladeForceFeedbackInsertionPlayEnvCfg") == {"terminations"}
+    assert (
+        "terminations: ForceLimitedInsertionTerminationsCfg = ForceLimitedInsertionTerminationsCfg()"
+        in force.split("class ZeroGBladeForceFeedbackInsertionPlayEnvCfg")[1]
+    )
+
+    # Both arms of the comparison must share one PPO configuration.
+    assert registration.count("Isaac-ZeroG-Blade-Insertion-ForceFeedback") == 2
+    assert "rl_games_force_feedback" not in registration
+    assert '"Insertion-ForceFeedback",' in train
+    assert '"Insertion-ForceFeedback",' in play
+    assert '"ForceFeedback")' in play
+
+
+def test_pooled_report_records_the_force_limit_without_requiring_it() -> None:
+    """Force policies only compare when the abort limit matches, and older runs
+    predate the field, so the pooled report must publish it and tolerate its
+    absence."""
+
+    np = pytest.importorskip("numpy")
+    from zero_g_blade_swap.evaluation import TERMINAL_METRIC_FIELDS, TERMINATION_REASONS
+
+    spec = importlib.util.spec_from_file_location("aggregate_for_test", SCRIPTS / "aggregate_evaluation.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    success_id = float(TERMINATION_REASONS.index("insertion_success"))
+
+    def run(seed: int, limit: float | None) -> dict:
+        rows = np.zeros((2, len(TERMINAL_METRIC_FIELDS)), dtype=np.float64)
+        rows[:, TERMINAL_METRIC_FIELDS.index("success")] = 1.0
+        rows[:, TERMINAL_METRIC_FIELDS.index("termination_reason")] = success_id
+        rows[:, TERMINAL_METRIC_FIELDS.index("curriculum_stage")] = [0.0, 1.0]
+        metadata = {"checkpoint_sha256": "A" * 64, "seed": seed, "robustness_level": 2, "num_envs": 128}
+        if limit is not None:
+            metadata["contact_force_limit_n"] = limit
+        return {"path": None, "fields": TERMINAL_METRIC_FIELDS, "rows": rows, "metadata": metadata}
+
+    report = module.build_report([run(1065, 60.0), run(2065, 60.0)], "force feedback", 0.95)
+    assert report["protocol"]["contact_force_limit_n"] == [60.0]
+    assert report["gate"]["passed"] is True
+
+    # A run recorded before the field existed must not break pooling, and a
+    # mismatch must stay visible rather than collapsing to one value.
+    legacy = module.build_report([run(1065, None), run(2065, 30.0)], "mixed", 0.95)
+    assert legacy["protocol"]["contact_force_limit_n"] == [30.0]
+    assert module.build_report([run(1065, None)], "legacy", 0.95)["protocol"]["contact_force_limit_n"] is None
+
+
+def test_grasp_diagnostic_measures_the_gate_it_claims_to_measure() -> None:
+    source = (SCRIPTS / "grasp_diagnostics.py").read_text(encoding="utf-8")
+
+    # The measurement is only about the grasp if the rails cannot also touch the
+    # blade and if a slipping environment is not reset out from under it.
+    assert "env_cfg.configure_robustness(0)" in source
+    assert "env_cfg.terminations.insertion_failed = None" in source
+    assert "env_cfg.events.hold_gripper_closed = None" in source
+    # It must refuse to run against the fixed-joint abstraction.
+    assert 'if getattr(task.cfg, "rigid_grasp", False):' in source
+    assert "there is no grasp to measure" in source
+    # The pass mark is the measured Level-2 worst-case contact force, not a
+    # threshold invented to make the grasp look adequate.
+    assert "LEVEL_2_PEAK_CONTACT_FORCE_N = 66.36" in source
+    assert '"required_axial_force_n": required' in source
+    assert '"evidence_type": "simulation_physics_characterization"' in source
+    assert "It is not learned grasping." in source
 
 
 def test_evaluation_statistics_are_isaac_free_and_gate_is_explicit() -> None:

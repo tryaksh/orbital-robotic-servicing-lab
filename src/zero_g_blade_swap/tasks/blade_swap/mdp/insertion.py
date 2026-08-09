@@ -25,7 +25,11 @@ from isaaclab.utils.math import (
     subtract_frame_transforms,
 )
 
-from zero_g_blade_swap.math_utils import insertion_curriculum_probabilities, update_curriculum_stage
+from zero_g_blade_swap.math_utils import (
+    first_order_filter_alpha,
+    insertion_curriculum_probabilities,
+    update_curriculum_stage,
+)
 
 from ..assets import (
     BLADE_HANDLE_OFFSET,
@@ -644,6 +648,69 @@ def blade_contact_force(env, sensor_name: str = BLADE_CONTACT_SENSOR) -> torch.T
     return torch.linalg.vector_norm(forces, dim=-1).amax(dim=-1)
 
 
+def blade_contact_force_vector(env, sensor_name: str = BLADE_CONTACT_SENSOR) -> torch.Tensor:
+    """Net contact force on the blade in world axes, in newtons.
+
+    Summed over the sensor's bodies because that is what one wrist force/torque
+    sensor would read: two rails squeezing the blade symmetrically largely
+    cancel, and only the net push is transmitted to the tool. Reporting a
+    per-contact magnitude here would credit the policy with sensing it could not
+    buy on hardware.
+    """
+
+    sensor = env.scene.sensors.get(sensor_name)
+    if sensor is None:
+        return torch.zeros((env.num_envs, 3), device=env.device)
+    forces = sensor.data.net_forces_w
+    if forces is None:
+        return torch.zeros((env.num_envs, 3), device=env.device)
+    return forces.sum(dim=1)
+
+
+class BladeContactWrenchObservation(ManagerTermBase):
+    """Tool-frame contact-force feedback, the missing half of force control.
+
+    Two force-penalty strengths failed to change measured contact load because
+    the policy was asked to regulate a quantity absent from its observations.
+    This term supplies it: seven values, each divided by ``force_scale_n``, made
+    of the instantaneous contact force in tool axes, the same force after a
+    first-order filter standing in for a real force/torque signal chain, and the
+    exact scalar magnitude that the contact penalty and the force-limit abort
+    key on, so the policy observes the quantity it is scored on.
+
+    The force is measured on the blade, not through a modelled load cell. The
+    blade is rigidly attached to the tool by the fixed-joint grasp abstraction
+    and this regime is zero-gravity and quasi-static, so it is the contact
+    wrench arriving at the wrist minus a negligible inertial term. It is still
+    an idealized sensor: no bias, drift, quantization, or mounting compliance.
+    """
+
+    def __init__(self, cfg, env) -> None:
+        super().__init__(cfg, env)
+        # Persistent buffer, mutated in place. Rebinding it would make it an
+        # inference tensor during evaluation and then fail on the next reset.
+        self._filtered_force = torch.zeros((env.num_envs, 3), device=env.device)
+
+    def reset(self, env_ids: Sequence[int] | None = None) -> None:
+        ids = slice(None) if env_ids is None else env_ids
+        self._filtered_force[ids] = 0.0
+
+    def __call__(
+        self,
+        env,
+        sensor_name: str = BLADE_CONTACT_SENSOR,
+        force_scale_n: float = 20.0,
+        filter_time_constant_s: float = 0.10,
+    ) -> torch.Tensor:
+        _, tool_orientation = end_effector_pose_world(env)
+        tool_force = quat_apply(quat_inv(tool_orientation), blade_contact_force_vector(env, sensor_name))
+        alpha = first_order_filter_alpha(float(env.step_dt), filter_time_constant_s)
+        self._filtered_force.mul_(1.0 - alpha).add_(tool_force, alpha=alpha)
+        magnitude = blade_contact_force(env, sensor_name).unsqueeze(-1)
+        scale = 1.0 / max(float(force_scale_n), 1.0e-6)
+        return torch.cat((tool_force, self._filtered_force, magnitude), dim=-1) * scale
+
+
 def contact_force_penalty(
     env,
     free_force_n: float = 5.0,
@@ -801,6 +868,7 @@ class InsertionSuccessRateCurriculum(ManagerTermBase):
 
 
 __all__ = [
+    "BladeContactWrenchObservation",
     "InsertionGoalCommand",
     "InsertionGoalCommandCfg",
     "InsertionSuccessRateCurriculum",
@@ -809,6 +877,7 @@ __all__ = [
     "attached_blade_pose_world",
     "attached_blade_velocity",
     "blade_contact_force",
+    "blade_contact_force_vector",
     "contact_force_penalty",
     "excessive_contact_force",
     "excessive_contact_force_reward",
