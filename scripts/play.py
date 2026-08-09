@@ -50,6 +50,23 @@ def _parser() -> argparse.ArgumentParser:
         help="Insertion profile: 0=tight/6D, 1=pose, 2=mass, 3=friction, 4=mount wobble.",
     )
     parser.add_argument(
+        "--pose_noise_scale",
+        type=float,
+        default=1.0,
+        help=(
+            "Multiply the reset joint-noise envelope. Values above 1 evaluate the policy outside the distribution "
+            "it trained on; the report is flagged out_of_distribution so it is never read as certification."
+        ),
+    )
+    parser.add_argument(
+        "--blade_mass_range",
+        type=float,
+        nargs=2,
+        metavar=("LOW", "HIGH"),
+        default=None,
+        help="Override the randomized blade mass range in kg. Outside the trained range this is a stress test.",
+    )
+    parser.add_argument(
         "--inspection_view",
         choices=("task", "grasp", "side", "top", "workcell", "array"),
         default="task",
@@ -87,6 +104,10 @@ parser = _parser()
 args = parser.parse_args()
 if args.steps < 0 or args.episodes < 0:
     parser.error("--steps and --episodes must be non-negative")
+if args.pose_noise_scale <= 0.0:
+    parser.error("--pose_noise_scale must be positive")
+if args.blade_mass_range is not None and not 0.0 < args.blade_mass_range[0] <= args.blade_mass_range[1]:
+    parser.error("--blade_mass_range must be positive and ordered LOW HIGH")
 if args.minimum_success_rate is not None and not 0.0 <= args.minimum_success_rate <= 1.0:
     parser.error("--minimum_success_rate must be between 0 and 1")
 if "Vision" in args.task or "BladeSwap-Play" in args.task or args.video:
@@ -200,6 +221,45 @@ def _summarize_robust_buckets(stats: dict[str, list[dict[str, int]]]) -> dict[st
     return output
 
 
+def _apply_stress(env_cfg) -> dict[str, object]:
+    """Widen the reset distribution to probe the policy's capability envelope.
+
+    These knobs change only the initial-condition distribution, never the task
+    physics, reward, observation, or success criterion, so a stressed run stays
+    comparable to certification apart from how hard the starting state is.
+    """
+
+    trained_noise = tuple(env_cfg.events.reset_arm.params["noise_by_stage"])
+    trained_mass = (
+        tuple(env_cfg.events.blade_mass.params["mass_distribution_params"])
+        if getattr(env_cfg.events, "blade_mass", None) is not None
+        else None
+    )
+    stress: dict[str, object] = {
+        "pose_noise_scale": args.pose_noise_scale,
+        "trained_pose_noise_rad": list(trained_noise),
+        "trained_blade_mass_kg": list(trained_mass) if trained_mass else None,
+        "blade_mass_range_kg": list(args.blade_mass_range) if args.blade_mass_range else None,
+    }
+    if args.pose_noise_scale != 1.0:
+        scaled = tuple(value * args.pose_noise_scale for value in trained_noise)
+        env_cfg.events.reset_arm.params["noise_by_stage"] = scaled
+        print(f"[INFO] Reset pose noise scaled {args.pose_noise_scale}x to {scaled} rad")
+    if args.blade_mass_range is not None:
+        if trained_mass is None:
+            raise ValueError("--blade_mass_range needs a task that randomizes blade mass (robustness level >= 2)")
+        env_cfg.events.blade_mass.params["mass_distribution_params"] = tuple(args.blade_mass_range)
+        print(f"[INFO] Blade mass range overridden to {tuple(args.blade_mass_range)} kg")
+
+    outside_mass = bool(
+        args.blade_mass_range is not None
+        and trained_mass is not None
+        and (args.blade_mass_range[0] < trained_mass[0] or args.blade_mass_range[1] > trained_mass[1])
+    )
+    stress["out_of_distribution"] = bool(args.pose_noise_scale > 1.0 or outside_mass)
+    return stress
+
+
 def _write_episode_metrics(path: Path, recorder, metadata: dict[str, object]) -> None:
     """Persist raw per-episode rows so several runs can be pooled exactly.
 
@@ -216,7 +276,18 @@ def _write_episode_metrics(path: Path, recorder, metadata: dict[str, object]) ->
     )
 
 
-def _terminal_metrics_report(collector: InsertionTerminalMetrics, episodes_completed: int) -> dict[str, object]:
+def _effective_mass_range(stress: dict[str, object]) -> tuple[float, float]:
+    """The blade mass range actually sampled, trained or overridden."""
+
+    configured = stress.get("blade_mass_range_kg") or stress.get("trained_blade_mass_kg") or (5.0, 15.0)
+    return float(configured[0]), float(configured[1])
+
+
+def _terminal_metrics_report(
+    collector: InsertionTerminalMetrics,
+    episodes_completed: int,
+    mass_range: tuple[float, float],
+) -> dict[str, object]:
     """Summarize episodes captured before Isaac Lab's automatic reset."""
 
     rows = collector.recorder.rows
@@ -229,7 +300,10 @@ def _terminal_metrics_report(collector: InsertionTerminalMetrics, episodes_compl
     }
     report.update(summarize_terminal_episodes(rows, fields))
     if BLADE_MASS_FIELD in fields:
-        report["by_blade_mass_bucket"] = bucket_success_rates(rows, BLADE_MASS_FIELD, 5.0, 15.0, fields)
+        # Bucket over the range actually sampled, otherwise a stress run's
+        # heavier blades all collapse into the top band.
+        low, high = mass_range
+        report["by_blade_mass_bucket"] = bucket_success_rates(rows, BLADE_MASS_FIELD, low, high, fields)
     stages = group_rows(rows, "curriculum_stage", fields)
     if len(stages) > 1:
         # A stage-forced evaluation would only duplicate the pooled block.
@@ -261,6 +335,9 @@ def main() -> dict[str, object]:
                 raise ValueError("--robustness_level is valid only for a robust or contact insertion task")
             env_cfg.configure_robustness(args.robustness_level)
             print(f"[INFO] Insertion robustness level: {args.robustness_level}")
+        # Stress knobs must be applied after configure_robustness, which rebuilds
+        # the event configuration and would otherwise discard them.
+        stress = _apply_stress(env_cfg)
         inspection_views = {
             "grasp": ((0.18, -1.05, 1.02), (0.52, 0.0, 0.72)),
             "side": ((0.52, -1.20, 0.82), (0.58, 0.0, 0.72)),
@@ -477,6 +554,7 @@ def main() -> dict[str, object]:
                 else "secured_fixture"
             ),
             "inspection_view": args.inspection_view,
+            "stress": stress,
             "maximum_phase_reached": maximum_phase,
             "mean_cumulative_reward_per_environment": float(reward_sum.mean()),
         }
@@ -485,7 +563,9 @@ def main() -> dict[str, object]:
             # come from the pre-reset snapshot.  Reading them from the live
             # scene here would measure the freshly reset episode instead.
             if terminal_metrics is not None:
-                result["terminal_metrics"] = _terminal_metrics_report(terminal_metrics, episodes_completed)
+                result["terminal_metrics"] = _terminal_metrics_report(
+                    terminal_metrics, episodes_completed, _effective_mass_range(stress)
+                )
                 if args.episode_metrics is not None:
                     _write_episode_metrics(
                         args.episode_metrics,
@@ -498,6 +578,7 @@ def main() -> dict[str, object]:
                             "checkpoint": str(checkpoint),
                             "checkpoint_sha256": result["checkpoint_sha256"],
                             "num_envs": args.num_envs,
+                            "stress": stress,
                         },
                     )
             timeout_failures = getattr(env.unwrapped, "_insertion_timeout_failure_counts", {})

@@ -31,6 +31,8 @@ from zero_g_blade_swap.evaluation import (
 STAGE_NAMES = {0: "near_stage_0", 1: "medium_stage_1", 2: "full_stage_2"}
 # The project's documented promotion rule for randomized physics buckets.
 MASS_BUCKET_MINIMUM = 0.80
+# Level-2 training range, used only when a run recorded no range at all.
+DEFAULT_MASS_RANGE = (5.0, 15.0)
 STAGE_METRIC_FIELDS = (
     "axial_error_m",
     "lateral_error_m",
@@ -117,6 +119,31 @@ def pooled_fields(runs: list[dict[str, Any]]) -> tuple[str, ...]:
     return (*TERMINAL_METRIC_FIELDS, *extra)
 
 
+def _stress_label(stress: dict[str, Any]) -> str:
+    """Short, sortable name for one point in the stress sweep."""
+
+    scale = float(stress.get("pose_noise_scale", 1.0) or 1.0)
+    mass = stress.get("blade_mass_range_kg")
+    label = f"pose_noise_x{scale:05.2f}"
+    if mass:
+        label += f"_mass_{mass[0]:g}-{mass[1]:g}kg"
+    return label
+
+
+def _pooled_mass_range(runs: list[dict[str, Any]]) -> tuple[float, float]:
+    """Widest blade mass range any run sampled, so no run's tail is clipped."""
+
+    ranges = []
+    for run in runs:
+        stress = run["metadata"].get("stress") or {}
+        configured = stress.get("blade_mass_range_kg") or stress.get("trained_blade_mass_kg")
+        if configured:
+            ranges.append((float(configured[0]), float(configured[1])))
+    if not ranges:
+        return DEFAULT_MASS_RANGE
+    return min(item[0] for item in ranges), max(item[1] for item in ranges)
+
+
 def _counts(rows: np.ndarray, fields: tuple[str, ...] = TERMINAL_METRIC_FIELDS) -> dict[str, Any]:
     episodes = int(rows.shape[0])
     successes = int((rows[:, fields.index("success")] > 0.5).sum())
@@ -183,9 +210,24 @@ def build_report(runs: list[dict[str, Any]], title: str, minimum_stage_success_r
             )
     by_seed = {seed: _counts(concatenate_rows(blocks, fields), fields) for seed, blocks in sorted(by_seed.items())}
 
+    mass_range = _pooled_mass_range(runs)
     mass_buckets = (
-        bucket_success_rates(rows, BLADE_MASS_FIELD, 5.0, 15.0, fields) if BLADE_MASS_FIELD in fields else None
+        bucket_success_rates(rows, BLADE_MASS_FIELD, mass_range[0], mass_range[1], fields)
+        if BLADE_MASS_FIELD in fields
+        else None
     )
+
+    # A run evaluated outside the training distribution characterizes the
+    # capability envelope; it is not certification and must never be pooled
+    # into one without saying so.
+    stresses = [run["metadata"].get("stress") or {} for run in runs]
+    out_of_distribution = any(bool(item.get("out_of_distribution")) for item in stresses)
+    by_stress: dict[str, Any] = {}
+    for table, stress in zip(aligned, stresses, strict=True):
+        by_stress.setdefault(_stress_label(stress), []).append(table)
+    by_stress = {
+        label: _counts(concatenate_rows(blocks, fields), fields) for label, blocks in sorted(by_stress.items())
+    }
 
     stage_rates = [entry["success_rate"] for entry in by_stage.values() if entry["success_rate"] is not None]
     instability = int(overall["instability_terminations"])
@@ -204,6 +246,7 @@ def build_report(runs: list[dict[str, Any]], title: str, minimum_stage_success_r
         # Level 2 onward must also hold up across the randomized mass range,
         # not just on average, so a heavy-blade weakness cannot hide in a pool.
         worst_bucket = mass_buckets["minimum_observed_success_rate"]
+        gate["blade_mass_range_kg"] = list(mass_range)
         gate["minimum_mass_bucket_success_rate"] = MASS_BUCKET_MINIMUM
         gate["worst_mass_bucket_success_rate"] = worst_bucket
         gate["every_mass_bucket_meets_minimum"] = worst_bucket is not None and worst_bucket >= MASS_BUCKET_MINIMUM
@@ -214,11 +257,17 @@ def build_report(runs: list[dict[str, Any]], title: str, minimum_stage_success_r
         and gate["zero_non_finite_metric_episodes"]
         and gate.get("every_mass_bucket_meets_minimum", True)
     )
+    if out_of_distribution:
+        # Deliberately degrading a policy is the point of a sweep, so a failed
+        # gate here is a measurement, not a regression.
+        gate["applies"] = False
+        gate["note"] = "capability envelope sweep; the gate certifies in-distribution runs only"
 
     return {
         "title": title,
         "generated_utc": datetime.now(UTC).replace(microsecond=0).isoformat(),
-        "evidence_type": "simulation_only",
+        "evidence_type": "simulation_capability_envelope" if out_of_distribution else "simulation_only",
+        "out_of_distribution": out_of_distribution,
         "policy": {
             "algorithm": "PPO (RL-Games), deterministic evaluation",
             "checkpoint_sha256": next(iter(checkpoints)),
@@ -244,6 +293,7 @@ def build_report(runs: list[dict[str, Any]], title: str, minimum_stage_success_r
             ),
         },
         "overall": overall,
+        **({"by_stress_setting": by_stress} if len(by_stress) > 1 else {}),
         **({"by_blade_mass_bucket": mass_buckets} if mass_buckets is not None else {}),
         "by_curriculum_stage": by_stage,
         "by_evaluation_seed": by_seed,

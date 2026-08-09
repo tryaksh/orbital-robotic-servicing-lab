@@ -270,8 +270,16 @@ def test_evaluation_statistics_are_isaac_free_and_gate_is_explicit() -> None:
     assert '"zero_instability_terminations"' in aggregate
     assert '"zero_non_finite_metric_episodes"' in aggregate
     assert '"every_stage_meets_minimum"' in aggregate
-    assert '"evidence_type": "simulation_only"' in aggregate
+    assert '"simulation_only"' in aggregate
     assert '"grasp_model": "physx_fixed_joint_already_secured_abstraction"' in aggregate
+    # A run pushed outside the training distribution must be labelled as an
+    # envelope measurement and must not present a pass/fail certification gate.
+    assert '"simulation_capability_envelope"' in aggregate
+    assert 'gate["applies"] = False' in aggregate
+    play = (SCRIPTS / "play.py").read_text(encoding="utf-8")
+    assert '"--pose_noise_scale"' in play
+    assert '"--blade_mass_range"' in play
+    assert '"out_of_distribution"' in play
 
 
 def test_training_and_playback_make_gpu_and_safety_evidence_explicit() -> None:
