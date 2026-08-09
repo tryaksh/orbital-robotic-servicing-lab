@@ -120,6 +120,63 @@ evaluator and for a two-iteration checkpoint-resume training run through the
 passed for Levels 0, 1, and 2. Sustained environment-only benchmarks passed at
 1024 state and 256 vision environments; full PPO memory differs.
 
+## Capability envelope
+
+Certification says the policy works inside the distribution it trained on. It
+says nothing about where that ends. These sweeps push the promoted Level-2
+policy past its training range, one axis at a time, at full reset distance with
+500 episodes per point on evaluation seed 7060. They are **measurements, not
+certification**: the reports carry `evidence_type:
+simulation_capability_envelope` and their promotion gate is marked
+non-applicable.
+
+### Initial pose error is the binding axis
+
+Scale multiplies the trained reset joint-noise envelope of 0.001/0.002/0.004 rad
+by stage. Blade mass is held at the trained range.
+
+| Pose noise | 1× | 2× | 3× | 4× | 6× | 8× | 12× |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Success | 100% | 100% | 97.0% | 87.8% | 62.4% | 42.6% | 21.2% |
+| Failures | 0 | 0 | 15 | 58 | 166 | 268 | 394 |
+| Timeouts | 0 | 0 | 0 | 3 | 22 | 19 | 0 |
+
+Report: `evidence/rigid_grasp_l2_envelope_pose_error.json`.
+
+Degradation is monotonic and graceful, with roughly double the trained noise
+absorbed for free and the half-success point near 7×. **Every point, including
+12×, had zero instability and zero non-finite terminations**: the policy fails
+by not completing the insertion, never by diverging numerically.
+
+The failure mechanism is **lateral divergence, not orientation**. Terminal
+lateral error p95 jumps from 0.0 mm at 3× to 60.6 mm at 4× and 92.9 mm at 12×,
+tripping the 60 mm lateral failure predicate; timeouts stay a small minority.
+This *contradicts* the earlier prediction from the Level-2 margin analysis, which
+expected orientation to break first because it consumed 97.8% of its tolerance.
+Orientation error does rise in failing episodes, but it is a symptom; the
+termination is lateral.
+
+### Blade mass is not a meaningful axis in this regime
+
+Pose error held at the trained level; only the mass range varies.
+
+| Mass range (kg) | 5–15 (trained) | 3–20 | 2–25 | 1–35 | 1–50 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Success | 100% | 100% | 100% | 100% | 100% |
+
+Report: `evidence/rigid_grasp_l2_envelope_blade_mass.json`. Terminal metrics are
+nearly identical at every range (axial p95 about 9.7 mm, orientation p95 about
+0.050 rad).
+
+**This weakens the Level-2 claim and should be stated plainly.** "Robust to
+5–15 kg payload mass" sounds substantial but is close to vacuous here: in zero
+gravity, with the blade held by a fixed joint and the tool moving in
+millimetre-scale quasi-static increments at 30 Hz, inertial forces are tiny, so
+mass barely enters the dynamics. The Level-2 mass-bucket gate passed because the
+task is insensitive to mass, not because the policy learned mass robustness. A
+mass axis only becomes meaningful with faster motion, real grasp friction where
+weight sets slip margin, or gravity.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300

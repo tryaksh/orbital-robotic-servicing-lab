@@ -8,29 +8,40 @@
    `scripts/aggregate_evaluation.py` pools runs and applies the gate.
 2. ~~**Promote L1.**~~ Done 2026-08-08. See `docs/status.md`.
 3. ~~**Promote L2.**~~ Done 2026-08-08. See `docs/status.md`.
-4. **Resolve L3 physically before training.** Plot rail force, blade velocity,
+4. ~~**Characterize the capability envelope.**~~ Done 2026-08-09. Pose error is
+   the binding axis (half-success near 7× trained noise, failing by lateral
+   divergence); blade mass is not a meaningful axis in this regime. See
+   `docs/status.md`.
+5. **Make contact force a measured quantity, then a constraint.** PhysX solves
+   contact forces but nothing observes, limits, or reports them, so there is no
+   damage-safety claim at all. Add a contact sensor on the blade, record peak
+   force and accumulated impulse into the terminal metric row, then train a
+   force-limited variant with abort-and-retry. This is the difference between an
+   academic insertion demo and an industrial one.
+6. **Resolve L3 physically before training.** Plot rail force, blade velocity,
    contact impulse, and action versus time. Check whether the stiction
    implementation injects energy or chatters at zero velocity. Prefer a
    continuous, measured friction/connector force curve and force/admittance-
-   limited insertion over arbitrary reward changes. The Level-2 certification
-   predicts where this breaks: terminal orientation error already consumes 97.8%
-   of its tolerance, so orientation is the axis to instrument first.
-5. **Add industrially meaningful hardware proxies.** Replace primitive
+   limited insertion over arbitrary reward changes. Instrument the lateral axis
+   first: the envelope sweep showed lateral divergence, not orientation, is what
+   actually terminates failing episodes, even though orientation consumes 97.8%
+   of its tolerance at Level 2.
+7. **Add industrially meaningful hardware proxies.** Replace primitive
    rail/handle geometry with measured, non-proprietary CAD; add chamfers,
    latch/connector engagement, wrench sensing, peak force/impulse limits, and
    abort/recovery behavior.
-6. **Learn grasp/extraction as a separate skill.** Validate force closure and
+8. **Learn grasp/extraction as a separate skill.** Validate force closure and
    axial pull with real pad collision before PPO. Do not remove the fixed joint
    from insertion until that gate passes.
-7. **Compose skills under a task manager.** Prefer separately validated
+9. **Compose skills under a task manager.** Prefer separately validated
    reach/grasp/extract/stow/insert policies over one monolithic sparse-reward
    policy.
-8. **Perception and adaptation.** Collect RGB/proprio/action data from the
+10. **Perception and adaptation.** Collect RGB/proprio/action data from the
    robust state policy, behavior-clone a vision policy, then fine-tune with
    asymmetric PPO. Keep ground-truth blade pose out of the deployable actor.
    Consider a real-world residual/adaptation layer only after safe hardware
    instrumentation exists.
-9. **Portfolio release.** Publish a short side-by-side video, learning curve,
+11. **Portfolio release.** Publish a short side-by-side video, learning curve,
    held-out failure montage, benchmark JSON, model card, and the one-page claim
    versus evidence table. Put checkpoints and videos in GitHub Releases, not Git
    history.

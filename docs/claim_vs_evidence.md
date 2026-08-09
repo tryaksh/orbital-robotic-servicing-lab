@@ -26,13 +26,15 @@ insertion of an already-secured replacement blade into a rack in microgravity**.
 | --- | --- | --- |
 | A PPO policy inserts a secured blade with no rack contact, from three reset distances | 9,086 / 9,086 deterministic episodes, seeds 1060/2060/3060, Wilson 95% lower bound 0.9996 | `evidence/rigid_grasp_l0_ep700_certification.json`. Simulation only. Held-out *evaluation* seeds, one training seed |
 | The policy still succeeds when the rack side rails are physically collidable and initial pose error is doubled | 9,014 / 9,014 deterministic episodes, seeds 1061/2061/3061, Wilson 95% lower bound 0.9996 | `evidence/rigid_grasp_l1_ep1200_certification.json`. Fine-tuned 500 PPO epochs from the Level-0 checkpoint |
-| The policy still succeeds at 1.5 mm side clearance with payload mass randomized over 5-15 kg | 9,021 / 9,021 deterministic episodes, seeds 1062/2062/3062, and 100% in each of the low, mid, and high mass bands over an observed 5.00-14.97 kg | `evidence/rigid_grasp_l2_ep1800_certification.json`. Fine-tuned 600 PPO epochs from the Level-1 checkpoint |
+| The policy still succeeds at 1.5 mm side clearance with payload mass randomized over 5-15 kg | 9,021 / 9,021 deterministic episodes, seeds 1062/2062/3062, and 100% in each of the low, mid, and high mass bands over an observed 5.00-14.97 kg | `evidence/rigid_grasp_l2_ep1800_certification.json`. **The mass half of this is close to vacuous**: a sweep to 1-50 kg is also 100%, because zero-g quasi-static motion makes the task nearly mass-insensitive. Read this as tight-clearance robustness, not payload robustness |
 | Progressive fine-tuning improved precision and speed, it did not merely preserve success | Stage-0 terminal axial error fell from 4.15 mm mean (L0) to 1.65 mm (L1); full-distance median cycle time fell from 7.90 s (L0) to 7.20 s (L2) despite tighter clearance and a threefold mass range | Same reports. Distribution is bounded by the success criterion, see below |
 | Terminal-state evidence cannot be corrupted by the simulator's automatic reset | `TerminalMetricsMixin` snapshots each episode inside `_reset_idx`; unit tests assert the captured value differs from the post-reset value | `tests/test_terminal_metrics.py` |
 | No episode ended in numerical or physics instability | Zero non-finite and zero mount-instability terminations across 27,121 episodes | Categorization prefers instability over success when both fire in one control step |
 | Simulated cycle time is measured, not estimated | Median 7.2 s at full reset distance, 1.2 s at near distance, at 30 Hz control | Simulated time. Does not include perception, approach, grasp, or extraction |
 | Training is reproducible on consumer hardware | 512 environments on a 12 GB laptop GPU; 500 PPO epochs in about 22 minutes at 5,000-8,500 environment-steps/s | Isaac Sim 5.1 publishes a 16 GB VRAM minimum; this runs under it via benchmark-driven environment counts |
-| The remaining margin is known and stated, not hidden | Terminal orientation error at Level 2 reaches 0.0512 rad of a 0.0524 rad limit, 97.8% of budget | Orientation is the least-headroom axis and the predicted first failure mode at Level 3 |
+| The operating envelope is characterized, not just the operating point | Success degrades monotonically from 100% at the trained pose error to 97.0% at 3×, 62.4% at 6×, and 21.2% at 12×, with the half-success point near 7× | `evidence/rigid_grasp_l2_envelope_pose_error.json`. 500 episodes per point, one axis varied at a time |
+| The policy degrades safely rather than diverging | Zero instability and zero non-finite terminations at every sweep point, including 12× pose error where it fails four episodes in five | It stops completing insertions; it never blows up numerically |
+| The dominant failure mode is identified | Lateral divergence: terminal lateral error p95 goes from 0.0 mm at 3× to 60.6 mm at 4×, tripping the 60 mm failure predicate. Timeouts stay a small minority | This contradicted the prediction from margin analysis, which expected orientation to fail first. Orientation rises in failing episodes but is a symptom |
 
 ## What is not established
 
@@ -42,6 +44,8 @@ insertion of an already-secured replacement blade into a rack in microgravity**.
 | Sim2Real transfer | No real UR10e, hardware-in-the-loop rig, wrist force/torque sensor, calibrated camera, orbital acceleration data, or radiation dataset has been used |
 | Accuracy independent of the success criterion | Because every certification episode succeeded, the terminal error distribution is bounded by the success box. It shows where inside tolerance the policy lands, not error it was free to exceed |
 | Robustness to rail stiction or mount compliance | Level 3 stiction reaches valid geometry but cannot settle below velocity limits and is documented as blocked, not hidden. Level 4 floating-mount wobble is blocked behind it |
+| Payload-mass robustness in any meaningful sense | The task is nearly mass-insensitive in this regime, so the mass sweep is flat. A real mass axis needs faster motion, real grasp friction where weight sets slip margin, or gravity |
+| Damage safety | Contact forces are solved by PhysX but are not observed, limited, or reported. There is no peak-force or impulse budget, so nothing here shows the insertion would not bend a connector |
 | Cross-seed training repeatability | Each promoted policy comes from one training seed. The three certification seeds vary *evaluation* initial conditions only |
 | Perception | The policy consumes ground-truth blade pose. The vision student is scaffolding and has not been trained from the promoted policy |
 | Industrial fidelity | Rack, blade, and rail are primitive proxies with no connector, latch, cable, chamfer, measured tolerance, or force-displacement curve |
@@ -65,6 +69,13 @@ insertion of an already-secured replacement blade into a rack in microgravity**.
 - **Gate is in code.** `scripts/aggregate_evaluation.py` exits non-zero when any
   stage, the pooled rate, any randomized-parameter bucket, or the instability
   count fails. Thresholds are arguments, recorded in the report.
+- **Stress runs cannot pose as certification.** Evaluating outside the trained
+  distribution flips the report to `simulation_capability_envelope` and marks
+  the gate non-applicable, so a deliberately degraded result can never be
+  mistaken for a promotion.
+- **A failed prediction is recorded, not quietly dropped.** Margin analysis said
+  orientation would break first. The sweep showed lateral divergence. Both are
+  in `docs/status.md`.
 
 ## Honest one-line summary
 
