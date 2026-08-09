@@ -344,10 +344,14 @@ force grid from 0 to 120 N, so 128 environments sweep the surface in one run.
 
 Report: `evidence/grasp_axial_pull_gate.json`.
 
-**There is no grasp to characterise.** The finger pads settle 165 mm away from
-the handle and never touch it, the drive joints reach their commanded closure
-without developing torque, and the blade is a free-floating body in zero
-gravity. Its motion under load confirms this arithmetically rather than by
+**There is no grasp to characterise.** The solver says so directly: with a
+contact sensor filtered to the two inner-finger bodies, PhysX reports exactly
+0.0 N between pad and blade at every commanded closure across the full
+`finger_joint` range of 0 to 0.8203 rad, and the joint reaches every commanded
+value exactly with zero drive torque, so nothing obstructs the pads anywhere in
+their travel. That measurement does not depend on where the pad surfaces are
+assumed to be. The pads settle 165 mm away from the handle and never touch it,
+and the blade is a free-floating body in zero gravity. Its motion under load confirms this arithmetically rather than by
 inspection: 120 N on a 10 kg blade for 1.5 s predicts 13.5 m of free travel, and
 the measurement is 12.5 m. The earlier "failed pull gate" was not a weak grip.
 
@@ -375,12 +379,12 @@ blade. Three consequences:
   three certifications. The grasp task needs its own corrected offset, leaving
   the insertion tasks on the value they were trained against.
 
-A secondary observation needs confirming before it is acted on: finger-pad body
-separation grows monotonically with the commanded value, from 0 mm at 0.00 rad
-through 42.7 mm at 0.45 to 58.9 mm at 0.60. The task calls 0.45 "pregrasp" and
-0.60 "closed", so the command it treats as closed separates the pad bodies
-further than the one it treats as open. That was measured between pad *body
-origins*, not certified pad faces, so it is a lead rather than a result.
+A second defect sits behind the first and will bite the moment it is fixed: the
+finger command runs backwards. Pad separation grows monotonically with the
+commanded value, from 0 mm at 0.00 rad through 42.7 mm at 0.45 to 58.9 mm at
+0.60, and the joint's own limits are 0 to 0.8203 rad. Zero is therefore the
+closed end. The task calls 0.45 "pregrasp" and 0.60 "closed", so what it treats
+as closing the gripper opens it by 16 mm.
 
 **What this does and does not invalidate.** It does not touch the promoted
 Level-0/1/2 insertion results. Those depend on blade-versus-slot geometry, rail
