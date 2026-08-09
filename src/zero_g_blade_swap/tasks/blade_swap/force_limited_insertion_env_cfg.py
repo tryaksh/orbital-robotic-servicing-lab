@@ -35,6 +35,16 @@ FREE_CONTACT_FORCE_N = 5.0
 CONTACT_FORCE_SCALE_N = 20.0
 CONTACT_FORCE_LIMIT_N = 60.0
 
+# The mild profile above turned out to shape only the extreme tail: at the
+# measured median contact of 4.7 N its penalty is exactly zero, and at p95 it is
+# 0.17 per step against a success reward of 35, so PPO had almost no reason to
+# push back. The strict profile below charges 0.85 at the median and 19.5 at
+# p95, which is the same order as the success term, and is the other end of the
+# success-versus-force trade-off.
+STRICT_FREE_CONTACT_FORCE_N = 1.5
+STRICT_CONTACT_FORCE_SCALE_N = 6.0
+STRICT_CONTACT_FORCE_LIMIT_N = 30.0
+
 
 @configclass
 class ForceLimitedInsertionSceneCfg(ZeroGRigidGraspInsertionSceneCfg):
@@ -103,8 +113,44 @@ class ZeroGBladeForceLimitedInsertionPlayEnvCfg(ZeroGBladeForceLimitedInsertionE
         configure_insertion_play_presentation(self)
 
 
+@configclass
+class StrictForceLimitedInsertionRewardsCfg(ForceLimitedInsertionRewardsCfg):
+    contact_force = RewTerm(
+        func=mdp.contact_force_penalty,
+        weight=-3.0,
+        params={"free_force_n": STRICT_FREE_CONTACT_FORCE_N, "force_scale_n": STRICT_CONTACT_FORCE_SCALE_N},
+    )
+
+
+@configclass
+class StrictForceLimitedInsertionTerminationsCfg(ForceLimitedInsertionTerminationsCfg):
+    excessive_contact_force = DoneTerm(
+        func=mdp.excessive_contact_force,
+        params={"force_limit_n": STRICT_CONTACT_FORCE_LIMIT_N},
+    )
+
+
+@configclass
+class ZeroGBladeStrictForceLimitedInsertionEnvCfg(ZeroGBladeForceLimitedInsertionEnvCfg):
+    """The aggressive end of the success-versus-contact-force trade-off."""
+
+    rewards: StrictForceLimitedInsertionRewardsCfg = StrictForceLimitedInsertionRewardsCfg()
+    terminations: StrictForceLimitedInsertionTerminationsCfg = StrictForceLimitedInsertionTerminationsCfg()
+
+
+@configclass
+class ZeroGBladeStrictForceLimitedInsertionPlayEnvCfg(ZeroGBladeStrictForceLimitedInsertionEnvCfg):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.scene.num_envs = 1
+        configure_insertion_play_presentation(self)
+
+
 __all__ = [
     "CONTACT_FORCE_LIMIT_N",
+    "STRICT_CONTACT_FORCE_LIMIT_N",
+    "ZeroGBladeStrictForceLimitedInsertionEnvCfg",
+    "ZeroGBladeStrictForceLimitedInsertionPlayEnvCfg",
     "ForceLimitedInsertionRewardsCfg",
     "ForceLimitedInsertionTerminationsCfg",
     "ZeroGBladeForceLimitedInsertionEnvCfg",

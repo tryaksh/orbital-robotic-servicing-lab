@@ -116,6 +116,30 @@ gym.register(
 )
 
 gym.register(
+    id="Isaac-ZeroG-Blade-Insertion-StrictForceLimited-v0",
+    entry_point=INSERTION_ENTRY_POINT,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{__name__}.force_limited_insertion_env_cfg:ZeroGBladeStrictForceLimitedInsertionEnvCfg"
+        ),
+        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_rigid_grasp.yaml",
+    },
+)
+
+gym.register(
+    id="Isaac-ZeroG-Blade-Insertion-StrictForceLimited-Play-v0",
+    entry_point=INSERTION_ENTRY_POINT,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{__name__}.force_limited_insertion_env_cfg:ZeroGBladeStrictForceLimitedInsertionPlayEnvCfg"
+        ),
+        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_rigid_grasp.yaml",
+    },
+)
+
+gym.register(
     id="Isaac-ZeroG-BladeSwap-Teacher-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,

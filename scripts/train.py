@@ -1,4 +1,4 @@
-"""Train the zero-g blade-swap task with RL-Games PPO."""
+﻿"""Train the zero-g blade-swap task with RL-Games PPO."""
 
 # ruff: noqa: E402, I001 -- Isaac modules must be imported after AppLauncher.
 
@@ -17,6 +17,7 @@ ROBUST_FAMILY_TASKS = (
     "Insertion-Contact",
     "Insertion-RigidGrasp",
     "Insertion-ForceLimited",
+    "Insertion-StrictForceLimited",
 )
 
 assert hasattr(jinja2, "Environment"), "The Jinja2 installation is incomplete."

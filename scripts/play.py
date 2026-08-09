@@ -1,4 +1,4 @@
-"""Evaluate or record an RL-Games blade-swap policy."""
+﻿"""Evaluate or record an RL-Games blade-swap policy."""
 
 # ruff: noqa: E402, I001 -- Isaac modules must be imported after AppLauncher.
 
@@ -154,6 +154,7 @@ ROBUST_FAMILY_TASKS = (
     "Insertion-Contact",
     "Insertion-RigidGrasp",
     "Insertion-ForceLimited",
+    "Insertion-StrictForceLimited",
 )
 
 
@@ -165,7 +166,7 @@ def _checkpoint() -> Path:
         return path
     default_experiment = (
         "zero_g_blade_insertion_rigid_grasp"
-        if "Insertion-RigidGrasp" in args.task or "Insertion-ForceLimited" in args.task
+        if "Insertion-RigidGrasp" in args.task or "ForceLimited" in args.task
         else "zero_g_blade_insertion_contact"
         if "Insertion-Contact" in args.task
         else "zero_g_blade_insertion_robust"
@@ -395,7 +396,7 @@ def main() -> dict[str, object]:
         insertion_task = "Insertion" in args.task
         agent_task = (
             "Isaac-ZeroG-Blade-Insertion-RigidGrasp-v0"
-            if "Insertion-RigidGrasp" in args.task or "Insertion-ForceLimited" in args.task
+            if "Insertion-RigidGrasp" in args.task or "ForceLimited" in args.task
             else "Isaac-ZeroG-Blade-Insertion-Contact-v0"
             if "Insertion-Contact" in args.task
             else "Isaac-ZeroG-Blade-Insertion-Robust-v0"
