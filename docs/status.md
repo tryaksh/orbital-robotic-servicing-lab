@@ -403,6 +403,56 @@ is the assumption that the contact-grasp task was a nearly working grasp needing
 tuning. It is not: the gripper and the handle are not in the same place, so
 Phase-3 grasping starts with a geometry fix, not with PPO.
 
+## Grasp fix: a grip now forms, and it throws the blade away
+
+Three defects were found and corrected, and the correction moved the failure
+from "nothing ever touches" to a different and more interesting one.
+
+**What was wrong.** The handle was a 30 mm tab lying on the blade's 160 mm-wide
+deck, while the gripper's pads open to 82 mm. The pads foul the deck long before
+they can straddle a tab that short, so a grip was geometrically impossible. The
+configured tool offset of 179 mm hid this by placing the control frame in open
+space *below* the blade, where nothing could collide. Separately, the finger
+command ran backwards: `finger_joint` limits are 0 to 0.8203 rad with 0 fully
+closed, so the task's "pregrasp 0.45 / closed 0.60" pair opened the fingers by
+16 mm when it meant to close them. And the action term still steered the old
+179 mm frame while the observations and grasp metrics had been moved, so the
+policy would have controlled a point 74 mm from the one it was scored on.
+
+**What changed.** The grasp task now carries a raised grapple post, 75 mm wide
+by 60 mm deep by 150 mm tall, rooted 1.7 mm inside the deck and reaching to
+150 mm above the blade centre. Its mid-height coincides with the finger pads at
+the unchanged arm reset pose, so no joint angles had to be re-derived. The
+finger commands were inverted to match the measured convention, and the action
+term's control point was moved onto the same frame the metrics report. The
+promoted insertion task is pinned to its original tool frame, finger commands,
+and short tab, so its three certifications still describe the task in the file.
+
+**Result.** Drive torque rose from 0.39 N·m, the noise floor, to the actuator's
+full 10 N·m limit in 124 of 128 environments. The fingers are loaded against the
+post for the first time in this project's history; a grip forms.
+
+**And the grip then ejects the blade.** With no pull applied at all, the blade
+travels 32 mm and the tool-to-handle error grows by up to 180 mm, after which
+drive torque falls back to zero because there is nothing left between the pads.
+The closed command asks for 67 mm across a 75 mm post, and PhysX resolves 8 mm
+of interference on an unconstrained 10 kg body by launching it.
+
+That is a real physical result, not a bug: **you cannot grasp a free-floating
+mass in zero gravity by squeezing it.** Any asymmetry in contact timing becomes
+net momentum, and there is no gravity or fixture to absorb it. Terrestrial
+grasping quietly relies on the object resting on something.
+
+The next attempt therefore has to change the *task*, not the tuning: capture the
+blade while it is still constrained by its slot or caddy, so the rails absorb
+the closing asymmetry, and only then break it free. Reducing the interference
+and softening the drive are worth trying alongside, but they treat the symptom.
+Holding capacity remains unmeasured, because a grasp that ejects its payload has
+no capacity to report.
+
+Report: `evidence/grasp_axial_pull_gate.json` (pre-fix baseline) and
+`scripts/calibrate_grasp_pose.py` for the kinematic check.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300

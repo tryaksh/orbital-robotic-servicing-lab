@@ -14,7 +14,7 @@ from . import mdp
 from .assets import (
     CONTACT_INSERTION_STAGE_ARM_JOINT_POS,
     CONTACT_INSERTION_STAGE_BLADE_POSE,
-    CONTACT_TOOL_OFFSET_POS,
+    GRASP_TOOL_OFFSET_POS,
     CompliantD6JointCfg,
     make_contact_insertion_robot_cfg,
 )
@@ -34,11 +34,20 @@ from .robust_insertion_env_cfg import (
 )
 from .scene_cfg import ZeroGContactInsertionSceneCfg
 
-CONTACT_GRIPPER_PREGRASP = (0.45, 0.45, -0.45, 0.45, -0.45, -0.45)
-# NVIDIA's 2F-85 assembly task uses 0.45--0.69 depending on object width.
-# Use a firm, non-saturating close target; actuator effort remains at
-# NVIDIA's official 10 N-m setting.
-CONTACT_GRIPPER_CLOSED = (0.60, 0.60, -0.60, 0.60, -0.60, -0.60)
+# The finger command runs backwards from the way these constants were named.
+# `finger_joint` has limits 0 to 0.8203 rad, and measured pad separation is 0 mm
+# at 0 rad rising to about 59 mm at 0.60 rad, so *zero is fully closed* and
+# larger values open the gripper. The previous "pregrasp 0.45 / closed 0.60"
+# pair therefore opened the fingers by 16 mm when it meant to close them.
+#
+# Pad separation runs at roughly 98 mm per radian. The handle is 75 mm wide, so
+# it needs about 0.765 rad of separation just to enter between the pads.
+# Pregrasp opens to 82 mm, a 7 mm clearance on each approach. The closed target
+# commands 8 mm narrower than the handle, which the fingers cannot reach, and
+# that residual position error is what the 40 N-m/rad drive converts into grip
+# force rather than simply reaching its setpoint and stopping.
+CONTACT_GRIPPER_PREGRASP = (0.80, 0.80, -0.80, 0.80, -0.80, -0.80)
+CONTACT_GRIPPER_CLOSED = (0.68, 0.68, -0.68, 0.68, -0.68, -0.68)
 
 
 @configclass
@@ -49,8 +58,13 @@ class ContactInsertionActionsCfg(RobustInsertionActionsCfg):
         asset_name="robot",
         joint_names=ARM_JOINTS,
         body_name="wrist_3_link",
+        # The control point and the frame the observations and grasp metrics
+        # report must be the same physical point. They were not: this stayed on
+        # the old 179 mm frame while `tool_offset_pos` moved to the pads, so the
+        # policy would have been steering a point 74 mm from the one it was
+        # scored on.
         body_offset=mdp.GraspSettlingDifferentialInverseKinematicsActionCfg.OffsetCfg(
-            pos=CONTACT_TOOL_OFFSET_POS,
+            pos=GRASP_TOOL_OFFSET_POS,
             rot=mdp.TOOL_OFFSET_ROT,
         ),
         # 45 mm/s maximum axial motion at 30 Hz is slow enough for frictional
@@ -148,7 +162,11 @@ class ZeroGBladeContactInsertionEnvCfg(ZeroGBladeRobustInsertionEnvCfg):
     terminations: ContactInsertionTerminationsCfg = ContactInsertionTerminationsCfg()
     curriculum: RobustInsertionCurriculumCfg = RobustInsertionCurriculumCfg()
     contact_grasp: bool = True
-    tool_offset_pos: tuple[float, float, float] = CONTACT_TOOL_OFFSET_POS
+    # The grasp task aims the tool frame at the finger pads, where a physical
+    # grip can actually form. The rigid-grasp insertion task deliberately pins
+    # this back to CONTACT_TOOL_OFFSET_POS, because its promoted checkpoints
+    # were trained against that frame and it also anchors the fixed joint.
+    tool_offset_pos: tuple[float, float, float] = GRASP_TOOL_OFFSET_POS
 
     def configure_robustness(self, level: int) -> None:
         """Enable the same cumulative gaps without reintroducing the fixture."""

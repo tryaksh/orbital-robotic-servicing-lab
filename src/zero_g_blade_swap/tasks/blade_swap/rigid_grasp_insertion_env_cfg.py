@@ -7,6 +7,7 @@ from isaaclab.utils import configclass
 
 from . import mdp
 from .assets import (
+    CONTACT_TOOL_OFFSET_POS,
     RIGID_GRASP_BLADE_CFG,
     RIGID_GRASP_SLOT_CFG,
     RIGID_GRASP_SLOT_LEFT_GUIDE_CFG,
@@ -32,6 +33,11 @@ from .robust_insertion_env_cfg import (
     configure_insertion_play_presentation,
 )
 from .scene_cfg import ZeroGRigidGraspInsertionSceneCfg
+
+# The finger positions the promoted Level-0/1/2 checkpoints ran with, kept
+# verbatim so their certifications keep describing the task in this file.
+LEGACY_GRIPPER_PREGRASP = (0.45, 0.45, -0.45, 0.45, -0.45, -0.45)
+LEGACY_GRIPPER_CLOSED = (0.60, 0.60, -0.60, 0.60, -0.60, -0.60)
 
 
 @configclass
@@ -75,11 +81,25 @@ class ZeroGBladeRigidGraspInsertionEnvCfg(ZeroGBladeContactInsertionEnvCfg):
     curriculum: RobustInsertionCurriculumCfg = RobustInsertionCurriculumCfg()
     contact_grasp: bool = False
     rigid_grasp: bool = True
+    # Pinned, not inherited. The grasp task moved its tool frame onto the finger
+    # pads; this task must not follow. The frame below is what the promoted
+    # Level-0/1/2 checkpoints were trained against, it reaches the policy through
+    # `end_effector_pose_local`, and it anchors the PhysX fixed joint, so
+    # changing it would invalidate three certifications at once.
+    tool_offset_pos: tuple[float, float, float] = CONTACT_TOOL_OFFSET_POS
 
     def configure_robustness(self, level: int) -> None:
         """Add contact and physics gaps cumulatively after free insertion."""
 
         super().configure_robustness(level)
+        # Pinned for the same reason as the tool frame above. The grasp task
+        # corrected its finger commands after measuring that the convention runs
+        # backwards; this task keeps the values its promoted checkpoints ran
+        # with. The fingers here cannot touch the blade anyway, because the
+        # fixed joint replaces them and handle collision is disabled.
+        self.events.close_gripper_on_reset.params["pregrasp_positions"] = LEGACY_GRIPPER_PREGRASP
+        self.events.close_gripper_on_reset.params["closed_positions"] = LEGACY_GRIPPER_CLOSED
+        self.events.hold_gripper_closed.params["closed_positions"] = LEGACY_GRIPPER_CLOSED
         self.scene.spare_blade = RIGID_GRASP_BLADE_CFG.copy()
         # In zero gravity the lower shelf is not load-bearing. Its tight
         # contact combined with randomized friction produced a non-physical

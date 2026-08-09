@@ -30,7 +30,27 @@ GUIDE_CENTER_OFFSET_Y = 0.08975  # 1.5 mm total clearance around the 160 mm blad
 TOOL_OFFSET_POS = (0.0, 0.0, 0.19)
 TOOL_OFFSET_ROT = (1.0, 0.0, 0.0, 0.0)
 CONTACT_TOOL_OFFSET_POS = (0.0, 0.0, 0.179)
+# Measured, not assumed. Sweeping the handle along the tool axis while the
+# fingers close on it saturates the 10 N-m drive limit only while the handle
+# centre is roughly 60 to 150 mm below the wrist flange; at the 179 mm above the
+# fingers close past the handle and PhysX reports no contact at all. 105 mm is
+# the middle of that band, leaving about 45 mm of margin on each side.
+# See evidence/grasp_axial_pull_gate.json and scripts/grasp_diagnostics.py.
+GRASP_TOOL_OFFSET_POS = (0.0, 0.0, 0.105)
 CONTACT_BLADE_HANDLE_OFFSET = (-0.250, 0.0, 0.0185)
+# A 30 mm tab lying on the blade's 160 mm-wide deck cannot be gripped by this
+# gripper: the pads sit 82 mm apart at their approach opening, so they foul the
+# deck long before they can straddle a tab that short. The grasp task therefore
+# uses a raised grapple post, the interface an orbital-servicing module would
+# actually carry. Its centre sits at the pad height for the unchanged arm reset
+# pose, so no joint angles have to be re-derived:
+#   flange z 0.9158 - tool offset 0.105 = pads at z 0.8108
+#   blade centre z 0.72, so the post centre is 0.0908 above it.
+# At 150 mm tall it spans z 0.7358 to 0.8858: rooted 1.7 mm inside the deck at
+# 0.7375, with the pads gripping 75 mm clear of the deck. At 75 mm wide it stays
+# inside the +/-80.75 mm rail faces and clears the narrow upper lips.
+GRAPPLE_POST_OFFSET = (-0.250, 0.0, 0.0908)
+GRAPPLE_POST_SIZE = (0.060, 0.075, 0.150)
 GRIPPER_GRASP_ROT = (0.0, 0.7071068, 0.7071068, 0.0)
 
 # Captured from the validated differential-IK controller with the replacement
@@ -731,6 +751,15 @@ CONTACT_INSERTION_BLADE_CFG.spawn.handle_physics_material = sim_utils.RigidBodyM
 # The handle remains visible; only its collision is disabled for this task.
 RIGID_GRASP_BLADE_CFG = CONTACT_INSERTION_BLADE_CFG.copy()
 RIGID_GRASP_BLADE_CFG.spawn.handle_collision_enabled = False
+# Copied before the grapple post is fitted below, and pinned to the short tab
+# the promoted Level-0/1/2 checkpoints were certified with. The post is a grasp
+# interface; this task has no grasp to make.
+RIGID_GRASP_BLADE_CFG.spawn.handle_offset = CONTACT_BLADE_HANDLE_OFFSET
+RIGID_GRASP_BLADE_CFG.spawn.handle_size = (0.060, 0.075, 0.030)
+
+# Only the physical-grasp task gets the post.
+CONTACT_INSERTION_BLADE_CFG.spawn.handle_offset = GRAPPLE_POST_OFFSET
+CONTACT_INSERTION_BLADE_CFG.spawn.handle_size = GRAPPLE_POST_SIZE
 
 
 def _caddy_shelf_cfg(name: str, center: tuple[float, float, float]) -> RigidObjectCfg:
@@ -826,6 +855,7 @@ __all__ = [
     "CONTACT_INSERTION_STAGE_ARM_JOINT_POS",
     "CONTACT_INSERTION_STAGE_BLADE_POSE",
     "CONTACT_TOOL_OFFSET_POS",
+    "GRASP_TOOL_OFFSET_POS",
     "GRIPPER_GRASP_ROT",
     "INSERTION_BLADE_CFG",
     "INSERTION_GUIDE_CENTER_OFFSET_Y",
