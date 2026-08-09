@@ -351,11 +351,12 @@ gravity. Its motion under load confirms this arithmetically rather than by
 inspection: 120 N on a 10 kg blade for 1.5 s predicts 13.5 m of free travel, and
 the measurement is 12.5 m. The earlier "failed pull gate" was not a weak grip.
 
-The root cause is a frame error, and it is present in the promoted task too. The
-tool offset is authored 190 mm along the wrist for the rigid-grasp task and
-179 mm for the contact task, while the real pad midpoint sits about 13 mm from
-`wrist_3_link`. Both configurations therefore drive a tool frame 165.6 mm away
-from the fingers that are supposed to be holding the blade. Two consequences:
+The root cause is a frame error, and it is present in the promoted task too.
+`CONTACT_TOOL_OFFSET_POS` places the tool frame 179 mm along the wrist, and the
+rigid-grasp task inherits that same value from the contact task, while the real
+pad midpoint sits about 13 mm from `wrist_3_link`. Both tasks therefore drive a
+tool frame 165.6 mm away from the fingers that are supposed to be holding the
+blade. Three consequences:
 
 - **This is the PhysX startup warning, not a cosmetic issue.** The simulator
   already reports that the fixed joint "connects disjoint transforms and will
@@ -367,6 +368,12 @@ from the fingers that are supposed to be holding the blade. Two consequences:
   tautology, not an audit of a grip. `docs/claim_vs_evidence.md` already said
   the near-zero value is "a property of that joint, not of a grip"; the number
   behind that sentence is now measured.
+- **The fix cannot be a one-line edit to the shared constant.** Because the
+  promoted insertion tasks read the same `tool_offset_pos`, and that frame
+  appears in the policy observation through `end_effector_pose_local`, changing
+  it would move every promoted checkpoint's observation values and invalidate
+  three certifications. The grasp task needs its own corrected offset, leaving
+  the insertion tasks on the value they were trained against.
 
 A secondary observation needs confirming before it is acted on: finger-pad body
 separation grows monotonically with the commanded value, from 0 mm at 0.00 rad

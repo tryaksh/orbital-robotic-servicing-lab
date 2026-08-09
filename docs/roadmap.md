@@ -34,7 +34,9 @@
    and blocking: the tool frame the IK drives is 165.6 mm from the physical
    finger pads, so the pads never reach the handle and the axial pull gate holds
    0 N of the 66.4 N it must hold. See `evidence/grasp_axial_pull_gate.json`.
-   In order: correct the tool offset against the real pad midpoint; re-verify
+   In order: give the grasp task its own corrected offset rather than editing
+   the shared `tool_offset_pos`, which the promoted insertion tasks read into
+   their observation and were trained against; re-verify
    with `scripts/grasp_diagnostics.py` that the pads are within reach and that
    drive torque rises off zero; confirm the finger command's sign and aperture
    mapping, since pad-body separation currently *grows* with the value the task
