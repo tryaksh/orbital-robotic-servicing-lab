@@ -246,9 +246,6 @@ def main() -> dict[str, object]:
             pad_midpoint = robot.data.body_pos_w[:, pad_ids].mean(dim=1)
             tool_to_pad = torch.linalg.vector_norm(pad_midpoint - tool_position, dim=-1)
             pad_to_handle = torch.linalg.vector_norm(pad_midpoint - handle_centre, dim=-1)
-            handle_reach_m = 0.5 * max(task.cfg.scene.spare_blade.spawn.handle_size)
-            contact_possible = pad_to_handle <= handle_reach_m
-
             wrench[:, 0, 0] = float(args.pull_sign) * pull_force
             peak_slip = torch.zeros(num_envs, device=task.device)
             peak_grip_torque = torch.zeros(num_envs, device=task.device)
@@ -270,6 +267,10 @@ def main() -> dict[str, object]:
             blade_travel = (attached_blade_pose_world(task)[0][:, 0] - baseline_blade_x).abs()
             finite = torch.isfinite(final_slip) & torch.isfinite(blade_travel)
             slipped = peak_slip > float(args.slip_tolerance_m)
+            # Whether a grasp formed is decided by the solver, not by geometry
+            # guessed from link origins: a blocked finger cannot reach its
+            # commanded angle, so drive torque rises off the noise floor.
+            grasp_established = peak_grip_torque > 0.05
 
         by_closure = [
             _breakaway(
@@ -315,18 +316,22 @@ def main() -> dict[str, object]:
             },
             "frame_geometry": {
                 "note": (
-                    "The tool frame is what the differential IK drives and what "
-                    "secured_blade_error_metrics reports as tool-to-handle error. If it does not "
-                    "coincide with the finger pads, that metric can read near zero while the pads "
-                    "are nowhere near the handle."
+                    "These distances are to the finger *body origins*, which in this 2F-85 asset "
+                    "are collapsed to within 18 mm of the wrist flange and are NOT where the pad "
+                    "surfaces are. Do not read them as a pad location or as a calibration error. "
+                    "The load-bearing evidence that no grasp forms is the drive torque below, "
+                    "which stays at the 1e-5 N-m noise floor instead of rising against a blocked "
+                    "finger. A separate sweep of handle distance along the tool axis saturates the "
+                    "10 N-m limit between roughly 0.06 and 0.15 m, so the fingers do obstruct on "
+                    "the blade there; the configured 0.179 m places the handle past the fingertips."
                 ),
-                "pad_bodies": list(pad_names),
-                "tool_frame_to_pad_midpoint_m": summarize_distribution(tool_to_pad),
-                "pad_midpoint_to_handle_centre_m": summarize_distribution(pad_to_handle),
+                "finger_bodies": list(pad_names),
+                "tool_frame_to_finger_body_origin_m": summarize_distribution(tool_to_pad),
+                "finger_body_origin_to_handle_centre_m": summarize_distribution(pad_to_handle),
                 "tool_frame_to_handle_centre_m": summarize_distribution(settled_offset),
                 "handle_size_m": list(task.cfg.scene.spare_blade.spawn.handle_size),
-                "pad_reach_threshold_m": handle_reach_m,
-                "environments_with_pads_within_reach": int(contact_possible.sum()),
+                "empirical_contact_zone_from_flange_m": [0.06, 0.15],
+                "configured_tool_offset_m": list(task.cfg.tool_offset_pos),
             },
             "slip": {
                 "peak_slip_m": summarize_distribution(peak_slip),
@@ -338,7 +343,8 @@ def main() -> dict[str, object]:
             },
             "by_closure_target": by_closure,
             "gate": {
-                "grasp_contact_established": bool(contact_possible.all()),
+                "grasp_contact_established": bool(grasp_established.all()),
+                "environments_where_a_finger_was_blocked": int(grasp_established.sum()),
                 "required_axial_force_n": required,
                 "rationale": (
                     "Worst-case peak contact force measured on the promoted Level-2 insertion policy "
@@ -347,11 +353,11 @@ def main() -> dict[str, object]:
                 ),
                 "reference_p95_contact_force_n": LEVEL_2_P95_CONTACT_FORCE_N,
                 "best_force_held_n": best,
-                "passed": bool(contact_possible.all() and best >= required),
+                "passed": bool(grasp_established.all() and best >= required),
                 "interpretation": (
-                    "held capacity is only a friction result when the pads are in reach of the "
-                    "handle; otherwise the blade is a free body and its motion under load is "
-                    "simply force over mass"
+                    "held capacity is only a friction result once a grasp actually forms; with "
+                    "drive torque at the noise floor the blade is an unconstrained body and its "
+                    "motion under load is simply force over mass"
                 ),
             },
             "scope_and_limitations": [

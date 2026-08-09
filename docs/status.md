@@ -321,7 +321,7 @@ longer holds the perfect record the earlier policies hold. A policy that
 regulates sustained load and occasionally trips a safety limit is the more
 useful servicing behaviour, but that is a judgement, not a measurement.
 
-## Learned grasping is blocked by a 165 mm tool-frame error, not by friction
+## Learned grasping is blocked: the handle sits past the fingertips
 
 `docs/status.md` previously recorded only that the real Robotiq pad/handle
 contact task "failed its axial pull gate". `scripts/grasp_diagnostics.py`
@@ -334,11 +334,10 @@ force grid from 0 to 120 N, so 128 environments sweep the surface in one run.
 
 | Quantity | Measured |
 | --- | ---: |
-| Tool frame used by the IK, to actual finger-pad midpoint | 165.6 mm |
-| Finger-pad midpoint to handle centre | 164.6 mm |
-| Distance at which the pads could touch a 75 mm handle | 37.5 mm |
-| Environments with pads in reach of the handle | 0 of 128 |
-| Peak gripper drive torque, against a 10 N·m limit | 0.39 N·m |
+| Peak gripper drive torque at the configured grasp pose, against a 10 N·m limit | 0.39 N·m |
+| Pad-to-blade contact force reported by PhysX, over the full 0–0.8203 rad finger range | 0.0 N |
+| Handle distance from the flange at which the fingers *do* obstruct on the blade | 0.06–0.15 m |
+| Handle distance the task actually configures (`tool_offset_pos`) | 0.179 m |
 | Axial force held before slip | 0 N |
 | Axial force the promoted insertion policy's contact reaction demands | 66.4 N |
 
@@ -350,28 +349,38 @@ contact sensor filtered to the two inner-finger bodies, PhysX reports exactly
 `finger_joint` range of 0 to 0.8203 rad, and the joint reaches every commanded
 value exactly with zero drive torque, so nothing obstructs the pads anywhere in
 their travel. That measurement does not depend on where the pad surfaces are
-assumed to be. The pads settle 165 mm away from the handle and never touch it,
-and the blade is a free-floating body in zero gravity. Its motion under load confirms this arithmetically rather than by
+assumed to be. The fingers never touch the handle, and the blade is a
+free-floating body in zero gravity. Its motion under load confirms this arithmetically rather than by
 inspection: 120 N on a 10 kg blade for 1.5 s predicts 13.5 m of free travel, and
 the measurement is 12.5 m. The earlier "failed pull gate" was not a weak grip.
 
-The root cause is a frame error, and it is present in the promoted task too.
-`CONTACT_TOOL_OFFSET_POS` places the tool frame 179 mm along the wrist, and the
-rigid-grasp task inherits that same value from the contact task, while the real
-pad midpoint sits about 13 mm from `wrist_3_link`. Both tasks therefore drive a
-tool frame 165.6 mm away from the fingers that are supposed to be holding the
-blade. Three consequences:
+**The cause is a reach error: the handle is configured beyond the fingertips.**
+Sweeping the handle along the tool axis while the fingers close on it saturates
+the 10 N·m drive limit for handle distances between roughly 0.06 and 0.15 m from
+the flange, so the fingers genuinely obstruct on the blade in that band. The
+task configures 0.179 m, where drive torque sits at 1e-5 N·m: the fingers close
+past the handle and never touch it.
 
-- **This is the PhysX startup warning, not a cosmetic issue.** The simulator
-  already reports that the fixed joint "connects disjoint transforms and will
-  snap them together". The disjoint distance is 165.6 mm. That warning was
-  filed as a frame-consistency cleanup; it is the same defect.
+An earlier revision of this page attributed the failure to a "165.6 mm
+tool-frame calibration error", derived from the distance between the tool frame
+and the finger *body origins*. That was wrong and has been retracted. Every
+2F-85 body in this asset — base, both knuckle pairs, both fingers — is collapsed
+to within 18 mm of the flange, with `base_link_0` exactly coincident with
+`wrist_3_link`, so those origins say nothing about where the pad surfaces are.
+The zero-contact result was never in doubt; only the explanation for it was.
+Three consequences:
+
 - **`tool_to_handle_error_m` cannot detect a grasp problem.** In the rigid-grasp
   task it measures exactly 0.0000 m, because the fixed joint welds the blade to
   the tool frame that the metric compares against. It is a self-consistent
   tautology, not an audit of a grip. `docs/claim_vs_evidence.md` already said
-  the near-zero value is "a property of that joint, not of a grip"; the number
-  behind that sentence is now measured.
+  the near-zero value is "a property of that joint, not of a grip"; that is now
+  confirmed to the last decimal place.
+- **The blade is welded where the fingers are not.** The fixed joint holds the
+  blade at the tool frame, 0.179 m from the flange, while the fingers only reach
+  to about 0.15 m. Insertion is unaffected, because it depends on
+  blade-versus-slot geometry, but the render shows a gripper that is not
+  actually holding the blade it appears to carry.
 - **The fix cannot be a one-line edit to the shared constant.** Because the
   promoted insertion tasks read the same `tool_offset_pos`, and that frame
   appears in the policy observation through `end_effector_pose_local`, changing
@@ -430,12 +439,11 @@ Cumulative secured-grasp profiles:
 - The visible lower shelf collider is disabled in the rigid-grasp task. Tight
   floor contact plus randomized friction caused non-physical lateral ejection.
   Side rails remain physical. Re-enable only after geometry/contact calibration.
-- The tool frame the differential IK drives sits 165.6 mm from the physical
-  Robotiq finger pads in both the rigid-grasp and contact tasks. This is the
-  cause of the PhysX "disjoint body transforms" startup warning and of the
-  failed grasp gate; the blade hangs 165 mm below the fingers that appear to
-  hold it. Insertion is unaffected because the fixed joint welds the blade to
-  the tool frame, but no physical grasp can work until this is corrected.
+- The grasp pose is outside the fingers' reach: the handle is configured
+  0.179 m from the flange while the fingers only obstruct on the blade between
+  about 0.06 and 0.15 m. This is why the grasp gate fails. Insertion is
+  unaffected because the fixed joint welds the blade to the tool frame, but no
+  physical grasp can work until the grasp pose is corrected.
 - The fixed joint is a task abstraction. The real Robotiq pad/handle contact
   task holds 0 N of axial pull because the pads never reach the handle, and must
   not be called learned grasping.

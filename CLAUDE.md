@@ -40,9 +40,9 @@ matched control cut contact impulse 59% at the mean and 89% at the median while
 leaving peak force and cycle time unchanged: sensing binds sustained rubbing,
 and peak force is geometrically irreducible under position-based IK, so the
 remaining lever is an admittance action space. Learned grasping is blocked by a
-measured bug, not by training: the tool frame the IK drives sits 165.6 mm from
-the physical Robotiq pads, so the pads never reach the handle and hold 0 N of
-the 66.4 N required. Full numbers, limitations, and the
+measured bug, not by training: the handle is configured 0.179 m from the wrist
+flange while the fingers only reach it between about 0.06 and 0.15 m, so they
+close past it and hold 0 N of the 66.4 N required. Full numbers, limitations, and the
 pre-existing `train.py --smoke` probe defect live in `docs/status.md`.
 
 ## Operating rules

@@ -38,14 +38,14 @@ insertion of an already-secured replacement blade into a rack in microgravity**.
 | Contact load depends strongly on approach length, and success rate hides it | Worst-case peak force rises about sevenfold from the near start (9.75 N) to the full start (66.36 N), while success stays 100% at both | Nothing in the reward, terminations, or action space bounds contact force today, so the policy has no reason to prefer a gentle insertion |
 | Force feedback reduces accumulated contact load, measured against a matched control | Contact impulse fell 59% at the mean (7.55 to 3.06 N·s), 89% at the median (6.26 to 0.70), and 40% at p95 (16.55 to 9.94), with mean cycle time unchanged at 3.87 versus 3.89 s | `evidence/force_feedback_certification.json` against `evidence/force_feedback_control_certification.json`. Both trained from scratch on the identical schedule, seed, reward, and PPO config, differing only in the observation, so the effect is not an artifact of retraining |
 | Peak contact force is geometrically irreducible in this action space | Peak force did not move with force feedback: 6.31 to 6.24 N mean pooled, and 10.55 to 10.48 N mean at full reset distance. Three penalty strengths and full force sensing all failed to move it | Testing this further needs an admittance/impedance action space, roadmap item 7. The floor is consistent with a blade crossing 1.5 mm clearance under position-based differential IK |
-| The simulated pad grasp holds zero axial load, and the reason is measured | Finger pads settle 164.6 mm from the handle when contact needs 37.5 mm; 0 of 128 environments have pads in reach; drive torque peaks at 0.39 N·m of a 10 N·m limit; blade travel under load matches free-body force over mass to within 8% | `evidence/grasp_axial_pull_gate.json`. Replaces a pass/fail "failed its axial pull gate" with a root cause: the tool frame the IK drives is 165.6 mm from the physical pads |
+| The simulated pad grasp holds zero axial load, and the reason is measured | PhysX reports 0.0 N between finger and blade across the full 0–0.8203 rad finger range; drive torque stays at 0.39 N·m of a 10 N·m limit; blade travel under load matches free-body force over mass to within 8% | `evidence/grasp_axial_pull_gate.json`. Replaces a pass/fail "failed its axial pull gate" with a cause: the handle is configured 0.179 m from the flange while the fingers only obstruct between 0.06 and 0.15 m |
 | The dominant failure mode is identified | Lateral divergence: terminal lateral error p95 goes from 0.0 mm at 3× to 60.6 mm at 4×, tripping the 60 mm failure predicate. Timeouts stay a small minority | This contradicted the prediction from margin analysis, which expected orientation to fail first. Orientation rises in failing episodes but is a symptom |
 
 ## What is not established
 
 | Not claimed | Why |
 | --- | --- |
-| Learned grasping | The blade is held by a PhysX fixed joint standing in for an already-secured grasp. The physical Robotiq pads sit 165.6 mm from the handle and transmit 0 N, so the contact task has never grasped anything. The tool-to-handle error in the reports is exactly 0.0000 m because the joint welds the blade to the frame the metric compares against; it is a tautology, not a grip audit |
+| Learned grasping | The blade is held by a PhysX fixed joint standing in for an already-secured grasp. The handle is configured past the fingertips, so the fingers transmit 0 N and the contact task has never grasped anything. The tool-to-handle error in the reports is exactly 0.0000 m because the joint welds the blade to the frame the metric compares against; it is a tautology, not a grip audit |
 | Sim2Real transfer | No real UR10e, hardware-in-the-loop rig, wrist force/torque sensor, calibrated camera, orbital acceleration data, or radiation dataset has been used |
 | Accuracy independent of the success criterion | Because every certification episode succeeded, the terminal error distribution is bounded by the success box. It shows where inside tolerance the policy lands, not error it was free to exceed |
 | Robustness to rail stiction or mount compliance | Level 3 stiction reaches valid geometry but cannot settle below velocity limits and is documented as blocked, not hidden. Level 4 floating-mount wobble is blocked behind it |
@@ -93,7 +93,7 @@ insertion of an already-secured replacement blade into a rack in microgravity**.
   retraining rather than of sensing.
 - **A convenient assumption was measured and destroyed.** The contact-grasp task
   was assumed to be a nearly working grasp that needed tuning. Measuring it
-  showed the pads are 165.6 mm from the handle and hold 0 N, which moved
+  showed the fingers transmit 0 N at any commanded closure, which moved
   grasping from a training problem to a geometry bug and invalidated the
   project's own prior description of that failure.
 

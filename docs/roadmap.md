@@ -30,10 +30,10 @@
    whose commanded motion yields to measured force, and retrain; the action
    interface changes, so no checkpoint can be resumed. Compare against
    `evidence/force_feedback_certification.json` on identical axes.
-8. **Fix the 165.6 mm tool-frame error, then learn grasping.** Measured 2026-08-09
-   and blocking: the tool frame the IK drives is 165.6 mm from the physical
-   finger pads, so the pads never reach the handle and the axial pull gate holds
-   0 N of the 66.4 N it must hold. See `evidence/grasp_axial_pull_gate.json`.
+8. **Bring the handle inside the fingers' reach, then learn grasping.** Measured
+   2026-08-09 and blocking: the handle is configured 0.179 m from the flange
+   while the fingers only obstruct on it between about 0.06 and 0.15 m, so they
+   close past it and the axial pull gate holds 0 N of the 66.4 N it must hold. See `evidence/grasp_axial_pull_gate.json`.
    In order: give the grasp task its own corrected offset rather than editing
    the shared `tool_offset_pos`, which the promoted insertion tasks read into
    their observation and were trained against; re-verify
