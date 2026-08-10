@@ -7,6 +7,7 @@ from isaaclab.envs.mdp import *  # noqa: F401,F403
 from .actions import *  # noqa: F401,F403
 from .commands import *  # noqa: F401,F403
 from .curricula import *  # noqa: F401,F403
+from .grapple import *  # noqa: F401,F403
 from .insertion import *  # noqa: F401,F403
 from .observations import *  # noqa: F401,F403
 from .randomization import *  # noqa: F401,F403

@@ -102,9 +102,18 @@ Remaining levers, in the order they are worth trying:
    here must be argued as a protocol correction and re-run against the earlier
    configurations, not adopted because it flatters the number.
 
-Then train and certify grasp, extract, and insert as separate gated skills.
+The three skills are already written and registered as separate gated tasks
+(`Isaac-ZeroG-Blade-GrapplePin-Grasp-v0`, `-Extract-v0`, `-Insert-v0`) but have
+**never been executed**, because constructing an Isaac Lab environment needs the
+Kit runtime. Run each with `--smoke` first and expect ordinary wiring faults.
 Extract ends with the blade fully clear of the slot mouth, about 495 mm of
-travel; that was decided with the owner on 2026-08-09.
+travel; that was decided with the owner on 2026-08-09. Its final pose puts the
+wrist about 200 mm in front of the robot's own base, folded, which has not been
+checked kinematically. Insert starts at the certified staging pose because that
+is the arm pose that has been calibrated; chaining all three needs one more
+calibration run.
+
+Do not start a long run on any of them until the pull gate passes.
 
 Tools that now exist for this work:
 

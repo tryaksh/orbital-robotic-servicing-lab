@@ -63,6 +63,16 @@ def _parser() -> argparse.ArgumentParser:
         default=-1.0,
         help="-1 pulls the blade out of the rack along -x, matching extraction; +1 pushes it in.",
     )
+    parser.add_argument(
+        "--hold_closure_delta",
+        type=float,
+        default=0.0,
+        help=(
+            "Added to the closure command once the capture has settled, modelling a gripper that closes gently "
+            "and then firms up. A wedge converts closing force into thrust along the pull axis, so capturing at "
+            "full force disturbs the payload; holding force is only needed afterwards."
+        ),
+    )
     parser.add_argument("--settle_s", type=float, default=1.0, help="Seconds held still before the baseline is taken.")
     parser.add_argument("--hold_s", type=float, default=1.5, help="Seconds the pull is applied.")
     parser.add_argument(
@@ -234,6 +244,7 @@ def main() -> dict[str, object]:
             baseline_angle = baseline_angle.clone()
             baseline_blade_x = attached_blade_pose_world(task)[0][:, 0].clone()
             settled_offset = torch.linalg.vector_norm(baseline_vector, dim=-1)
+            seated_finger = robot.data.joint_pos[:, joint_ids[0]].clone()
 
             # A holding capacity of zero means nothing unless we also know
             # whether the pads ever reached the handle. Measure the three
@@ -249,8 +260,14 @@ def main() -> dict[str, object]:
             wrench[:, 0, 0] = float(args.pull_sign) * pull_force
             peak_slip = torch.zeros(num_envs, device=task.device)
             peak_grip_torque = torch.zeros(num_envs, device=task.device)
+            # Capture and hold are separate commands. Closing hard enough to
+            # hold is not the same as closing hard enough to capture: a wedge
+            # turns closing force into thrust along the pull axis, so a firm
+            # capture disturbs the payload it is trying to take.
+            hold_targets = (closure + float(args.hold_closure_delta)).unsqueeze(-1) * signs
+            splay = torch.zeros(num_envs, device=task.device)
             for _ in range(hold_steps):
-                robot.set_joint_position_target(finger_targets, joint_ids=joint_ids)
+                robot.set_joint_position_target(hold_targets, joint_ids=joint_ids)
                 blade.permanent_wrench_composer.set_forces_and_torques(
                     forces=wrench, torques=zero_torque, is_global=True
                 )
@@ -260,6 +277,10 @@ def main() -> dict[str, object]:
                 torch.maximum(peak_slip, slip, out=peak_slip)
                 grip = robot.data.applied_torque[:, joint_ids[0]].abs()
                 torch.maximum(peak_grip_torque, grip, out=peak_grip_torque)
+                # How far the load forces the fingers back open. If the
+                # interface is failing because the payload cams the pads apart,
+                # this rises with pull force; if it is sliding, this stays flat.
+                torch.maximum(splay, seated_finger - robot.data.joint_pos[:, joint_ids[0]], out=splay)
 
             final_vector, final_angle = secured_blade_pose_error(task)
             # Split the slip along the pull axis from the rest. A capture that
@@ -306,6 +327,7 @@ def main() -> dict[str, object]:
                 "physics_rate_hz": 120,
                 "environments": num_envs,
                 "closure_targets_rad": list(args.closures),
+                "hold_closure_delta_rad": args.hold_closure_delta,
                 "force_levels": args.force_levels,
                 "max_force_n": args.max_force_n,
                 "force_step_n": args.max_force_n / (args.force_levels - 1),
@@ -352,6 +374,7 @@ def main() -> dict[str, object]:
                 "final_lateral_slip_m": summarize_distribution(lateral_slip),
                 "final_angular_slip_rad": summarize_distribution(angular_slip),
                 "reached_finger_joint_rad": summarize_distribution(reached_finger),
+                "finger_splay_under_load_rad": summarize_distribution(splay),
                 "blade_axial_travel_m": summarize_distribution(blade_travel),
                 "non_finite_environments": int((~finite).sum()),
                 "environments_that_slipped": int(slipped.sum()),

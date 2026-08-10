@@ -182,6 +182,12 @@ for _guided_id, _guided_cls in (
 for _grapple_id, _grapple_cls in (
     ("Isaac-ZeroG-Blade-GrapplePin-Capture-v0", "ZeroGBladeGrapplePinCaptureEnvCfg"),
     ("Isaac-ZeroG-Blade-GrapplePin-Capture-Play-v0", "ZeroGBladeGrapplePinCapturePlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-Grasp-v0", "ZeroGBladeGrapplePinGraspEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-Grasp-Play-v0", "ZeroGBladeGrapplePinGraspPlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-Extract-v0", "ZeroGBladeGrapplePinExtractEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-Extract-Play-v0", "ZeroGBladeGrapplePinExtractPlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-Insert-v0", "ZeroGBladeGrapplePinInsertEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-Insert-Play-v0", "ZeroGBladeGrapplePinInsertPlayEnvCfg"),
 ):
     gym.register(
         id=_grapple_id,

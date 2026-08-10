@@ -648,6 +648,41 @@ Grasp, extract, and insert are therefore not trained. The order of work puts the
 pull gate before PPO precisely so that a policy is never trained against an
 interface that cannot hold the load.
 
+## Three skills: implemented, registered, not yet run
+
+The three skills a replacement demonstration needs are now separate tasks with
+separate gates, in `grapple_pin_env_cfg.py` and `mdp/grapple.py`:
+
+| Task | Starts | Succeeds when |
+| --- | --- | --- |
+| `Isaac-ZeroG-Blade-GrapplePin-Grasp-v0` | Head-on, 10 to 50 mm of pose error | Drive torque loaded, tool on the grip point, held 0.3 s |
+| `Isaac-ZeroG-Blade-GrapplePin-Extract-v0` | Captured, blade in the slot | Blade centre at x 0.225, so its rear face clears the mouth |
+| `Isaac-ZeroG-Blade-GrapplePin-Insert-v0` | Captured, at the certified staging pose | The existing insertion success predicate, with a physical grip |
+
+Three design points are deliberate. Only the grasp skill commands the gripper: a
+policy that cannot choose when to close is not learning to grasp. The
+observation carries finger angle *and* drive torque together, because the angle
+alone cannot distinguish fingers closed on a pin from fingers closed on nothing,
+which is exactly the failure this project did not see for three sessions.
+Extraction carries its own workspace predicate, because `insertion_failure`
+treats a blade below x 0.45 as an escape and that is where a successful
+extraction ends.
+
+**None of the three has been executed.** They are written, registered, and
+ruff-clean, and the pin's dimensional contract is defended by 12 CPU tests in
+`tests/test_grapple_geometry.py` that need no simulator. But constructing an
+Isaac Lab environment configuration requires the Kit runtime, so the first run of
+each task should be `--smoke` and is expected to surface ordinary wiring faults.
+
+Two known risks to check on that first run. The extract skill ends with the
+wrist about 200 mm in front of the robot's own base with the tool still pointing
+along +x, which is inside the UR10e's reach but folded and has not been checked
+kinematically. And the insert skill starts at the certified staging pose rather
+than at the end of an extraction, because that is the arm pose that has been
+calibrated; chaining the three needs one more calibration run.
+
+None of this is unblocked until the pull gate passes.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300

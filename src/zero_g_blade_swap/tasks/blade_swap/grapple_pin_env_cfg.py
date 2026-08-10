@@ -27,8 +27,15 @@ were certified on. This is a separate scene and separate registrations.
 from __future__ import annotations
 
 from isaaclab.controllers import DifferentialIKControllerCfg
+from isaaclab.managers import CurriculumTermCfg as CurrTerm
 from isaaclab.managers import EventTermCfg as EventTerm
+from isaaclab.managers import ObservationGroupCfg as ObsGroup
+from isaaclab.managers import ObservationTermCfg as ObsTerm
+from isaaclab.managers import RewardTermCfg as RewTerm
+from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.utils import configclass
+
+from zero_g_blade_swap.math_utils import INSERTION_CURRICULUM_MIXTURES
 
 from . import mdp
 from .assets import (
@@ -44,7 +51,7 @@ from .contact_insertion_env_cfg import (
     ZeroGBladeContactInsertionEnvCfg,
 )
 from .env_cfg import ARM_JOINTS
-from .insertion_env_cfg import ARM_CFG, GRIPPER_CFG
+from .insertion_env_cfg import ARM_CFG, GRIPPER_CFG, WRIST_CFG
 from .robust_insertion_env_cfg import configure_insertion_play_presentation
 from .scene_cfg import ZeroGGrapplePinSceneCfg
 
@@ -175,11 +182,391 @@ class ZeroGBladeGrapplePinCapturePlayEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         configure_insertion_play_presentation(self)
 
 
+# ---------------------------------------------------------------------------
+# The three skills a replacement demonstration needs, gated separately.
+#
+# They share a scene, a tool frame, and a capture attitude, and nothing else.
+# Each has its own reward, its own success predicate, and its own failure
+# predicate, because "did the grasp form", "is the blade clear of the rack", and
+# "is the blade seated in the slot" are three different questions and a single
+# blended reward would let a policy trade one against another.
+
+
+@configclass
+class GrappleSkillObsCfg(ObsGroup):
+    """What all three skills can see.
+
+    ``gripper_state`` is the term that matters and is new here. It reports the
+    finger angle *and* the drive torque, because the angle alone cannot tell
+    fingers closed on a pin from fingers closed on nothing, and not seeing that
+    difference is what hid the absent grasp in this project for three sessions.
+    """
+
+    joint_pos = ObsTerm(func=mdp.joint_pos_limit_normalized, params={"asset_cfg": ARM_CFG})
+    joint_vel = ObsTerm(func=mdp.normalized_joint_velocity, params={"asset_cfg": ARM_CFG})
+    end_effector = ObsTerm(func=mdp.end_effector_pose_local, params={"asset_cfg": WRIST_CFG})
+    grip_error = ObsTerm(func=mdp.grapple_grip_error_observation)
+    gripper_state = ObsTerm(func=mdp.gripper_state_observation)
+    blade_velocity = ObsTerm(func=mdp.attached_blade_velocity, scale=0.10)
+    previous_action = ObsTerm(func=mdp.last_action)
+
+    def __post_init__(self) -> None:
+        self.enable_corruption = False
+        self.concatenate_terms = True
+
+
+@configclass
+class GraspObservationsCfg:
+    policy: GrappleSkillObsCfg = GrappleSkillObsCfg()
+
+
+@configclass
+class ExtractPolicyObsCfg(GrappleSkillObsCfg):
+    remaining_travel = ObsTerm(func=mdp.extraction_error)
+
+
+@configclass
+class ExtractObservationsCfg:
+    policy: ExtractPolicyObsCfg = ExtractPolicyObsCfg()
+
+
+@configclass
+class InsertPolicyObsCfg(GrappleSkillObsCfg):
+    blade_goal_error = ObsTerm(func=mdp.insertion_goal_error)
+
+
+@configclass
+class InsertObservationsCfg:
+    policy: InsertPolicyObsCfg = InsertPolicyObsCfg()
+
+
+@configclass
+class GraspActionsCfg(GrapplePinActionsCfg):
+    """Six Cartesian corrections plus the decision to close.
+
+    The grasp skill is the only one of the three that commands the gripper. A
+    policy that cannot choose when to close is not learning to grasp, it is
+    learning to arrive somewhere while a script closes for it.
+    """
+
+    arm = mdp.GraspSettlingDifferentialInverseKinematicsActionCfg(
+        asset_name="robot",
+        joint_names=ARM_JOINTS,
+        body_name="wrist_3_link",
+        body_offset=mdp.GraspSettlingDifferentialInverseKinematicsActionCfg.OffsetCfg(
+            pos=GRAPPLE_TOOL_OFFSET_POS,
+            rot=mdp.TOOL_OFFSET_ROT,
+        ),
+        # Finer than the insertion scales: the wedge's free end has 8.5 mm of
+        # clearance a side inside the pad aperture, so alignment is the task.
+        scale=(0.002, 0.001, 0.001, 0.008, 0.008, 0.008),
+        settling_time_s=0.0,
+        controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=True, ik_method="dls"),
+    )
+    gripper = mdp.RobotiqBinaryActionCfg(
+        asset_name="robot",
+        open_position=GRAPPLE_GRIPPER_APPROACH[0],
+        closed_position=GRAPPLE_GRIPPER_CAPTURE[0],
+    )
+
+
+@configclass
+class ExtractActionsCfg(GrapplePinActionsCfg):
+    """Six corrections; the fingers stay where the capture left them."""
+
+    arm = mdp.GraspSettlingDifferentialInverseKinematicsActionCfg(
+        asset_name="robot",
+        joint_names=ARM_JOINTS,
+        body_name="wrist_3_link",
+        body_offset=mdp.GraspSettlingDifferentialInverseKinematicsActionCfg.OffsetCfg(
+            pos=GRAPPLE_TOOL_OFFSET_POS,
+            rot=mdp.TOOL_OFFSET_ROT,
+        ),
+        # 120 mm/s along the pull axis. The blade has to travel 495 mm to clear
+        # the mouth, which does not fit an episode at the insertion scale.
+        scale=(0.004, 0.001, 0.001, 0.008, 0.008, 0.008),
+        settling_time_s=0.30,
+        controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=True, ik_method="dls"),
+    )
+
+
+@configclass
+class GraspEventsCfg(GrapplePinEventsCfg):
+    """Start near the pin with the fingers open and let the policy close them."""
+
+    close_gripper_on_reset = None
+    hold_gripper_closed = None
+    open_gripper_on_reset = EventTerm(
+        func=mdp.reset_grapple_fingers,
+        mode="reset",
+        params={"asset_cfg": GRIPPER_CFG, "finger_joint": GRAPPLE_GRIPPER_APPROACH[0]},
+    )
+    remember_blade_pose = EventTerm(func=mdp.record_blade_reset_pose, mode="reset")
+    reset_grapple = EventTerm(func=mdp.reset_grapple_progress, mode="reset")
+
+
+@configclass
+class GraspRewardsCfg:
+    approach = RewTerm(func=mdp.capture_approach_reward, weight=10.0)
+    success = RewTerm(func=mdp.capture_success_reward, weight=30.0)
+    disturbance = RewTerm(func=mdp.blade_disturbance_penalty, weight=-0.20)
+    time = RewTerm(func=mdp.elapsed_time_penalty, weight=-0.10)
+    action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.003)
+    failure = RewTerm(func=mdp.capture_failure_reward, weight=-15.0)
+
+
+@configclass
+class GraspTerminationsCfg:
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    capture_success = DoneTerm(func=mdp.capture_success_mask)
+    capture_failed = DoneTerm(func=mdp.capture_failure)
+    non_finite = DoneTerm(func=mdp.insertion_non_finite_state)
+
+
+@configclass
+class GraspCurriculumCfg:
+    pose_noise = CurrTerm(
+        func=mdp.InsertionSuccessRateCurriculum,
+        params={
+            "success_term": "capture_success",
+            "threshold": 0.80,
+            "window_size": 2_000,
+            "max_stage": 2,
+            "minimum_level_steps": 1_600,
+            "stage_mixtures": INSERTION_CURRICULUM_MIXTURES,
+        },
+    )
+
+
+@configclass
+class ZeroGBladeGrapplePinGraspEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
+    """Learn to align on the pin and close a loaded capture.
+
+    The reset pose is the calibrated head-on capture pose carrying much larger
+    joint noise than the insertion tasks use, so the policy has to servo back
+    onto an 8.5 mm-per-side aperture rather than start inside it. A true
+    standoff approach, backing off along the tool axis and flying in, needs a
+    second calibrated pose per stage and is deliberately left for after this
+    skill is certified.
+    """
+
+    observations: GraspObservationsCfg = GraspObservationsCfg()
+    actions: GraspActionsCfg = GraspActionsCfg()
+    events: GraspEventsCfg = GraspEventsCfg()
+    rewards: GraspRewardsCfg = GraspRewardsCfg()
+    terminations: GraspTerminationsCfg = GraspTerminationsCfg()
+    curriculum: GraspCurriculumCfg = GraspCurriculumCfg()
+    episode_length_s: float = 6.0
+
+    def configure_robustness(self, level: int) -> None:
+        super().configure_robustness(level)
+        self.events = GraspEventsCfg()
+        # Displacing the tool by roughly 10 to 60 mm is what makes this a grasp
+        # skill instead of a decision about when to close.
+        self.events.reset_arm.params["noise_by_stage"] = (0.010, 0.025, 0.050)
+        self.events.reset_blade.params["poses_by_stage"] = CONTACT_INSERTION_STAGE_BLADE_POSE
+        if level < 2:
+            self.events.blade_mass = None
+        if level < 3:
+            self.events.slot_material = None
+            self.events.left_guide_material = None
+            self.events.right_guide_material = None
+            self.events.randomize_stiction = None
+            self.events.rail_stiction_force = None
+        self.scene.robot = make_grapple_pin_robot_cfg(floating=level >= 4)
+        if level < 4:
+            self.events.clear_mount_wrench = None
+            self.events.base_wobble = None
+
+
+@configclass
+class ExtractEventsCfg(GrapplePinEventsCfg):
+    """Start already captured, and keep the fingers where capture left them."""
+
+    remember_blade_pose = EventTerm(func=mdp.record_blade_reset_pose, mode="reset")
+    reset_grapple = EventTerm(func=mdp.reset_grapple_progress, mode="reset")
+
+
+@configclass
+class ExtractRewardsCfg:
+    progress = RewTerm(func=mdp.extraction_progress_reward, weight=12.0)
+    success = RewTerm(func=mdp.extraction_success_reward, weight=30.0)
+    retention = RewTerm(func=mdp.grip_retention_penalty, weight=-0.50)
+    time = RewTerm(func=mdp.elapsed_time_penalty, weight=-0.10)
+    action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.003)
+    failure = RewTerm(func=mdp.extraction_failure_reward, weight=-15.0)
+
+
+@configclass
+class ExtractTerminationsCfg:
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    extraction_success = DoneTerm(func=mdp.extraction_success_mask)
+    extraction_failed = DoneTerm(func=mdp.extraction_failure)
+    non_finite = DoneTerm(func=mdp.insertion_non_finite_state)
+
+
+@configclass
+class ExtractCurriculumCfg:
+    pose_noise = CurrTerm(
+        func=mdp.InsertionSuccessRateCurriculum,
+        params={
+            "success_term": "extraction_success",
+            "threshold": 0.80,
+            "window_size": 2_000,
+            "max_stage": 2,
+            "minimum_level_steps": 1_600,
+            "stage_mixtures": INSERTION_CURRICULUM_MIXTURES,
+        },
+    )
+
+
+@configclass
+class ZeroGBladeGrapplePinExtractEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
+    """Break the blade free and pull it fully clear of the slot mouth.
+
+    Success is the blade's rear face passing x = 0.45, which is 495 mm of
+    travel from fully inserted. That is the only definition under which the
+    module has actually been removed, and it was chosen with the owner over the
+    cheaper option of retreating to the insertion staging pose.
+
+    The end of that pull puts the wrist about 200 mm in front of the robot's own
+    base with the tool still pointing along +x. That is inside the UR10e's
+    reach but folded, and it has not been checked kinematically; the first smoke
+    run should confirm the arm can get there before a long run is started.
+    """
+
+    observations: ExtractObservationsCfg = ExtractObservationsCfg()
+    actions: ExtractActionsCfg = ExtractActionsCfg()
+    events: ExtractEventsCfg = ExtractEventsCfg()
+    rewards: ExtractRewardsCfg = ExtractRewardsCfg()
+    terminations: ExtractTerminationsCfg = ExtractTerminationsCfg()
+    curriculum: ExtractCurriculumCfg = ExtractCurriculumCfg()
+    episode_length_s: float = 15.0
+
+    def configure_robustness(self, level: int) -> None:
+        super().configure_robustness(level)
+        self.events = ExtractEventsCfg()
+        self.events.reset_arm.params["noise_by_stage"] = (
+            (0.0005, 0.001, 0.002) if level == 0 else (0.001, 0.002, 0.004)
+        )
+        self.events.reset_blade.params["poses_by_stage"] = CONTACT_INSERTION_STAGE_BLADE_POSE
+        if level < 2:
+            self.events.blade_mass = None
+        if level < 3:
+            self.events.slot_material = None
+            self.events.left_guide_material = None
+            self.events.right_guide_material = None
+            self.events.randomize_stiction = None
+            self.events.rail_stiction_force = None
+        self.scene.robot = make_grapple_pin_robot_cfg(floating=level >= 4)
+        if level < 4:
+            self.events.clear_mount_wrench = None
+            self.events.base_wobble = None
+
+
+@configclass
+class InsertRewardsCfg:
+    progress = RewTerm(func=mdp.insertion_progress_reward, weight=12.0)
+    success = RewTerm(func=mdp.insertion_success_reward, weight=30.0)
+    retention = RewTerm(func=mdp.grip_retention_penalty, weight=-0.50)
+    time = RewTerm(func=mdp.elapsed_time_penalty, weight=-0.10)
+    misalignment = RewTerm(func=mdp.insertion_misalignment_penalty, weight=-0.03)
+    settling = RewTerm(func=mdp.insertion_settling_penalty, weight=-0.04)
+    action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.003)
+    failure = RewTerm(func=mdp.extraction_failure_reward, weight=-15.0)
+
+
+@configclass
+class InsertTerminationsCfg:
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    insertion_success = DoneTerm(func=mdp.insertion_success_mask)
+    # Reuses extraction's predicate on purpose: it is the one that asks whether
+    # a *physical* grip is still there, rather than measuring a fixed joint
+    # against the frame that fixed joint defines.
+    extraction_failed = DoneTerm(func=mdp.extraction_failure)
+    non_finite = DoneTerm(func=mdp.insertion_non_finite_state)
+
+
+@configclass
+class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
+    """Insert a blade the gripper is physically holding, with no fixed joint.
+
+    This is the promoted insertion task's problem without its central
+    abstraction. The three certified policies carry the blade on a PhysX fixed
+    joint; here the only thing between the tool and the blade is pad against
+    pin, so the grip has to survive every rail contact the insertion generates.
+
+    It starts at the certified full-distance staging pose rather than at the end
+    of an extraction, because that is the arm pose that has been calibrated.
+    Starting from fully clear needs one more calibration run.
+    """
+
+    observations: InsertObservationsCfg = InsertObservationsCfg()
+    events: ExtractEventsCfg = ExtractEventsCfg()
+    rewards: InsertRewardsCfg = InsertRewardsCfg()
+    terminations: InsertTerminationsCfg = InsertTerminationsCfg()
+    episode_length_s: float = 12.0
+
+    def configure_robustness(self, level: int) -> None:
+        super().configure_robustness(level)
+        self.events = ExtractEventsCfg()
+        self.events.reset_arm.params["noise_by_stage"] = (
+            (0.0005, 0.001, 0.002) if level == 0 else (0.001, 0.002, 0.004)
+        )
+        self.events.reset_blade.params["poses_by_stage"] = CONTACT_INSERTION_STAGE_BLADE_POSE
+        if level < 2:
+            self.events.blade_mass = None
+        if level < 3:
+            self.events.slot_material = None
+            self.events.left_guide_material = None
+            self.events.right_guide_material = None
+            self.events.randomize_stiction = None
+            self.events.rail_stiction_force = None
+        self.scene.robot = make_grapple_pin_robot_cfg(floating=level >= 4)
+        if level < 4:
+            self.events.clear_mount_wrench = None
+            self.events.base_wobble = None
+
+
+@configclass
+class ZeroGBladeGrapplePinGraspPlayEnvCfg(ZeroGBladeGrapplePinGraspEnvCfg):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.scene.num_envs = 1
+        configure_insertion_play_presentation(self)
+
+
+@configclass
+class ZeroGBladeGrapplePinExtractPlayEnvCfg(ZeroGBladeGrapplePinExtractEnvCfg):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.scene.num_envs = 1
+        configure_insertion_play_presentation(self)
+
+
+@configclass
+class ZeroGBladeGrapplePinInsertPlayEnvCfg(ZeroGBladeGrapplePinInsertEnvCfg):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.scene.num_envs = 1
+        configure_insertion_play_presentation(self)
+
+
 __all__ = [
     "GRAPPLE_GRIPPER_APPROACH",
     "GRAPPLE_GRIPPER_CAPTURE",
+    "ExtractActionsCfg",
+    "ExtractEventsCfg",
+    "GraspActionsCfg",
+    "GraspEventsCfg",
     "GrapplePinActionsCfg",
     "GrapplePinEventsCfg",
     "ZeroGBladeGrapplePinCaptureEnvCfg",
     "ZeroGBladeGrapplePinCapturePlayEnvCfg",
+    "ZeroGBladeGrapplePinExtractEnvCfg",
+    "ZeroGBladeGrapplePinExtractPlayEnvCfg",
+    "ZeroGBladeGrapplePinGraspEnvCfg",
+    "ZeroGBladeGrapplePinGraspPlayEnvCfg",
+    "ZeroGBladeGrapplePinInsertEnvCfg",
+    "ZeroGBladeGrapplePinInsertPlayEnvCfg",
 ]

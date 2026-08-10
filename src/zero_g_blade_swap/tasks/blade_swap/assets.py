@@ -19,6 +19,23 @@ from isaaclab.utils import configclass
 from isaaclab_assets.robots.universal_robots import UR10e_ROBOTIQ_2F_85_CFG
 from pxr import Gf, PhysxSchema, Sdf, Usd, UsdGeom, UsdPhysics
 
+from zero_g_blade_swap.grapple_geometry import (
+    CLOSING_RATE_M_PER_RAD,
+    GRAPPLE_HEAD_ON_TOOL_ROT,
+    GRAPPLE_PIN_COLLAR_HALF_HEIGHT,
+    GRAPPLE_PIN_COLLAR_X,
+    GRAPPLE_PIN_GRIP_OFFSET,
+    GRAPPLE_PIN_HALF_WIDTH_Y,
+    GRAPPLE_PIN_SHAFT_HALF_HEIGHT,
+    GRAPPLE_PIN_SHAFT_X,
+    GRAPPLE_PIN_WEDGE_HALF_HEIGHT,
+    GRAPPLE_PIN_WEDGE_X,
+    GRAPPLE_TOOL_OFFSET_POS,
+    RATED_GRIP_FORCE_N,
+    drive_torque_for_grip_force_nm,
+    wedge_taper_deg,
+)
+
 ROBOT_ROOT_POS = (-0.45, 0.0, 0.15)
 BLADE_INSERTED_POS = (0.75, 0.0, 0.72)
 SPARE_BLADE_POS = (0.70, -0.42, 0.50)
@@ -88,50 +105,18 @@ GRIPPER_GRASP_ROT = (0.0, 0.7071068, 0.7071068, 0.0)
 # axis. Capacity is 2 N sin(alpha) from geometry alone before any friction:
 # at the 10 N-m drive limit that is 77 N against the 66.4 N gate, so the
 # interface clears it without relying on a friction coefficient at all.
-GRAPPLE_PIN_TAPER_DEG = 24.2
-# Blade-local x of each section boundary, measured from the blade centre. The
-# blade's front face is at -0.225 and the rack mouth sits 75 mm in front of it
-# when the blade is fully inserted, which is what sets the shaft length: the
-# pads are 57 mm long and must stay outside the mouth at full insertion, so the
-# collar they seat against cannot be closer than 80 mm to the blade face.
-GRAPPLE_PIN_SHAFT_X = (-0.305, -0.225)
-GRAPPLE_PIN_COLLAR_X = (-0.311, -0.305)
-GRAPPLE_PIN_WEDGE_X = (-0.371, -0.311)
-GRAPPLE_PIN_HALF_WIDTH_Y = 0.015
-# The shaft is the only section that ever enters the slot. It has to clear the
-# floor plate at z 0.7025 and the guided channel's upper lips at z 0.7385, a
-# 36 mm window around the blade centre, so 30 mm tall leaves 2.5 mm below and
-# 3.5 mm above.
-GRAPPLE_PIN_SHAFT_HALF_HEIGHT = 0.015
-# Taller than the 87.08 mm the pads can ever open to, so it is an absolute
-# depth stop rather than something a wide-open gripper can slide past. It also
-# gives the insert skill a face to push on, so both directions have a hard
-# mechanical stop instead of a friction grip.
-GRAPPLE_PIN_COLLAR_HALF_HEIGHT = 0.045
-# 70 mm across at the free end, inside the 87.08 mm the pads open to with
-# 8.5 mm of approach clearance per side, tapering to 16 mm where it meets the
-# collar.
-GRAPPLE_PIN_WEDGE_HALF_HEIGHT = (0.035, 0.008)
-# Where the tool frame belongs: the centre of the 105-162 mm pad span, so the
-# frame the policy steers is the frame the pads actually grip with.
-GRAPPLE_TOOL_OFFSET_POS = (0.0, 0.0, 0.1335)
-# The matching point on the blade: the centre of the pad span when the fingers
-# are closed, so that with the tool frame here the pads straddle the wedge with
-# their leading faces on the collar.
+# Dimensions live in zero_g_blade_swap.grapple_geometry, which imports nothing
+# from Isaac Lab so the test suite can defend them without a simulator. The
+# reasoning behind each one is recorded there.
 #
-# Capture is self-seating and does not depend on hitting this exactly. Closing
-# the fingers drives the pin along the taper until the collar catches the pad
-# leading faces, and the measured settled offset is 12.5 mm whatever the start.
-# Moving this constant to the measured stop angle instead was tried and
-# reverted: it is a coupled fixed point, since where the fingers stop depends on
-# where the arm is, and the 6.4 mm shift drove the stage-1 IK solve into the
-# wrist_1 limit.
-GRAPPLE_PIN_GRIP_OFFSET = (-0.3395, 0.0, 0.0)
-# Head-on: the tool's +z approach axis points along world +x, and the pads'
-# closing axis points along world z. Vertical closure keeps the gripper's
-# narrow 75 mm dimension between the rails; closing horizontally would put its
-# 155 mm dimension there instead, against a 161.5 mm channel.
-GRAPPLE_HEAD_ON_TOOL_ROT = (0.0, 0.7071068, 0.0, 0.7071068)
+# In short: the blade's front face is at -0.225 and the rack mouth sits 75 mm in
+# front of it at full insertion, which is what sets the 80 mm shaft, because the
+# pads are 57 mm long and have to stay outside the mouth. The collar is taller
+# than the pads can open, so it is a depth stop rather than something a
+# wide-open gripper slides past, and it gives the insert direction a face to
+# push on. The wedge is 70 mm across at its free end, inside the 87.08 mm
+# aperture with 8.5 mm of approach clearance a side.
+GRAPPLE_PIN_TAPER_DEG = wedge_taper_deg()
 
 # Solved by scripts/calibrate_grasp_pose.py against this task's own differential
 # IK, one environment per curriculum stage, fingers held open at the approach
@@ -157,9 +142,9 @@ GRAPPLE_HEAD_ON_ARM_JOINT_POS = (
 # worth not repeating: raising the drive to this value did *not* raise axial
 # holding capacity, it lowered it. Pad force is not the binding constraint.
 # See make_grapple_pin_robot_cfg and docs/status.md.
-ROBOTIQ_2F85_RATED_GRIP_N = 235.0
-ROBOTIQ_2F85_CLOSING_RATE_M_PER_RAD = 0.10623
-ROBOTIQ_2F85_RATED_DRIVE_TORQUE_NM = ROBOTIQ_2F85_RATED_GRIP_N * ROBOTIQ_2F85_CLOSING_RATE_M_PER_RAD
+ROBOTIQ_2F85_RATED_GRIP_N = RATED_GRIP_FORCE_N[1]
+ROBOTIQ_2F85_CLOSING_RATE_M_PER_RAD = CLOSING_RATE_M_PER_RAD
+ROBOTIQ_2F85_RATED_DRIVE_TORQUE_NM = drive_torque_for_grip_force_nm(ROBOTIQ_2F85_RATED_GRIP_N)
 
 # Captured from the validated differential-IK controller with the replacement
 # blade centered and aligned 17 cm outside the rack.  Stage-1 PPO starts here
