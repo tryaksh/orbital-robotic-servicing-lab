@@ -392,8 +392,11 @@ def grapple_insertion_conditions(
         "orientation": orientation <= 0.0523599,
         "linear_velocity": torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= 0.030,
         "angular_velocity": torch.linalg.vector_norm(velocity[:, 3:], dim=-1) <= 0.080,
-        "grip_position": grip_position <= grip_position_tolerance,
-        "grip_orientation": grip_orientation <= grip_orientation_tolerance,
+        # Keyed with the shared names on purpose. The curriculum term walks
+        # INSERTION_SUCCESS_CONDITION_NAMES to attribute timeouts, so renaming
+        # these to "grip_*" crashed training with KeyError: 'grasp_position'.
+        "grasp_position": grip_position <= grip_position_tolerance,
+        "grasp_orientation": grip_orientation <= grip_orientation_tolerance,
     }
 
 
