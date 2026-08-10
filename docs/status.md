@@ -495,6 +495,125 @@ rails solid. Free-floating, 0.68 rad ejected the blade at 10 N·m; constrained,
 that interference may be exactly what supplies the missing friction. This is a
 tuning question with a measured bracket at both ends, not an open one.
 
+## The 2F-85's own geometry, measured instead of assumed
+
+Twice now this project has designed against guessed gripper geometry and had to
+retract the result. `scripts/measure_gripper_envelope.py` replaces the guessing:
+it collects every prim carrying `UsdPhysics.CollisionAPI` under each gripper
+body, expresses those collision meshes in the body's own frame, and carries them
+out through the pose PhysX reports into the `wrist_3_link` frame the tool offset
+is measured in. It never reads a body origin as a pad location.
+
+Report: `evidence/gripper_collision_envelope.json`.
+
+| Quantity | Measured |
+| --- | --- |
+| Closing axis | wrist x |
+| Approach axis | wrist z, matching every tool offset in this project |
+| Clear opening, `finger_joint` 0 | 87.08 mm |
+| Clear opening, `finger_joint` 0.8203 (the joint limit) | 0.0 mm |
+| Closing rate | 106.2 mm/rad |
+| Finger pads, distance from the flange | 105 to 162 mm |
+| Palm face, distance from the flange | 90 mm |
+| Gripper envelope about the tool axis | 155 mm closing, 75 mm across |
+
+**Zero is fully open.** The opening falls monotonically with the command over
+the joint's whole range, and 87 mm at the open end matches the hardware's 85 mm
+stroke. This contradicts what the code recorded until now, which had zero as the
+closed end, and it means the "pregrasp 0.80 / closed 0.68" pair the contact task
+carried was still inverted after the earlier correction: it opened the fingers
+by 14 mm where it meant to close them.
+
+**The throat behind the pads is full.** Slicing the same point cloud by depth
+shows the inner knuckles sweeping through the 90-to-105 mm gap between the palm
+face and the pad trailing faces, reaching within 8 to 24 mm of the tool axis
+depending on closure. That kills the obvious capture interface before it is
+built: a mushroom head with a flat shoulder has to sit in exactly that gap to
+bear on the pads, has to be wider than the pad gap to catch them, and has to be
+narrower than the knuckles to fit. No closure satisfies both.
+
+## Head-on grapple pin: a real grip, 10% short of the gate
+
+A parallel-jaw grip cannot hold this blade against extraction, and that is
+structural. The gripper closes along one axis while the blade leaves along
+another, the rails must leave the extraction axis free, and flat pads on a
+smooth post can then oppose the pull only by friction: about 6 N against the
+66.4 N the promoted Level-2 policy's own contact reaction demands.
+
+Putting geometry on the pull axis means approaching along it, which moves the
+interface onto the module, as the ISS ORU standard does. The blade now carries a
+tapered grapple pin on its `-x` face and the gripper takes it head-on:
+
+| Section | Extent along the pin | Size |
+| --- | --- | --- |
+| Shaft | 80 mm from the blade face | 30 x 30 mm |
+| Collar | 6 mm | 90 mm tall, 30 mm wide |
+| Wedge | 60 mm | 70 mm tapering to 16 mm, 24.2 degrees |
+
+The 80 mm shaft is not padding. The pads are 57 mm long and the blade's front
+face sits 75 mm inside the rack mouth when fully inserted, so anything shorter
+would put the gripper inside the slot, where it fouls the floor plate. The
+collar is taller than the 87.08 mm the pads can ever open to, so it is an
+absolute depth stop rather than something a wide-open gripper slides past, and
+it gives the insert direction a face to push on.
+
+Arm pose: `scripts/calibrate_grasp_pose.py`, extended here to servo orientation
+as well as position, converged all three curriculum stages to under 0.01 mm and
+0.00003 rad with the tool's approach axis along world +x and its closing axis
+vertical. Vertical closure is what keeps the gripper's narrow 75 mm dimension
+between the rails. Report: `evidence/grapple_pin_head_on_pose.json`.
+
+**A real grip forms, and it is an order of magnitude stronger.**
+
+| Quantity | Flat pads on a post | Head-on grapple pin |
+| --- | ---: | ---: |
+| Environments where a finger was blocked | 124 / 128 | 363 / 363 |
+| Peak drive torque against the 10 N-m limit | 10.0 N-m, then ejection | 10.0 N-m, seated |
+| Axial force held within 2 mm of slip | about 6 N | 59 N |
+
+Report: `evidence/grapple_pin_axial_pull_gate.json`, 363 environments over a
+3 closure by 121 force grid at 1 N resolution.
+
+**It does not pass the gate.** 59 N held against 66.4 N required is about 10%
+short. Three things about that number are worth stating precisely, because they
+decide what to do next.
+
+*The result is grid-sensitive, and the honest number is the fine one.* Coarser
+sweeps of the same configuration returned 66 N at 2 N resolution and 65.8 N at
+3.9 N resolution. `largest_force_held_n` is the largest force below the *first*
+environment that slipped, so a finer grid is more likely to catch an early
+slip and returns a lower figure. The 1 N result is the one to quote.
+
+*Capacity falls as the fingers close harder*, from 59 N at 0.56 rad to 43 N at
+0.60 and 24 N at 0.64, with drive torque saturated at 10 N-m throughout. This is
+not the earlier failure of the fingers closing on air. The pads stop at about
+0.22 rad in every case, blocked by the wedge, so the grip is real; what changes
+is the capture transient, which grows with commanded closure and leaves the
+interface less settled when the pull begins.
+
+*The blade levers rather than slides.* Decomposing the slip shows axial movement
+of 1.1 mm at the median and 5.9 mm at p95, lateral movement of the same order,
+but angular slip of 0.043 rad at the median and 0.166 rad at p95. The collar is
+doing its job along the pull axis; what gives is rotation, once the pull has
+dragged the blade out of the rails that were constraining it.
+
+**What is left, and what is not allowed.** The gate threshold does not move.
+Capacity scales with pad normal force, and the binding constraint on that is the
+gripper's modelled 10 N-m drive effort limit, which yields about 100 N per pad
+by virtual work against the measured 106.2 mm/rad closing rate. Robotiq
+specifies 20 to 235 N of grip force for this device, so the simulation is
+currently modelling the gripper at well under half its rated strength, and that
+under-modelling is what the interface is failing against. Raising the actuator
+to its rated capability is a fidelity question and would need to be argued and
+recorded as one, not slipped in because a gate is close. Steepening the taper is
+the alternative and is nearly exhausted: capacity goes as the sine of the taper
+angle, and 24.2 degrees already puts the wedge's free end at 70 mm inside an
+87 mm aperture, leaving 8.5 mm of approach clearance a side.
+
+Grasp, extract, and insert are therefore not trained. The order of work puts the
+pull gate before PPO precisely so that a policy is never trained against an
+interface that cannot hold the load.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
@@ -536,6 +655,16 @@ Cumulative secured-grasp profiles:
   about 0.06 and 0.15 m. This is why the grasp gate fails. Insertion is
   unaffected because the fixed joint welds the blade to the tool frame, but no
   physical grasp can work until the grasp pose is corrected.
+- The head-on grapple pin holds 59 N against the 66.4 N gate. It is the first
+  interface in this project to form a real grip and to hold an order of
+  magnitude more than flat pads, but it is not certified and no skill has been
+  trained on it.
+- The contact task's finger commands are still inverted. Measured pad separation
+  falls monotonically with the command, so `finger_joint` 0 is fully open, and
+  the task's "pregrasp 0.80 / closed 0.68" pair opens the fingers by 14 mm. The
+  grapple-pin task uses the measured convention; the contact task has not been
+  corrected, because doing so changes the physics three promoted certifications
+  were produced under.
 - The fixed joint is a task abstraction. The real Robotiq pad/handle contact
   task holds 0 N of axial pull because the pads never reach the handle, and must
   not be called learned grasping.

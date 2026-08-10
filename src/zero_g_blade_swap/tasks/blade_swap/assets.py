@@ -53,6 +53,86 @@ GRAPPLE_POST_OFFSET = (-0.250, 0.0, 0.0908)
 GRAPPLE_POST_SIZE = (0.060, 0.075, 0.150)
 GRIPPER_GRASP_ROT = (0.0, 0.7071068, 0.7071068, 0.0)
 
+# ---------------------------------------------------------------------------
+# Head-on grapple pin.
+#
+# A parallel-jaw grip cannot hold this blade against extraction, and that is
+# structural rather than a tuning failure: the gripper closes along one axis and
+# the blade leaves along another, so only friction opposes the pull. Measured
+# axial capacity that way is about 6 N against the 66.4 N the insertion contact
+# reaction demands. The fix has to put geometry on the pull axis, which means
+# approaching along it, so the interface moves onto the module. That is why the
+# ISS ORU standard carries a grapple fixture rather than demanding a cleverer
+# end effector.
+#
+# Every number below is derived from evidence/gripper_collision_envelope.json,
+# which measures the 2F-85 from its collision meshes in the wrist frame:
+#
+#   pads close along wrist x, approach along wrist z
+#   clear opening 87.08 mm at finger_joint 0, closing at 106.2 mm/rad to 0 mm
+#     at the 0.8203 rad limit, so *zero is fully open* and larger values close
+#   pads span 105 to 162 mm from the flange, 57 mm of usable length
+#   palm face at 90 mm, and the inner knuckles fill the 90-105 mm throat to
+#     within 8 mm of the tool axis at grip closures
+#
+# The throat measurement rules out the obvious design. A mushroom head with a
+# flat shoulder has to seat between the palm and the pad trailing faces to bear
+# on them, that gap is 15 mm deep, and the knuckles swing through it. At every
+# closure the head would have to be wider than the pad gap to catch the pads and
+# narrower than the knuckles to fit, and no closure satisfies both.
+#
+# What does work is a wedge clamped inside the pad aperture, which is the
+# tapered-pin principle Canadarm2 captures on. The pin is thicker at its free
+# end, so pulling the blade out drags thicker material into the pads and forces
+# them apart against the drive, and the reaction on the pin acts along the pull
+# axis. Capacity is 2 N sin(alpha) from geometry alone before any friction:
+# at the 10 N-m drive limit that is 77 N against the 66.4 N gate, so the
+# interface clears it without relying on a friction coefficient at all.
+GRAPPLE_PIN_TAPER_DEG = 24.2
+# Blade-local x of each section boundary, measured from the blade centre. The
+# blade's front face is at -0.225 and the rack mouth sits 75 mm in front of it
+# when the blade is fully inserted, which is what sets the shaft length: the
+# pads are 57 mm long and must stay outside the mouth at full insertion, so the
+# collar they seat against cannot be closer than 80 mm to the blade face.
+GRAPPLE_PIN_SHAFT_X = (-0.305, -0.225)
+GRAPPLE_PIN_COLLAR_X = (-0.311, -0.305)
+GRAPPLE_PIN_WEDGE_X = (-0.371, -0.311)
+GRAPPLE_PIN_HALF_WIDTH_Y = 0.015
+# The shaft is the only section that ever enters the slot. It has to clear the
+# floor plate at z 0.7025 and the guided channel's upper lips at z 0.7385, a
+# 36 mm window around the blade centre, so 30 mm tall leaves 2.5 mm below and
+# 3.5 mm above.
+GRAPPLE_PIN_SHAFT_HALF_HEIGHT = 0.015
+# Taller than the 87.08 mm the pads can ever open to, so it is an absolute
+# depth stop rather than something a wide-open gripper can slide past. It also
+# gives the insert skill a face to push on, so both directions have a hard
+# mechanical stop instead of a friction grip.
+GRAPPLE_PIN_COLLAR_HALF_HEIGHT = 0.045
+# 70 mm across at the free end, inside the 87.08 mm the pads open to with
+# 8.5 mm of approach clearance per side, tapering to 16 mm where it meets the
+# collar.
+GRAPPLE_PIN_WEDGE_HALF_HEIGHT = (0.035, 0.008)
+# Where the tool frame belongs: the centre of the 105-162 mm pad span, so the
+# frame the policy steers is the frame the pads actually grip with.
+GRAPPLE_TOOL_OFFSET_POS = (0.0, 0.0, 0.1335)
+# The matching point on the blade: the centre of the pad span when the fingers
+# are closed, so that with the tool frame here the pads straddle the wedge with
+# their leading faces on the collar.
+#
+# Capture is self-seating and does not depend on hitting this exactly. Closing
+# the fingers drives the pin along the taper until the collar catches the pad
+# leading faces, and the measured settled offset is 12.5 mm whatever the start.
+# Moving this constant to the measured stop angle instead was tried and
+# reverted: it is a coupled fixed point, since where the fingers stop depends on
+# where the arm is, and the 6.4 mm shift drove the stage-1 IK solve into the
+# wrist_1 limit.
+GRAPPLE_PIN_GRIP_OFFSET = (-0.3395, 0.0, 0.0)
+# Head-on: the tool's +z approach axis points along world +x, and the pads'
+# closing axis points along world z. Vertical closure keeps the gripper's
+# narrow 75 mm dimension between the rails; closing horizontally would put its
+# 155 mm dimension there instead, against a 161.5 mm channel.
+GRAPPLE_HEAD_ON_TOOL_ROT = (0.0, 0.7071068, 0.0, 0.7071068)
+
 # Captured from the validated differential-IK controller with the replacement
 # blade centered and aligned 17 cm outside the rack.  Stage-1 PPO starts here
 # instead of being asked to discover reaching, grasping, and insertion at once.
@@ -516,6 +596,154 @@ def spawn_blade_with_handle(
     return root
 
 
+def _define_box(
+    stage: Usd.Stage,
+    path: str,
+    centre: tuple[float, float, float],
+    size: tuple[float, float, float],
+    cfg: GrapplePinBladeCfg,
+    material_path: str,
+) -> None:
+    """Author one axis-aligned collision box inside the blade's rigid body."""
+
+    box = UsdGeom.Cube.Define(stage, path)
+    box.CreateSizeAttr(1.0)
+    sim_utils.standardize_xform_ops(
+        box.GetPrim(),
+        translation=centre,
+        orientation=(1.0, 0.0, 0.0, 0.0),
+        scale=size,
+    )
+    sim_utils.define_collision_properties(path, cfg.collision_props, stage=stage)
+    sim_utils.bind_physics_material(path, material_path, stage=stage)
+
+
+def _define_wedge(stage: Usd.Stage, path: str, cfg: GrapplePinBladeCfg, material_path: str) -> None:
+    """Author the tapered capture wedge as an explicit eight-vertex frustum.
+
+    There is no primitive for a truncated wedge, and approximating it with a
+    cone would give the flat pads point contact on a circular section instead of
+    line contact across the full pin width.  The taper is in the closing axis
+    only, so the pin keeps a constant width and both pads bear evenly.
+    """
+
+    distal_x, proximal_x = cfg.wedge_x
+    distal_half, proximal_half = cfg.wedge_half_height
+    half_width = cfg.half_width_y
+    points = [
+        (distal_x, -half_width, -distal_half),
+        (distal_x, half_width, -distal_half),
+        (distal_x, half_width, distal_half),
+        (distal_x, -half_width, distal_half),
+        (proximal_x, -half_width, -proximal_half),
+        (proximal_x, half_width, -proximal_half),
+        (proximal_x, half_width, proximal_half),
+        (proximal_x, -half_width, proximal_half),
+    ]
+    mesh = UsdGeom.Mesh.Define(stage, path)
+    mesh.CreatePointsAttr([Gf.Vec3f(*point) for point in points])
+    mesh.CreateFaceVertexCountsAttr([4] * 6)
+    mesh.CreateFaceVertexIndicesAttr(
+        # Free end, blade end, then the two flanks and the two tapered faces,
+        # each wound counter-clockwise seen from outside.
+        [0, 3, 2, 1] + [4, 5, 6, 7] + [0, 4, 7, 3] + [1, 2, 6, 5] + [3, 7, 6, 2] + [0, 1, 5, 4]
+    )
+    mesh.CreateExtentAttr(
+        [
+            Gf.Vec3f(distal_x, -half_width, -distal_half),
+            Gf.Vec3f(proximal_x, half_width, distal_half),
+        ]
+    )
+    sim_utils.standardize_xform_ops(mesh.GetPrim())
+    sim_utils.define_collision_properties(path, cfg.collision_props, stage=stage)
+    # Without this PhysX defaults a mesh collider to a triangle mesh, which
+    # cannot be part of a dynamic body.
+    UsdPhysics.MeshCollisionAPI.Apply(mesh.GetPrim()).CreateApproximationAttr().Set(UsdPhysics.Tokens.convexHull)
+    sim_utils.bind_physics_material(path, material_path, stage=stage)
+
+
+def spawn_blade_with_grapple_pin(
+    prim_path: str,
+    cfg: GrapplePinBladeCfg,
+    translation: tuple[float, float, float] | None = None,
+    orientation: tuple[float, float, float, float] | None = None,
+    **kwargs: object,
+) -> Usd.Prim:
+    """Spawn the blade chassis with a head-on grapple pin on its ``-x`` face.
+
+    Three colliders share the blade's rigid body: a shaft thin enough to pass
+    through the slot, a collar the pads seat against, and the tapered wedge that
+    carries the axial load.
+    """
+
+    root = sim_utils.spawn_cuboid(prim_path, cfg, translation=translation, orientation=orientation, **kwargs)
+    stage = get_current_stage()
+    for root_path in find_matching_prim_paths(prim_path):
+        pin_path = f"{root_path}/GrapplePin"
+        if stage.GetPrimAtPath(pin_path).IsValid():
+            continue
+        UsdGeom.Xform.Define(stage, pin_path)
+        material_path = f"{root_path}/{cfg.pin_physics_material_path}"
+        cfg.pin_physics_material.func(material_path, cfg.pin_physics_material)
+
+        shaft_low, shaft_high = cfg.shaft_x
+        collar_low, collar_high = cfg.collar_x
+        _define_box(
+            stage,
+            f"{pin_path}/Shaft",
+            (0.5 * (shaft_low + shaft_high), 0.0, 0.0),
+            (shaft_high - shaft_low, 2.0 * cfg.half_width_y, 2.0 * cfg.shaft_half_height),
+            cfg,
+            material_path,
+        )
+        _define_box(
+            stage,
+            f"{pin_path}/Collar",
+            (0.5 * (collar_low + collar_high), 0.0, 0.0),
+            (collar_high - collar_low, 2.0 * cfg.half_width_y, 2.0 * cfg.collar_half_height),
+            cfg,
+            material_path,
+        )
+        _define_wedge(stage, f"{pin_path}/Wedge", cfg, material_path)
+
+        visual_path = f"{root_path}/geometry/{cfg.visual_material_path}"
+        if stage.GetPrimAtPath(visual_path).IsValid():
+            for name in ("Shaft", "Collar", "Wedge"):
+                sim_utils.bind_visual_material(f"{pin_path}/{name}", visual_path, stage=stage)
+    return root
+
+
+@configclass
+class GrapplePinBladeCfg(sim_utils.CuboidCfg):
+    """Blade chassis carrying a head-on grapple pin as extra colliders.
+
+    ``handle_offset`` is kept as the name of the point a tool frame should be
+    driven to, because the grasp metrics, the calibration servo, and the
+    diagnostics all read it by that name.  Here it is the centre of the length
+    of pin the pads close on.
+    """
+
+    func: Callable[..., Usd.Prim] = spawn_blade_with_grapple_pin
+    handle_offset: tuple[float, float, float] = GRAPPLE_PIN_GRIP_OFFSET
+    shaft_x: tuple[float, float] = GRAPPLE_PIN_SHAFT_X
+    collar_x: tuple[float, float] = GRAPPLE_PIN_COLLAR_X
+    wedge_x: tuple[float, float] = GRAPPLE_PIN_WEDGE_X
+    half_width_y: float = GRAPPLE_PIN_HALF_WIDTH_Y
+    shaft_half_height: float = GRAPPLE_PIN_SHAFT_HALF_HEIGHT
+    collar_half_height: float = GRAPPLE_PIN_COLLAR_HALF_HEIGHT
+    wedge_half_height: tuple[float, float] = GRAPPLE_PIN_WEDGE_HALF_HEIGHT
+    pin_physics_material_path: str = "grapplePinPhysicsMaterial"
+    # The wedge is meant to hold by geometry, so the gate must not be able to
+    # pass on friction the interface would not have. This is an ordinary
+    # machined-metal pairing, not the 1.2 the old rubber-on-handle grip assumed.
+    pin_physics_material: sim_utils.RigidBodyMaterialCfg = sim_utils.RigidBodyMaterialCfg(
+        static_friction=0.4,
+        dynamic_friction=0.3,
+        restitution=0.0,
+        friction_combine_mode="min",
+    )
+
+
 @configclass
 class BladeCuboidCfg(sim_utils.CuboidCfg):
     """Cuboid chassis with one collision handle sharing the root rigid body."""
@@ -761,6 +989,32 @@ RIGID_GRASP_BLADE_CFG.spawn.handle_size = (0.060, 0.075, 0.030)
 CONTACT_INSERTION_BLADE_CFG.spawn.handle_offset = GRAPPLE_POST_OFFSET
 CONTACT_INSERTION_BLADE_CFG.spawn.handle_size = GRAPPLE_POST_SIZE
 
+# The head-on capture blade. Its chassis physics match the tight-clearance
+# insertion blade so rail contact behaves the same; only the grasp interface
+# differs. Contact reporting stays off by default, as on every other blade here,
+# and a task switches it on when it needs force metrics.
+GRAPPLE_PIN_BLADE_CFG = RigidObjectCfg(
+    prim_path="{ENV_REGEX_NS}/SpareBlade",
+    spawn=GrapplePinBladeCfg(
+        size=BLADE_SIZE,
+        rigid_props=_rigid_props(kinematic=False),
+        mass_props=sim_utils.MassPropertiesCfg(mass=10.0),
+        collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.0003, rest_offset=0.0),
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            static_friction=0.55,
+            dynamic_friction=0.45,
+            restitution=0.0,
+            friction_combine_mode="max",
+        ),
+        visual_material=sim_utils.PreviewSurfaceCfg(
+            diffuse_color=(0.04, 0.18, 0.30), metallic=0.75, roughness=0.25
+        ),
+        semantic_tags=[("class", "grapple_pin_replacement_blade")],
+        activate_contact_sensors=False,
+    ),
+    init_state=RigidObjectCfg.InitialStateCfg(pos=INSERTION_STAGING_BLADE_POS),
+)
+
 
 # ---------------------------------------------------------------------------
 # Guided slot: a four-sided channel with a funnelled mouth.
@@ -950,8 +1204,21 @@ __all__ = [
     "CONTACT_INSERTION_STAGE_BLADE_POSE",
     "CONTACT_TOOL_OFFSET_POS",
     "GRASP_TOOL_OFFSET_POS",
+    "GRAPPLE_HEAD_ON_TOOL_ROT",
+    "GRAPPLE_PIN_BLADE_CFG",
+    "GRAPPLE_PIN_COLLAR_HALF_HEIGHT",
+    "GRAPPLE_PIN_COLLAR_X",
+    "GRAPPLE_PIN_GRIP_OFFSET",
+    "GRAPPLE_PIN_HALF_WIDTH_Y",
+    "GRAPPLE_PIN_SHAFT_HALF_HEIGHT",
+    "GRAPPLE_PIN_SHAFT_X",
+    "GRAPPLE_PIN_TAPER_DEG",
+    "GRAPPLE_PIN_WEDGE_HALF_HEIGHT",
+    "GRAPPLE_PIN_WEDGE_X",
     "GRAPPLE_POST_OFFSET",
     "GRAPPLE_POST_SIZE",
+    "GRAPPLE_TOOL_OFFSET_POS",
+    "GrapplePinBladeCfg",
     "SLOT_ENTRY_FLARE_DEG",
     "SLOT_ENTRY_LEFT_FLARE_CFG",
     "SLOT_ENTRY_RIGHT_FLARE_CFG",
@@ -1004,6 +1271,7 @@ __all__ = [
     "make_contact_insertion_robot_cfg",
     "make_robust_insertion_robot_cfg",
     "make_robot_cfg",
+    "spawn_blade_with_grapple_pin",
     "spawn_compliant_d6_joint",
     "spawn_fixed_grasp_joint",
 ]

@@ -11,6 +11,7 @@ from isaaclab.utils import configclass
 from .assets import (
     BLADE_CFG,
     CONTACT_INSERTION_BLADE_CFG,
+    GRAPPLE_PIN_BLADE_CFG,
     INSERTION_BLADE_CFG,
     INSERTION_SLOT_CFG,
     INSERTION_SLOT_LEFT_GUIDE_CFG,
@@ -158,6 +159,25 @@ class ZeroGGuidedSlotSceneCfg(ZeroGRigidGraspInsertionSceneCfg):
     blade_slot_entry_right_flare = SLOT_ENTRY_RIGHT_FLARE_CFG
 
 
+@configclass
+class ZeroGGrapplePinSceneCfg(ZeroGContactInsertionSceneCfg):
+    """Head-on capture scene: a guided channel and a blade carrying a pin.
+
+    Built on the contact scene rather than the rigid-grasp one on purpose. The
+    rigid-grasp scene welds the blade to the tool with a fixed joint and turns
+    the slot floor collider off; neither is acceptable for measuring a grasp.
+    Here the blade is held only by contact, and the floor is solid, which is
+    what forces the gripper to stay outside the rack and therefore what sets the
+    pin's length.
+    """
+
+    spare_blade = GRAPPLE_PIN_BLADE_CFG
+    blade_slot_upper_left_lip = SLOT_UPPER_LEFT_LIP_CFG
+    blade_slot_upper_right_lip = SLOT_UPPER_RIGHT_LIP_CFG
+    blade_slot_entry_left_flare = SLOT_ENTRY_LEFT_FLARE_CFG
+    blade_slot_entry_right_flare = SLOT_ENTRY_RIGHT_FLARE_CFG
+
+
 def make_tiled_camera_cfg() -> TiledCameraCfg:
     """Create the 64x64, 15 Hz camera used by vision and data collection."""
 
@@ -187,6 +207,7 @@ __all__ = [
     "ZeroGInsertionSceneCfg",
     "ZeroGRobustInsertionSceneCfg",
     "ZeroGContactInsertionSceneCfg",
+    "ZeroGGrapplePinSceneCfg",
     "ZeroGGuidedSlotSceneCfg",
     "make_tiled_camera_cfg",
 ]

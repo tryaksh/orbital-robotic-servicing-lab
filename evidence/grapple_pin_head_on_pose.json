@@ -1,0 +1,109 @@
+{
+  "status": "passed",
+  "title": "Grasp-pose kinematic calibration",
+  "evidence_type": "simulation_kinematic_calibration",
+  "task": "Isaac-ZeroG-Blade-GrapplePin-Capture-v0",
+  "tool_offset_pos": [
+    0.0,
+    0.0,
+    0.1335
+  ],
+  "target_orientation_w": [
+    0.0,
+    0.707107,
+    0.0,
+    0.707107
+  ],
+  "degrees_of_freedom": 6,
+  "arm_joint_names": [
+    "shoulder_pan_joint",
+    "shoulder_lift_joint",
+    "elbow_joint",
+    "wrist_1_joint",
+    "wrist_2_joint",
+    "wrist_3_joint"
+  ],
+  "tolerance_m": 0.002,
+  "tolerance_rad": 0.01,
+  "servo_steps": 3000,
+  "held_finger_joint_rad": 0.02,
+  "blade_pinned_at_reset_pose": true,
+  "seed_wrist_1_offsets_rad": [
+    1.5708
+  ],
+  "all_stages_converged": true,
+  "stages": [
+    {
+      "curriculum_stage": 0,
+      "seed_wrist_1_offset_rad": 1.5708,
+      "residual_tool_to_handle_m": 6e-06,
+      "residual_orientation_rad": 2.1e-05,
+      "converged": true,
+      "blade_pose_local": [
+        0.719475,
+        0.0,
+        0.72,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "arm_joint_pos_rad": [
+        -0.304997,
+        -1.421518,
+        2.050886,
+        2.512231,
+        -1.265814,
+        -1.570812
+      ]
+    },
+    {
+      "curriculum_stage": 1,
+      "seed_wrist_1_offset_rad": 1.5708,
+      "residual_tool_to_handle_m": 7e-06,
+      "residual_orientation_rad": 2.5e-05,
+      "converged": true,
+      "blade_pose_local": [
+        0.659776,
+        0.0,
+        0.72,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "arm_joint_pos_rad": [
+        -0.341348,
+        -1.51762,
+        2.159929,
+        2.499296,
+        -1.229464,
+        -1.570783
+      ]
+    },
+    {
+      "curriculum_stage": 2,
+      "seed_wrist_1_offset_rad": 1.5708,
+      "residual_tool_to_handle_m": 6e-06,
+      "residual_orientation_rad": 2.2e-05,
+      "converged": true,
+      "blade_pose_local": [
+        0.5829,
+        0.0,
+        0.72,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "arm_joint_pos_rad": [
+        -0.403679,
+        -1.653908,
+        2.293487,
+        2.502023,
+        -1.167132,
+        -1.570785
+      ]
+    }
+  ]
+}

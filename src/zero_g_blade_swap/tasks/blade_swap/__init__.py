@@ -179,6 +179,20 @@ for _guided_id, _guided_cls in (
         },
     )
 
+for _grapple_id, _grapple_cls in (
+    ("Isaac-ZeroG-Blade-GrapplePin-Capture-v0", "ZeroGBladeGrapplePinCaptureEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-Capture-Play-v0", "ZeroGBladeGrapplePinCapturePlayEnvCfg"),
+):
+    gym.register(
+        id=_grapple_id,
+        entry_point=INSERTION_ENTRY_POINT,
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{__name__}.grapple_pin_env_cfg:{_grapple_cls}",
+            "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+        },
+    )
+
 gym.register(
     id="Isaac-ZeroG-BladeSwap-Teacher-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",

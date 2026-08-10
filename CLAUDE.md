@@ -42,8 +42,15 @@ and peak force is geometrically irreducible under position-based IK, so the
 remaining lever is an admittance action space. Learned grasping is blocked by a
 measured bug, not by training: the handle is configured 0.179 m from the wrist
 flange while the fingers only reach it between about 0.06 and 0.15 m, so they
-close past it and hold 0 N of the 66.4 N required. Full numbers, limitations, and the
-pre-existing `train.py --smoke` probe defect live in `docs/status.md`.
+close past it and hold 0 N of the 66.4 N required. The 2F-85 has since been
+measured from its collision meshes rather than its body origins: the pads close
+along wrist x, span 105 to 162 mm from the flange, open to 87.08 mm at
+`finger_joint` 0 and close at 106.2 mm/rad, so **zero is fully open** and the
+contact task's finger commands are still inverted. A head-on tapered grapple pin
+built on those measurements forms the project's first real grip and holds 59 N,
+ten times the flat-pad grip but 10% short of the gate. Full numbers,
+limitations, and the pre-existing `train.py --smoke` probe defect live in
+`docs/status.md`.
 
 ## Next action, decided 2026-08-09
 
@@ -61,29 +68,59 @@ torque *falls* as the fingers close tighter, because they shove the post along
 x and then close on air. Axial capacity is about 6 N against the 66.4 N the
 insertion contact reaction demands.
 
-Form closure has to act along the pull axis, so the approach must align with it.
-Put a pin with a flared head on the blade's -x face, have the gripper approach
-head-on along the extraction axis, and close the pads behind the head: pulling
-then drives the head into the pads mechanically. This is how Canadarm2 captures
-a grapple fixture, and it is why NASA's ORU standard puts the interface on the
-module rather than demanding a cleverer gripper. It also removes a dependency:
-the rejected top-down keyed pocket would first have needed the pads' extent
-along x measured, to size a pocket they seat into.
+The head-on grapple pin is now **built, calibrated, and measured**, and it is
+the first interface in this project's history to form a real grip: drive torque
+saturates the 10 N-m limit in 363 of 363 environments and the pin holds 59 N of
+axial pull within 2 mm of slip, against about 6 N for flat pads on a post. It
+still **fails the 66.4 N gate by roughly 10%**, so no skill has been trained on
+it. Full numbers, including why the flared-head design had to become a tapered
+wedge, are in `docs/status.md`.
 
-Order of work:
+The decision that unblocks this is not a geometry decision. Capacity scales with
+pad normal force; the binding constraint is the gripper's modelled 10 N-m drive
+effort limit, which yields about 100 N per pad against the measured 106.2 mm/rad
+closing rate, while Robotiq rates this device at 20 to 235 N. The simulation is
+modelling the gripper at under half its rated strength. Either argue that
+fidelity change explicitly and record it, or find capacity elsewhere; do not
+move the gate, and do not train a skill against an interface that cannot hold
+the load.
 
-1. Model the pin and flared head on the blade's -x face. Watch the clearance:
-   the blade's front face sits at x 0.525 and the rack mouth at x 0.45.
-2. Derive the head-on arm pose with `scripts/calibrate_grasp_pose.py`. It
-   servos the tool frame onto a target with the task's own differential IK and
-   prints converged joint angles. Its two known traps are fixed: the IK delta is
-   applied in the robot *root* frame, and the episode timeout must be disabled
-   or the arm resets mid-solve.
-3. Gate with `scripts/grasp_diagnostics.py`. A grasp counts as formed only when
-   drive torque rises off its 1e-5 N-m noise floor, and the gate needs 66.4 N of
-   axial capacity. Never infer pad locations from body origins: every 2F-85 body
-   in this asset is collapsed within 18 mm of the flange.
-4. Then train and certify grasp, extract, and insert as separate gated skills.
+Remaining levers, in the order they are worth trying:
+
+1. **Raise the 2F-85 drive to its rated grip force.** Give the grapple-pin task
+   its own robot configuration so the contact and rigid-grasp tasks keep the
+   actuator their results were produced under, and state the change as an
+   actuator-fidelity correction with the datasheet behind it.
+2. **Constrain rotation.** The slip decomposition says the collar holds along
+   the pull axis (1.1 mm median axial) while the blade levers (0.166 rad at
+   p95) once the pull drags it clear of the rails. An interface feature that
+   opposes yaw, or an extract skill that keeps the blade railed for longer,
+   attacks the actual failure.
+3. **Steepen the taper.** Nearly exhausted: capacity goes as the sine of the
+   taper angle, and 24.2 degrees already puts the wedge's free end at 70 mm
+   inside an 87.08 mm aperture, leaving 8.5 mm of approach clearance a side.
+
+Then train and certify grasp, extract, and insert as separate gated skills.
+Extract ends with the blade fully clear of the slot mouth, about 495 mm of
+travel; that was decided with the owner on 2026-08-09.
+
+Tools that now exist for this work:
+
+- `scripts/measure_gripper_envelope.py` measures the 2F-85 from its collision
+  meshes in the wrist frame. **Never infer pad locations from body origins**:
+  every 2F-85 body in this asset is collapsed within 18 mm of the flange, and
+  reading them has produced one retracted claim already.
+- `scripts/calibrate_grasp_pose.py` servos the tool frame onto a target with the
+  task's own differential IK. It now solves orientation as well as position,
+  which a head-on pose needs. Four traps are fixed: the IK delta is applied in
+  the robot *root* frame; the episode timeout must be disabled or the arm resets
+  mid-solve; the fingers must be held open or they foul the interface they are
+  being driven around; and the blade must be pinned, or the swinging arm shoves
+  a free body in zero gravity and every stage returns the same answer.
+- `scripts/grasp_diagnostics.py` is the gate. A grasp counts as formed only when
+  drive torque rises off its 1e-5 N-m noise floor. Quote the finest force grid
+  you ran: the reported capacity is the largest force below the *first*
+  environment that slipped, so coarse grids flatter the result by 10%.
 
 ## Operating rules
 
@@ -114,7 +151,9 @@ checkpoints, or every task file.
 | Public claim and commands | `README.md` |
 | Insertion task physics | `src/zero_g_blade_swap/tasks/blade_swap/rigid_grasp_insertion_env_cfg.py` |
 | Force penalties, force feedback | `src/zero_g_blade_swap/tasks/blade_swap/force_limited_insertion_env_cfg.py` |
-| Grasp physics before any grasp PPO | `scripts/grasp_diagnostics.py`, `evidence/grasp_axial_pull_gate.json` |
+| Grasp physics before any grasp PPO | `scripts/grasp_diagnostics.py`, `evidence/grapple_pin_axial_pull_gate.json` |
+| Gripper geometry, ever | `scripts/measure_gripper_envelope.py`, `evidence/gripper_collision_envelope.json` |
+| Head-on capture task | `src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py` |
 | Rewards, terminations, curriculum | `src/zero_g_blade_swap/tasks/blade_swap/mdp/insertion.py` |
 | Evaluation statistics and gates | `src/zero_g_blade_swap/evaluation.py`, `scripts/aggregate_evaluation.py` |
 | Training and playback entry points | `scripts/train.py`, `scripts/play.py` |

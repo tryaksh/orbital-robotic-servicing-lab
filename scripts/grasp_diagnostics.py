@@ -262,7 +262,14 @@ def main() -> dict[str, object]:
                 torch.maximum(peak_grip_torque, grip, out=peak_grip_torque)
 
             final_vector, final_angle = secured_blade_pose_error(task)
-            final_slip = torch.linalg.vector_norm(final_vector - baseline_vector, dim=-1)
+            # Split the slip along the pull axis from the rest. A capture that
+            # is losing axial form closure and one whose payload is levering out
+            # sideways look identical in the norm and need opposite fixes.
+            slip_vector = final_vector - baseline_vector
+            axial_slip = slip_vector[:, 0]
+            lateral_slip = torch.linalg.vector_norm(slip_vector[:, 1:], dim=-1)
+            reached_finger = robot.data.joint_pos[:, joint_ids[0]].clone()
+            final_slip = torch.linalg.vector_norm(slip_vector, dim=-1)
             angular_slip = (final_angle - baseline_angle).abs()
             blade_travel = (attached_blade_pose_world(task)[0][:, 0] - baseline_blade_x).abs()
             finite = torch.isfinite(final_slip) & torch.isfinite(blade_travel)
@@ -329,14 +336,22 @@ def main() -> dict[str, object]:
                 "tool_frame_to_finger_body_origin_m": summarize_distribution(tool_to_pad),
                 "finger_body_origin_to_handle_centre_m": summarize_distribution(pad_to_handle),
                 "tool_frame_to_handle_centre_m": summarize_distribution(settled_offset),
-                "handle_size_m": list(task.cfg.scene.spare_blade.spawn.handle_size),
+                # A grapple-pin blade has no single handle box, so this is absent
+                # rather than zero on those tasks.
+                "handle_size_m": (
+                    list(handle_size) if (handle_size := getattr(task.cfg.scene.spare_blade.spawn, "handle_size", None))
+                    else None
+                ),
                 "empirical_contact_zone_from_flange_m": [0.06, 0.15],
                 "configured_tool_offset_m": list(task.cfg.tool_offset_pos),
             },
             "slip": {
                 "peak_slip_m": summarize_distribution(peak_slip),
                 "final_slip_m": summarize_distribution(final_slip),
+                "final_axial_slip_m": summarize_distribution(axial_slip.abs()),
+                "final_lateral_slip_m": summarize_distribution(lateral_slip),
                 "final_angular_slip_rad": summarize_distribution(angular_slip),
+                "reached_finger_joint_rad": summarize_distribution(reached_finger),
                 "blade_axial_travel_m": summarize_distribution(blade_travel),
                 "non_finite_environments": int((~finite).sum()),
                 "environments_that_slipped": int(slipped.sum()),
