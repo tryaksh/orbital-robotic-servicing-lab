@@ -30,19 +30,23 @@
    whose commanded motion yields to measured force, and retrain; the action
    interface changes, so no checkpoint can be resumed. Compare against
    `evidence/force_feedback_certification.json` on identical axes.
-8. **Bring the handle inside the fingers' reach, then learn grasping.** Measured
-   2026-08-09 and blocking: the handle is configured 0.179 m from the flange
-   while the fingers only obstruct on it between about 0.06 and 0.15 m, so they
-   close past it and the axial pull gate holds 0 N of the 66.4 N it must hold. See `evidence/grasp_axial_pull_gate.json`.
-   In order: give the grasp task its own corrected offset rather than editing
-   the shared `tool_offset_pos`, which the promoted insertion tasks read into
-   their observation and were trained against; re-verify
-   with `scripts/grasp_diagnostics.py` that the pads are within reach and that
-   drive torque rises off zero; confirm the finger command's sign and aperture
-   mapping, since pad-body separation currently *grows* with the value the task
-   calls "closed"; only then re-measure axial holding capacity and, if it clears
-   66.4 N, train a grasp policy. Do not remove the fixed joint from insertion
-   until that gate passes on three held-out seeds.
+8. **Build a head-on grapple pin, then learn capture, extraction, and insertion.**
+   Decided 2026-08-09 after friction grasping was shown to fail structurally: a
+   downward approach cannot resist a sideways pull except by friction, and the
+   measured axial capacity is about 6 N against 66.4 N required. Align the
+   approach with the extraction axis and capture a flared pin by form closure,
+   the pattern Canadarm2 and NASA's ORU standard already use. Then certify
+   capture, extraction, and insertion as three separately gated skills, which is
+   the decomposition a replacement demonstration needs.
+
+   - Superseded, but its measurements still hold. Reaching the handle was fixed
+     on 2026-08-09: the tool frame was moved onto the pads, the finger command's
+     inverted sign was corrected, and a raised grapple post replaced a 30 mm tab
+     that the pads could never straddle. A grip does now form, at the full
+     10 N·m drive limit. It then ejects the blade, which is what sent the design
+     to form closure. Do not remove the fixed joint from insertion until a grasp
+     gate passes on three held-out seeds.
+     See `evidence/grasp_axial_pull_gate.json`.
 9. **Resolve L3 physically before training.** Plot rail force, blade velocity,
    contact impulse, and action versus time. Check whether the stiction
    implementation injects energy or chatters at zero velocity. Prefer a

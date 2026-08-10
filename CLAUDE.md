@@ -45,6 +45,46 @@ flange while the fingers only reach it between about 0.06 and 0.15 m, so they
 close past it and hold 0 N of the 66.4 N required. Full numbers, limitations, and the
 pre-existing `train.py --smoke` probe defect live in `docs/status.md`.
 
+## Next action, decided 2026-08-09
+
+Build the **head-on grapple pin** capture interface, then the grasp, extract,
+and insert skills that a replacement demonstration needs. The owner has given
+standing authorization for long GPU training; do not ask before starting a run.
+
+Why this and not more gripper tuning. A parallel-jaw friction grip cannot hold
+this blade, and that is structural rather than a tuning failure. The gripper
+approaches downward along -z while the blade extracts sideways along -x, so the
+pull axis is the one direction nothing constrains: the rails must leave it free,
+and flat pads on a smooth post can only resist it by friction. Measured
+consequence, with the rails solid and closure swept from 0.62 to 0.77 rad: grip
+torque *falls* as the fingers close tighter, because they shove the post along
+x and then close on air. Axial capacity is about 6 N against the 66.4 N the
+insertion contact reaction demands.
+
+Form closure has to act along the pull axis, so the approach must align with it.
+Put a pin with a flared head on the blade's -x face, have the gripper approach
+head-on along the extraction axis, and close the pads behind the head: pulling
+then drives the head into the pads mechanically. This is how Canadarm2 captures
+a grapple fixture, and it is why NASA's ORU standard puts the interface on the
+module rather than demanding a cleverer gripper. It also removes a dependency:
+the rejected top-down keyed pocket would first have needed the pads' extent
+along x measured, to size a pocket they seat into.
+
+Order of work:
+
+1. Model the pin and flared head on the blade's -x face. Watch the clearance:
+   the blade's front face sits at x 0.525 and the rack mouth at x 0.45.
+2. Derive the head-on arm pose with `scripts/calibrate_grasp_pose.py`. It
+   servos the tool frame onto a target with the task's own differential IK and
+   prints converged joint angles. Its two known traps are fixed: the IK delta is
+   applied in the robot *root* frame, and the episode timeout must be disabled
+   or the arm resets mid-solve.
+3. Gate with `scripts/grasp_diagnostics.py`. A grasp counts as formed only when
+   drive torque rises off its 1e-5 N-m noise floor, and the gate needs 66.4 N of
+   axial capacity. Never infer pad locations from body origins: every 2F-85 body
+   in this asset is collapsed within 18 mm of the flange.
+4. Then train and certify grasp, extract, and insert as separate gated skills.
+
 ## Operating rules
 
 - Preserve exact zero gravity and the 30 Hz policy / 120 Hz physics timing
