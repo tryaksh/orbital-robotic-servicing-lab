@@ -8,18 +8,35 @@ validation.
 
 ## Mission
 
-Build a portfolio-quality autonomy stack for robotic replacement of modular
-compute hardware in microgravity. The active skill is inserting a replacement
-server blade with a UR10e and Robotiq 2F-85 in NVIDIA Isaac Lab. The longer-term
-system removes a failed module, stows it, acquires a replacement, inserts it
-safely, and verifies completion under uncertain contact, payload, mounting,
-illumination, and sensing.
+Answer one engineering question with measurements: **what service interface does
+a 6-axis manipulator need in order to capture, extract, and insert a modular
+compute unit in microgravity, and what loads does that impose?**
 
-Position this as research into **contact-rich orbital field servicing of modular
-compute hardware**, not as a flight-ready space data center. The value is the
-disciplined workflow: GPU-parallel RL, physics-gap diagnosis, curriculum design,
-measurable promotion gates, perception/control separation, and an honest
-Sim2Real plan.
+The deliverable is `docs/service_interface_spec.md`, a module-side specification
+where every dimension traces to a measurement, plus grasp/extract/insert skills
+certified under randomized pose, payload, and friction with bounded contact
+loads.
+
+Scope was narrowed deliberately on 2026-08-10. The earlier framing carried a
+five-stage chain from compute fault through isolation, replacement, hardware
+verification, and restored compute. Four of those five stages have no physics
+content; in simulation they are a state machine, and they invited a mock-up
+reading of work whose value is measured contact mechanics. **Do not reintroduce
+them.** Likewise, lead with the mechanism rather than the setting: the envelope
+sweep already showed payload mass is close to vacuous in this regime, so
+"orbital data centre" claims more than the evidence supports, while the
+zero-gravity mechanisms this project actually measured do not:
+
+- You cannot grasp a free-floating mass by squeezing it. Asymmetric contact
+  timing becomes net momentum with nothing to absorb it.
+- A wedge converts closing force into payload thrust, so capturing harder makes
+  capture worse. That is why capture and hold are separate commands.
+
+Position this as research into **design-for-serviceability and contact-rich
+field servicing**, not as a flight-ready system. The value is the disciplined
+workflow: GPU-parallel RL, physics-gap diagnosis, curriculum design, measurable
+promotion gates, and an honest Sim2Real plan. Several results here are negative
+or retracted, and they stay in the record.
 
 ## Current state in one paragraph
 
@@ -165,6 +182,7 @@ checkpoints, or every task file.
 | Code and data flow | `docs/architecture.md` |
 | Physics gaps, missing measurements | `docs/sim2real_matrix.md` |
 | Public claim and commands | `README.md` |
+| The design deliverable | `docs/service_interface_spec.md` |
 | Insertion task physics | `src/zero_g_blade_swap/tasks/blade_swap/rigid_grasp_insertion_env_cfg.py` |
 | Force penalties, force feedback | `src/zero_g_blade_swap/tasks/blade_swap/force_limited_insertion_env_cfg.py` |
 | Grasp physics before any grasp PPO | `scripts/grasp_diagnostics.py`, `evidence/grapple_pin_axial_pull_gate.json` |
