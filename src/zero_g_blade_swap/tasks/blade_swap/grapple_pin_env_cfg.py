@@ -300,9 +300,18 @@ class ExtractActionsCfg(GrapplePinActionsCfg):
             pos=GRAPPLE_TOOL_OFFSET_POS,
             rot=mdp.TOOL_OFFSET_ROT,
         ),
-        # 120 mm/s along the pull axis. The blade has to travel 495 mm to clear
-        # the mouth, which does not fit an episode at the insertion scale.
-        scale=(0.004, 0.001, 0.001, 0.008, 0.008, 0.008),
+        # 240 mm/s along the pull axis. The blade has to travel 495 mm to clear
+        # the mouth, which is three and a half times the certified insertion
+        # distance, and at the insertion scale that is 124 consecutive steps of
+        # near-maximum command before the first reward for finishing.
+        #
+        # Measured at 120 mm/s and 700 epochs: the grip held perfectly, 6.7 mm
+        # of error at the median, and the blade still travelled only 71 mm. The
+        # training reward was climbing monotonically the whole time and had not
+        # levelled off, so that is a horizon too long to credit-assign across,
+        # not a policy that cannot hold the pin. Halving the step count is the
+        # cheaper half of the fix; the other half is simply more epochs.
+        scale=(0.008, 0.001, 0.001, 0.008, 0.008, 0.008),
         # Long enough for the capture to complete and preload the collar before
         # the policy is allowed to pull. The gate needed 1.0 s to settle.
         settling_time_s=1.0,
