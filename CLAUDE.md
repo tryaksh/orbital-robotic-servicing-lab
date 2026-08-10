@@ -69,91 +69,58 @@ ten times the flat-pad grip but 10% short of the gate. Full numbers,
 limitations, and the pre-existing `train.py --smoke` probe defect live in
 `docs/status.md`.
 
-## Next action, decided 2026-08-09
+## Next action, decided 2026-08-10: pivot to pose uncertainty
 
-Build the **head-on grapple pin** capture interface, then the grasp, extract,
-and insert skills that a replacement demonstration needs. The owner has given
-standing authorization for long GPU training; do not ask before starting a run.
+**The full plan is `C:\Users\tryak\.claude\plans\with-this-literature-research-merry-gray.md`.
+Read it before doing anything. It contains a session prompt written to be pasted
+verbatim into a fresh session.**
 
-Why this and not more gripper tuning. A parallel-jaw friction grip cannot hold
-this blade, and that is structural rather than a tuning failure. The gripper
-approaches downward along -z while the blade extracts sideways along -x, so the
-pull axis is the one direction nothing constrains: the rails must leave it free,
-and flat pads on a smooth post can only resist it by friction. Measured
-consequence, with the rails solid and closure swept from 0.62 to 0.77 rad: grip
-torque *falls* as the fingers close tighter, because they shove the post along
-x and then close on air. Axial capacity is about 6 N against the 66.4 N the
-insertion contact reaction demands.
+Why the direction changed. Every RL task in this repo trains against a task that
+contains no uncertainty. The policy observes `insertion_goal_error`, derived
+from `attached_blade_pose_world`, which is simulator ground truth; reset noise
+randomizes the initial condition and the policy is then told the exact resulting
+error. With a rigid known object on a constrained axis and full observability,
+that is a motion-planning and force-control problem, and a scripted controller
+would solve it. RL cannot demonstrate its value there, which is why three
+hand-rolled skills cost a night of GPU and certified nothing.
 
-The head-on grapple pin is **built, calibrated, and past its gate**. It is the
-first interface in this project's history to form a real grip: drive torque
-saturates the 10 N-m limit in 363 of 363 environments, and it holds **69 N** of
-axial pull within 2 mm of slip against the 66.4 N requirement, where flat pads
-on a post held about 6 N.
+The target result is now one falsifiable plot: **success rate against
+pose-belief error, force-aware policy versus force-blind ablation.** That is the
+axis IndustReal and FORGE are evaluated on, and the repo already owns both
+halves it needs: a working `BladeContactWrenchObservation` and a certified
+force-feedback task lineage.
 
-The step that got there is worth remembering: **capture and hold are two
-different commands.** A single closure caps out at 59 N, and capacity *falls* as
-the fingers close harder, because the wedge converts closing force into thrust
-along the pull axis and a firm capture drives the payload away before it has
-been taken. Capturing at 0.48 rad and firming to 0.68 once the grip loads gives
-69 N. The window is narrow and asymmetric: 0.44 holds 63 N, 0.52 holds 68 N,
-0.56 collapses to 26 N. Bias low.
+Adopt established formulations rather than inventing reward terms. IndustReal
+(sampling-based curriculum, SDF dense reward, simulation-aware policy update)
+transfers contact-rich assembly at 83-99% over 600 trials on a UR10e, the same
+arm as here. FORGE (arXiv 2408.04587) targets force-aware manipulation under
+pose uncertainty directly. Note that the Grasp v1 failure recorded in
+`docs/status.md`, where the policy succeeded at reset and never learned an
+approach, is exactly the overfitting pathology IndustReal's sampling-based
+curriculum exists to prevent.
 
-Full numbers, including why the flared head you would expect had to become a
-tapered wedge, are in `docs/status.md`.
+What survives the pivot and must not be deleted: the grapple pin geometry and
+`docs/service_interface_spec.md`, everything in `evidence/` including the
+negative results, the contact-force machinery in `mdp/insertion.py`, the
+evaluator and its promotion gate, and the visual-randomization modules
+(`OrbitalLightingRandomizer`, `RackMaterialRandomizer`,
+`camera_rgb_with_radiation_noise`, `make_tiled_camera_cfg`, the student
+scaffold) which are currently reachable only from the full-swap task being
+deleted and must be repointed at the insertion scene instead.
 
-**Grip force was tested as the cause and refuted, before the real fix was
-found.** The obvious reading was that the gripper is modelled at under half its
-rated strength, so the drive was raised from 10 N-m to the 24.96 N-m that
-produces Robotiq's rated 235 N at the measured transmission ratio. On a matched
-grid that measured *worse*, 62 N against 66 N, and lost capture entirely above
-0.65 rad. Same mechanism as the capture/hold split: a harder squeeze drives an
-unconstrained payload instead of holding it. The change is reverted; the
-constant and the reasoning stay in `assets.py` so nobody repeats it.
+What the head-on grapple pin established, and why it stays: it is the first
+interface here to form a real grip, holding **69 N** of axial pull against the
+66.4 N the insertion contact reaction demands, where flat pads on a smooth post
+held about 6 N. The step that got there was recognising that **capture and hold
+are two different commands** — a wedge converts closing force into thrust along
+the pull axis, so a firm capture drives the payload away before it is taken.
+Capture at 0.48 rad, firm to 0.68 once loaded. The window is narrow and
+asymmetric: 0.44 holds 63 N, 0.52 holds 68 N, 0.56 collapses to 26 N. Bias low.
 
-Two things the measurements still say, for whoever picks this up:
+Its unfixed limitation: a single-point pin does not constrain yaw once the rails
+release the blade, measured at 0.93 rad of blade rotation in failing
+extractions. An anti-yaw feature is a legitimate second-generation result.
 
-1. **The remaining give is rotational, not axial.** Slip decomposes into 0.7 mm
-   of median axial movement against 0.054 rad of angular, and the blade only
-   levers once the pull has dragged it clear of the rails. An interface feature
-   opposing yaw would raise the margin further.
-2. **The pull test is harsher than extraction.** It applies a constant force for
-   1.5 s to a body the rails do not constrain along x, so the blade travels up
-   to 0.29 m and leaves the channel mid-measurement. Any change here must be
-   argued as a protocol correction and re-run against the earlier
-   configurations, not adopted because it flatters the number.
-
-The three skills are registered as separate gated tasks
-(`Isaac-ZeroG-Blade-GrapplePin-Grasp-v0`, `-Extract-v0`, `-Insert-v0`) and all
-three now pass `train.py --smoke`. `scripts/run_grapple_skills.sh` runs the whole
-pipeline: smoke, train, evaluate on three held-out seeds across three curriculum
-stages, and pool into one gated report under `evidence/`.
-
-Extract ends with the blade fully clear of the slot mouth, about 495 mm of
-travel; that was decided with the owner on 2026-08-09. Its final pose puts the
-wrist about 200 mm in front of the robot's own base, folded, and that has never
-been checked kinematically, so a failure to reach is the first thing to suspect
-if extraction plateaus. Insert starts at the certified staging pose because that
-is the arm pose that has been calibrated; chaining all three needs one more
-calibration run.
-
-Tools that now exist for this work:
-
-- `scripts/measure_gripper_envelope.py` measures the 2F-85 from its collision
-  meshes in the wrist frame. **Never infer pad locations from body origins**:
-  every 2F-85 body in this asset is collapsed within 18 mm of the flange, and
-  reading them has produced one retracted claim already.
-- `scripts/calibrate_grasp_pose.py` servos the tool frame onto a target with the
-  task's own differential IK. It now solves orientation as well as position,
-  which a head-on pose needs. Four traps are fixed: the IK delta is applied in
-  the robot *root* frame; the episode timeout must be disabled or the arm resets
-  mid-solve; the fingers must be held open or they foul the interface they are
-  being driven around; and the blade must be pinned, or the swinging arm shoves
-  a free body in zero gravity and every stage returns the same answer.
-- `scripts/grasp_diagnostics.py` is the gate. A grasp counts as formed only when
-  drive torque rises off its 1e-5 N-m noise floor. Quote the finest force grid
-  you ran: the reported capacity is the largest force below the *first*
-  environment that slipped, so coarse grids flatter the result by 10%.
 
 ## Operating rules
 
