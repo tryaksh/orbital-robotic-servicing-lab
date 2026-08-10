@@ -14,6 +14,7 @@ from zero_g_blade_swap.evaluation import (
     BLADE_MASS_FIELD,
     CONTACT_IMPULSE_FIELD,
     PEAK_CONTACT_FORCE_FIELD,
+    SUCCESS_TERMINATIONS,
     TERMINAL_METRIC_FIELDS,
     TERMINATION_PRIORITY,
     TERMINATION_REASONS,
@@ -27,7 +28,11 @@ from .insertion import (
     secured_blade_error_metrics,
 )
 
-SUCCESS_REASON_ID = TERMINATION_REASONS.index("insertion_success")
+# Each skill ends on its own success term, so "was this episode a success"
+# cannot be a single index. Grasp ends on capture_success and extract on
+# extraction_success; scoring either against insertion_success would record
+# every episode as a failure.
+SUCCESS_REASON_IDS = tuple(TERMINATION_REASONS.index(name) for name in SUCCESS_TERMINATIONS)
 UNCATEGORIZED_REASON_ID = TERMINATION_REASONS.index(UNCATEGORIZED_TERMINATION)
 BLADE_CONTACT_SENSOR = "blade_contact"
 
@@ -85,7 +90,7 @@ class InsertionTerminalMetrics:
         )
         control_steps = env.episode_length_buf.to(dtype=torch.float32)
         columns = [
-            (reason == SUCCESS_REASON_ID).to(dtype=torch.float32),
+            torch.isin(reason, reason.new_tensor(SUCCESS_REASON_IDS)).to(dtype=torch.float32),
             reason,
             stage_values,
             control_steps,

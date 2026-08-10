@@ -55,6 +55,12 @@ TERMINATION_REASONS = (
     "time_out",
     UNCATEGORIZED_TERMINATION,
     "excessive_contact_force",
+    # Appended for the head-on grapple-pin skills, which end on their own named
+    # terms. Appended, never inserted: the index is what archived runs store.
+    "capture_success",
+    "capture_failed",
+    "extraction_success",
+    "extraction_failed",
 )
 
 # Highest priority first, independent of the storage order above.  A physics
@@ -65,7 +71,11 @@ TERMINATION_PRIORITY = (
     "mount_unstable",
     "excessive_contact_force",
     "insertion_failed",
+    "capture_failed",
+    "extraction_failed",
     "insertion_success",
+    "capture_success",
+    "extraction_success",
     "time_out",
 )
 INSTABILITY_TERMINATIONS = ("non_finite", "mount_unstable")
@@ -73,6 +83,9 @@ INSTABILITY_TERMINATIONS = ("non_finite", "mount_unstable")
 # is counted separately from instability.
 SAFETY_ABORT_TERMINATIONS = ("excessive_contact_force",)
 SUCCESS_TERMINATION = "insertion_success"
+# Each skill ends on its own success term, so a pooled report has to count any
+# of them as the success it was gated on rather than assume insertion's.
+SUCCESS_TERMINATIONS = ("insertion_success", "capture_success", "extraction_success")
 
 # Distributions worth reporting; ``success`` and ``termination_reason`` are
 # categorical and are summarized as counts instead.
