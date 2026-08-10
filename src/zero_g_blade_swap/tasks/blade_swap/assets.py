@@ -762,6 +762,100 @@ CONTACT_INSERTION_BLADE_CFG.spawn.handle_offset = GRAPPLE_POST_OFFSET
 CONTACT_INSERTION_BLADE_CFG.spawn.handle_size = GRAPPLE_POST_SIZE
 
 
+# ---------------------------------------------------------------------------
+# Guided slot: a four-sided channel with a funnelled mouth.
+#
+# The certified slot is two vertical side walls and nothing else, so nothing
+# physically opposes blade pitch or roll and the policy has to hold the blade
+# level by commanding orientation alone. That is why terminal orientation error
+# eats 97.8% of its tolerance. A real 1U card guide is a channel: the card is
+# captured top and bottom as well as side to side, and the mouth is flared so a
+# slightly misaligned card is funnelled in rather than jammed.
+#
+# Geometry, all derived from the existing blade and rails:
+#   blade            450 x 160 x 35 mm, centre z 0.72, so its deck is at 0.7375
+#   side rails       inner faces at |y| = 80.75 mm -> 0.75 mm clearance a side
+#   upper lips       bottom face at z 0.7385 -> 1.0 mm of lift before contact
+#   lip span in y    62.5 to 82.5 mm, overhanging the blade edge by 17.5 mm
+#   lip span in x    0.60 to 1.05, leaving the first 150 mm of slot clear so the
+#                    gripper and the 75 mm-wide grapple post pass between them
+#
+# With about 1 mm of lift at each end of a 450 mm blade, pitch is mechanically
+# limited to roughly 0.0044 rad (0.25 deg) instead of the 0.052 rad the policy
+# currently has to control. The channel does the alignment, not the policy.
+SLOT_UPPER_LIP_HALF_WIDTH_Y = 0.0725
+SLOT_UPPER_LIP_CENTER_Z = 0.7435
+
+
+def _slot_upper_lip_cfg(name: str, y_center: float) -> RigidObjectCfg:
+    """Create one overhanging upper rail lip for the guided channel."""
+
+    return RigidObjectCfg(
+        prim_path=f"{{ENV_REGEX_NS}}/{name}",
+        spawn=sim_utils.CuboidCfg(
+            size=(0.45, 0.020, 0.010),
+            rigid_props=_rigid_props(kinematic=True),
+            mass_props=sim_utils.MassPropertiesCfg(mass=10.0),
+            collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.0004, rest_offset=0.0),
+            physics_material=sim_utils.RigidBodyMaterialCfg(
+                static_friction=0.8,
+                dynamic_friction=0.65,
+                restitution=0.0,
+                friction_combine_mode="max",
+            ),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.55, 0.58, 0.62), metallic=0.9, roughness=0.22),
+            activate_contact_sensors=False,
+        ),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.825, y_center, SLOT_UPPER_LIP_CENTER_Z)),
+    )
+
+
+SLOT_UPPER_LEFT_LIP_CFG = _slot_upper_lip_cfg("BladeSlotUpperLeftLip", SLOT_UPPER_LIP_HALF_WIDTH_Y)
+SLOT_UPPER_RIGHT_LIP_CFG = _slot_upper_lip_cfg("BladeSlotUpperRightLip", -SLOT_UPPER_LIP_HALF_WIDTH_Y)
+
+# Lateral lead-in. Each flare is an 80 mm plate rotated 12 degrees about z and
+# placed so its inner face meets the rail face exactly at the slot mouth
+# (x = 0.45, |y| = 80.75 mm) and opens to |y| = 97.4 mm at x = 0.372. That turns
+# a 0.75 mm-per-side keyhole into a 16.6 mm-per-side catch: the blade can arrive
+# over 20x further off centre and still be walked into the channel by contact
+# instead of missing the slot entirely.
+SLOT_ENTRY_FLARE_DEG = 12.0
+_FLARE_CENTER_X = 0.41275
+_FLARE_CENTER_Y = 0.097869
+# Scalar-first quaternion for a rotation of -12 degrees about z.
+_FLARE_QUAT_LEFT = (0.9945219, 0.0, 0.0, -0.1045285)
+_FLARE_QUAT_RIGHT = (0.9945219, 0.0, 0.0, 0.1045285)
+
+
+def _slot_entry_flare_cfg(name: str, y_center: float, rotation: tuple[float, float, float, float]) -> RigidObjectCfg:
+    """Create one angled lead-in plate at the slot mouth."""
+
+    return RigidObjectCfg(
+        prim_path=f"{{ENV_REGEX_NS}}/{name}",
+        spawn=sim_utils.CuboidCfg(
+            size=(0.080, 0.018, 0.050),
+            rigid_props=_rigid_props(kinematic=True),
+            mass_props=sim_utils.MassPropertiesCfg(mass=10.0),
+            collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.0004, rest_offset=0.0),
+            physics_material=sim_utils.RigidBodyMaterialCfg(
+                # A lead-in that grabs defeats the point, so it is the slipperiest
+                # surface in the slot.
+                static_friction=0.25,
+                dynamic_friction=0.20,
+                restitution=0.0,
+                friction_combine_mode="min",
+            ),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.68, 0.52, 0.16), metallic=0.85, roughness=0.30),
+            activate_contact_sensors=False,
+        ),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(_FLARE_CENTER_X, y_center, BLADE_INSERTED_POS[2]), rot=rotation),
+    )
+
+
+SLOT_ENTRY_LEFT_FLARE_CFG = _slot_entry_flare_cfg("BladeSlotEntryLeftFlare", _FLARE_CENTER_Y, _FLARE_QUAT_LEFT)
+SLOT_ENTRY_RIGHT_FLARE_CFG = _slot_entry_flare_cfg("BladeSlotEntryRightFlare", -_FLARE_CENTER_Y, _FLARE_QUAT_RIGHT)
+
+
 def _caddy_shelf_cfg(name: str, center: tuple[float, float, float]) -> RigidObjectCfg:
     return RigidObjectCfg(
         prim_path=f"{{ENV_REGEX_NS}}/{name}",
@@ -856,6 +950,13 @@ __all__ = [
     "CONTACT_INSERTION_STAGE_BLADE_POSE",
     "CONTACT_TOOL_OFFSET_POS",
     "GRASP_TOOL_OFFSET_POS",
+    "GRAPPLE_POST_OFFSET",
+    "GRAPPLE_POST_SIZE",
+    "SLOT_ENTRY_FLARE_DEG",
+    "SLOT_ENTRY_LEFT_FLARE_CFG",
+    "SLOT_ENTRY_RIGHT_FLARE_CFG",
+    "SLOT_UPPER_LEFT_LIP_CFG",
+    "SLOT_UPPER_RIGHT_LIP_CFG",
     "GRIPPER_GRASP_ROT",
     "INSERTION_BLADE_CFG",
     "INSERTION_GUIDE_CENTER_OFFSET_Y",

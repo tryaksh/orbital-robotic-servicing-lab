@@ -251,12 +251,14 @@ def test_insertion_tasks_capture_terminal_metrics_before_auto_reset() -> None:
     )
     play = (SCRIPTS / "play.py").read_text(encoding="utf-8")
 
-    # Every insertion task must route through the pre-reset capture subclass.
-    insertion_ids = [line for line in registration.splitlines() if 'id="Isaac-ZeroG-Blade-Insertion' in line]
-    # The invariant is that *every* insertion task routes through the capture
-    # entry point, not that there is a particular number of them.
-    assert len(insertion_ids) >= 8
-    assert registration.count("entry_point=INSERTION_ENTRY_POINT,") == len(insertion_ids)
+    # The invariant is that *every* blade task routes through the pre-reset
+    # capture subclass, not that there is a particular number of them. Tasks are
+    # registered both individually and from a loop, so assert the complement:
+    # only the three non-insertion BladeSwap tasks may use a different entry.
+    assert registration.count("entry_point=INSERTION_ENTRY_POINT,") >= 8
+    assert registration.count('entry_point="isaaclab.envs:ManagerBasedRLEnv"') == 3
+    for identifier in ("Isaac-ZeroG-Blade-Insertion-GuidedSlot-v0", "Isaac-ZeroG-Blade-CaptureInSlot-v0"):
+        assert identifier in registration
     assert "TerminalMetricsManagerBasedRLEnv" in registration
     assert "class TerminalMetricsManagerBasedRLEnv(TerminalMetricsMixin, ManagerBasedRLEnv)" in env_module
 
@@ -369,7 +371,9 @@ def test_force_feedback_task_changes_only_the_observation_space() -> None:
     assert "rl_games_force_feedback" not in registration
     assert '"Insertion-ForceFeedback",' in train
     assert '"Insertion-ForceFeedback",' in play
-    assert '"ForceFeedback")' in play
+    # The force-feedback tasks must resolve to the rigid-grasp PPO config.
+    agent_tasks = next(line for line in play.splitlines() if line.startswith("RIGID_GRASP_AGENT_TASKS"))
+    assert "ForceFeedback" in agent_tasks
 
 
 def test_pooled_report_records_the_force_limit_without_requiring_it() -> None:
@@ -425,6 +429,34 @@ def test_grasp_diagnostic_measures_the_gate_it_claims_to_measure() -> None:
     assert '"required_axial_force_n": required' in source
     assert '"evidence_type": "simulation_physics_characterization"' in source
     assert "It is not learned grasping." in source
+
+
+def test_guided_slot_is_a_channel_and_capture_happens_inside_it() -> None:
+    assets = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "assets.py").read_text(encoding="utf-8")
+    guided = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "guided_slot_env_cfg.py").read_text(
+        encoding="utf-8"
+    )
+    scene = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "scene_cfg.py").read_text(encoding="utf-8")
+
+    # A channel needs surfaces above the blade, and a funnel needs rotated ones.
+    assert "SLOT_UPPER_LIP_CENTER_Z = 0.7435" in assets
+    assert "_FLARE_QUAT_LEFT = (0.9945219, 0.0, 0.0, -0.1045285)" in assets
+    assert "SLOT_ENTRY_FLARE_DEG = 12.0" in assets
+    # The lead-in must be slipperier than the rails or it becomes a catch.
+    assert 'friction_combine_mode="min"' in assets
+    assert "class ZeroGGuidedSlotSceneCfg(ZeroGRigidGraspInsertionSceneCfg)" in scene
+
+    # The certified geometry must not be edited underneath three evaluations.
+    assert "RIGID_GRASP_BLADE_CFG.spawn.handle_size = (0.060, 0.075, 0.030)" in assets
+    assert "CONTACT_INSERTION_BLADE_CFG.spawn.handle_offset = GRAPPLE_POST_OFFSET" in assets
+
+    # Capture only means something while the blade is still constrained.
+    assert "class ZeroGBladeCaptureInSlotEnvCfg" in guided
+    assert 'for name in ("blade_slot_left_guide", "blade_slot_right_guide"):' in guided
+    assert "collision_enabled = True" in guided
+    assert "contact_grasp: bool = True" in guided
+    # The channel must survive the parent rebuilding the slot per level.
+    assert "_enable_channel(self.scene)" in guided
 
 
 def test_evaluation_statistics_are_isaac_free_and_gate_is_explicit() -> None:

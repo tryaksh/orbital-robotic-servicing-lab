@@ -29,8 +29,12 @@ from .assets import (
     SERVICE_CADDY_LEFT_GUIDE_CFG,
     SERVICE_CADDY_RIGHT_GUIDE_CFG,
     SLOT_CFG,
+    SLOT_ENTRY_LEFT_FLARE_CFG,
+    SLOT_ENTRY_RIGHT_FLARE_CFG,
     SLOT_LEFT_GUIDE_CFG,
     SLOT_RIGHT_GUIDE_CFG,
+    SLOT_UPPER_LEFT_LIP_CFG,
+    SLOT_UPPER_RIGHT_LIP_CFG,
     SPARE_BLADE_CFG,
     SUPPLY_CADDY_CFG,
     SUPPLY_CADDY_LEFT_GUIDE_CFG,
@@ -138,6 +142,22 @@ class ZeroGRigidGraspInsertionSceneCfg(ZeroGContactInsertionSceneCfg):
     blade_slot_right_guide = RIGID_GRASP_SLOT_RIGHT_GUIDE_CFG
 
 
+@configclass
+class ZeroGGuidedSlotSceneCfg(ZeroGRigidGraspInsertionSceneCfg):
+    """Rigid-grasp scene whose slot is a real channel with a funnelled mouth.
+
+    Adds two overhanging upper lips, which constrain blade pitch and roll that
+    the two side walls alone cannot, and two angled lead-in plates at the mouth.
+    Declared as a separate scene so the certified Level-0/1/2 geometry is not
+    modified underneath three published evaluations.
+    """
+
+    blade_slot_upper_left_lip = SLOT_UPPER_LEFT_LIP_CFG
+    blade_slot_upper_right_lip = SLOT_UPPER_RIGHT_LIP_CFG
+    blade_slot_entry_left_flare = SLOT_ENTRY_LEFT_FLARE_CFG
+    blade_slot_entry_right_flare = SLOT_ENTRY_RIGHT_FLARE_CFG
+
+
 def make_tiled_camera_cfg() -> TiledCameraCfg:
     """Create the 64x64, 15 Hz camera used by vision and data collection."""
 
@@ -167,5 +187,6 @@ __all__ = [
     "ZeroGInsertionSceneCfg",
     "ZeroGRobustInsertionSceneCfg",
     "ZeroGContactInsertionSceneCfg",
+    "ZeroGGuidedSlotSceneCfg",
     "make_tiled_camera_cfg",
 ]

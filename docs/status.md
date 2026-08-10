@@ -453,6 +453,48 @@ no capacity to report.
 Report: `evidence/grasp_axial_pull_gate.json` (pre-fix baseline) and
 `scripts/calibrate_grasp_pose.py` for the kinematic check.
 
+## Guided slot and capture-in-slot: built, gated, not yet passing
+
+Two new tasks, both separate registrations so the certified Level-0/1/2 geometry
+is untouched: `Isaac-ZeroG-Blade-Insertion-GuidedSlot-v0` and
+`Isaac-ZeroG-Blade-CaptureInSlot-v0`.
+
+**The guided slot turns two walls into a channel.** Overhanging upper lips sit
+1.0 mm above the blade deck, spanning 62.5 to 82.5 mm either side of centre so
+they overlap the blade edge by 17.5 mm while leaving the middle clear for the
+grapple post. Two 80 mm plates at the mouth, each rotated 12 degrees, widen the
+lateral catch from 0.75 mm per side to 16.6 mm per side, and carry the lowest
+friction in the slot so a lead-in guides rather than grabs. With about 1 mm of
+lift available at each end of a 450 mm blade, pitch is mechanically limited to
+roughly 0.0044 rad against the 0.052 rad the policy currently has to control by
+itself. The channel is meant to do the alignment the reward has been doing.
+
+**Capture-in-slot closes the grasp while the rails still hold the blade.** This
+needed no new arm pose: the stage-0 reset already parks the blade 31 mm short of
+fully inserted, entirely inside the rails, with the grapple post under the pads.
+Only the rails had to be made solid at level 0, where the parent profile turns
+them off.
+
+It measurably helped. Against the free-floating grasp, peak drive torque became
+a controlled 1.4 to 2.2 N·m instead of saturating the 10 N·m limit, and slip
+under near-zero load fell from 118 mm mean to 45 mm.
+
+**It does not yet pass the gate**: axial holding capacity is still about 6 N
+against the 66.4 N required, with 124 of 128 environments slipping.
+
+The reason is structural and worth stating plainly. The rails constrain the
+blade sideways and the new lips constrain it vertically, but **the extraction
+axis is the one direction a slot must leave free**, and it is exactly the
+direction the pull test loads. Nothing but friction can resist it. Grip force is
+currently far too low to supply that friction: closure targets of 0.70 to 0.77
+rad sit within a millimetre or so of the 75 mm post width, so the fingers barely
+squeeze, which is why torque is 2 N·m out of an available 10.
+
+The next attempt is a closure sweep between roughly 0.62 and 0.70 rad with the
+rails solid. Free-floating, 0.68 rad ejected the blade at 10 N·m; constrained,
+that interference may be exactly what supplies the missing friction. This is a
+tuning question with a measured bracket at both ends, not an open one.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300

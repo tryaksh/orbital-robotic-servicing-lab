@@ -156,10 +156,12 @@ ROBUST_FAMILY_TASKS = (
     "Insertion-ForceLimited",
     "Insertion-StrictForceLimited",
     "Insertion-ForceFeedback",
+    "Insertion-GuidedSlot",
+    "Blade-CaptureInSlot",
 )
 
 # Task labels that share the rigid-grasp PPO configuration and checkpoint tree.
-RIGID_GRASP_AGENT_TASKS = ("Insertion-RigidGrasp", "ForceLimited", "ForceFeedback")
+RIGID_GRASP_AGENT_TASKS = ("Insertion-RigidGrasp", "ForceLimited", "ForceFeedback", "GuidedSlot", "CaptureInSlot")
 
 
 def _checkpoint() -> Path:

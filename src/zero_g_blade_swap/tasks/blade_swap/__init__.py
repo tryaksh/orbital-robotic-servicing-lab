@@ -163,6 +163,22 @@ gym.register(
     },
 )
 
+for _guided_id, _guided_cls in (
+    ("Isaac-ZeroG-Blade-Insertion-GuidedSlot-v0", "ZeroGBladeGuidedSlotEnvCfg"),
+    ("Isaac-ZeroG-Blade-Insertion-GuidedSlot-Play-v0", "ZeroGBladeGuidedSlotPlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-CaptureInSlot-v0", "ZeroGBladeCaptureInSlotEnvCfg"),
+    ("Isaac-ZeroG-Blade-CaptureInSlot-Play-v0", "ZeroGBladeCaptureInSlotPlayEnvCfg"),
+):
+    gym.register(
+        id=_guided_id,
+        entry_point=INSERTION_ENTRY_POINT,
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{__name__}.guided_slot_env_cfg:{_guided_cls}",
+            "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_rigid_grasp.yaml",
+        },
+    )
+
 gym.register(
     id="Isaac-ZeroG-BladeSwap-Teacher-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",

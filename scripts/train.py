@@ -19,6 +19,8 @@ ROBUST_FAMILY_TASKS = (
     "Insertion-ForceLimited",
     "Insertion-StrictForceLimited",
     "Insertion-ForceFeedback",
+    "Insertion-GuidedSlot",
+    "Blade-CaptureInSlot",
 )
 
 assert hasattr(jinja2, "Environment"), "The Jinja2 installation is incomplete."
