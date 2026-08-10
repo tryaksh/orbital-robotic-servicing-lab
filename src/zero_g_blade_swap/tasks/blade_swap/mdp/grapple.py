@@ -376,6 +376,12 @@ def extraction_error(env, target_x: float = EXTRACTED_BLADE_CENTRE_X) -> torch.T
     return (blade_centre_x(env) - target_x).clamp_min(0.0)
 
 
+def extraction_remaining_observation(env, target_x: float = EXTRACTED_BLADE_CENTRE_X) -> torch.Tensor:
+    """The same distance as a column, because observation terms are 2-D."""
+
+    return extraction_error(env, target_x).unsqueeze(-1)
+
+
 def extraction_progress_reward(env, target_x: float = EXTRACTED_BLADE_CENTRE_X) -> torch.Tensor:
     """Pay for measured travel toward clear, not for holding position."""
 
@@ -462,6 +468,35 @@ def reset_grapple_blade_pose(
     blade.write_root_velocity_to_sim(torch.zeros((len(ids), 6), device=env.device), env_ids=ids)
 
 
+def hold_two_stage_grip(
+    env,
+    env_ids: torch.Tensor | None,
+    asset_cfg: SceneEntityCfg,
+    capture_positions: tuple[float, ...],
+    hold_positions: tuple[float, ...],
+) -> None:
+    """Command the capture closure until the grip loads, then the holding one.
+
+    Extract and insert start already captured, but "already captured" cannot be
+    faked by writing the fingers to their seated angle: that places the pads
+    around the wedge without pressing the pin against the collar, so the first
+    pull travels the whole seating gap before anything takes load. Measured that
+    way, a 40 mm pull moved the blade 0.1 mm and opened a 12.9 mm grip error.
+
+    Letting the capture actually happen, inside the action term's settling
+    window, produces the same preloaded state the pull gate measured 69 N on.
+    """
+
+    ids = torch.arange(env.num_envs, device=env.device) if env_ids is None else env_ids
+    robot = env.scene[asset_cfg.name]
+    capture = robot.data.joint_pos.new_tensor(capture_positions).expand(len(ids), -1)
+    hold = robot.data.joint_pos.new_tensor(hold_positions).expand(len(ids), -1)
+    established = capture_established(env)[ids].unsqueeze(-1)
+    robot.set_joint_position_target(
+        torch.where(established, hold, capture), joint_ids=asset_cfg.joint_ids, env_ids=ids
+    )
+
+
 def reset_grapple_fingers(
     env,
     env_ids: torch.Tensor | None,
@@ -496,6 +531,7 @@ __all__ = [
     "extraction_failure",
     "extraction_failure_reward",
     "extraction_progress_reward",
+    "extraction_remaining_observation",
     "extraction_success_mask",
     "extraction_success_reward",
     "grapple_grip_error_metrics",
@@ -504,6 +540,7 @@ __all__ = [
     "grip_drive_torque",
     "grip_retention_penalty",
     "gripper_state_observation",
+    "hold_two_stage_grip",
     "record_blade_reset_pose",
     "reset_grapple_blade_pose",
     "reset_grapple_fingers",

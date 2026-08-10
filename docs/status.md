@@ -532,7 +532,7 @@ built: a mushroom head with a flat shoulder has to sit in exactly that gap to
 bear on the pads, has to be wider than the pad gap to catch them, and has to be
 narrower than the knuckles to fit. No closure satisfies both.
 
-## Head-on grapple pin: a real grip, 10% short of the gate
+## Head-on grapple pin: the gate passes at 69 N
 
 A parallel-jaw grip cannot hold this blade against extraction, and that is
 structural. The gripper closes along one axis while the blade leaves along
@@ -563,39 +563,61 @@ as well as position, converged all three curriculum stages to under 0.01 mm and
 vertical. Vertical closure is what keeps the gripper's narrow 75 mm dimension
 between the rails. Report: `evidence/grapple_pin_head_on_pose.json`.
 
-**A real grip forms, and it is an order of magnitude stronger.**
+**A real grip forms, and it holds an order of magnitude more.**
 
 | Quantity | Flat pads on a post | Head-on grapple pin |
 | --- | ---: | ---: |
 | Environments where a finger was blocked | 124 / 128 | 363 / 363 |
 | Peak drive torque against the 10 N-m limit | 10.0 N-m, then ejection | 10.0 N-m, seated |
-| Axial force held within 2 mm of slip | about 6 N | 59 N |
+| Axial force held within 2 mm of slip | about 6 N | **69 N** |
 
-Report: `evidence/grapple_pin_axial_pull_gate.json`, 363 environments over a
-3 closure by 121 force grid at 1 N resolution.
+**The gate passes**, 69 N against the 66.4 N required, on a 3 closure by 121
+force grid at 1 N resolution. Report:
+`evidence/grapple_pin_axial_pull_gate.json`.
 
-**It does not pass the gate.** 59 N held against 66.4 N required is about 10%
-short. Three things about that number are worth stating precisely, because they
-decide what to do next.
+### Capture and hold are two different commands
 
-*The result is grid-sensitive, and the honest number is the fine one.* Coarser
-sweeps of the same configuration returned 66 N at 2 N resolution and 65.8 N at
-3.9 N resolution. `largest_force_held_n` is the largest force below the *first*
-environment that slipped, so a finer grid is more likely to catch an early
-slip and returns a lower figure. The 1 N result is the one to quote.
+Getting there needed one idea, and it is the interesting result of this
+section. A single closure command, however chosen, caps out at 59 N. Capacity
+*falls* as the fingers close harder, from 59 N at 0.56 rad to 43 N at 0.60 and
+24 N at 0.64, with drive torque saturated at 10 N-m throughout. That is not the
+old failure of fingers closing on air: the pads stop at about 0.22 rad in every
+case, blocked by the wedge, so the grip is real.
 
-*Capacity falls as the fingers close harder*, from 59 N at 0.56 rad to 43 N at
-0.60 and 24 N at 0.64, with drive torque saturated at 10 N-m throughout. This is
-not the earlier failure of the fingers closing on air. The pads stop at about
-0.22 rad in every case, blocked by the wedge, so the grip is real; what changes
-is the capture transient, which grows with commanded closure and leaves the
-interface less settled when the pull begins.
+The mechanism is the wedge itself. It converts closing force into thrust along
+the pull axis, which is the one axis a slot has to leave free, so a firm capture
+drives the payload away before it has been taken. Holding, once the pin is
+seated against the collar, wants the opposite: everything the drive can produce.
 
-*The blade levers rather than slides.* Decomposing the slip shows axial movement
-of 1.1 mm at the median and 5.9 mm at p95, lateral movement of the same order,
-but angular slip of 0.043 rad at the median and 0.166 rad at p95. The collar is
-doing its job along the pull axis; what gives is rotation, once the pull has
-dragged the blade out of the rails that were constraining it.
+Splitting the two settles it. Capturing at 0.48 rad and firming to 0.68 once the
+grip is established holds 69 N, and median axial slip falls from 1.1 mm to
+0.7 mm:
+
+| Capture | Hold | Force held |
+| ---: | ---: | ---: |
+| 0.44 | 0.64 | 63 N |
+| 0.48 | 0.68 | **69 N** |
+| 0.52 | 0.72 | 68 N |
+| 0.56 | 0.76 | 26 N |
+
+Report: `evidence/grapple_pin_capture_plateau.json`. The window is narrow and
+asymmetric, so the capture command is biased low, and `TwoStageRobotiqAction`
+implements the two stages inside the action term rather than leaving them to a
+script.
+
+### Why the collar was the weak link
+
+A new measurement explains it. Under load the fingers are forced back open by
+0.055 rad at p95, so the payload **cams the pads apart** rather than sliding
+between them, and the drive's stiffness is what resists. That is why more
+holding force helps and why a violent capture, which leaves the pin poorly
+seated, does not.
+
+The remaining give is rotational rather than axial. Slip decomposes into 0.7 mm
+of median axial movement against 0.054 rad of angular movement, and the blade
+only starts to lever once the pull has dragged it clear of the rails that were
+constraining it. That is a property of the pull test, which loads a body the
+rails do not constrain along x, more than of the interface.
 
 ## Grip force is not the binding constraint, and that was worth testing
 

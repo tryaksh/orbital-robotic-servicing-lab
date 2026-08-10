@@ -98,7 +98,10 @@ class GrapplePinActionsCfg(ContactInsertionActionsCfg):
             rot=mdp.TOOL_OFFSET_ROT,
         ),
         scale=(0.0015, 0.00075, 0.00075, 0.006, 0.006, 0.006),
-        settling_time_s=0.30,
+        # Hold the arm still while the capture completes and preloads the
+        # collar. The pull gate needed 1.0 s to settle; acting before that is
+        # acting on a grip that has not taken load yet.
+        settling_time_s=1.0,
         controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=True, ik_method="dls"),
     )
 
@@ -233,7 +236,7 @@ class GraspObservationsCfg:
 
 @configclass
 class ExtractPolicyObsCfg(GrappleSkillObsCfg):
-    remaining_travel = ObsTerm(func=mdp.extraction_error)
+    remaining_travel = ObsTerm(func=mdp.extraction_remaining_observation)
 
 
 @configclass
@@ -300,7 +303,9 @@ class ExtractActionsCfg(GrapplePinActionsCfg):
         # 120 mm/s along the pull axis. The blade has to travel 495 mm to clear
         # the mouth, which does not fit an episode at the insertion scale.
         scale=(0.004, 0.001, 0.001, 0.008, 0.008, 0.008),
-        settling_time_s=0.30,
+        # Long enough for the capture to complete and preload the collar before
+        # the policy is allowed to pull. The gate needed 1.0 s to settle.
+        settling_time_s=1.0,
         controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=True, ik_method="dls"),
     )
 
@@ -396,17 +401,34 @@ class ZeroGBladeGrapplePinGraspEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
 
 @configclass
 class ExtractEventsCfg(GrapplePinEventsCfg):
-    """Start already captured, with the fingers written to where capture ends.
+    """Take the pin for real at the start of the episode, then act.
 
-    Writing the seated angle rather than replaying a close matters: closing from
-    open straight to the holding command is the case that measured 26 N, because
-    the wedge thrusts the payload before the collar catches it.
+    "Already captured" cannot be faked by writing the fingers to their seated
+    angle. That places the pads around the wedge without pressing the pin
+    against the collar, and the first pull then travels the whole seating gap
+    before anything takes load: measured, a 40 mm pull moved the blade 0.1 mm
+    and opened a 12.9 mm grip error.
+
+    So the episode opens with the fingers apart and the same two-stage capture
+    the pull gate measured 69 N on, while the action term holds the arm still.
+    The policy takes over with a preloaded grip.
     """
 
     close_gripper_on_reset = EventTerm(
         func=mdp.reset_grapple_fingers,
         mode="reset",
-        params={"asset_cfg": GRIPPER_CFG, "finger_joint": GRAPPLE_FINGER_SEATED_RAD},
+        params={"asset_cfg": GRIPPER_CFG, "finger_joint": GRAPPLE_GRIPPER_APPROACH[0]},
+    )
+    hold_gripper_closed = EventTerm(
+        func=mdp.hold_two_stage_grip,
+        mode="interval",
+        interval_range_s=(1.0 / 30.0, 1.0 / 30.0),
+        is_global_time=False,
+        params={
+            "asset_cfg": GRIPPER_CFG,
+            "capture_positions": GRAPPLE_GRIPPER_CAPTURE,
+            "hold_positions": GRAPPLE_GRIPPER_HOLD,
+        },
     )
     remember_blade_pose = EventTerm(func=mdp.record_blade_reset_pose, mode="reset")
     reset_grapple = EventTerm(func=mdp.reset_grapple_progress, mode="reset")
