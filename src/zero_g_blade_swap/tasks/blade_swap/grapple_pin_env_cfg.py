@@ -368,6 +368,11 @@ class ZeroGBladeGrapplePinGraspEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
     standoff approach, backing off along the tool axis and flying in, needs a
     second calibrated pose per stage and is deliberately left for after this
     skill is certified.
+
+    Episode length is generous relative to the work: measured captures complete
+    in a couple of seconds once the approach is solved, and the failure mode is
+    never converging rather than running out of time, so a longer episode buys
+    nothing and a shorter one would hide the difference.
     """
 
     observations: GraspObservationsCfg = GraspObservationsCfg()
@@ -381,9 +386,21 @@ class ZeroGBladeGrapplePinGraspEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)
         self.events = GraspEventsCfg()
-        # Displacing the tool by roughly 10 to 60 mm is what makes this a grasp
-        # skill instead of a decision about when to close.
-        self.events.reset_arm.params["noise_by_stage"] = (0.010, 0.025, 0.050)
+        # The reset has to put the tool *outside* the 20 mm capture tolerance,
+        # or the skill is not a grasp.
+        #
+        # The first schedule here was (0.010, 0.025, 0.050) rad, and it measured
+        # 99.3% at stage 1 for the wrong reason: successful captures completed
+        # at a median of 0.30 s and a 95th percentile of 0.77 s, which is the
+        # first few control steps. The reset was landing the tool 13.8 mm from
+        # the grip point, already inside the tolerance, so the policy only had
+        # to decide to close. Stage 2 then measured 35% because it was the only
+        # stage that required an approach at all, and nothing in the earlier
+        # stages had taught one.
+        #
+        # A skill certified on the first schedule would have been an expensive
+        # way of reporting that a reset works.
+        self.events.reset_arm.params["noise_by_stage"] = (0.030, 0.055, 0.085)
         self.events.reset_blade.params["poses_by_stage"] = CONTACT_INSERTION_STAGE_BLADE_POSE
         if level < 2:
             self.events.blade_mass = None
