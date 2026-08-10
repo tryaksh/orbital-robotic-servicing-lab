@@ -399,12 +399,19 @@ def main() -> dict[str, object]:
             env_cfg.viewer.eye, env_cfg.viewer.lookat = inspection_views[args.inspection_view]
             print(f"[INFO] Inspection view: {args.inspection_view}")
         env_cfg.seed = args.seed
-        insertion_task = "Insertion" in args.task
+        # The head-on grapple-pin skills are insertion-family tasks in every way
+        # that matters here: they run on TerminalMetricsManagerBasedRLEnv, they
+        # carry a curriculum stage, and their episodes end on a named success
+        # term. Only their names differ, so matching on "Insertion" alone sent
+        # them down the full-swap path and looked for a term they do not define.
+        insertion_task = "Insertion" in args.task or "GrapplePin" in args.task
         agent_task = (
             "Isaac-ZeroG-Blade-Insertion-RigidGrasp-v0"
             if any(label in args.task for label in RIGID_GRASP_AGENT_TASKS)
             else "Isaac-ZeroG-Blade-Insertion-Contact-v0"
             if "Insertion-Contact" in args.task
+            else "Isaac-ZeroG-Blade-Insertion-Contact-v0"
+            if "GrapplePin" in args.task
             else "Isaac-ZeroG-Blade-Insertion-Robust-v0"
             if "Insertion-Robust" in args.task
             else "Isaac-ZeroG-Blade-Insertion-v0"
@@ -451,6 +458,19 @@ def main() -> dict[str, object]:
                 )
             terminal_metrics = InsertionTerminalMetrics(task_env)
             task_env.enable_terminal_metrics(terminal_metrics)
+        # Each skill ends on its own named success term. Resolve it from the
+        # task rather than assuming, so a grasp run is not scored against an
+        # insertion predicate it never defines.
+        active_terms = env.unwrapped.termination_manager.active_terms
+        success_term_name = next(
+            (
+                name
+                for name in ("insertion_success", "extraction_success", "capture_success", "full_success")
+                if name in active_terms
+            ),
+            "full_success",
+        )
+        print(f"[INFO] Success term: {success_term_name}")
         if args.video:
             video_dir = args.video_dir or (checkpoint.parent.parent / "videos" / "play")
             print(f"[INFO] Recording to {video_dir}")
@@ -544,7 +564,7 @@ def main() -> dict[str, object]:
                         robust_bucket_stats,
                         robust_values,
                         dones,
-                        env.unwrapped.termination_manager.get_term("insertion_success"),
+                        env.unwrapped.termination_manager.get_term(success_term_name),
                     )
                 if player.is_rnn and player.states is not None:
                     for state in player.states:
@@ -557,7 +577,7 @@ def main() -> dict[str, object]:
                 time.sleep(delay)
         if args.steps > 0 and args.episodes <= 0 and step != args.steps:
             raise RuntimeError(f"Simulation stopped after {step} of {args.steps} requested steps")
-        success_name = "insertion_success" if insertion_task else "full_success"
+        success_name = success_term_name
         success_rate = termination_counts[success_name] / max(episodes_completed, 1)
         success_rate_source = "termination_term_counts"
         if terminal_metrics is not None and len(terminal_metrics.recorder) > 0:
