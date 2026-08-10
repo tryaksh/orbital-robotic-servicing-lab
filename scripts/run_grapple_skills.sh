@@ -52,6 +52,9 @@ for skill in "${skills[@]}"; do
   fi
   echo "[$(date +%H:%M:%S)] smoke clean"
 
+  if [ "${SKIP_TRAIN:-0}" = "1" ]; then
+    echo "[$(date +%H:%M:%S)] SKIP_TRAIN set; reusing the existing checkpoint for $skill"
+  else
   echo "=============================================================="
   echo "[$(date +%H:%M:%S)] TRAIN $skill  task=$task envs=$NUM_ENVS epochs=$EPOCHS"
   echo "=============================================================="
@@ -65,6 +68,7 @@ for skill in "${skills[@]}"; do
       > "artifacts/grapple/train_${skill}.log" 2>&1
   status=$?
   echo "[$(date +%H:%M:%S)] train exit=$status"
+  fi
 
   # rl-games writes the newest checkpoint under <experiment>/<run>/nn.
   checkpoint=$(ls -t "$LOGROOT"/*/"$run"/nn/*.pth 2>/dev/null | head -1)
