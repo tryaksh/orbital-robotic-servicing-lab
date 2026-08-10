@@ -76,6 +76,7 @@ from pxr import UsdPhysics
 
 import zero_g_blade_swap.tasks.blade_swap  # noqa: F401
 from zero_g_blade_swap.tasks.blade_swap.agents import register_rl_games_networks
+from zero_g_blade_swap.tasks.blade_swap.mdp.grapple import grapple_grip_error_metrics
 from zero_g_blade_swap.tasks.blade_swap.mdp.insertion import (
     insertion_error_metrics,
     insertion_goal_error,
@@ -261,6 +262,13 @@ def main() -> None:
                         f"got {stationary_reward}"
                     )
                 print("[INFO] Contact reward contract passed: standing still is net-negative")
+                # Which frame convention is this task's grasp expressed in?
+                # ``secured_blade_error_metrics`` measures orientation against
+                # the top-down GRIPPER_GRASP_ROT, so on a head-on capture it
+                # reports the 90 degrees between the two conventions as grasp
+                # error and every check below fails for the wrong reason.
+                head_on = getattr(env_cfg, "tool_target_rot", None) is not None
+                grip_metrics = grapple_grip_error_metrics if head_on else secured_blade_error_metrics
                 grasp_vector, grasp_angle = secured_blade_pose_error(env.unwrapped)
                 print(
                     "[INFO] Settled tool-to-handle error: "
@@ -270,29 +278,51 @@ def main() -> None:
                 # Pull a short distance away from the rails. The contact task
                 # must transmit this through its pads; the secured-grasp task
                 # must transmit it through its audited PhysX fixed joint.
-                contact_actions = torch.zeros_like(smoke_actions)
-                contact_actions[:, 0] = -0.50
-                blade_x_before_pull = env.unwrapped.scene["spare_blade"].data.root_pos_w[:, 0].clone()
-                for _ in range(20):
-                    env.step(contact_actions)
-                blade_x_after_pull = env.unwrapped.scene["spare_blade"].data.root_pos_w[:, 0]
-                blade_pull_distance = blade_x_before_pull - blade_x_after_pull
-                grasp_position, grasp_orientation = secured_blade_error_metrics(env.unwrapped)
-                max_position = float(grasp_position.max())
-                max_orientation = float(grasp_orientation.max())
-                min_pull_distance = float(blade_pull_distance.min())
-                contact_motion_failed = getattr(env_cfg, "contact_grasp", False) and min_pull_distance < 0.003
-                if contact_motion_failed or max_position > 0.012 or max_orientation > 0.12:
-                    raise RuntimeError(
-                        "Physical-grasp pull test failed: "
+                if getattr(env_cfg.actions, "gripper", None) is not None:
+                    # The policy owns the gripper on this task, so at reset the
+                    # fingers are open and there is no grip to pull against.
+                    # Holding capacity for these tasks is characterised by
+                    # scripts/grasp_diagnostics.py, which closes the fingers
+                    # deliberately and sweeps a force grid.
+                    print(
+                        "[INFO] Skipping the scripted pull test: this task's policy commands the gripper, "
+                        "so no grasp exists at reset. Use scripts/grasp_diagnostics.py for holding capacity.",
+                        flush=True,
+                    )
+                else:
+                    contact_actions = torch.zeros_like(smoke_actions)
+                    contact_actions[:, 0] = -0.50
+                    blade_x_before_pull = env.unwrapped.scene["spare_blade"].data.root_pos_w[:, 0].clone()
+                    for _ in range(20):
+                        env.step(contact_actions)
+                    blade_x_after_pull = env.unwrapped.scene["spare_blade"].data.root_pos_w[:, 0]
+                    blade_pull_distance = blade_x_before_pull - blade_x_after_pull
+                    grasp_position, grasp_orientation = grip_metrics(env.unwrapped)
+                    max_position = float(grasp_position.max())
+                    max_orientation = float(grasp_orientation.max())
+                    min_pull_distance = float(blade_pull_distance.min())
+                    contact_motion_failed = getattr(env_cfg, "contact_grasp", False) and min_pull_distance < 0.003
+                    if contact_motion_failed or max_position > 0.012 or max_orientation > 0.12:
+                        raise RuntimeError(
+                            "Physical-grasp pull test failed: "
+                            f"blade_motion={min_pull_distance:.4f} m, position={max_position:.4f} m, "
+                            f"orientation={max_orientation:.4f} rad"
+                        )
+                    print(
+                        "[INFO] Physical-grasp pull test passed: "
                         f"blade_motion={min_pull_distance:.4f} m, position={max_position:.4f} m, "
                         f"orientation={max_orientation:.4f} rad"
                     )
-                print(
-                    "[INFO] Physical-grasp pull test passed: "
-                    f"blade_motion={min_pull_distance:.4f} m, position={max_position:.4f} m, "
-                    f"orientation={max_orientation:.4f} rad"
-                )
+            # The scripted insertion probe below is exactly that: an insertion
+            # probe. It servos toward the slot goal and reads the insertion
+            # termination terms by name, so it is meaningless on a task whose
+            # objective is capture or extraction, and those tasks do not define
+            # the terms it asks for.
+            insertion_probe_applies = getattr(env_cfg, "contact_grasp", False) or getattr(
+                env_cfg, "rigid_grasp", False
+            )
+            insertion_probe_applies &= getattr(env_cfg.terminations, "insertion_success", None) is not None
+            if insertion_probe_applies:
                 env.reset()
                 # Physics-feasibility check only: a slow axial command must be
                 # able to complete the near insertion through pad contact.

@@ -61,13 +61,24 @@ from .scene_cfg import ZeroGGrapplePinSceneCfg
 # that was measured; the previous constants in this project were inverted.
 #
 # Approach at 84.9 mm, which clears the wedge's 70 mm free end by 7.5 mm a side.
-# Capture commands far past where the pads can actually reach: seated against
-# the collar their trailing edges sit on 67.3 mm of wedge, so they stop at
-# about 0.186 rad and everything beyond that is converted by the 40 N-m/rad
-# drive into grip force rather than motion. 0.55 rad saturates the 10 N-m
-# limit, which is the most grip this actuator model can produce.
+#
+# Capture and hold are two different commands, and that is what makes the pull
+# gate pass. The wedge converts closing force into thrust along the pull axis,
+# so a firm capture drives the payload away before it has been taken; holding,
+# once the pin is seated, wants everything the drive can produce. Measured on
+# the same grid: one command throughout holds 59 N, capturing at 0.48 and
+# firming to 0.68 holds 69 N, against a 66.4 N gate.
+#
+# The window is narrow and asymmetric. 0.44 gives 63 N and 0.52 gives 68 N, but
+# 0.56 collapses to 26 N, so the capture command is biased low.
+# See evidence/grapple_pin_capture_plateau.json.
 GRAPPLE_GRIPPER_APPROACH = (0.02, 0.02, -0.02, 0.02, -0.02, -0.02)
-GRAPPLE_GRIPPER_CAPTURE = (0.55, 0.55, -0.55, 0.55, -0.55, -0.55)
+GRAPPLE_GRIPPER_CAPTURE = (0.48, 0.48, -0.48, 0.48, -0.48, -0.48)
+GRAPPLE_GRIPPER_HOLD = (0.68, 0.68, -0.68, 0.68, -0.68, -0.68)
+# Where the fingers actually come to rest on the wedge, measured. Extract and
+# insert start already captured, so writing this avoids replaying a closing
+# transient at full holding force, which is the case that measured 26 N.
+GRAPPLE_FINGER_SEATED_RAD = 0.223
 
 # The tool points along +x with the closing axis vertical, and each stage places
 # the pads around the wedge with their leading faces one closing stroke short of
@@ -119,7 +130,7 @@ class GrapplePinEventsCfg(ContactInsertionEventsCfg):
         mode="interval",
         interval_range_s=(1.0 / 30.0, 1.0 / 30.0),
         is_global_time=False,
-        params={"asset_cfg": GRIPPER_CFG, "closed_positions": GRAPPLE_GRIPPER_CAPTURE},
+        params={"asset_cfg": GRIPPER_CFG, "closed_positions": GRAPPLE_GRIPPER_HOLD},
     )
 
 
@@ -260,13 +271,17 @@ class GraspActionsCfg(GrapplePinActionsCfg):
         # Finer than the insertion scales: the wedge's free end has 8.5 mm of
         # clearance a side inside the pad aperture, so alignment is the task.
         scale=(0.002, 0.001, 0.001, 0.008, 0.008, 0.008),
-        settling_time_s=0.0,
+        # Hold through the reset transient. A reset writes joint positions but
+        # leaves the previous episode's actuator targets, so the arm springs for
+        # a few steps before it settles.
+        settling_time_s=0.30,
         controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=True, ik_method="dls"),
     )
-    gripper = mdp.RobotiqBinaryActionCfg(
+    gripper = mdp.TwoStageRobotiqActionCfg(
         asset_name="robot",
         open_position=GRAPPLE_GRIPPER_APPROACH[0],
         closed_position=GRAPPLE_GRIPPER_CAPTURE[0],
+        hold_position=GRAPPLE_GRIPPER_HOLD[0],
     )
 
 
@@ -381,8 +396,18 @@ class ZeroGBladeGrapplePinGraspEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
 
 @configclass
 class ExtractEventsCfg(GrapplePinEventsCfg):
-    """Start already captured, and keep the fingers where capture left them."""
+    """Start already captured, with the fingers written to where capture ends.
 
+    Writing the seated angle rather than replaying a close matters: closing from
+    open straight to the holding command is the case that measured 26 N, because
+    the wedge thrusts the payload before the collar catches it.
+    """
+
+    close_gripper_on_reset = EventTerm(
+        func=mdp.reset_grapple_fingers,
+        mode="reset",
+        params={"asset_cfg": GRIPPER_CFG, "finger_joint": GRAPPLE_FINGER_SEATED_RAD},
+    )
     remember_blade_pose = EventTerm(func=mdp.record_blade_reset_pose, mode="reset")
     reset_grapple = EventTerm(func=mdp.reset_grapple_progress, mode="reset")
 
@@ -553,8 +578,10 @@ class ZeroGBladeGrapplePinInsertPlayEnvCfg(ZeroGBladeGrapplePinInsertEnvCfg):
 
 
 __all__ = [
+    "GRAPPLE_FINGER_SEATED_RAD",
     "GRAPPLE_GRIPPER_APPROACH",
     "GRAPPLE_GRIPPER_CAPTURE",
+    "GRAPPLE_GRIPPER_HOLD",
     "ExtractActionsCfg",
     "ExtractEventsCfg",
     "GraspActionsCfg",

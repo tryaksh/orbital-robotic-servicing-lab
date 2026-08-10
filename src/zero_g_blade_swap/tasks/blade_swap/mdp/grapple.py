@@ -22,7 +22,8 @@ extraction ends. Extraction therefore carries its own bounds.
 from __future__ import annotations
 
 import torch
-from isaaclab.managers import SceneEntityCfg
+from isaaclab.managers import ActionTerm, SceneEntityCfg
+from isaaclab.utils import configclass
 from isaaclab.utils.math import axis_angle_from_quat, quat_apply, quat_inv, quat_mul, subtract_frame_transforms
 
 from zero_g_blade_swap.grapple_geometry import (
@@ -32,7 +33,13 @@ from zero_g_blade_swap.grapple_geometry import (
     SLOT_MOUTH_X,
 )
 
-from .actions import ROBOTIQ_2F85_COUPLING_SIGNS, ROBOTIQ_2F85_JOINT_NAMES
+from .actions import (
+    ROBOTIQ_2F85_COUPLING_SIGNS,
+    ROBOTIQ_2F85_JOINT_NAMES,
+    RobotiqBinaryAction,
+    RobotiqBinaryActionCfg,
+    robotiq_2f85_coupled_targets,
+)
 from .insertion import attached_blade_pose_world, attached_blade_velocity
 from .observations import end_effector_pose_world
 
@@ -131,6 +138,53 @@ def capture_established(
     )
 
 
+class TwoStageRobotiqAction(RobotiqBinaryAction):
+    """Capture gently, then firm up once the grip is loaded.
+
+    This is not a refinement, it is the difference between passing the gate and
+    failing it. A wedge converts closing force into thrust along the pull axis,
+    so a hard capture drives the payload away before it has been taken; but
+    holding wants all the force the drive can produce. Measured axial capacity
+    against a single command was 59 N; capturing at 0.48 rad and firming to
+    0.68 once the grip is established gives 69 N, against a 66.4 N gate.
+
+    The window is not wide, and it is asymmetric. Capturing at 0.44 gives 63 N
+    and at 0.52 gives 68 N, but 0.56 collapses to 26 N. Bias low.
+    See evidence/grapple_pin_capture_plateau.json.
+    """
+
+    cfg: TwoStageRobotiqActionCfg
+
+    def process_actions(self, actions: torch.Tensor) -> None:
+        if actions.shape != self._raw_actions.shape:
+            raise ValueError(
+                f"Robotiq action must have shape {tuple(self._raw_actions.shape)}, got {tuple(actions.shape)}."
+            )
+        self._raw_actions.copy_(actions)
+        closing = actions > self.cfg.threshold if self.cfg.close_on_positive else actions < self.cfg.threshold
+        established = capture_established(self._env).unsqueeze(-1)
+        target = torch.where(
+            closing & established,
+            torch.full_like(actions, self.cfg.hold_position),
+            torch.where(
+                closing,
+                torch.full_like(actions, self.cfg.closed_position),
+                torch.full_like(actions, self.cfg.open_position),
+            ),
+        )
+        self._processed_actions.copy_(robotiq_2f85_coupled_targets(target))
+
+
+@configclass
+class TwoStageRobotiqActionCfg(RobotiqBinaryActionCfg):
+    """Configuration for :class:`TwoStageRobotiqAction`."""
+
+    class_type: type[ActionTerm] = TwoStageRobotiqAction
+    #: Commanded once the grip is loaded. ``closed_position`` is the capture
+    #: command, which is deliberately gentler.
+    hold_position: float = 0.68
+
+
 def _hold_counter(env, name: str, active: torch.Tensor, hold_time_s: float) -> torch.Tensor:
     """Count consecutive steps a condition has held, once per environment step."""
 
@@ -146,14 +200,61 @@ def _hold_counter(env, name: str, active: torch.Tensor, hold_time_s: float) -> t
     return counter >= max(1, int(round(hold_time_s / float(env.step_dt))))
 
 
+def _potential_reward(
+    env, key: str, cost: torch.Tensor, scale: float, clamp: float, settle_s: float = 0.30
+) -> torch.Tensor:
+    """Pay for the measured reduction in a cost since the previous step.
+
+    Potential-based, so a policy cannot farm it by oscillating: every metre
+    gained is paid once and every metre lost is charged once.
+
+    The validity flag is not optional. A reset moves the arm and the blade
+    discontinuously, and without it the first step of every episode is charged
+    the whole jump from the previous episode's final cost, which shows up as a
+    large spurious reward of either sign. The insertion terms carry the same
+    flag for the same reason.
+    """
+
+    previous = getattr(env, f"_grapple_prev_{key}", None)
+    valid = getattr(env, f"_grapple_valid_{key}", None)
+    reward = getattr(env, f"_grapple_reward_{key}", None)
+    if previous is None or previous.shape[0] != env.num_envs:
+        previous = torch.zeros_like(cost)
+        valid = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        reward = torch.zeros_like(cost)
+        setattr(env, f"_grapple_prev_{key}", previous)
+        setattr(env, f"_grapple_valid_{key}", valid)
+        setattr(env, f"_grapple_reward_{key}", reward)
+    step_name = f"_grapple_step_{key}"
+    current_step = int(env.common_step_counter)
+    if getattr(env, step_name, -1) != current_step:
+        # A reset writes joint positions but leaves the previous episode's
+        # actuator targets in place, so the arm springs for a few steps before
+        # it holds. Paying for that motion is paying for nothing the policy did.
+        settled = env.episode_length_buf.to(torch.float32) * float(env.step_dt) >= settle_s
+        reward.copy_(
+            torch.where(valid & settled, ((previous - cost) / scale).clamp(-clamp, clamp) / float(env.step_dt), 0.0)
+        )
+        previous.copy_(cost)
+        valid.fill_(True)
+        setattr(env, step_name, current_step)
+    return reward
+
+
 def reset_grapple_progress(env, env_ids: torch.Tensor | None) -> None:
     """Clear every per-episode counter this module keeps on the environment."""
 
     ids = torch.arange(env.num_envs, device=env.device) if env_ids is None else env_ids
-    for name in ("_grapple_capture_hold", "_grapple_extract_hold", "_grapple_previous_cost"):
+    for name in ("_grapple_capture_hold", "_grapple_extract_hold"):
         value = getattr(env, name, None)
         if value is not None and value.shape[0] == env.num_envs:
             value[ids] = 0
+    # Invalidate rather than zero the potentials: zeroing would charge the next
+    # step the entire distance from the goal.
+    for key in ("capture", "extract"):
+        valid = getattr(env, f"_grapple_valid_{key}", None)
+        if valid is not None and valid.shape[0] == env.num_envs:
+            valid[ids] = False
 
 
 def capture_success_mask(env, hold_time_s: float = 0.30) -> torch.Tensor:
@@ -173,23 +274,22 @@ def capture_approach_reward(env, distance_scale: float = 0.050) -> torch.Tensor:
     the measured reduction in a pose cost since the previous step.
     """
 
-    position, orientation = grapple_grip_error_metrics(env)
+    placed = _blade_reset_pose(env)
+    if placed is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    blade_position, blade_orientation = placed
+    tool_position, tool_orientation = end_effector_pose_world(env)
+    offset = blade_position.new_tensor(GRAPPLE_PIN_GRIP_OFFSET).expand(env.num_envs, -1)
+    grip_position = blade_position + quat_apply(blade_orientation, offset)
+    desired = quat_mul(
+        blade_orientation, blade_orientation.new_tensor(GRAPPLE_HEAD_ON_TOOL_ROT).expand_as(blade_orientation)
+    )
+    position = torch.linalg.vector_norm(tool_position - grip_position, dim=-1)
+    orientation = torch.linalg.vector_norm(
+        axis_angle_from_quat(quat_mul(desired, quat_inv(tool_orientation))), dim=-1
+    )
     cost = position / max(distance_scale, 1.0e-6) + 0.5 * orientation / 0.20
-    previous = getattr(env, "_grapple_previous_cost", None)
-    if previous is None or previous.shape[0] != env.num_envs:
-        previous = cost.detach().clone()
-        env._grapple_previous_cost = previous
-        return torch.zeros_like(cost)
-    current_step = int(env.common_step_counter)
-    reward = getattr(env, "_grapple_approach_reward", None)
-    if reward is None or reward.shape[0] != env.num_envs:
-        reward = torch.zeros_like(cost)
-        env._grapple_approach_reward = reward
-    if getattr(env, "_grapple_approach_step", -1) != current_step:
-        reward.copy_((previous - cost).clamp(-0.25, 0.25) / float(env.step_dt))
-        previous.copy_(cost)
-        env._grapple_approach_step = current_step
-    return reward
+    return _potential_reward(env, "capture", cost, scale=1.0, clamp=0.25)
 
 
 def blade_disturbance_penalty(env, free_m: float = 0.005) -> torch.Tensor:
@@ -200,24 +300,38 @@ def blade_disturbance_penalty(env, free_m: float = 0.005) -> torch.Tensor:
     keeps ordinary settling unpenalized.
     """
 
-    blade = env.scene["spare_blade"]
-    start = getattr(env, "_grapple_blade_reset_pos", None)
-    if start is None or start.shape[0] != env.num_envs:
+    placed = _blade_reset_pose(env)
+    if placed is None:
         return torch.zeros(env.num_envs, device=env.device)
-    displacement = torch.linalg.vector_norm(blade.data.root_pos_w - start, dim=-1)
+    blade = env.scene["spare_blade"]
+    displacement = torch.linalg.vector_norm(blade.data.root_pos_w - placed[0], dim=-1)
     return ((displacement - free_m) / 0.010).clamp_min(0.0).square().clamp(max=25.0)
 
 
 def record_blade_reset_pose(env, env_ids: torch.Tensor | None) -> None:
-    """Remember where the blade started, so disturbance can be measured."""
+    """Remember where the blade was placed.
+
+    Two terms need this. Disturbance is measured against it, and so is the
+    approach reward: scoring the approach against the *live* blade pays a policy
+    for the blade drifting toward the tool, which in zero gravity it can cause
+    by shoving it. Scoring against the placed pose means only the arm's own
+    motion earns anything, and blade motion is charged separately.
+    """
 
     ids = torch.arange(env.num_envs, device=env.device) if env_ids is None else env_ids
     blade = env.scene["spare_blade"]
-    start = getattr(env, "_grapple_blade_reset_pos", None)
-    if start is None or start.shape[0] != env.num_envs:
-        start = blade.data.root_pos_w.clone()
-        env._grapple_blade_reset_pos = start
-    start[ids] = blade.data.root_pos_w[ids]
+    pose = getattr(env, "_grapple_blade_reset_pose", None)
+    if pose is None or pose.shape[0] != env.num_envs:
+        pose = blade.data.root_state_w[:, :7].clone()
+        env._grapple_blade_reset_pose = pose
+    pose[ids] = blade.data.root_state_w[ids, :7]
+
+
+def _blade_reset_pose(env) -> tuple[torch.Tensor, torch.Tensor] | None:
+    pose = getattr(env, "_grapple_blade_reset_pose", None)
+    if pose is None or pose.shape[0] != env.num_envs:
+        return None
+    return pose[:, :3], pose[:, 3:7]
 
 
 def capture_failure(
@@ -230,10 +344,10 @@ def capture_failure(
 
     position, orientation = grapple_grip_error_metrics(env)
     blade = env.scene["spare_blade"]
-    start = getattr(env, "_grapple_blade_reset_pos", None)
+    placed = _blade_reset_pose(env)
     displaced = (
-        torch.linalg.vector_norm(blade.data.root_pos_w - start, dim=-1) > blade_displacement_limit
-        if start is not None and start.shape[0] == env.num_envs
+        torch.linalg.vector_norm(blade.data.root_pos_w - placed[0], dim=-1) > blade_displacement_limit
+        if placed is not None
         else torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
     )
     conditions = {
@@ -265,22 +379,7 @@ def extraction_error(env, target_x: float = EXTRACTED_BLADE_CENTRE_X) -> torch.T
 def extraction_progress_reward(env, target_x: float = EXTRACTED_BLADE_CENTRE_X) -> torch.Tensor:
     """Pay for measured travel toward clear, not for holding position."""
 
-    remaining = extraction_error(env, target_x)
-    previous = getattr(env, "_grapple_previous_cost", None)
-    if previous is None or previous.shape[0] != env.num_envs:
-        previous = remaining.detach().clone()
-        env._grapple_previous_cost = previous
-        return torch.zeros_like(remaining)
-    reward = getattr(env, "_grapple_approach_reward", None)
-    if reward is None or reward.shape[0] != env.num_envs:
-        reward = torch.zeros_like(remaining)
-        env._grapple_approach_reward = reward
-    current_step = int(env.common_step_counter)
-    if getattr(env, "_grapple_approach_step", -1) != current_step:
-        reward.copy_(((previous - remaining) / 0.030).clamp(-1.0, 1.0) / float(env.step_dt))
-        previous.copy_(remaining)
-        env._grapple_approach_step = current_step
-    return reward
+    return _potential_reward(env, "extract", extraction_error(env, target_x), scale=0.030, clamp=1.0)
 
 
 def extraction_success_mask(
@@ -383,6 +482,8 @@ __all__ = [
     "EXTRACTED_BLADE_CENTRE_X",
     "GRIP_TORQUE_THRESHOLD_NM",
     "SLOT_MOUTH_X",
+    "TwoStageRobotiqAction",
+    "TwoStageRobotiqActionCfg",
     "blade_centre_x",
     "blade_disturbance_penalty",
     "capture_approach_reward",
