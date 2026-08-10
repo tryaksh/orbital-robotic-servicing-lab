@@ -41,6 +41,10 @@ TERMINAL_METRIC_FIELDS = (
 BLADE_MASS_FIELD = "blade_mass_kg"
 PEAK_CONTACT_FORCE_FIELD = "peak_contact_force_n"
 CONTACT_IMPULSE_FIELD = "contact_impulse_ns"
+# How wrong the policy's pose estimate actually was, per episode. Recorded so a
+# swept evaluation point can be audited rather than trusted: a pinned bias that
+# silently failed to take effect would otherwise look like a robust policy.
+BELIEF_BIAS_FIELD = "belief_bias_m"
 
 UNCATEGORIZED_TERMINATION = "uncategorized"
 
@@ -403,6 +407,7 @@ def round_floats(value: Any, digits: int = 6) -> Any:
 
 
 __all__ = [
+    "BELIEF_BIAS_FIELD",
     "BLADE_MASS_FIELD",
     "BUCKET_LABELS",
     "CONTACT_IMPULSE_FIELD",

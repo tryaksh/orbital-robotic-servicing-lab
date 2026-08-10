@@ -125,7 +125,11 @@ def _stress_label(stress: dict[str, Any]) -> str:
 
     scale = float(stress.get("pose_noise_scale", 1.0) or 1.0)
     mass = stress.get("blade_mass_range_kg")
-    label = f"pose_noise_x{scale:05.2f}"
+    bias = stress.get("belief_bias_mm")
+    # The pose-belief sweep varies only this axis, so lead the label with it:
+    # sorted output then reads as the curve it is meant to produce.
+    label = f"belief_bias_{bias:05.2f}mm_" if bias is not None else ""
+    label += f"pose_noise_x{scale:05.2f}"
     if mass:
         label += f"_mass_{mass[0]:g}-{mass[1]:g}kg"
     return label
@@ -288,6 +292,22 @@ def build_report(runs: list[dict[str, Any]], title: str, minimum_stage_success_r
             "environments_per_run": sorted({run["metadata"].get("num_envs") for run in runs}),
             # Force policies are only comparable when the abort limit that
             # truncates their force distribution is the same.
+            "belief_bias_mm": sorted(
+                {
+                    run["metadata"]["stress"]["belief_bias_mm"]
+                    for run in runs
+                    if (run["metadata"].get("stress") or {}).get("belief_bias_mm") is not None
+                }
+            )
+            or None,
+            "trained_belief_bias_ceiling_mm": sorted(
+                {
+                    run["metadata"]["stress"]["trained_belief_bias_ceiling_mm"]
+                    for run in runs
+                    if (run["metadata"].get("stress") or {}).get("trained_belief_bias_ceiling_mm") is not None
+                }
+            )
+            or None,
             "contact_force_limit_n": sorted(
                 {
                     run["metadata"]["contact_force_limit_n"]

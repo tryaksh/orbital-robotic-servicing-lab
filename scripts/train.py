@@ -19,6 +19,8 @@ ROBUST_FAMILY_TASKS = (
     "Insertion-ForceLimited",
     "Insertion-StrictForceLimited",
     "Insertion-ForceFeedback",
+    "Insertion-Uncertain",
+    "Insertion-UncertainBlind",
     "Insertion-Vision",
     "Insertion-GuidedSlot",
     "Blade-CaptureInSlot",

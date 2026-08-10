@@ -11,6 +11,7 @@ from __future__ import annotations
 import torch
 
 from zero_g_blade_swap.evaluation import (
+    BELIEF_BIAS_FIELD,
     BLADE_MASS_FIELD,
     CONTACT_IMPULSE_FIELD,
     PEAK_CONTACT_FORCE_FIELD,
@@ -28,6 +29,7 @@ from .insertion import (
     insertion_error_metrics,
     secured_blade_error_metrics,
 )
+from .uncertainty import belief_bias_magnitude
 
 # Each skill ends on its own success term, so "was this episode a success"
 # cannot be a single index. Grasp ends on capture_success and extract on
@@ -47,11 +49,16 @@ class InsertionTerminalMetrics:
         # mass band; runs without it stay loadable because reports align by name.
         self._records_mass = getattr(getattr(env.cfg, "events", None), "blade_mass", None) is not None
         self._records_contact = BLADE_CONTACT_SENSOR in env.scene.sensors
+        # Only the pose-belief tasks carry a bias, and it is the swept axis, so
+        # record what each episode actually ran at rather than trusting the flag.
+        self._records_belief = getattr(env, "_belief_bias_magnitude_m", None) is not None
         fields = TERMINAL_METRIC_FIELDS
         if self._records_mass:
             fields = (*fields, BLADE_MASS_FIELD)
         if self._records_contact:
             fields = (*fields, PEAK_CONTACT_FORCE_FIELD, CONTACT_IMPULSE_FIELD)
+        if self._records_belief:
+            fields = (*fields, BELIEF_BIAS_FIELD)
         self.recorder = TerminalEpisodeRecorder(fields) if recorder is None else recorder
         self._blade_mass: torch.Tensor | None = None
         self._peak_force = torch.zeros(env.num_envs, dtype=torch.float32, device=env.device)
@@ -122,6 +129,8 @@ class InsertionTerminalMetrics:
             self.accumulate(env)
             columns.append(self._peak_force)
             columns.append(self._impulse)
+        if self._records_belief:
+            columns.append(belief_bias_magnitude(env).to(dtype=torch.float32))
         rows = torch.stack(tuple(columns), dim=-1)
         recorded = self.recorder.record(rows[env_ids].detach().cpu())
         if self._records_contact:

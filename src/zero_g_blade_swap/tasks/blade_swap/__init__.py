@@ -179,6 +179,25 @@ for _guided_id, _guided_cls in (
         },
     )
 
+# Insertion under a wrong pose belief, and its matched force-blind ablation.
+# One PPO configuration for both: the experiment is only valid if the single
+# difference between them is what the actor can observe.
+for _uncertain_id, _uncertain_cls in (
+    ("Isaac-ZeroG-Blade-Insertion-Uncertain-v0", "ZeroGBladeUncertainInsertionEnvCfg"),
+    ("Isaac-ZeroG-Blade-Insertion-Uncertain-Play-v0", "ZeroGBladeUncertainInsertionPlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-Insertion-UncertainBlind-v0", "ZeroGBladeUncertainInsertionBlindEnvCfg"),
+    ("Isaac-ZeroG-Blade-Insertion-UncertainBlind-Play-v0", "ZeroGBladeUncertainInsertionBlindPlayEnvCfg"),
+):
+    gym.register(
+        id=_uncertain_id,
+        entry_point=INSERTION_ENTRY_POINT,
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{__name__}.uncertain_insertion_env_cfg:{_uncertain_cls}",
+            "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_uncertain_insertion.yaml",
+        },
+    )
+
 # Only the capture scene survives of the head-on grapple-pin work. The three
 # skills trained on it (grasp, extract, insert) were deleted on 2026-08-10; this
 # is the scene scripts/grasp_diagnostics.py measures the interface against.

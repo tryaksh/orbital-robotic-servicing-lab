@@ -66,6 +66,22 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--belief_bias_mm",
+        type=float,
+        default=None,
+        help=(
+            "Pin the pose-belief error to exactly this magnitude, in millimetres, for one point of the "
+            "success-versus-belief-error sweep. Above the trained ceiling this is a capability measurement, "
+            "not certification, and the report is flagged out_of_distribution accordingly."
+        ),
+    )
+    parser.add_argument(
+        "--force_threshold_n",
+        type=float,
+        default=None,
+        help="Pin the conditioned maximum allowable contact force instead of sampling it per episode.",
+    )
+    parser.add_argument(
         "--blade_mass_range",
         type=float,
         nargs=2,
@@ -113,6 +129,10 @@ if args.steps < 0 or args.episodes < 0:
     parser.error("--steps and --episodes must be non-negative")
 if args.pose_noise_scale <= 0.0:
     parser.error("--pose_noise_scale must be positive")
+if args.belief_bias_mm is not None and args.belief_bias_mm < 0.0:
+    parser.error("--belief_bias_mm must be non-negative")
+if args.force_threshold_n is not None and args.force_threshold_n <= 0.0:
+    parser.error("--force_threshold_n must be positive")
 if args.blade_mass_range is not None and not 0.0 < args.blade_mass_range[0] <= args.blade_mass_range[1]:
     parser.error("--blade_mass_range must be positive and ordered LOW HIGH")
 if args.minimum_success_rate is not None and not 0.0 <= args.minimum_success_rate <= 1.0:
@@ -155,6 +175,8 @@ ROBUST_FAMILY_TASKS = (
     "Insertion-ForceLimited",
     "Insertion-StrictForceLimited",
     "Insertion-ForceFeedback",
+    "Insertion-Uncertain",
+    "Insertion-UncertainBlind",
     "Insertion-Vision",
     "Insertion-GuidedSlot",
     "Blade-CaptureInSlot",
@@ -164,6 +186,10 @@ ROBUST_FAMILY_TASKS = (
 # Task labels that share the rigid-grasp PPO configuration and checkpoint tree.
 RIGID_GRASP_AGENT_TASKS = ("Insertion-RigidGrasp", "ForceLimited", "ForceFeedback", "GuidedSlot", "CaptureInSlot")
 
+# Insertion under a wrong pose belief carries an asymmetric critic, so it has its
+# own PPO configuration and its own checkpoint tree.
+UNCERTAIN_AGENT_TASKS = ("Insertion-Uncertain", "Insertion-UncertainBlind")
+
 
 def _checkpoint() -> Path:
     if args.checkpoint is not None:
@@ -172,7 +198,9 @@ def _checkpoint() -> Path:
             raise FileNotFoundError(path)
         return path
     default_experiment = (
-        "zero_g_blade_insertion_vision"
+        "zero_g_blade_insertion_uncertain"
+        if any(label in args.task for label in UNCERTAIN_AGENT_TASKS)
+        else "zero_g_blade_insertion_vision"
         if "Insertion-Vision" in args.task
         else "zero_g_blade_insertion_rigid_grasp"
         if any(label in args.task for label in RIGID_GRASP_AGENT_TASKS)
@@ -262,12 +290,23 @@ def _apply_stress(env_cfg) -> dict[str, object]:
         if getattr(env_cfg.events, "blade_mass", None) is not None
         else None
     )
+    trained_bias_ceiling_m = None
+    belief_term = getattr(env_cfg.curriculum, "belief_bias", None)
+    if belief_term is not None:
+        trained_bias_ceiling_m = float(belief_term.params["bias_ceiling_m"])
     stress: dict[str, object] = {
         "pose_noise_scale": args.pose_noise_scale,
         "trained_pose_noise_rad": list(trained_noise),
         "trained_blade_mass_kg": list(trained_mass) if trained_mass else None,
         "blade_mass_range_kg": list(args.blade_mass_range) if args.blade_mass_range else None,
+        "trained_belief_bias_ceiling_mm": (
+            1_000.0 * trained_bias_ceiling_m if trained_bias_ceiling_m is not None else None
+        ),
+        "belief_bias_mm": args.belief_bias_mm,
+        "force_threshold_n": args.force_threshold_n,
     }
+    if args.belief_bias_mm is not None and belief_term is None:
+        raise ValueError("--belief_bias_mm needs a task whose actor observes a pose belief")
     if args.pose_noise_scale != 1.0:
         scaled = tuple(value * args.pose_noise_scale for value in trained_noise)
         env_cfg.events.reset_arm.params["noise_by_stage"] = scaled
@@ -283,7 +322,12 @@ def _apply_stress(env_cfg) -> dict[str, object]:
         and trained_mass is not None
         and (args.blade_mass_range[0] < trained_mass[0] or args.blade_mass_range[1] > trained_mass[1])
     )
-    stress["out_of_distribution"] = bool(args.pose_noise_scale > 1.0 or outside_mass)
+    outside_belief = bool(
+        args.belief_bias_mm is not None
+        and trained_bias_ceiling_m is not None
+        and args.belief_bias_mm > 1_000.0 * trained_bias_ceiling_m + 1.0e-9
+    )
+    stress["out_of_distribution"] = bool(args.pose_noise_scale > 1.0 or outside_mass or outside_belief)
     return stress
 
 
@@ -405,7 +449,9 @@ def main() -> dict[str, object]:
         # end on a named success term. The head-on capture scene is included
         # even though its identifier does not say "Insertion".
         agent_task = (
-            "Isaac-ZeroG-Blade-Insertion-Vision-v0"
+            "Isaac-ZeroG-Blade-Insertion-Uncertain-v0"
+            if any(label in args.task for label in UNCERTAIN_AGENT_TASKS)
+            else "Isaac-ZeroG-Blade-Insertion-Vision-v0"
             if "Insertion-Vision" in args.task
             else "Isaac-ZeroG-Blade-Insertion-RigidGrasp-v0"
             if any(label in args.task for label in RIGID_GRASP_AGENT_TASKS)
@@ -421,6 +467,20 @@ def main() -> dict[str, object]:
         agent_cfg["params"]["config"]["device_name"] = rl_device
         options = agent_cfg["params"]["env"]
         env = gym.make(args.task, cfg=env_cfg, render_mode="rgb_array" if args.video else None)
+        if args.force_threshold_n is not None:
+            # Read before the first reset, so the first episode is already
+            # sampled at the pinned value rather than one step behind it.
+            env.unwrapped._forced_contact_force_threshold_n = float(args.force_threshold_n)
+            print(f"[INFO] Contact force threshold pinned to {args.force_threshold_n} N")
+        if args.belief_bias_mm is not None:
+            for name, term_cfg in zip(
+                env.unwrapped.curriculum_manager._term_names,
+                env.unwrapped.curriculum_manager._term_cfgs,
+                strict=True,
+            ):
+                if name == "belief_bias":
+                    term_cfg.func.force_bias(args.belief_bias_mm / 1_000.0)
+            print(f"[INFO] Pose-belief error pinned to {args.belief_bias_mm} mm")
         if args.curriculum_stage is not None:
             insertion_env = env.unwrapped
             insertion_env._insertion_curriculum_stage.fill_(args.curriculum_stage)

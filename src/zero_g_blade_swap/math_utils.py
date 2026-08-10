@@ -164,6 +164,87 @@ def update_curriculum_stage(
     return (stage + 1, 0.0, True) if promoted else (stage, rolling, False)
 
 
+def update_sampling_bound(
+    bound: float,
+    completed_successes: ArrayLike,
+    *,
+    increase: float,
+    decrease: float,
+    maximum: float,
+    promote_threshold: float = 0.80,
+    demote_threshold: float = 0.10,
+    window_size: int = 2_000,
+    steps_elapsed: int = 0,
+    minimum_steps: int = 0,
+) -> tuple[float, float, bool]:
+    """IndustReal's sampling-based curriculum, as a pure function.
+
+    The difference from :func:`update_curriculum_stage` is the whole point.
+    A stage curriculum walks *into* difficulty: early levels sample only easy
+    initial states, so an agent can converge on a policy that exploits them.
+    That is exactly what happened to this project's first grasp policy, which
+    measured 99.3% while completing in 0.30 s because the reset already sat
+    inside the success tolerance, and then collapsed to 35% on the one stage
+    that required an approach.
+
+    A sampling-based curriculum instead exposes the *entire* range from the
+    first step and raises only its easy bound as success improves, so the
+    hardest initial states are present throughout and the easy ones are
+    progressively withdrawn. IndustReal moves the bound by a fixed increment
+    when the rolling success rate clears 80% and back down when it falls under
+    10%; this reproduces that rule.
+
+    Returns the new bound, the rolling success rate, and whether the bound moved.
+    """
+
+    if increase < 0.0 or decrease < 0.0:
+        raise ValueError("increase and decrease must be non-negative")
+    if maximum < 0.0:
+        raise ValueError("maximum must be non-negative")
+    if not 0.0 <= demote_threshold <= promote_threshold <= 1.0:
+        raise ValueError("thresholds must satisfy 0 <= demote <= promote <= 1")
+    if window_size <= 0:
+        raise ValueError("window_size must be positive")
+    if steps_elapsed < 0 or minimum_steps < 0:
+        raise ValueError("steps_elapsed and minimum_steps must be non-negative")
+    if not 0.0 <= bound <= maximum:
+        raise ValueError("bound must lie between zero and maximum")
+
+    outcomes = np.asarray(completed_successes, dtype=np.float64).reshape(-1)[-window_size:]
+    if np.any((outcomes < 0.0) | (outcomes > 1.0)):
+        raise ValueError("completed_successes must contain values in [0, 1]")
+    rolling = float(outcomes.mean()) if outcomes.size else 0.0
+    if outcomes.size < window_size or steps_elapsed < minimum_steps:
+        return bound, rolling, False
+    if rolling > promote_threshold:
+        updated = min(bound + increase, maximum)
+    elif rolling < demote_threshold:
+        updated = max(bound - decrease, 0.0)
+    else:
+        return bound, rolling, False
+    return updated, rolling, updated != bound
+
+
+def belief_pose_error(
+    true_error: ArrayLike,
+    episode_bias: ArrayLike,
+    per_step_jitter: ArrayLike = 0.0,
+) -> NDArray[np.float64]:
+    """Compose what a policy is *told* about its pose error.
+
+    ``episode_bias`` is sampled once and held for the whole episode, which is
+    what makes it the interesting term: a real pose estimate is consistently
+    wrong, not noisily wrong. A policy can average ``per_step_jitter`` away over
+    a few control steps and cannot average the bias away at all, so the bias is
+    the quantity that forces it to use contact feedback instead.
+    """
+
+    truth = np.asarray(true_error, dtype=np.float64)
+    bias = np.broadcast_to(np.asarray(episode_bias, dtype=np.float64), truth.shape)
+    jitter = np.broadcast_to(np.asarray(per_step_jitter, dtype=np.float64), truth.shape)
+    return truth + bias + jitter
+
+
 def insertion_curriculum_probabilities(
     level: int,
     mixtures: ArrayLike = INSERTION_CURRICULUM_MIXTURES,

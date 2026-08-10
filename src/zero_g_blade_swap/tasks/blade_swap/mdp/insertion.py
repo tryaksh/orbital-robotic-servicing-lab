@@ -42,6 +42,10 @@ from .grasp_frames import gripper_handle_orientation_error
 from .observations import end_effector_pose_world
 from .randomization import rail_stiction_resistance
 
+#: Per-reset-distance success names, in curriculum-stage order. Published
+#: training logs use them, so they are appended to rather than renamed.
+STAGE_SUCCESS_METRIC_NAMES = ("near_success", "medium_success", "full_success")
+
 INSERTION_SUCCESS_CONDITION_NAMES = (
     "axial_depth",
     "lateral_alignment",
@@ -84,7 +88,14 @@ class InsertionGoalCommand(CommandTerm):
         self._command[env_ids, 3:7] = self._command.new_tensor(self.cfg.goal_rot)
 
     def _update_command(self) -> None:
-        return
+        # The goal follows the slot. Tasks that displace the rails per episode
+        # store that offset on the environment, and the seated pose has to move
+        # with the geometry or success would be judged against a slot that is
+        # not there. Recomputed every step rather than at resample so it cannot
+        # depend on whether events or commands reset first.
+        offset = getattr(self._env, "_slot_offset_m", None)
+        base = self._command.new_tensor(self.cfg.goal_pos)
+        self._command[:, :3] = base if offset is None else base + offset
 
     def _update_metrics(self) -> None:
         blade_position, _ = attached_blade_pose_world(self._env)
@@ -681,8 +692,14 @@ class BladeContactWrenchObservation(ManagerTermBase):
     The force is measured on the blade, not through a modelled load cell. The
     blade is rigidly attached to the tool by the fixed-joint grasp abstraction
     and this regime is zero-gravity and quasi-static, so it is the contact
-    wrench arriving at the wrist minus a negligible inertial term. It is still
-    an idealized sensor: no bias, drift, quantization, or mounting compliance.
+    wrench arriving at the wrist minus a negligible inertial term.
+
+    ``noise_std_n`` adds a zero-mean Gaussian noise floor, which is what FORGE
+    and arXiv 2604.19677 both model at roughly 1 N, and which the latter gives
+    to the actor while its critic reads the same signal noiselessly. It defaults
+    to zero so the published force-feedback certification keeps describing the
+    idealized sensor it was actually produced under. Even at 1 N this remains an
+    idealized sensor: no bias, drift, quantization, or mounting compliance.
     """
 
     def __init__(self, cfg, env) -> None:
@@ -701,12 +718,20 @@ class BladeContactWrenchObservation(ManagerTermBase):
         sensor_name: str = BLADE_CONTACT_SENSOR,
         force_scale_n: float = 20.0,
         filter_time_constant_s: float = 0.10,
+        noise_std_n: float = 0.0,
     ) -> torch.Tensor:
         _, tool_orientation = end_effector_pose_world(env)
         tool_force = quat_apply(quat_inv(tool_orientation), blade_contact_force_vector(env, sensor_name))
+        magnitude = blade_contact_force(env, sensor_name).unsqueeze(-1)
+        if noise_std_n > 0.0:
+            # Noise enters ahead of the filter, so the filtered channel shows the
+            # same rejection a real signal chain would give it. Sampling the
+            # magnitude's noise separately would let a policy recover the true
+            # value by averaging the two, which no sensor allows.
+            tool_force = tool_force + torch.randn_like(tool_force) * noise_std_n
+            magnitude = (magnitude + torch.randn_like(magnitude) * noise_std_n).clamp_min(0.0)
         alpha = first_order_filter_alpha(float(env.step_dt), filter_time_constant_s)
         self._filtered_force.mul_(1.0 - alpha).add_(tool_force, alpha=alpha)
-        magnitude = blade_contact_force(env, sensor_name).unsqueeze(-1)
         scale = 1.0 / max(float(force_scale_n), 1.0e-6)
         return torch.cat((tool_force, self._filtered_force, magnitude), dim=-1) * scale
 
@@ -857,14 +882,18 @@ class InsertionSuccessRateCurriculum(ManagerTermBase):
             env._insertion_curriculum_stage[ids] = self._forced_stage
 
         bucket_success = [float(sum(history) / len(history)) if history else 0.0 for history in self._histories]
-        return {
+        metrics = {
             "level": float(self._level),
             "active_rolling_success": float(rolling),
             "level_control_steps": float(elapsed),
-            "near_success": bucket_success[0],
-            "medium_success": bucket_success[1],
-            "full_success": bucket_success[2],
         }
+        # The three reset distances have carried these names since Phase 1 and
+        # appear in published training logs, so keep them where they exist. A
+        # task may configure fewer stages: the pose-belief task has exactly one,
+        # because its relocated channel leaves no room for the nearer resets.
+        for index, value in enumerate(bucket_success):
+            metrics[STAGE_SUCCESS_METRIC_NAMES[index] if index < len(STAGE_SUCCESS_METRIC_NAMES) else f"stage_{index}_success"] = value
+        return metrics
 
 
 __all__ = [
