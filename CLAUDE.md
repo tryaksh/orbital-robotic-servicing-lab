@@ -71,7 +71,7 @@ limitations, and the pre-existing `train.py --smoke` probe defect live in
 
 ## Next action, decided 2026-08-10: pivot to pose uncertainty
 
-**P0 is done.** The three head-on grapple-pin skills, the eight-phase swap task,
+**P0 and the P1 build are done; P1 is training.** The three head-on grapple-pin skills, the eight-phase swap task,
 and their reward/termination/curriculum classes were deleted on 2026-08-10. The
 capture scene, the pin geometry, the interface specification, every file in
 `evidence/`, the contact-force machinery, and the evaluator all survive. The
@@ -79,8 +79,21 @@ visual-randomization machinery was repointed at the insertion scene as
 `Isaac-ZeroG-Blade-Insertion-Vision-v0`, which is untrained scaffolding for P3.
 `docs/status.md` records the smoke sweep and the two pre-existing failures.
 
-**Next is P1: the pose-belief insertion task and its force-blind ablation.**
-The full plan is `C:\Users\tryak\.claude\plans\with-this-literature-research-merry-gray.md`.
+`Isaac-ZeroG-Blade-Insertion-Uncertain-v0` and `-UncertainBlind-v0` are built,
+verified, and training. Read the pose-belief section of `docs/status.md` before
+touching them: the obvious way to inject the uncertainty is recoverable from the
+observed tool pose and was discarded, the channel had to be relocated to make
+room, and that cost two of the three reset distances.
+
+**Do not edit `src/` or `scripts/` while an evaluation sweep is running.** Every
+`play.py` launch re-imports the package, so a broken edit fails every remaining
+run in the sweep rather than one.
+
+Next after P1 measures: P2 puts the grapple pin in the loop, and P3 is
+perception. `docs/perception_plan.md` already carries a blocking finding for P3 —
+the authored camera resolves a 4 mm displacement as 0.13 pixels — so read it
+before collecting any images. The full original plan is
+`C:\Users\tryak\.claude\plans\with-this-literature-research-merry-gray.md`.
 
 Why the direction changed. Every RL task in this repo trains against a task that
 contains no uncertainty. The policy observes `insertion_goal_error`, derived
@@ -172,6 +185,9 @@ checkpoints, or every task file.
 | Insertion task physics | `src/zero_g_blade_swap/tasks/blade_swap/rigid_grasp_insertion_env_cfg.py` |
 | Force penalties, force feedback | `src/zero_g_blade_swap/tasks/blade_swap/force_limited_insertion_env_cfg.py` |
 | Camera, lighting, rack materials | `src/zero_g_blade_swap/tasks/blade_swap/vision_insertion_env_cfg.py` |
+| Pose uncertainty, force threshold, SBC | `src/zero_g_blade_swap/tasks/blade_swap/mdp/uncertainty.py` |
+| The pose-belief task and its ablation | `src/zero_g_blade_swap/tasks/blade_swap/uncertain_insertion_env_cfg.py` |
+| Perception, before writing any of it | `docs/perception_plan.md` |
 | Grasp physics before any grasp PPO | `scripts/grasp_diagnostics.py`, `evidence/grapple_pin_axial_pull_gate.json` |
 | Gripper geometry, ever | `scripts/measure_gripper_envelope.py`, `evidence/gripper_collision_envelope.json` |
 | Head-on capture task | `src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py` |

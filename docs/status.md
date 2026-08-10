@@ -114,7 +114,7 @@ Level 2 (0.0512 of 0.0524 rad).
 
 ## Static validation
 
-Ruff passes. 68/68 non-Sim tests pass. Sustained environment-only benchmarks
+Ruff passes. 80/80 non-Sim tests pass. Sustained environment-only benchmarks
 passed at 1024 state and 256 camera environments; full PPO memory differs.
 
 `train.py --smoke` was run once per registered task after the 2026-08-10 prune,
@@ -832,6 +832,99 @@ IndustReal and FORGE are evaluated on and for which this repository already owns
 both halves — a working `BladeContactWrenchObservation` and a certified
 force-feedback task lineage.
 
+## Insertion under a wrong pose belief: built and verified, not yet measured
+
+The task the pivot exists for. Training is running at the time of writing and no
+success number is claimed here; what follows is the mechanism and the two faults
+found while building it, both of which would have produced a meaningless result.
+
+**The first construction was fake, and measuring it is what showed that.** The
+obvious way to inject pose uncertainty is to add a bias to the reported goal
+error. On this workcell that is recoverable: the blade is welded to the tool by
+the fixed joint, so its pose is a constant offset from the tool frame; the tool
+frame is observed directly as `end_effector_pose_local`; and with a fixed goal
+the true error is therefore an exactly learnable function of an observation the
+actor already has. A network can compute the truth and ignore the bias, and both
+arms of the ablation would have scored identically for reasons having nothing to
+do with force.
+
+**So the slot physically moves.** Each episode displaces the guide rails, the
+upper lips, and the lead-in flares laterally by a magnitude drawn from the
+curriculum and a random sign, and the seated goal moves with them. Nothing in the
+observation determines that displacement. Verified in the simulator: environments
+whose tool poses agree to 1.5 mm disagree about the true lateral error by 5.2 mm.
+
+**The channel had to be relocated, and that is the awkward part of this result.**
+The certified slot runs from x = 0.45 to 1.05 and the blade is 450 mm long, so at
+*every* reset distance the promoted tasks use the blade already sits inside the
+rails, its front face 358 mm past the mouth, with 0.75 mm of clearance per side.
+Displacing the rails in place would start the episode with the blade inside a
+rail. The mouth is therefore derived to sit 32 mm ahead of the blade's front face
+at the staging reset:
+
+| Quantity | Value |
+| --- | ---: |
+| Blade front face at the staging reset | 0.8079 m |
+| Flare opening rate at 12 degrees | 0.2126 m/m |
+| Opening a 4 mm offset needs | 3.25 mm |
+| Minimum lead-in ahead of the blade | 15.3 mm |
+| Lead-in used | 32 mm |
+| Resulting channel mouth | 0.8399 m |
+| Channel length | 0.2101 m |
+| Blade-to-flare clearance at full displacement | about 3.6 mm |
+
+Two consequences are costs, not features. The channel is 210 mm long instead of
+600, so a seated blade is engaged over 135 mm rather than its full length. And
+there is **one reset distance, not three**: the two nearer stages would start the
+blade engaged again, so the stage curriculum is collapsed to a single level.
+
+**The displacement is lateral, and the axis choice is the experiment.** A depth
+offset is resolvable without any force sensor: the blade bottoms out and
+`blade_velocity` is in both actors' observations, so a force-blind policy finds
+the stop as easily as a force-aware one. A vertical offset is unsolvable, because
+Level 2 disables the floor collider, and it would still count against the 2.5 mm
+lateral success tolerance. Lateral is the only axis where both policies can tell
+they have stalled but only a force-aware one can tell **which side**, because
+that is carried by the direction of the contact force and by nothing else.
+
+**Training runs at robustness level 2 only.** Level 0 disables rail collision
+entirely and level 1 leaves 6 mm of clearance per side, so at both a displaced
+channel is untouchable and a policy would spend most of its budget learning that
+contact carries no information. The promoted L0 to L1 to L2 walk is right for a
+task where contact is a nuisance and wrong for one where contact is the signal.
+
+**What is adopted rather than invented**, with the reason each fixed something
+this repository had already measured:
+
+| Adopted | From | Replaces |
+| --- | --- | --- |
+| Sampling-based curriculum over the displacement | IndustReal (RSS 2023) | Stage mixtures, which produced the 99.3%-in-0.30 s policy |
+| Per-episode force threshold, linear hinge penalty | FORGE (arXiv 2408.04587) | Two fixed quadratic profiles measured as ineffective |
+| 1 N noise floor on the observed contact force | FORGE and arXiv 2604.19677 | An idealized, noiseless sensor |
+| Asymmetric actor-critic | Both | A critic that saw only what the actor saw |
+
+**Refused, deliberately:** force-direction prediction (arXiv 2602.14174) and
+hybrid position/force mode selection (arXiv 2604.19677). Both are action-space
+changes. Changing the action space and the observation in one experiment makes
+the result unattributable; they are the next experiment, and they are the
+untested half of roadmap item 7.
+
+**The ablation.** Two policies, from scratch, one PPO configuration, one seed,
+one schedule. The force-aware actor sees 58 values and the force-blind one 51,
+differing by exactly the seven contact values, against an identical 71-value
+critic. `tests/test_belief_curriculum.py` asserts that difference by parsing the
+configuration, so the two cannot silently drift apart.
+
+**Verification before any GPU was spent.** Fourteen simulator checks: the rails
+and flares move with the goal to within 0.6 micrometres, the blade starts clear
+of the channel, an idle episode develops 4.0 N of contact and no ejection, the
+belief is wrong by exactly the displacement and constant to 8.7 micrometres
+within an episode, the force threshold samples and varies inside [5, 20] N, and
+the tool pose no longer determines the true error. Two bugs were caught this way
+that unit tests could not reach: the curriculum term hard-coded three stage
+buckets and raised `IndexError` on a single-stage task, and the displacement
+event assumed every profile carries lips and flares.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
@@ -906,6 +999,15 @@ Cumulative secured-grasp profiles:
   pre-existing reasons recorded under *Static validation*: an inverted finger
   command that must not be corrected without re-certifying, and a
   `contact_grasp` flag inconsistent with its parent's disabled handle collider.
+- The pose-belief task's channel is 210 mm long against the certified 600 mm, and
+  carries one reset distance instead of three. Both are consequences of moving the
+  mouth ahead of the blade's start and are stated in its own section above; its
+  numbers are therefore not directly comparable with the promoted Level-0/1/2
+  certifications, which used the full-length slot and three distances.
+- The authored 64x64 camera resolves a 4 mm slot displacement as **0.13 pixels**,
+  so it cannot support the perception stage as configured. `docs/perception_plan.md`
+  derives the fix, a narrower field of view rather than more pixels, and requires
+  a rendered frame before anything is trained on it.
 - No policy has been trained on `Isaac-ZeroG-Blade-Insertion-Vision-v0`. It
   exists so the camera and both Replicator randomizers stay reachable and
   exercised after the swap task was deleted. Its camera pose is the one authored

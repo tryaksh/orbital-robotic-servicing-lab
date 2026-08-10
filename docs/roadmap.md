@@ -10,17 +10,21 @@ staging now is
 - **P0, done.** Delete the three grapple-pin skills and the eight-phase swap
   task; repoint the visual randomizers at the insertion scene. See
   `docs/status.md`.
-- **P1, active.** One task on the certified force-feedback lineage where the
-  actor sees `true_error + episode_bias + per_step_noise` instead of ground
-  truth, with the critic keeping ground truth. Train a force-aware policy and a
-  force-blind ablation from scratch on an identical schedule, then sweep the bias
-  and publish success rate against pose-belief error for both.
+- **P1, built and training.** `Isaac-ZeroG-Blade-Insertion-Uncertain-v0` and its
+  force-blind ablation. The slot physically moves by an amount the actor is never
+  told, rather than a bias being added to a reported error, because on this
+  workcell an injected bias is recoverable from the observed tool pose. The
+  critic keeps ground truth. See `docs/status.md` for the mechanism and the two
+  faults found while building it.
 - **P2.** Repeat P1's best configuration with the blade held by the physical
   grapple pin instead of the fixed joint, which connects the interface
   specification to the learning result.
-- **P3.** Replace the injected belief with a pose regressed from the 64x64 tiled
+- **P3.** Replace the injected displacement with one regressed from the tiled
   camera under randomized orbital lighting and rack materials. Do not start
-  before P1 certifies.
+  before P1 certifies. `docs/perception_plan.md` is the design, and it already
+  carries a blocking finding: the authored 64x64 camera resolves a 4 mm slot
+  displacement as **0.13 pixels**, so the field of view has to narrow before any
+  image is collected.
 - **P4.** Package: README leading with the curve, demo clips from a trained
   checkpoint only, evidence index.
 

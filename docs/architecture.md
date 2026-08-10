@@ -12,9 +12,11 @@
 | `mdp/observations.py` | Privileged state, deployable proprioception, RGB corruption, and critic state |
 | `mdp/insertion.py` | Insertion goal, rewards, terminations, contact-force sensing, and the stage curriculum |
 | `mdp/grapple.py` | Head-on capture frames and the two-stage capture/hold gripper action |
+| `mdp/uncertainty.py` | Slot displacement, the believed pose error, force-threshold conditioning, and the sampling curriculum |
 | `mdp/rewards.py` | Mount deflection and one-shot termination penalties, shared by every task |
 | `mdp/randomization.py` | Reset state, rail stiction, mount wobble, Replicator materials, and orbital sun |
 | `mdp/terminations.py` | The compliant mount's D6 envelope |
+| `uncertain_insertion_env_cfg.py` | Insertion under a displaced slot, and its force-blind ablation |
 | `vision_insertion_env_cfg.py` | The camera task the visual randomizers were repointed at (untrained) |
 | `agents/` | RL-Games PPO configurations and the multimodal vision actor |
 | `scripts/` | Setup, cleanup, smoke, benchmark, train, play, demonstration, and BC entry points |
