@@ -597,18 +597,52 @@ but angular slip of 0.043 rad at the median and 0.166 rad at p95. The collar is
 doing its job along the pull axis; what gives is rotation, once the pull has
 dragged the blade out of the rails that were constraining it.
 
-**What is left, and what is not allowed.** The gate threshold does not move.
-Capacity scales with pad normal force, and the binding constraint on that is the
-gripper's modelled 10 N-m drive effort limit, which yields about 100 N per pad
-by virtual work against the measured 106.2 mm/rad closing rate. Robotiq
-specifies 20 to 235 N of grip force for this device, so the simulation is
-currently modelling the gripper at well under half its rated strength, and that
-under-modelling is what the interface is failing against. Raising the actuator
-to its rated capability is a fidelity question and would need to be argued and
-recorded as one, not slipped in because a gate is close. Steepening the taper is
-the alternative and is nearly exhausted: capacity goes as the sine of the taper
-angle, and 24.2 degrees already puts the wedge's free end at 70 mm inside an
-87 mm aperture, leaving 8.5 mm of approach clearance a side.
+## Grip force is not the binding constraint, and that was worth testing
+
+The obvious reading of the 59 N result is that the gripper is too weak. Axial
+capacity through a wedge is proportional to pad normal force, the drive's
+effort limit caps that force, and this project inherited a 10 N-m limit that
+yields about 100 N per pad by virtual work against the measured 106.23 mm/rad
+closing rate. Robotiq specifies 20 to 235 N for the 2F-85, so the simulation was
+modelling the gripper at well under half its rated strength.
+
+That is a real fidelity gap, so it was closed and measured: the drive limit was
+raised to 235 N x 0.10623 m/rad = 24.96 N-m, scoped to the grapple-pin task
+alone so the contact and rigid-grasp tasks keep the actuator their published
+results were produced under. Judged on a matched 2 N grid:
+
+| Drive limit | Pad force | Best force held | Capture above 0.65 rad |
+| --- | ---: | ---: | --- |
+| 10 N-m, inherited | about 100 N | 66 N | holds |
+| 24.96 N-m, rated | about 235 N | 62 N | lost entirely |
+
+Report: `evidence/grapple_pin_rated_grip_force.json`.
+
+**Two and a half times the grip force made the capture worse.** Capacity fell,
+and above 0.65 rad of closure every environment exceeded the slip tolerance
+before any pull was applied at all. The mechanism is the wedge itself: it
+converts closing force into thrust along the pull axis, which is exactly the
+axis a slot has to leave free, so in zero gravity a harder squeeze drives the
+payload rather than gripping it. Axial slip at the median rose from 1.1 mm to
+5.7 mm and angular slip from 0.043 to 0.133 rad, all of it spent before the
+measurement began.
+
+One methodological note, because it nearly cost the result: the first attempt
+raised drive stiffness from 40 to 80 N-m/rad alongside the torque limit, on the
+argument that a position-controlled proxy needs gain to reach rated force inside
+the joint's range. That measured 0 N held at every closure. Separating the two
+recovered 62 N, which is what the table reports. Changing one thing per
+experiment is a rule in this repository for a reason.
+
+**What is left.** The gate threshold does not move. Pad force is refuted, and
+steepening the taper is nearly exhausted, since capacity goes as the sine of the
+taper angle and 24.2 degrees already puts the wedge's free end at 70 mm inside
+an 87.08 mm aperture with 8.5 mm of approach clearance a side. The measurement
+points instead at rotation: the collar holds along the pull axis at 1.1 mm of
+median axial slip while the blade levers at 0.166 rad p95, and it only levers
+once the pull has dragged it clear of the rails that were constraining it. An
+interface feature that opposes yaw, or an extract skill that keeps the blade
+railed for longer, attacks the failure that is actually being measured.
 
 Grasp, extract, and insert are therefore not trained. The order of work puts the
 pull gate before PPO precisely so that a policy is never trained against an

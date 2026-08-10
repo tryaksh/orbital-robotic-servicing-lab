@@ -33,8 +33,10 @@ from isaaclab.utils import configclass
 from . import mdp
 from .assets import (
     CONTACT_INSERTION_STAGE_BLADE_POSE,
+    GRAPPLE_HEAD_ON_ARM_JOINT_POS,
     GRAPPLE_HEAD_ON_TOOL_ROT,
     GRAPPLE_TOOL_OFFSET_POS,
+    make_grapple_pin_robot_cfg,
 )
 from .contact_insertion_env_cfg import (
     ContactInsertionActionsCfg,
@@ -60,20 +62,9 @@ from .scene_cfg import ZeroGGrapplePinSceneCfg
 GRAPPLE_GRIPPER_APPROACH = (0.02, 0.02, -0.02, 0.02, -0.02, -0.02)
 GRAPPLE_GRIPPER_CAPTURE = (0.55, 0.55, -0.55, 0.55, -0.55, -0.55)
 
-# Solved by ``scripts/calibrate_grasp_pose.py`` against this task's own
-# differential IK, one environment per curriculum stage, with the fingers held
-# open at the approach command and the blade pinned at its stage pose. Every
-# stage converged to under 0.01 mm and 0.00003 rad.
-# See evidence/grapple_pin_head_on_pose.json.
-#
 # The tool points along +x with the closing axis vertical, and each stage places
 # the pads around the wedge with their leading faces one closing stroke short of
-# the collar, so closing seats them on it.
-GRAPPLE_HEAD_ON_ARM_JOINT_POS = (
-    (-0.304997, -1.421518, 2.050886, 2.512231, -1.265814, -1.570812),
-    (-0.341348, -1.517620, 2.159929, 2.499296, -1.229464, -1.570783),
-    (-0.403679, -1.653908, 2.293487, 2.502023, -1.167132, -1.570785),
-)
+# the collar, so closing seats them on it. Solved in ``assets.py``.
 
 
 @configclass
@@ -167,6 +158,10 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
             self.events.right_guide_material = None
             self.events.randomize_stiction = None
             self.events.rail_stiction_force = None
+        # The parent swaps in the contact robot, which spawns top-down and keeps
+        # the inherited 10 N-m finger drive. Put the head-on, rated-force robot
+        # back; it is the whole point of this task.
+        self.scene.robot = make_grapple_pin_robot_cfg(floating=level >= 4)
         if level < 4:
             self.events.clear_mount_wrench = None
             self.events.base_wobble = None
@@ -183,7 +178,6 @@ class ZeroGBladeGrapplePinCapturePlayEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
 __all__ = [
     "GRAPPLE_GRIPPER_APPROACH",
     "GRAPPLE_GRIPPER_CAPTURE",
-    "GRAPPLE_HEAD_ON_ARM_JOINT_POS",
     "GrapplePinActionsCfg",
     "GrapplePinEventsCfg",
     "ZeroGBladeGrapplePinCaptureEnvCfg",

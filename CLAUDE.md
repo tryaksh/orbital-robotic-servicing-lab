@@ -76,29 +76,31 @@ still **fails the 66.4 N gate by roughly 10%**, so no skill has been trained on
 it. Full numbers, including why the flared-head design had to become a tapered
 wedge, are in `docs/status.md`.
 
-The decision that unblocks this is not a geometry decision. Capacity scales with
-pad normal force; the binding constraint is the gripper's modelled 10 N-m drive
-effort limit, which yields about 100 N per pad against the measured 106.2 mm/rad
-closing rate, while Robotiq rates this device at 20 to 235 N. The simulation is
-modelling the gripper at under half its rated strength. Either argue that
-fidelity change explicitly and record it, or find capacity elsewhere; do not
-move the gate, and do not train a skill against an interface that cannot hold
-the load.
+**Grip force has been tested and refuted.** The obvious fix was that the
+gripper is modelled at under half its rated strength, so the drive was raised
+from 10 N-m to the 24.96 N-m that produces Robotiq's rated 235 N at the measured
+transmission ratio. On a matched grid that measured *worse*, 62 N against 66 N,
+and lost capture entirely above 0.65 rad of closure. A wedge converts closing
+force into thrust along the pull axis, so in zero gravity a harder squeeze
+drives an unconstrained payload instead of holding it. The change is reverted;
+the constant and the reasoning stay in `assets.py` so nobody repeats it.
 
 Remaining levers, in the order they are worth trying:
 
-1. **Raise the 2F-85 drive to its rated grip force.** Give the grapple-pin task
-   its own robot configuration so the contact and rigid-grasp tasks keep the
-   actuator their results were produced under, and state the change as an
-   actuator-fidelity correction with the datasheet behind it.
-2. **Constrain rotation.** The slip decomposition says the collar holds along
-   the pull axis (1.1 mm median axial) while the blade levers (0.166 rad at
-   p95) once the pull drags it clear of the rails. An interface feature that
-   opposes yaw, or an extract skill that keeps the blade railed for longer,
-   attacks the actual failure.
-3. **Steepen the taper.** Nearly exhausted: capacity goes as the sine of the
+1. **Constrain rotation.** This is where the measurement points. The collar
+   holds along the pull axis at 1.1 mm of median axial slip while the blade
+   levers at 0.166 rad p95, and it only levers after the pull has dragged it
+   clear of the rails. An interface feature that opposes yaw, or an extract
+   skill that keeps the blade railed for longer, attacks the actual failure.
+2. **Steepen the taper.** Nearly exhausted: capacity goes as the sine of the
    taper angle, and 24.2 degrees already puts the wedge's free end at 70 mm
    inside an 87.08 mm aperture, leaving 8.5 mm of approach clearance a side.
+3. **Reconsider the pull-test protocol itself.** It applies a constant force for
+   1.5 s to a body the rails do not constrain along x, so the blade travels up
+   to 0.29 m and leaves the channel mid-measurement. That is arguably harsher
+   than extraction, where the gripper and the rails share the load. Any change
+   here must be argued as a protocol correction and re-run against the earlier
+   configurations, not adopted because it flatters the number.
 
 Then train and certify grasp, extract, and insert as separate gated skills.
 Extract ends with the blade fully clear of the slot mouth, about 495 mm of

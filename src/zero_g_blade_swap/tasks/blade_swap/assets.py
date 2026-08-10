@@ -133,6 +133,34 @@ GRAPPLE_PIN_GRIP_OFFSET = (-0.3395, 0.0, 0.0)
 # 155 mm dimension there instead, against a 161.5 mm channel.
 GRAPPLE_HEAD_ON_TOOL_ROT = (0.0, 0.7071068, 0.0, 0.7071068)
 
+# Solved by scripts/calibrate_grasp_pose.py against this task's own differential
+# IK, one environment per curriculum stage, fingers held open at the approach
+# command and the blade pinned at its stage pose. Every stage converged to under
+# 0.01 mm and 0.00003 rad. See evidence/grapple_pin_head_on_pose.json.
+GRAPPLE_HEAD_ON_ARM_JOINT_POS = (
+    (-0.304997, -1.421518, 2.050886, 2.512231, -1.265814, -1.570812),
+    (-0.341348, -1.517620, 2.159929, 2.499296, -1.229464, -1.570783),
+    (-0.403679, -1.653908, 2.293487, 2.502023, -1.167132, -1.570785),
+)
+
+# Robotiq specifies 20 to 235 N of grip force for the 2F-85. The drive limit
+# this project inherited, 10 N-m, delivers about 100 N at the measured
+# transmission ratio, so the simulation has been modelling the gripper at under
+# half its rated strength. Virtual work against the measured closing rate
+# converts one into the other: the two pads close at 106.23 mm per radian of
+# `finger_joint` (evidence/gripper_collision_envelope.json), so a pad force N
+# needs a drive torque of N x 0.10623 N-m.
+#
+#   235 N x 0.10623 m/rad = 24.96 N-m
+#
+# Kept as a measured constant because the experiment it enabled is a result
+# worth not repeating: raising the drive to this value did *not* raise axial
+# holding capacity, it lowered it. Pad force is not the binding constraint.
+# See make_grapple_pin_robot_cfg and docs/status.md.
+ROBOTIQ_2F85_RATED_GRIP_N = 235.0
+ROBOTIQ_2F85_CLOSING_RATE_M_PER_RAD = 0.10623
+ROBOTIQ_2F85_RATED_DRIVE_TORQUE_NM = ROBOTIQ_2F85_RATED_GRIP_N * ROBOTIQ_2F85_CLOSING_RATE_M_PER_RAD
+
 # Captured from the validated differential-IK controller with the replacement
 # blade centered and aligned 17 cm outside the rack.  Stage-1 PPO starts here
 # instead of being asked to discover reaching, grasping, and insertion at once.
@@ -541,6 +569,43 @@ def make_contact_insertion_robot_cfg(*, floating: bool = False) -> ArticulationC
     if floating:
         cfg.spawn.articulation_props.fix_root_link = False
         cfg.articulation_root_prim_path = "/base_link"
+    return cfg
+
+
+def make_grapple_pin_robot_cfg(*, floating: bool = False) -> ArticulationCfg:
+    """Return the head-on capture robot.
+
+    One difference from the contact robot: the arm spawns at the head-on pose
+    rather than the top-down one, so PhysX does not begin by correcting a
+    quarter-turn joint mismatch.
+
+    **The finger drive keeps its inherited 10 N-m limit, and that is a result,
+    not an oversight.** Raising it to ``ROBOTIQ_2F85_RATED_DRIVE_TORQUE_NM``,
+    the torque that produces the 2F-85's rated 235 N of grip at the measured
+    transmission ratio, was tried on the hypothesis that pad force was the
+    binding constraint on axial capacity. Against a matched grid it measured
+    *worse*: 62 N held against 66 N for the 10 N-m drive, and complete loss of
+    capture above 0.65 rad of closure. A wedge converts closing force into
+    thrust along the pull axis, so in zero gravity more grip means a more
+    violent capture transient on an unconstrained payload, and that transient
+    spends the slip budget before the pull is even applied. See
+    ``docs/status.md`` and ``evidence/grapple_pin_rated_grip_force.json``.
+    """
+
+    cfg = make_contact_insertion_robot_cfg(floating=floating)
+    for joint_name, position in zip(
+        (
+            "shoulder_pan_joint",
+            "shoulder_lift_joint",
+            "elbow_joint",
+            "wrist_1_joint",
+            "wrist_2_joint",
+            "wrist_3_joint",
+        ),
+        GRAPPLE_HEAD_ON_ARM_JOINT_POS[2],
+        strict=True,
+    ):
+        cfg.init_state.joint_pos[joint_name] = position
     return cfg
 
 
@@ -1204,6 +1269,7 @@ __all__ = [
     "CONTACT_INSERTION_STAGE_BLADE_POSE",
     "CONTACT_TOOL_OFFSET_POS",
     "GRASP_TOOL_OFFSET_POS",
+    "GRAPPLE_HEAD_ON_ARM_JOINT_POS",
     "GRAPPLE_HEAD_ON_TOOL_ROT",
     "GRAPPLE_PIN_BLADE_CFG",
     "GRAPPLE_PIN_COLLAR_HALF_HEIGHT",
@@ -1219,6 +1285,9 @@ __all__ = [
     "GRAPPLE_POST_SIZE",
     "GRAPPLE_TOOL_OFFSET_POS",
     "GrapplePinBladeCfg",
+    "ROBOTIQ_2F85_CLOSING_RATE_M_PER_RAD",
+    "ROBOTIQ_2F85_RATED_DRIVE_TORQUE_NM",
+    "ROBOTIQ_2F85_RATED_GRIP_N",
     "SLOT_ENTRY_FLARE_DEG",
     "SLOT_ENTRY_LEFT_FLARE_CFG",
     "SLOT_ENTRY_RIGHT_FLARE_CFG",
@@ -1269,6 +1338,7 @@ __all__ = [
     "TOOL_OFFSET_ROT",
     "make_insertion_robot_cfg",
     "make_contact_insertion_robot_cfg",
+    "make_grapple_pin_robot_cfg",
     "make_robust_insertion_robot_cfg",
     "make_robot_cfg",
     "spawn_blade_with_grapple_pin",

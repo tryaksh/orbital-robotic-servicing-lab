@@ -43,6 +43,7 @@ from .assets import (
     CompliantD6JointCfg,
     FixedGraspJointCfg,
     make_contact_insertion_robot_cfg,
+    make_grapple_pin_robot_cfg,
     make_insertion_robot_cfg,
     make_robot_cfg,
 )
@@ -171,6 +172,7 @@ class ZeroGGrapplePinSceneCfg(ZeroGContactInsertionSceneCfg):
     pin's length.
     """
 
+    robot = make_grapple_pin_robot_cfg()
     spare_blade = GRAPPLE_PIN_BLADE_CFG
     blade_slot_upper_left_lip = SLOT_UPPER_LEFT_LIP_CFG
     blade_slot_upper_right_lip = SLOT_UPPER_RIGHT_LIP_CFG
