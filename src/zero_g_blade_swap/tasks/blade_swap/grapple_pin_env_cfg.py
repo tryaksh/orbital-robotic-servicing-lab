@@ -338,7 +338,11 @@ class GraspEventsCfg(GrapplePinEventsCfg):
 class GraspRewardsCfg:
     approach = RewTerm(func=mdp.capture_approach_reward, weight=10.0)
     success = RewTerm(func=mdp.capture_success_reward, weight=30.0)
-    disturbance = RewTerm(func=mdp.blade_disturbance_penalty, weight=-0.20)
+    # Raised fivefold with the free band widened past the seating feed. The
+    # first certified grasp lost 188 and 211 episodes a stage to capture_failed
+    # against 1 and 6 timeouts, so the policy was reaching the pin and shoving
+    # it, not failing to arrive: the binding cost is disturbance, not search.
+    disturbance = RewTerm(func=mdp.blade_disturbance_penalty, weight=-1.0)
     time = RewTerm(func=mdp.elapsed_time_penalty, weight=-0.10)
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.003)
     failure = RewTerm(func=mdp.capture_failure_reward, weight=-15.0)

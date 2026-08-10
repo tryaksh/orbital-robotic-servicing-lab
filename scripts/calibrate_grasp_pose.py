@@ -86,6 +86,17 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--stages", type=int, nargs="+", default=[0, 1, 2])
     parser.add_argument(
+        "--target_offset",
+        type=float,
+        nargs=3,
+        default=[0.0, 0.0, 0.0],
+        metavar=("X", "Y", "Z"),
+        help=(
+            "World-frame offset added to the target point. Backing off along the approach axis solves the "
+            "standoff pose a policy should fly in from, rather than one it starts already touching."
+        ),
+    )
+    parser.add_argument(
         "--pin_blade",
         action="store_true",
         help=(
@@ -136,7 +147,8 @@ from zero_g_blade_swap.tasks.blade_swap.mdp.observations import end_effector_pos
 def _handle_centre(task) -> torch.Tensor:
     position, orientation = attached_blade_pose_world(task)
     offset = position.new_tensor(task.cfg.scene.spare_blade.spawn.handle_offset).expand(position.shape[0], -1)
-    return position + quat_apply(orientation, offset)
+    centre = position + quat_apply(orientation, offset)
+    return centre + centre.new_tensor(args.target_offset)
 
 
 def main() -> dict[str, object]:

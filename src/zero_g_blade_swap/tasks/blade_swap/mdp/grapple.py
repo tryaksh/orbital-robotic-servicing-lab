@@ -292,12 +292,19 @@ def capture_approach_reward(env, distance_scale: float = 0.050) -> torch.Tensor:
     return _potential_reward(env, "capture", cost, scale=1.0, clamp=0.25)
 
 
-def blade_disturbance_penalty(env, free_m: float = 0.005) -> torch.Tensor:
+def blade_disturbance_penalty(env, free_m: float = 0.018) -> torch.Tensor:
     """Penalize shoving the blade around while approaching it.
 
     In zero gravity a blade knocked off its rest pose does not come back, and a
-    capture that has to chase a moving target is not a capture. The free band
-    keeps ordinary settling unpenalized.
+    capture that has to chase a moving target is not a capture.
+
+    The free band has to clear the capture's own seating feed. Closing on the
+    wedge drives the pin along it until the collar catches, which moves the
+    blade about 12.5 mm every single time a capture succeeds. A 5 mm band
+    charged that feed at the same rate as a genuine ram, so the penalty could
+    not tell the two apart and the gradient pointed at "approach less" rather
+    than "approach more gently". 18 mm sits above the feed and well below the
+    60 mm at which the episode is failed outright.
     """
 
     placed = _blade_reset_pose(env)
