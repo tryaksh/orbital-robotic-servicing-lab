@@ -38,7 +38,10 @@ experiment_for() {
 for skill in "${skills[@]}"; do
   task="Isaac-ZeroG-Blade-GrapplePin-${skill}-v0"
   play="Isaac-ZeroG-Blade-GrapplePin-${skill}-Play-v0"
-  run="grapple_$(echo "$skill" | tr '[:upper:]' '[:lower:]')_l0_seed70"
+  # RUN_SUFFIX keeps a re-run's checkpoints, raw rows, and report separate from
+  # an earlier one, so a task correction never gets certified against a policy
+  # trained before it.
+  run="grapple_$(echo "$skill" | tr '[:upper:]' '[:lower:]')_l0_seed70${RUN_SUFFIX:-}"
 
   # Smoke first. A task that cannot take a step is not worth hours of GPU, and
   # every one of these three has failed a smoke at least once already.
@@ -82,7 +85,7 @@ for skill in "${skills[@]}"; do
   rows=()
   for seed in 1070 2070 3070; do
     for stage in 0 1 2; do
-      out="artifacts/grapple/${skill}_s${stage}_seed${seed}"
+      out="artifacts/grapple/${skill}${RUN_SUFFIX:-}_s${stage}_seed${seed}"
       "$PYTHON" scripts/play.py --headless \
           --task "$play" \
           --checkpoint "$checkpoint" \
@@ -99,7 +102,7 @@ for skill in "${skills[@]}"; do
 
   "$PYTHON" scripts/aggregate_evaluation.py \
       --episodes "${rows[@]}" \
-      --output "evidence/grapple_${skill,,}_certification.json" \
+      --output "evidence/grapple_${skill,,}${RUN_SUFFIX:-}_certification.json" \
       --title "Head-on grapple-pin ${skill,,} skill" \
       --scope \
         "Simulation only. No result here was produced on real hardware." \
