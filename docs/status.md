@@ -721,6 +721,52 @@ certified staging pose rather than at the end of an extraction, because that is
 the arm pose that has been calibrated, so chaining the three into one
 demonstration needs one more calibration run.
 
+## First training runs: two mis-specified tasks, found by reading past the headline
+
+Both first attempts produced a number that looked like a result and was not.
+Both are kept here, because they are the measurements that found the faults.
+
+### Grasp v1: 99.3% that meant nothing
+
+The first grasp policy measured 99.3% capture at curriculum stage 1 and 35% at
+stage 2. The cycle times say why the first number is hollow: successful captures
+completed at a **median of 0.30 s and a 95th percentile of 0.77 s**, which is
+the first handful of control steps at 30 Hz. The reset was landing the tool
+13.8 mm from the grip point, already inside the 20 mm capture tolerance, so the
+policy never had to approach anything. It only had to decide to close.
+
+Stage 2 was the only stage whose reset noise put the tool outside that
+tolerance, and nothing in the earlier stages had taught an approach, so it timed
+out in 588 of 1003 episodes. Those timeouts are worth reading precisely: the
+capture-failure predicate almost never fired, so the policy was not diverging or
+shoving the blade away. It was sitting still, not converging.
+
+Reset noise went from (0.010, 0.025, 0.050) to (0.030, 0.055, 0.085) rad so the
+tool starts outside the capture tolerance at every stage, and the skill was
+retrained from scratch. A certification on the first schedule would have been an
+expensive way to report that a reset works.
+
+### Extract v1: 0% success with a grip that never let go
+
+The first extraction policy timed out in 1024 of 1024 episodes. The grip was
+never the problem: tool-to-grip error held at 6.7 mm at the median through every
+one of them, so the head-on capture carried the load for the whole 15 s. The
+blade simply did not travel, reaching a median of **71 mm of the required
+494.5 mm**, at 4.7 mm/s against an available 120 mm/s.
+
+The training reward climbed monotonically from 3.3 to 26.0 and had not levelled
+off at epoch 700, which is the signature of a policy still learning when the
+budget ran out rather than one that has converged on failure. A 495 mm pull is
+three and a half times the certified insertion distance and needs about 124
+consecutive near-maximum steps before any reward for finishing arrives.
+
+Two changes followed: the axial action scale doubled to 240 mm/s, halving the
+number of steps to credit-assign across, and the epoch budget nearly tripled.
+
+**Neither of these was a reach failure.** The extract skill's end pose, with the
+wrist folded about 200 mm in front of the robot's own base, is still unverified
+kinematically, because no policy has yet pulled far enough to reach it.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
