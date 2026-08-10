@@ -68,52 +68,57 @@ torque *falls* as the fingers close tighter, because they shove the post along
 x and then close on air. Axial capacity is about 6 N against the 66.4 N the
 insertion contact reaction demands.
 
-The head-on grapple pin is now **built, calibrated, and measured**, and it is
-the first interface in this project's history to form a real grip: drive torque
-saturates the 10 N-m limit in 363 of 363 environments and the pin holds 59 N of
-axial pull within 2 mm of slip, against about 6 N for flat pads on a post. It
-still **fails the 66.4 N gate by roughly 10%**, so no skill has been trained on
-it. Full numbers, including why the flared-head design had to become a tapered
-wedge, are in `docs/status.md`.
+The head-on grapple pin is **built, calibrated, and past its gate**. It is the
+first interface in this project's history to form a real grip: drive torque
+saturates the 10 N-m limit in 363 of 363 environments, and it holds **69 N** of
+axial pull within 2 mm of slip against the 66.4 N requirement, where flat pads
+on a post held about 6 N.
 
-**Grip force has been tested and refuted.** The obvious fix was that the
-gripper is modelled at under half its rated strength, so the drive was raised
-from 10 N-m to the 24.96 N-m that produces Robotiq's rated 235 N at the measured
-transmission ratio. On a matched grid that measured *worse*, 62 N against 66 N,
-and lost capture entirely above 0.65 rad of closure. A wedge converts closing
-force into thrust along the pull axis, so in zero gravity a harder squeeze
-drives an unconstrained payload instead of holding it. The change is reverted;
-the constant and the reasoning stay in `assets.py` so nobody repeats it.
+The step that got there is worth remembering: **capture and hold are two
+different commands.** A single closure caps out at 59 N, and capacity *falls* as
+the fingers close harder, because the wedge converts closing force into thrust
+along the pull axis and a firm capture drives the payload away before it has
+been taken. Capturing at 0.48 rad and firming to 0.68 once the grip loads gives
+69 N. The window is narrow and asymmetric: 0.44 holds 63 N, 0.52 holds 68 N,
+0.56 collapses to 26 N. Bias low.
 
-Remaining levers, in the order they are worth trying:
+Full numbers, including why the flared head you would expect had to become a
+tapered wedge, are in `docs/status.md`.
 
-1. **Constrain rotation.** This is where the measurement points. The collar
-   holds along the pull axis at 1.1 mm of median axial slip while the blade
-   levers at 0.166 rad p95, and it only levers after the pull has dragged it
-   clear of the rails. An interface feature that opposes yaw, or an extract
-   skill that keeps the blade railed for longer, attacks the actual failure.
-2. **Steepen the taper.** Nearly exhausted: capacity goes as the sine of the
-   taper angle, and 24.2 degrees already puts the wedge's free end at 70 mm
-   inside an 87.08 mm aperture, leaving 8.5 mm of approach clearance a side.
-3. **Reconsider the pull-test protocol itself.** It applies a constant force for
+**Grip force was tested as the cause and refuted, before the real fix was
+found.** The obvious reading was that the gripper is modelled at under half its
+rated strength, so the drive was raised from 10 N-m to the 24.96 N-m that
+produces Robotiq's rated 235 N at the measured transmission ratio. On a matched
+grid that measured *worse*, 62 N against 66 N, and lost capture entirely above
+0.65 rad. Same mechanism as the capture/hold split: a harder squeeze drives an
+unconstrained payload instead of holding it. The change is reverted; the
+constant and the reasoning stay in `assets.py` so nobody repeats it.
+
+Two things the measurements still say, for whoever picks this up:
+
+1. **The remaining give is rotational, not axial.** Slip decomposes into 0.7 mm
+   of median axial movement against 0.054 rad of angular, and the blade only
+   levers once the pull has dragged it clear of the rails. An interface feature
+   opposing yaw would raise the margin further.
+2. **The pull test is harsher than extraction.** It applies a constant force for
    1.5 s to a body the rails do not constrain along x, so the blade travels up
-   to 0.29 m and leaves the channel mid-measurement. That is arguably harsher
-   than extraction, where the gripper and the rails share the load. Any change
-   here must be argued as a protocol correction and re-run against the earlier
+   to 0.29 m and leaves the channel mid-measurement. Any change here must be
+   argued as a protocol correction and re-run against the earlier
    configurations, not adopted because it flatters the number.
 
-The three skills are already written and registered as separate gated tasks
-(`Isaac-ZeroG-Blade-GrapplePin-Grasp-v0`, `-Extract-v0`, `-Insert-v0`) but have
-**never been executed**, because constructing an Isaac Lab environment needs the
-Kit runtime. Run each with `--smoke` first and expect ordinary wiring faults.
+The three skills are registered as separate gated tasks
+(`Isaac-ZeroG-Blade-GrapplePin-Grasp-v0`, `-Extract-v0`, `-Insert-v0`) and all
+three now pass `train.py --smoke`. `scripts/run_grapple_skills.sh` runs the whole
+pipeline: smoke, train, evaluate on three held-out seeds across three curriculum
+stages, and pool into one gated report under `evidence/`.
+
 Extract ends with the blade fully clear of the slot mouth, about 495 mm of
 travel; that was decided with the owner on 2026-08-09. Its final pose puts the
-wrist about 200 mm in front of the robot's own base, folded, which has not been
-checked kinematically. Insert starts at the certified staging pose because that
+wrist about 200 mm in front of the robot's own base, folded, and that has never
+been checked kinematically, so a failure to reach is the first thing to suspect
+if extraction plateaus. Insert starts at the certified staging pose because that
 is the arm pose that has been calibrated; chaining all three needs one more
 calibration run.
-
-Do not start a long run on any of them until the pull gate passes.
 
 Tools that now exist for this work:
 

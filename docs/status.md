@@ -690,20 +690,36 @@ Extraction carries its own workspace predicate, because `insertion_failure`
 treats a blade below x 0.45 as an escape and that is where a successful
 extraction ends.
 
-**None of the three has been executed.** They are written, registered, and
-ruff-clean, and the pin's dimensional contract is defended by 12 CPU tests in
-`tests/test_grapple_geometry.py` that need no simulator. But constructing an
-Isaac Lab environment configuration requires the Kit runtime, so the first run of
-each task should be `--smoke` and is expected to surface ordinary wiring faults.
+All three pass `train.py --smoke`, and the pin's dimensional contract is
+defended by 12 CPU tests in `tests/test_grapple_geometry.py` that need no
+simulator. `scripts/run_grapple_skills.sh` runs the pipeline end to end: smoke,
+train, evaluate on three held-out seeds across three curriculum stages, and pool
+into one gated report.
 
-Two known risks to check on that first run. The extract skill ends with the
-wrist about 200 mm in front of the robot's own base with the tool still pointing
-along +x, which is inside the UR10e's reach but folded and has not been checked
-kinematically. And the insert skill starts at the certified staging pose rather
-than at the end of an extraction, because that is the arm pose that has been
-calibrated; chaining the three needs one more calibration run.
+Getting those first runs to take a step surfaced four faults worth recording,
+because three of them would have silently degraded training rather than
+crashing:
 
-None of this is unblocked until the pull gate passes.
+- The potential rewards zeroed their baseline on reset, charging the first step
+  of every episode the whole distance from the goal.
+- The approach reward scored the *live* blade, so a policy could be paid for the
+  blade drifting toward the tool, which in zero gravity it can cause by shoving
+  it. It now scores against the pose the blade was placed at.
+- Both are suppressed for 0.30 s after a reset, because a reset writes joint
+  positions but leaves the previous episode's actuator targets in place, so the
+  arm springs before it holds.
+- Extract and insert faked their starting grip by writing the fingers to their
+  seated angle. That places the pads around the wedge without preloading the
+  collar, and a 40 mm pull then moved the blade 0.1 mm. They now run the real
+  two-stage capture inside a 1.0 s settling window.
+
+Two known risks remain. The extract skill ends with the wrist about 200 mm in
+front of the robot's own base with the tool still pointing along +x, which is
+inside the UR10e's reach but folded and has never been checked kinematically; if
+extraction plateaus, suspect that first. And the insert skill starts at the
+certified staging pose rather than at the end of an extraction, because that is
+the arm pose that has been calibrated, so chaining the three into one
+demonstration needs one more calibration run.
 
 ## Demonstration assets
 
