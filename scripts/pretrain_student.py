@@ -1,4 +1,10 @@
-"""Offline behavioural cloning for the multimodal vision actor."""
+"""Offline behavioural cloning for the multimodal vision actor.
+
+The insertion tasks command six Cartesian corrections and no gripper DOF, so the
+binary gripper head this script was written for is now off by default: pass
+``--gripper_loss_weight`` above zero only for a task whose last action really is
+a gripper command.
+"""
 
 from __future__ import annotations
 
@@ -27,7 +33,7 @@ class Demonstrations(Dataset):
         self.path = path
         self._file: h5py.File | None = None
         with h5py.File(path, "r") as handle:
-            required = {"rgb", "proprio", "phase", "teacher_action"}
+            required = {"rgb", "proprio", "blade_pose", "teacher_action"}
             missing = required.difference(handle)
             if missing:
                 raise KeyError(f"Dataset is missing {sorted(missing)}")
@@ -37,7 +43,7 @@ class Demonstrations(Dataset):
             self.length = lengths.pop()
             self.rgb_shape = tuple(handle["rgb"].shape[1:])
             self.proprio_shape = tuple(handle["proprio"].shape[1:])
-            self.phase_shape = tuple(handle["phase"].shape[1:])
+            self.blade_pose_shape = tuple(handle["blade_pose"].shape[1:])
             self.action_dim = int(np.prod(handle["teacher_action"].shape[1:]))
 
     def __len__(self) -> int:
@@ -53,7 +59,7 @@ class Demonstrations(Dataset):
         return {
             "rgb": torch.from_numpy(handle["rgb"][index]).float().div_(255.0),
             "proprio": torch.from_numpy(handle["proprio"][index]).float(),
-            "phase": torch.from_numpy(handle["phase"][index]).float(),
+            "blade_pose": torch.from_numpy(handle["blade_pose"][index]).float(),
             "action": torch.from_numpy(handle["teacher_action"][index]).float().flatten(),
         }
 
@@ -66,7 +72,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--batch_size", type=int, default=512)
     parser.add_argument("--learning_rate", type=float, default=3.0e-4)
     parser.add_argument("--validation_fraction", type=float, default=0.05)
-    parser.add_argument("--gripper_loss_weight", type=float, default=0.25)
+    parser.add_argument(
+        "--gripper_loss_weight",
+        type=float,
+        default=0.0,
+        help="Above zero, treat the final action as a binary gripper command and score it with BCE.",
+    )
     parser.add_argument("--workers", type=int, default=0, help="Keep zero on Windows unless HDF5 is thread-safe.")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="cuda:0" if torch.cuda.is_available() else "cpu")
@@ -74,6 +85,10 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _loss(prediction: torch.Tensor, target: torch.Tensor, gripper_weight: float) -> tuple[torch.Tensor, dict]:
+    if gripper_weight <= 0.0:
+        # Every continuous action, including a task with no gripper at all.
+        arm = nn.functional.mse_loss(prediction, target)
+        return arm, {"arm_mse": arm.detach(), "gripper_bce": torch.zeros((), device=prediction.device)}
     if prediction.shape[-1] < 2:
         raise ValueError("Expected at least one arm action and one gripper action")
     arm = nn.functional.mse_loss(prediction[:, :-1], target[:, :-1])
@@ -173,10 +188,10 @@ def main() -> None:
             best = validation_metrics["loss"]
             torch.save(
                 {
-                    "format": "zero-g-blade-swap-vision-bc-v1",
+                    "format": "zero-g-blade-insertion-vision-bc-v2",
                     "actor_state_dict": model.state_dict(),
                     "observation_shapes": {"rgb": dataset.rgb_shape, "proprio": dataset.proprio_shape},
-                    "phase_shape": dataset.phase_shape,
+                    "blade_pose_shape": dataset.blade_pose_shape,
                     "actions_num": dataset.action_dim,
                     "validation_loss": best,
                     "dataset": str(dataset_path),

@@ -52,22 +52,12 @@ def end_effector_pose_local(
 
 def blade_pose_local(
     env,
-    asset_cfg: SceneEntityCfg = SceneEntityCfg("blade"),
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("spare_blade"),
 ) -> torch.Tensor:
     """Return blade position and quaternion in the environment frame."""
 
     blade = env.scene[asset_cfg.name]
     return torch.cat((blade.data.root_pos_w - env.scene.env_origins, blade.data.root_quat_w), dim=-1)
-
-
-def blade_velocity(
-    env,
-    asset_cfg: SceneEntityCfg = SceneEntityCfg("blade"),
-) -> torch.Tensor:
-    """Return blade linear and angular velocity in world axes."""
-
-    blade = env.scene[asset_cfg.name]
-    return torch.cat((blade.data.root_lin_vel_w, blade.data.root_ang_vel_w), dim=-1)
 
 
 def normalized_joint_velocity(env, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
@@ -78,40 +68,10 @@ def normalized_joint_velocity(env, asset_cfg: SceneEntityCfg = SceneEntityCfg("r
     return (robot.data.joint_vel[:, asset_cfg.joint_ids] / limits).clamp(-1.0, 1.0)
 
 
-def gripper_state(env, action_name: str = "gripper") -> torch.Tensor:
-    """Return one normalized Robotiq closure state (zero open, one closed)."""
-
-    action = env.action_manager.get_term(action_name)
-    span = max(float(action.cfg.closed_position - action.cfg.open_position), 1.0e-6)
-    return ((action.processed_actions[:, :1] - action.cfg.open_position) / span).clamp(0.0, 1.0)
-
-
-def both_blade_poses_local(env) -> torch.Tensor:
-    """Return failed and spare poses for teacher/critic supervision."""
-
-    return torch.cat(
-        (
-            blade_pose_local(env, SceneEntityCfg("blade")),
-            blade_pose_local(env, SceneEntityCfg("spare_blade")),
-        ),
-        dim=-1,
-    )
-
-
-def both_blade_velocities(env) -> torch.Tensor:
-    return torch.cat(
-        (
-            blade_velocity(env, SceneEntityCfg("blade")),
-            blade_velocity(env, SceneEntityCfg("spare_blade")),
-        ),
-        dim=-1,
-    )
-
-
 def blade_pose_in_end_effector_frame(
     env,
     robot_cfg: SceneEntityCfg = SceneEntityCfg("robot", body_names=["wrist_3_link"]),
-    blade_cfg: SceneEntityCfg = SceneEntityCfg("blade"),
+    blade_cfg: SceneEntityCfg = SceneEntityCfg("spare_blade"),
 ) -> torch.Tensor:
     """Return the blade pose relative to the grasp frame."""
 
@@ -150,22 +110,27 @@ def robot_mount_state(
 
 
 def randomized_physics_parameters(env) -> torch.Tensor:
-    """Expose normalized privileged dynamics parameters to the critic only."""
+    """Expose normalized privileged dynamics parameters to the critic only.
 
-    failed_mass = env.scene["blade"].root_physx_view.get_masses()[:, :1].to(env.device) / 15.0
-    spare_mass = env.scene["spare_blade"].root_physx_view.get_masses()[:, :1].to(env.device) / 15.0
-    material = env.scene["blade_slot"].root_physx_view.get_material_properties()[:, 0, :].to(env.device)
+    Six values for the one blade the insertion scenes spawn: its mass, the guide
+    rail's static/dynamic friction and restitution, and its sampled breakaway
+    and viscous rail resistance. Scales are the configured randomization ranges,
+    so a critic input stays near the unit interval whether or not the level
+    being trained actually randomizes that parameter.
+
+    The rail material is read from the left guide rather than the slot floor,
+    because the rigid-grasp profile disables the floor collider and randomizes
+    only the guides.
+    """
+
+    mass = env.scene["spare_blade"].root_physx_view.get_masses()[:, :1].to(env.device) / 15.0
+    material = env.scene["blade_slot_left_guide"].root_physx_view.get_material_properties()[:, 0, :].to(env.device)
     material_scale = material.new_tensor((2.0, 1.5, 0.05)).clamp_min(1.0e-6)
     material = material / material_scale
-    parameters = getattr(env, "_rail_stiction", {})
     zeros = torch.zeros(env.num_envs, device=env.device)
-    failed_breakaway, failed_viscous = parameters.get("blade", (zeros, zeros))
-    spare_breakaway, spare_viscous = parameters.get("spare_blade", (zeros, zeros))
-    stiction = torch.stack(
-        (failed_breakaway / 120.0, failed_viscous / 25.0, spare_breakaway / 120.0, spare_viscous / 25.0),
-        dim=-1,
-    )
-    return torch.cat((failed_mass, spare_mass, material, stiction), dim=-1)
+    breakaway, viscous = getattr(env, "_rail_stiction", {}).get("spare_blade", (zeros, zeros))
+    stiction = torch.stack((breakaway / 120.0, viscous / 25.0), dim=-1)
+    return torch.cat((mass, material, stiction), dim=-1)
 
 
 def camera_rgb_with_radiation_noise(
@@ -198,13 +163,9 @@ __all__ = [
     "TOOL_OFFSET_ROT",
     "blade_pose_in_end_effector_frame",
     "blade_pose_local",
-    "blade_velocity",
-    "both_blade_poses_local",
-    "both_blade_velocities",
     "camera_rgb_with_radiation_noise",
     "end_effector_pose_local",
     "end_effector_pose_world",
-    "gripper_state",
     "normalized_joint_velocity",
     "randomized_physics_parameters",
     "robot_mount_state",

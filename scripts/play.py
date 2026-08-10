@@ -20,7 +20,6 @@ assert hasattr(jinja2, "Environment"), "The Jinja2 installation is incomplete."
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--task", default="Isaac-ZeroG-Blade-Insertion-Play-v0")
-    parser.add_argument("--policy", choices=("teacher", "vision"), default="teacher")
     parser.add_argument("--checkpoint", type=Path, default=None)
     parser.add_argument("--experiment", default=None)
     parser.add_argument("--num_envs", type=int, default=16)
@@ -118,7 +117,7 @@ if args.blade_mass_range is not None and not 0.0 < args.blade_mass_range[0] <= a
     parser.error("--blade_mass_range must be positive and ordered LOW HIGH")
 if args.minimum_success_rate is not None and not 0.0 <= args.minimum_success_rate <= 1.0:
     parser.error("--minimum_success_rate must be between 0 and 1")
-if "Vision" in args.task or "BladeSwap-Play" in args.task or args.video:
+if "Vision" in args.task or args.video:
     args.enable_cameras = True
 app_launcher = AppLauncher(args)
 simulation_app = app_launcher.app
@@ -156,6 +155,7 @@ ROBUST_FAMILY_TASKS = (
     "Insertion-ForceLimited",
     "Insertion-StrictForceLimited",
     "Insertion-ForceFeedback",
+    "Insertion-Vision",
     "Insertion-GuidedSlot",
     "Blade-CaptureInSlot",
     "Blade-GrapplePin",
@@ -172,15 +172,15 @@ def _checkpoint() -> Path:
             raise FileNotFoundError(path)
         return path
     default_experiment = (
-        "zero_g_blade_insertion_rigid_grasp"
+        "zero_g_blade_insertion_vision"
+        if "Insertion-Vision" in args.task
+        else "zero_g_blade_insertion_rigid_grasp"
         if any(label in args.task for label in RIGID_GRASP_AGENT_TASKS)
         else "zero_g_blade_insertion_contact"
-        if "Insertion-Contact" in args.task
+        if "Insertion-Contact" in args.task or "GrapplePin" in args.task
         else "zero_g_blade_insertion_robust"
         if "Insertion-Robust" in args.task
         else "zero_g_blade_insertion"
-        if "Insertion" in args.task
-        else f"zero_g_blade_swap_{args.policy}"
     )
     experiment = args.experiment or default_experiment
     candidates = list((Path("logs") / "rl_games" / experiment).glob("**/nn/*.pth"))
@@ -400,24 +400,20 @@ def main() -> dict[str, object]:
             env_cfg.viewer.eye, env_cfg.viewer.lookat = inspection_views[args.inspection_view]
             print(f"[INFO] Inspection view: {args.inspection_view}")
         env_cfg.seed = args.seed
-        # The head-on grapple-pin skills are insertion-family tasks in every way
-        # that matters here: they run on TerminalMetricsManagerBasedRLEnv, they
-        # carry a curriculum stage, and their episodes end on a named success
-        # term. Only their names differ, so matching on "Insertion" alone sent
-        # them down the full-swap path and looked for a term they do not define.
-        insertion_task = "Insertion" in args.task or "GrapplePin" in args.task
+        # Every task in this package is now an insertion-family task: they all
+        # run on TerminalMetricsManagerBasedRLEnv, carry a curriculum stage, and
+        # end on a named success term. The head-on capture scene is included
+        # even though its identifier does not say "Insertion".
         agent_task = (
-            "Isaac-ZeroG-Blade-Insertion-RigidGrasp-v0"
+            "Isaac-ZeroG-Blade-Insertion-Vision-v0"
+            if "Insertion-Vision" in args.task
+            else "Isaac-ZeroG-Blade-Insertion-RigidGrasp-v0"
             if any(label in args.task for label in RIGID_GRASP_AGENT_TASKS)
             else "Isaac-ZeroG-Blade-Insertion-Contact-v0"
-            if "Insertion-Contact" in args.task
-            else "Isaac-ZeroG-Blade-Insertion-Contact-v0"
-            if "GrapplePin" in args.task
+            if "Insertion-Contact" in args.task or "GrapplePin" in args.task
             else "Isaac-ZeroG-Blade-Insertion-Robust-v0"
             if "Insertion-Robust" in args.task
             else "Isaac-ZeroG-Blade-Insertion-v0"
-            if insertion_task
-            else f"Isaac-ZeroG-BladeSwap-{'Teacher' if args.policy == 'teacher' else 'Vision'}-v0"
         )
         agent_cfg = load_cfg_from_registry(agent_task, "rl_games_cfg_entry_point")
         agent_cfg["params"]["seed"] = args.seed
@@ -426,8 +422,6 @@ def main() -> dict[str, object]:
         options = agent_cfg["params"]["env"]
         env = gym.make(args.task, cfg=env_cfg, render_mode="rgb_array" if args.video else None)
         if args.curriculum_stage is not None:
-            if not insertion_task:
-                raise ValueError("--curriculum_stage is valid only for an insertion task")
             insertion_env = env.unwrapped
             insertion_env._insertion_curriculum_stage.fill_(args.curriculum_stage)
             for name, term_cfg in zip(
@@ -449,29 +443,22 @@ def main() -> dict[str, object]:
                 target=(centre[0], centre[1], centre[2] + 0.72),
             )
             print(f"[INFO] Inspection view: array framing {args.num_envs} environments over {extent:.1f} m")
-        terminal_metrics = None
-        if insertion_task:
-            task_env = env.unwrapped
-            if not hasattr(task_env, "enable_terminal_metrics"):
-                raise RuntimeError(
-                    f"{args.task} is not registered on TerminalMetricsManagerBasedRLEnv; "
-                    "terminal metrics would be read after the automatic reset"
-                )
-            terminal_metrics = InsertionTerminalMetrics(task_env)
-            task_env.enable_terminal_metrics(terminal_metrics)
-        # Each skill ends on its own named success term. Resolve it from the
-        # task rather than assuming, so a grasp run is not scored against an
-        # insertion predicate it never defines.
+        task_env = env.unwrapped
+        if not hasattr(task_env, "enable_terminal_metrics"):
+            raise RuntimeError(
+                f"{args.task} is not registered on TerminalMetricsManagerBasedRLEnv; "
+                "terminal metrics would be read after the automatic reset"
+            )
+        terminal_metrics = InsertionTerminalMetrics(task_env)
+        task_env.enable_terminal_metrics(terminal_metrics)
+        # Resolve the success term from the task rather than assuming it, so a
+        # profile that renames its predicate is not silently scored as 0%.
         active_terms = env.unwrapped.termination_manager.active_terms
-        success_term_name = next(
-            (
-                name
-                for name in ("insertion_success", "extraction_success", "capture_success", "full_success")
-                if name in active_terms
-            ),
-            "full_success",
-        )
-        print(f"[INFO] Success term: {success_term_name}")
+        if "insertion_success" not in active_terms:
+            raise RuntimeError(
+                f"{args.task} declares no 'insertion_success' termination; active terms are {sorted(active_terms)}"
+            )
+        success_term_name = "insertion_success"
         if args.video:
             video_dir = args.video_dir or (checkpoint.parent.parent / "videos" / "play")
             print(f"[INFO] Recording to {video_dir}")
@@ -517,7 +504,6 @@ def main() -> dict[str, object]:
         termination_counts = {name: 0 for name in termination_names}
         failure_condition_counts: dict[str, int] = {}
         episodes_completed = 0
-        maximum_phase = int(env.unwrapped._swap_phase.max()) if hasattr(env.unwrapped, "_swap_phase") else None
         reward_sum = torch.zeros(args.num_envs, device=rl_device)
         robust_bucket_stats: dict[str, list[dict[str, int]]] = {}
         while (
@@ -535,10 +521,9 @@ def main() -> dict[str, object]:
                 else {}
             )
             with torch.inference_mode():
-                if terminal_metrics is not None:
-                    # Sample the contact left by the previous step before this
-                    # one overwrites it; the terminal step is folded in at reset.
-                    terminal_metrics.accumulate(env.unwrapped)
+                # Sample the contact left by the previous step before this one
+                # overwrites it; the terminal step is folded in at reset.
+                terminal_metrics.accumulate(env.unwrapped)
                 network_obs = player.obs_to_torch(obs)
                 actions = player.get_action(network_obs, is_deterministic=True)
                 if not bool(torch.isfinite(actions).all()):
@@ -549,8 +534,6 @@ def main() -> dict[str, object]:
                     raise RuntimeError(f"Environment produced a non-finite observation at step {step}")
                 reward_sum += rewards
                 episodes_completed += int(dones.sum())
-                if maximum_phase is not None:
-                    maximum_phase = max(maximum_phase, int(env.unwrapped._swap_phase.max()))
                 for name in termination_names:
                     termination_counts[name] += int(env.unwrapped.termination_manager.get_term(name).sum())
                 latest_failures = getattr(env.unwrapped, "_insertion_latest_failure_conditions", None)
@@ -581,7 +564,7 @@ def main() -> dict[str, object]:
         success_name = success_term_name
         success_rate = termination_counts[success_name] / max(episodes_completed, 1)
         success_rate_source = "termination_term_counts"
-        if terminal_metrics is not None and len(terminal_metrics.recorder) > 0:
+        if len(terminal_metrics.recorder) > 0:
             # Prefer the reset-safe count.  It also demotes an episode that hit a
             # non-finite or mount failure in the same control step as a success.
             successes = float(terminal_metrics.recorder.column("success").sum())
@@ -591,7 +574,6 @@ def main() -> dict[str, object]:
         result = {
             "status": "passed",
             "task": args.task,
-            "policy": args.policy,
             "checkpoint": str(checkpoint),
             "checkpoint_sha256": hashlib.sha256(checkpoint.read_bytes()).hexdigest().upper(),
             "device": rl_device,
@@ -625,43 +607,35 @@ def main() -> dict[str, object]:
                 else None
             ),
             "stress": stress,
-            "maximum_phase_reached": maximum_phase,
             "mean_cumulative_reward_per_environment": float(reward_sum.mean()),
         }
-        if insertion_task:
-            # Terminal axial/lateral/orientation/velocity/tool-to-handle errors
-            # come from the pre-reset snapshot.  Reading them from the live
-            # scene here would measure the freshly reset episode instead.
-            if terminal_metrics is not None:
-                result["terminal_metrics"] = _terminal_metrics_report(
-                    terminal_metrics, episodes_completed, _effective_mass_range(stress)
-                )
-                if args.episode_metrics is not None:
-                    _write_episode_metrics(
-                        args.episode_metrics,
-                        terminal_metrics.recorder,
-                        {
-                            "task": args.task,
-                            "seed": args.seed,
-                            "curriculum_stage": args.curriculum_stage,
-                            "robustness_level": getattr(env_cfg, "robustness_level", None),
-                            "checkpoint": str(checkpoint),
-                            "checkpoint_sha256": result["checkpoint_sha256"],
-                            "num_envs": args.num_envs,
-                            "contact_force_limit_n": result["contact_force_limit_n"],
-                            "stress": stress,
-                        },
-                    )
-            timeout_failures = getattr(env.unwrapped, "_insertion_timeout_failure_counts", {})
-            result["timeout_failed_conditions"] = {name: int(count.item()) for name, count in timeout_failures.items()}
-            result["failure_condition_counts"] = failure_condition_counts
-            if any(
-                label in args.task for label in ROBUST_FAMILY_TASKS
-            ):
-                result["randomization_buckets"] = _summarize_robust_buckets(robust_bucket_stats)
-        else:
-            final_phases = torch.bincount(env.unwrapped._swap_phase, minlength=8)
-            result["final_phase_histogram"] = {str(index): int(count) for index, count in enumerate(final_phases)}
+        # Terminal axial/lateral/orientation/velocity/tool-to-handle errors come
+        # from the pre-reset snapshot.  Reading them from the live scene here
+        # would measure the freshly reset episode instead.
+        result["terminal_metrics"] = _terminal_metrics_report(
+            terminal_metrics, episodes_completed, _effective_mass_range(stress)
+        )
+        if args.episode_metrics is not None:
+            _write_episode_metrics(
+                args.episode_metrics,
+                terminal_metrics.recorder,
+                {
+                    "task": args.task,
+                    "seed": args.seed,
+                    "curriculum_stage": args.curriculum_stage,
+                    "robustness_level": getattr(env_cfg, "robustness_level", None),
+                    "checkpoint": str(checkpoint),
+                    "checkpoint_sha256": result["checkpoint_sha256"],
+                    "num_envs": args.num_envs,
+                    "contact_force_limit_n": result["contact_force_limit_n"],
+                    "stress": stress,
+                },
+            )
+        timeout_failures = getattr(env.unwrapped, "_insertion_timeout_failure_counts", {})
+        result["timeout_failed_conditions"] = {name: int(count.item()) for name, count in timeout_failures.items()}
+        result["failure_condition_counts"] = failure_condition_counts
+        if any(label in args.task for label in ROBUST_FAMILY_TASKS):
+            result["randomization_buckets"] = _summarize_robust_buckets(robust_bucket_stats)
         return result
     finally:
         if env is not None:
@@ -677,7 +651,6 @@ if __name__ == "__main__":
         report = {
             "status": "failed",
             "task": args.task,
-            "policy": args.policy,
             "checkpoint": str(args.checkpoint) if args.checkpoint is not None else None,
             "num_envs": args.num_envs,
             "error": f"{type(exc).__name__}: {exc}",

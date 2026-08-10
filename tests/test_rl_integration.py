@@ -33,20 +33,34 @@ def _declared_fields(source: str, name: str) -> set[str]:
     }
 
 
-def test_teacher_ppo_and_asymmetric_critic_contract() -> None:
-    params = _yaml("rl_games_teacher.yaml")["params"]
-    assert params["network"]["name"] == "blade_swap_teacher"
-    assert params["env"] == {
-        "clip_observations": 10.0,
-        "clip_actions": 1.0,
-        "obs_groups": {"obs": ["policy"], "states": ["critic"]},
-        "concate_obs_groups": True,
-    }
-    config = params["config"]
-    assert config["horizon_length"] == 32
-    assert config["minibatch_size"] == 8192
-    assert 1024 * config["horizon_length"] % config["minibatch_size"] == 0
-    assert config["central_value_config"]["network"]["name"] == "blade_swap_teacher"
+def test_vision_task_keeps_the_visual_randomizers_reachable() -> None:
+    """The camera and both Replicator randomizers must belong to a live task.
+
+    Until 2026-08-10 they were reachable only from the eight-phase swap task.
+    Deleting that task without repointing them would have made weeks of
+    infrastructure dead code that no smoke test could catch.
+    """
+
+    vision = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "vision_insertion_env_cfg.py").read_text(
+        encoding="utf-8"
+    )
+    registration = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "__init__.py").read_text(encoding="utf-8")
+
+    assert "Isaac-ZeroG-Blade-Insertion-Vision-v0" in registration
+    assert "vision_insertion_env_cfg" in registration
+    for term in (
+        "make_tiled_camera_cfg",
+        "mdp.RackMaterialRandomizer",
+        "mdp.OrbitalLightingRandomizer",
+        "mdp.camera_rgb_with_radiation_noise",
+    ):
+        assert term in vision
+    # Both randomizers address one prim per environment and raise otherwise.
+    assert "replicate_physics=False" in vision
+    # The actor must not be handed the pose it is supposed to learn to see.
+    actor = vision.split("class InsertionProprioObsCfg")[1].split("class InsertionRgbObsCfg")[0]
+    assert "insertion_goal_error" not in actor
+    assert "insertion_goal_error" in vision.split("class InsertionCriticObsCfg")[1]
 
 
 def test_stage_one_insertion_ppo_contract() -> None:
@@ -215,30 +229,33 @@ def test_app_launcher_precedes_isaac_dependent_imports(name: str) -> None:
 
 def test_smoke_script_has_both_hardware_profiles_and_machine_output() -> None:
     source = (SCRIPTS / "smoke_env.py").read_text(encoding="utf-8")
-    assert 'choices=("teacher", "vision", "all")' in source
-    assert "--teacher_steps" in source and "default=100" in source
-    assert '"--teacher_envs", type=int, default=1' in source
+    assert 'choices=("state", "vision", "all")' in source
+    assert "--state_steps" in source and "default=100" in source
+    assert '"--state_envs", type=int, default=1' in source
     assert "num_envs=8" in source
     assert "artifacts/smoke_report.json" in source
     assert "sys.argv = [sys.argv[0]]" in source
+    # A contact sensor that resolves no bodies reports a constant zero, which is
+    # indistinguishable from a gentle insertion. Assert it, do not assume it.
+    assert 'sensors["blade_contact"].data.net_forces_w is not None' in source
 
 
 def test_geometry_and_reward_guards_cover_pilot_failure_modes() -> None:
     assets = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "assets.py").read_text(encoding="utf-8")
-    commands = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "mdp" / "commands.py").read_text(encoding="utf-8")
     randomization = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "mdp" / "randomization.py").read_text(
         encoding="utf-8"
     )
-    env_cfg = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "env_cfg.py").read_text(encoding="utf-8")
+    frames = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "mdp" / "grasp_frames.py").read_text(
+        encoding="utf-8"
+    )
 
     assert '"shoulder_pan_joint": 0.35' in assets
-    assert "TRANSFER_BLADE_X = 0.18" in assets
     assert "GUIDE_CENTER_OFFSET_Y = 0.08975" in assets
-    assert "_handle_goal_from_blade_goal" in commands
-    assert "preinsert_blade_goal[:, 0] = TRANSFER_BLADE_X" in commands
-    assert "env._last_rewarded_phase[ids] = phase[ids]" in randomization
     assert "self._forces[due, 0]" in randomization
-    assert "terminal_failure = RewTerm" in env_cfg
+    # The 2F-85 is symmetric about its closing axis, so a grasp orientation
+    # error that ignores the finger swap reports pi where the grip is perfect.
+    assert "def equivalent_gripper_orientation" in frames
+    assert "flip_x = handle_orientation.new_tensor((0.0, 1.0, 0.0, 0.0))" in frames
 
 
 def test_insertion_tasks_capture_terminal_metrics_before_auto_reset() -> None:
@@ -251,12 +268,12 @@ def test_insertion_tasks_capture_terminal_metrics_before_auto_reset() -> None:
     )
     play = (SCRIPTS / "play.py").read_text(encoding="utf-8")
 
-    # The invariant is that *every* blade task routes through the pre-reset
-    # capture subclass, not that there is a particular number of them. Tasks are
-    # registered both individually and from a loop, so assert the complement:
-    # only the three non-insertion BladeSwap tasks may use a different entry.
+    # The invariant is that *every* task routes through the pre-reset capture
+    # subclass, not that there is a particular number of them. Since the swap
+    # task was deleted there is no other entry point left, so assert exactly
+    # that rather than counting registrations.
     assert registration.count("entry_point=INSERTION_ENTRY_POINT,") >= 8
-    assert registration.count('entry_point="isaaclab.envs:ManagerBasedRLEnv"') == 3
+    assert "isaaclab.envs:ManagerBasedRLEnv" not in registration
     for identifier in ("Isaac-ZeroG-Blade-Insertion-GuidedSlot-v0", "Isaac-ZeroG-Blade-CaptureInSlot-v0"):
         assert identifier in registration
     assert "TerminalMetricsManagerBasedRLEnv" in registration
@@ -489,7 +506,6 @@ def test_training_and_playback_make_gpu_and_safety_evidence_explicit() -> None:
     assert "Simulation and PPO device" in train
     assert "torch.cuda.is_available()" in train
     assert '"termination_counts"' in play
-    assert '"maximum_phase_reached"' in play
     assert '"checkpoint_sha256"' in play
     assert '"--curriculum_stage"' in play
     assert "force_reset_stage(args.curriculum_stage)" in play
@@ -509,7 +525,7 @@ def test_benchmark_uses_descending_first_fit_without_aborting_on_failure() -> No
         and any(isinstance(target, ast.Name) and target.id == "DEFAULT_CANDIDATES" for target in node.targets)
     )
     assert ast.literal_eval(assignment.value) == {
-        "teacher": (1024, 768, 512, 256),
+        "state": (1024, 768, 512, 256),
         "vision": (256, 128, 64),
     }
     assert 'if result.get("ok", False) and not args.run_all:' in source

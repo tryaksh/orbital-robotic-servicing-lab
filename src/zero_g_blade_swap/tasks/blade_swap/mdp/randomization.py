@@ -10,79 +10,6 @@ from isaaclab.managers import EventTermCfg, ManagerTermBase, SceneEntityCfg
 from isaaclab.sim.utils import get_current_stage
 
 
-def reset_task_progress(env, env_ids: torch.Tensor | None) -> None:
-    """Reset all persistent GPU task-state buffers."""
-
-    ids = slice(None) if env_ids is None else env_ids
-    phase = getattr(env, "_swap_phase", None)
-    if phase is None or phase.shape[0] != env.num_envs:
-        phase = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
-        env._swap_phase = phase
-    phase[ids] = 0
-
-    rewarded = getattr(env, "_last_rewarded_phase", None)
-    if rewarded is None or rewarded.shape[0] != env.num_envs:
-        rewarded = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
-        env._last_rewarded_phase = rewarded
-    rewarded[ids] = 0
-
-    inserted = getattr(env, "_insertion_rewarded", None)
-    if inserted is None or inserted.shape[0] != env.num_envs:
-        inserted = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
-        env._insertion_rewarded = inserted
-    inserted[ids] = False
-
-    hold_steps = getattr(env, "_swap_success_hold_steps", None)
-    if hold_steps is None or hold_steps.shape[0] != env.num_envs:
-        hold_steps = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
-        env._swap_success_hold_steps = hold_steps
-    hold_steps[ids] = 0
-
-
-def apply_curriculum_initial_state(env, env_ids: torch.Tensor | None) -> None:
-    """Reset into one of four progressively harder task stages."""
-
-    ids = torch.arange(env.num_envs, device=env.device) if env_ids is None else env_ids
-    stages = getattr(env, "_curriculum_stage", None)
-    if stages is None or stages.shape[0] != env.num_envs:
-        stages = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
-        env._curriculum_stage = stages
-    from ..assets import BLADE_INSERTED_POS, SERVICE_CADDY_POS, SPARE_BLADE_POS, TRANSFER_BLADE_X
-    from .commands import PHASE_ACQUIRE_SPARE, PHASE_INSERT_SPARE, PHASE_STOW_FAILED
-
-    def write_pose(asset_name: str, selected: torch.Tensor, position: tuple[float, float, float]) -> None:
-        if len(selected) == 0:
-            return
-        asset = env.scene[asset_name]
-        state = asset.data.default_root_state[selected].clone()
-        state[:, :3] = env.scene.env_origins[selected] + state.new_tensor(position)
-        state[:, 3:7] = state.new_tensor((1.0, 0.0, 0.0, 0.0))
-        state[:, 7:] = 0.0
-        asset.write_root_state_to_sim(state, env_ids=selected)
-
-    phase = env._swap_phase
-    # Stage 0: replacement is pre-aligned immediately in front of the slot.
-    stage_ids = ids[stages[ids] == 0]
-    write_pose("blade", stage_ids, SERVICE_CADDY_POS)
-    write_pose("spare_blade", stage_ids, (TRANSFER_BLADE_X, BLADE_INSERTED_POS[1], BLADE_INSERTED_POS[2]))
-    phase[stage_ids] = PHASE_INSERT_SPARE
-    # Stage 1: acquire the spare from its supply caddy, align, and insert.
-    stage_ids = ids[stages[ids] == 1]
-    write_pose("blade", stage_ids, SERVICE_CADDY_POS)
-    write_pose("spare_blade", stage_ids, SPARE_BLADE_POS)
-    phase[stage_ids] = PHASE_ACQUIRE_SPARE
-    # Stage 2: begin with the failed blade extracted; stow then complete replacement.
-    stage_ids = ids[stages[ids] == 2]
-    write_pose("blade", stage_ids, (TRANSFER_BLADE_X, 0.0, BLADE_INSERTED_POS[2]))
-    write_pose("spare_blade", stage_ids, SPARE_BLADE_POS)
-    phase[stage_ids] = PHASE_STOW_FAILED
-    # Stage 3 is the complete swap and keeps the normal randomized reset.
-
-    # Curriculum initialization is not task progress.  Starting stage 0 at
-    # phase 6 must not award six free phase milestones on the first step.
-    env._last_rewarded_phase[ids] = phase[ids]
-
-
 class MountWobblePulse(ManagerTermBase):
     """Generate bounded 0.2--0.8 s satellite-mount wrench pulses."""
 
@@ -355,9 +282,7 @@ __all__ = [
     "MountWobblePulse",
     "OrbitalLightingRandomizer",
     "RackMaterialRandomizer",
-    "apply_curriculum_initial_state",
     "apply_rail_stiction",
     "rail_stiction_resistance",
     "randomize_rail_stiction",
-    "reset_task_progress",
 ]

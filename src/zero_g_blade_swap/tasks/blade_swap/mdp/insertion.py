@@ -38,7 +38,7 @@ from ..assets import (
     INSERTION_STAGE_ARM_JOINT_POS,
     INSERTION_STAGE_BLADE_POSE,
 )
-from .commands import gripper_handle_orientation_error
+from .grasp_frames import gripper_handle_orientation_error
 from .observations import end_effector_pose_world
 from .randomization import rail_stiction_resistance
 

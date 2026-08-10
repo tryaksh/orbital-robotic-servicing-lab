@@ -54,9 +54,10 @@ insertion of an already-secured replacement blade into a rack in microgravity**.
 | That force can be regulated without force feedback | Two penalty strengths, the stronger charging the same order as the success reward, changed mean contact by 2.6% and impulse not at all. Adding force to the observation cut impulse 59% with everything else held fixed. Force control needs force sensing |
 | That peak contact force can be regulated at all in this action space | Nothing tried has moved it: two penalty strengths, and full force feedback with a matched control. Position-based differential IK through a 1.5 mm clearance slot appears to have a hard floor |
 | Cross-seed training repeatability | Each promoted policy comes from one training seed. The three certification seeds vary *evaluation* initial conditions only |
-| Perception | The policy consumes ground-truth blade pose. The vision student is scaffolding and has not been trained from the promoted policy |
+| Perception | The policy consumes ground-truth blade pose. The vision task is scaffolding and no policy has been trained on it |
+| Anything under pose uncertainty | Every result on this page comes from a task where the policy is *told* its exact pose error. With a rigid known object on a constrained axis and full observability, that is motion planning and force control; the pivot recorded in `docs/status.md` exists because RL cannot demonstrate its value there |
 | Industrial fidelity | Rack, blade, and rail are primitive proxies with no connector, latch, cable, chamfer, measured tolerance, or force-displacement curve |
-| Full blade swap | Extraction, stow, acquisition, and verification are an eight-phase scaffold, not a converged policy |
+| Full blade swap | Extraction, stow, acquisition, and verification are not implemented. The eight-phase scaffold that stood in for them was deleted on 2026-08-10 because four of its five stages had no physics content, and the three head-on grapple-pin skills went with it. What survives is the measured interface and the certified insertion lineage |
 
 ## Why the numbers should be believed
 

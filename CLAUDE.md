@@ -71,9 +71,16 @@ limitations, and the pre-existing `train.py --smoke` probe defect live in
 
 ## Next action, decided 2026-08-10: pivot to pose uncertainty
 
-**The full plan is `C:\Users\tryak\.claude\plans\with-this-literature-research-merry-gray.md`.
-Read it before doing anything. It contains a session prompt written to be pasted
-verbatim into a fresh session.**
+**P0 is done.** The three head-on grapple-pin skills, the eight-phase swap task,
+and their reward/termination/curriculum classes were deleted on 2026-08-10. The
+capture scene, the pin geometry, the interface specification, every file in
+`evidence/`, the contact-force machinery, and the evaluator all survive. The
+visual-randomization machinery was repointed at the insertion scene as
+`Isaac-ZeroG-Blade-Insertion-Vision-v0`, which is untrained scaffolding for P3.
+`docs/status.md` records the smoke sweep and the two pre-existing failures.
+
+**Next is P1: the pose-belief insertion task and its force-blind ablation.**
+The full plan is `C:\Users\tryak\.claude\plans\with-this-literature-research-merry-gray.md`.
 
 Why the direction changed. Every RL task in this repo trains against a task that
 contains no uncertainty. The policy observes `insertion_goal_error`, derived
@@ -99,14 +106,24 @@ pose uncertainty directly. Note that the Grasp v1 failure recorded in
 approach, is exactly the overfitting pathology IndustReal's sampling-based
 curriculum exists to prevent.
 
-What survives the pivot and must not be deleted: the grapple pin geometry and
+What survived the prune and must not be deleted: the grapple pin geometry and
 `docs/service_interface_spec.md`, everything in `evidence/` including the
 negative results, the contact-force machinery in `mdp/insertion.py`, the
-evaluator and its promotion gate, and the visual-randomization modules
+evaluator and its promotion gate, `TwoStageRobotiqAction` and
+`hold_two_stage_grip` in `mdp/grapple.py` (they implement the capture/hold split
+the 69 N result depends on), and the visual-randomization modules
 (`OrbitalLightingRandomizer`, `RackMaterialRandomizer`,
 `camera_rgb_with_radiation_noise`, `make_tiled_camera_cfg`, the student
-scaffold) which are currently reachable only from the full-swap task being
-deleted and must be repointed at the insertion scene instead.
+scaffold), which now hang off `vision_insertion_env_cfg.py` instead of the
+deleted swap task.
+
+Adopt, do not invent. IndustReal's sampling-based curriculum samples the whole
+initial-state range from the first step and raises only its *easy* bound as
+success improves, which is the direct fix for the Grasp-v1 pathology below; the
+mixture ramp in `InsertionSuccessRateCurriculum` does the opposite. FORGE
+conditions the policy on a maximum allowable force `F_th` sampled per episode and
+charges `-beta * max(0, ||F|| - F_th)`, rather than the two fixed penalty
+profiles this repository already measured as ineffective.
 
 What the head-on grapple pin established, and why it stays: it is the first
 interface here to form a real grip, holding **69 N** of axial pull against the
@@ -135,6 +152,8 @@ extractions. An anti-yaw feature is a legitimate second-generation result.
 - Never weaken a success threshold to make a gate pass.
 - Do not advance to Phase 3 while L2 is unpromoted and L3 settling is blocked.
 - Keep `.deps`, logs, datasets, checkpoints, artifacts, and videos out of Git.
+- Do not reintroduce the eight-phase swap task or the three grapple-pin skills.
+  `tests/test_configuration_contract.py` fails if the swap state machine returns.
 
 ## Where to read, by task
 
@@ -152,9 +171,11 @@ checkpoints, or every task file.
 | The design deliverable | `docs/service_interface_spec.md` |
 | Insertion task physics | `src/zero_g_blade_swap/tasks/blade_swap/rigid_grasp_insertion_env_cfg.py` |
 | Force penalties, force feedback | `src/zero_g_blade_swap/tasks/blade_swap/force_limited_insertion_env_cfg.py` |
+| Camera, lighting, rack materials | `src/zero_g_blade_swap/tasks/blade_swap/vision_insertion_env_cfg.py` |
 | Grasp physics before any grasp PPO | `scripts/grasp_diagnostics.py`, `evidence/grapple_pin_axial_pull_gate.json` |
 | Gripper geometry, ever | `scripts/measure_gripper_envelope.py`, `evidence/gripper_collision_envelope.json` |
 | Head-on capture task | `src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py` |
+| Capture/hold gripper action | `src/zero_g_blade_swap/tasks/blade_swap/mdp/grapple.py` |
 | Rewards, terminations, curriculum | `src/zero_g_blade_swap/tasks/blade_swap/mdp/insertion.py` |
 | Evaluation statistics and gates | `src/zero_g_blade_swap/evaluation.py`, `scripts/aggregate_evaluation.py` |
 | Training and playback entry points | `scripts/train.py`, `scripts/play.py` |

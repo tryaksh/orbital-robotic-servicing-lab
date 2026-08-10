@@ -4,12 +4,10 @@ import numpy as np
 import pytest
 
 from zero_g_blade_swap.math_utils import (
-    advance_swap_phase,
     axial_stiction_force,
     exponential_distance_reward,
     exponential_moving_average,
     first_order_filter_alpha,
-    full_swap_success,
     gaussian_camera_noise,
     insertion_curriculum_probabilities,
     quaternion_angular_error,
@@ -52,13 +50,6 @@ def test_stiction_opposes_motion_and_grows_with_speed() -> None:
     assert abs(forces[3]) > abs(forces[2])
 
 
-def test_full_swap_success_thresholds() -> None:
-    passing = full_swap_success(0.01, np.deg2rad(2.0), 0.001, np.deg2rad(2.0), 0.01, True, 0.15, 0.5)
-    assert bool(passing)
-    assert not bool(full_swap_success(0.01, np.deg2rad(2.0), 0.003, np.deg2rad(2.0), 0.01, True, 0.15, 0.5))
-    assert not bool(full_swap_success(0.01, np.deg2rad(2.0), 0.001, np.deg2rad(2.0), 0.01, True, 0.15, 0.49))
-
-
 def test_camera_noise_statistics_and_clipping() -> None:
     source = np.full((64, 64, 3), 0.5, dtype=np.float32)
     noisy = gaussian_camera_noise(source, sigma=0.025, seed=7)
@@ -66,36 +57,6 @@ def test_camera_noise_statistics_and_clipping() -> None:
     assert noisy.max() <= 1.0
     assert float(np.mean(noisy - source)) == pytest.approx(0.0, abs=0.002)
     assert float(np.std(noisy - source)) == pytest.approx(0.025, rel=0.08)
-
-
-def test_all_eight_swap_phases_advance_on_their_exact_predicates() -> None:
-    phases = np.arange(8)
-    advanced = advance_swap_phase(
-        phases,
-        failed_reached=[True, True, False, False, False, False, False, False],
-        gripper_closed=[False, True, False, False, True, False, False, False],
-        failed_extracted=[False, False, True, False, False, False, False, False],
-        failed_stowed=[False, False, False, True, False, False, False, False],
-        spare_near=[False, False, False, False, True, False, False, False],
-        spare_extracted=[False, False, False, False, True, False, False, False],
-        spare_aligned=[False, False, False, False, False, True, False, False],
-        spare_inserted=[False, False, False, False, False, False, True, False],
-    )
-    np.testing.assert_array_equal(advanced, [1, 2, 3, 4, 5, 6, 7, 7])
-
-
-def test_phase_transition_requires_complete_conjunctions() -> None:
-    phases = np.asarray([1, 3, 4, 6, 7])
-    unchanged = advance_swap_phase(
-        phases,
-        failed_reached=True,
-        gripper_closed=[False, True, True, False, True],
-        failed_stowed=True,
-        spare_near=True,
-        spare_extracted=[False, False, False, False, False],
-        spare_inserted=[False, False, False, False, True],
-    )
-    np.testing.assert_array_equal(unchanged, phases)
 
 
 def test_curriculum_promotes_at_70_percent_of_100_completed_episodes() -> None:
@@ -164,7 +125,5 @@ def test_invalid_physical_inputs_raise() -> None:
         robotiq_2f85_coupled_positions([1.0])
     with pytest.raises(ValueError):
         axial_stiction_force([0.1], -1.0, 2.0)
-    with pytest.raises(ValueError):
-        advance_swap_phase([8])
     with pytest.raises(ValueError):
         update_curriculum_stage(0, [True], window_size=0)

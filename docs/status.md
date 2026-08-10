@@ -114,11 +114,54 @@ Level 2 (0.0512 of 0.0524 rad).
 
 ## Static validation
 
-Ruff passes. 50/50 non-Sim tests pass. Isaac smoke passed for the corrected
-evaluator and for a two-iteration checkpoint-resume training run through the
-`TerminalMetricsManagerBasedRLEnv` entry point. GPU physics smoke previously
-passed for Levels 0, 1, and 2. Sustained environment-only benchmarks passed at
-1024 state and 256 vision environments; full PPO memory differs.
+Ruff passes. 68/68 non-Sim tests pass. Sustained environment-only benchmarks
+passed at 1024 state and 256 camera environments; full PPO memory differs.
+
+`train.py --smoke` was run once per registered task after the 2026-08-10 prune,
+at 32 environments (8 for vision). Nine of eleven pass; the two failures are
+pre-existing and were confirmed to reproduce with identical numbers on the
+unmodified pre-prune tree:
+
+| Task | Level | Result |
+| --- | ---: | --- |
+| `Isaac-ZeroG-Blade-Insertion-v0` | — | pass |
+| `Isaac-ZeroG-Blade-Insertion-Robust-v0` | 2 | pass |
+| `Isaac-ZeroG-Blade-Insertion-Contact-v0` | 2 | **fail**, pre-existing |
+| `Isaac-ZeroG-Blade-Insertion-RigidGrasp-v0` | 2 | pass |
+| `Isaac-ZeroG-Blade-Insertion-ForceLimited-v0` | 2 | pass |
+| `Isaac-ZeroG-Blade-Insertion-StrictForceLimited-v0` | 2 | pass |
+| `Isaac-ZeroG-Blade-Insertion-ForceFeedback-v0` | 2 | pass |
+| `Isaac-ZeroG-Blade-Insertion-GuidedSlot-v0` | 2 | pass |
+| `Isaac-ZeroG-Blade-CaptureInSlot-v0` | 0 | **fail**, pre-existing |
+| `Isaac-ZeroG-Blade-GrapplePin-Capture-v0` | 0 | pass |
+| `Isaac-ZeroG-Blade-Insertion-Vision-v0` | 2 | pass |
+
+**The contact task's scripted pull test fails**, and it is the inverted finger
+command this page already records. The task commands pregrasp 0.80 rad and
+closed 0.68 rad, but the measured convention is that zero is fully *open* and
+the opening closes at 106.2 mm/rad, so 0.80 leaves a 2 mm gap and 0.68 leaves
+15 mm: the "closed" command opens the fingers by 13 mm. Pulling then moves the
+blade 13.7 mm the wrong way and opens a 24.3 mm grip error. The commands have
+deliberately not been corrected, because changing them changes the physics three
+promoted certifications were produced under.
+
+**The capture-in-slot task fails its own smoke contract**, on a config
+inconsistency rather than on physics: it declares `contact_grasp = True`, so the
+smoke looks for a live `Handle` collider, while its rigid-grasp parent sets
+`handle_collision_enabled = False`. The task never reaches a step, so its
+recorded 6 N holding result stands unchanged and unaffected.
+
+Both are recorded rather than fixed. Neither blocks the pose-uncertainty work,
+and fixing the first would silently move the ground under three published
+certifications.
+
+**One smoke defect was fixed.** The scripted axial feasibility probe is now
+scoped to the contact-grasp family it was written for. This page previously
+recorded it exhausting its 300-step budget with 23.5 mm of residual axial error
+on the rigid-grasp task while the learned policy inserts in 35 control steps. On
+a rigid grasp the blade is welded to the tool, so axial feasibility holds by
+construction and the probe tested nothing while failing; the rigid-grasp, force,
+and vision tasks now smoke cleanly.
 
 ## Capability envelope
 
@@ -670,31 +713,27 @@ Grasp, extract, and insert are therefore not trained. The order of work puts the
 pull gate before PPO precisely so that a policy is never trained against an
 interface that cannot hold the load.
 
-## Three skills: implemented, registered, not yet run
+## Three skills: built, measured, and deleted
 
-The three skills a replacement demonstration needs are now separate tasks with
-separate gates, in `grapple_pin_env_cfg.py` and `mdp/grapple.py`:
+Grasp, extract, and insert were implemented as three separately gated tasks on
+the head-on capture scene, trained, and **deleted on 2026-08-10** with the
+eight-phase swap task. Their measurements are kept below because they are what
+justified the deletion.
 
-| Task | Starts | Succeeds when |
-| --- | --- | --- |
-| `Isaac-ZeroG-Blade-GrapplePin-Grasp-v0` | Head-on, 10 to 50 mm of pose error | Drive torque loaded, tool on the grip point, held 0.3 s |
-| `Isaac-ZeroG-Blade-GrapplePin-Extract-v0` | Captured, blade in the slot | Blade centre at x 0.225, so its rear face clears the mouth |
-| `Isaac-ZeroG-Blade-GrapplePin-Insert-v0` | Captured, at the certified staging pose | The existing insertion success predicate, with a physical grip |
+| Task | Starts | Succeeded when | Measured |
+| --- | --- | --- | --- |
+| `GrapplePin-Grasp-v0` | Head-on, 10 to 50 mm of pose error | Drive torque loaded, tool on the grip point, held 0.3 s | 99.3% at stage 1, 35% at stage 2 — and the first number was hollow |
+| `GrapplePin-Extract-v0` | Captured, blade in the slot | Blade centre at x 0.225, so its rear face clears the mouth | 0/1024, blade travelled 71 mm of 494.5 mm |
+| `GrapplePin-Insert-v0` | Captured, at the certified staging pose | The insertion predicate, with a physical grip | 0/1024 at stages 1 and 2 |
 
-Three design points are deliberate. Only the grasp skill commands the gripper: a
-policy that cannot choose when to close is not learning to grasp. The
-observation carries finger angle *and* drive torque together, because the angle
-alone cannot distinguish fingers closed on a pin from fingers closed on nothing,
-which is exactly the failure this project did not see for three sessions.
-Extraction carries its own workspace predicate, because `insertion_failure`
-treats a blade below x 0.45 as an escape and that is where a successful
-extraction ends.
-
-All three pass `train.py --smoke`, and the pin's dimensional contract is
-defended by 12 CPU tests in `tests/test_grapple_geometry.py` that need no
-simulator. `scripts/run_grapple_skills.sh` runs the pipeline end to end: smoke,
-train, evaluate on three held-out seeds across three curriculum stages, and pool
-into one gated report.
+Three design points were deliberate and are worth carrying forward. Only the
+grasp skill commanded the gripper, because a policy that cannot choose when to
+close is not learning to grasp. The observation carried finger angle *and* drive
+torque together, because the angle alone cannot distinguish fingers closed on a
+pin from fingers closed on nothing, which is exactly the failure this project
+did not see for three sessions. And extraction carried its own workspace
+predicate, because `insertion_failure` treats a blade below x 0.45 as an escape
+and that is where a successful extraction ends.
 
 Getting those first runs to take a step surfaced four faults worth recording,
 because three of them would have silently degraded training rather than
@@ -704,27 +743,25 @@ crashing:
   of every episode the whole distance from the goal.
 - The approach reward scored the *live* blade, so a policy could be paid for the
   blade drifting toward the tool, which in zero gravity it can cause by shoving
-  it. It now scores against the pose the blade was placed at.
-- Both are suppressed for 0.30 s after a reset, because a reset writes joint
+  it. It was changed to score against the pose the blade was placed at.
+- Both were suppressed for 0.30 s after a reset, because a reset writes joint
   positions but leaves the previous episode's actuator targets in place, so the
   arm springs before it holds.
 - Extract and insert faked their starting grip by writing the fingers to their
   seated angle. That places the pads around the wedge without preloading the
-  collar, and a 40 mm pull then moved the blade 0.1 mm. They now run the real
-  two-stage capture inside a 1.0 s settling window.
+  collar, and a 40 mm pull then moved the blade 0.1 mm. They were changed to run
+  the real two-stage capture inside a 1.0 s settling window.
 
-Two known risks remain. The extract skill ends with the wrist about 200 mm in
-front of the robot's own base with the tool still pointing along +x, which is
-inside the UR10e's reach but folded and has never been checked kinematically; if
-extraction plateaus, suspect that first. And the insert skill starts at the
-certified staging pose rather than at the end of an extraction, because that is
-the arm pose that has been calibrated, so chaining the three into one
-demonstration needs one more calibration run.
+`TwoStageRobotiqAction` and `hold_two_stage_grip` survive the deletion, in
+`mdp/grapple.py`, because they implement the capture/hold split that the
+interface specification's 69 N result depends on.
 
 ## First training runs: two mis-specified tasks, found by reading past the headline
 
 Both first attempts produced a number that looked like a result and was not.
-Both are kept here, because they are the measurements that found the faults.
+Both are kept here, because they are the measurements that found the faults and
+because two of the three are exactly the pathologies established work already
+solves.
 
 ### Grasp v1: 99.3% that meant nothing
 
@@ -741,10 +778,13 @@ out in 588 of 1003 episodes. Those timeouts are worth reading precisely: the
 capture-failure predicate almost never fired, so the policy was not diverging or
 shoving the blade away. It was sitting still, not converging.
 
-Reset noise went from (0.010, 0.025, 0.050) to (0.030, 0.055, 0.085) rad so the
-tool starts outside the capture tolerance at every stage, and the skill was
-retrained from scratch. A certification on the first schedule would have been an
-expensive way to report that a reset works.
+**This is precisely the overfitting IndustReal's sampling-based curriculum
+exists to prevent**: an agent exploiting a partially-solved initial state. SBC
+exposes the whole initial-state range from the first step and raises only its
+easy bound as success improves, so a reset that solves the task can never become
+the whole training distribution. The curriculum in this repository does the
+opposite, ramping *into* the hard stages through mixtures. Adopting SBC is the
+first concrete change the pivot makes.
 
 ### Extract v1: 0% success with a grip that never let go
 
@@ -758,14 +798,39 @@ The training reward climbed monotonically from 3.3 to 26.0 and had not levelled
 off at epoch 700, which is the signature of a policy still learning when the
 budget ran out rather than one that has converged on failure. A 495 mm pull is
 three and a half times the certified insertion distance and needs about 124
-consecutive near-maximum steps before any reward for finishing arrives.
-
-Two changes followed: the axial action scale doubled to 240 mm/s, halving the
-number of steps to credit-assign across, and the epoch budget nearly tripled.
+consecutive near-maximum steps before any reward for finishing arrives. That is
+a credit-assignment horizon, not a physics result.
 
 **Neither of these was a reach failure.** The extract skill's end pose, with the
-wrist folded about 200 mm in front of the robot's own base, is still unverified
-kinematically, because no policy has yet pulled far enough to reach it.
+wrist folded about 200 mm in front of the robot's own base, was never verified
+kinematically, because no policy ever pulled far enough to reach it.
+
+## The pivot: the tasks contained no uncertainty
+
+Decided 2026-08-10. Every RL task in this repository trains against a task with
+**no uncertainty in it**. The policy observes `insertion_goal_error`, derived
+from `attached_blade_pose_world`, which is simulator ground truth: reset noise
+randomizes the initial condition and the policy is then told the exact resulting
+error. With a rigid known object on a constrained axis and full observability,
+that is a motion-planning and force-control problem, and a scripted controller
+would solve it. RL cannot demonstrate its value there, which is why three
+hand-rolled skills cost a night of GPU and certified nothing.
+
+The three skills, the eight-phase swap task, and their reward, termination, and
+curriculum classes were deleted. What was kept: the grapple pin geometry and
+`docs/service_interface_spec.md`, everything in `evidence/` including the
+negative results, the contact-force machinery in `mdp/insertion.py`, the
+evaluator and its promotion gate, the capture scene the interface spec was
+measured on, and the visual-randomization machinery — which was reachable only
+from the deleted swap task and is now repointed at the insertion scene as
+`Isaac-ZeroG-Blade-Insertion-Vision-v0`. No policy has been trained on that
+task; it is scaffolding, and it is labelled as such.
+
+The next result is one falsifiable plot: **success rate against pose-belief
+error, force-aware policy versus force-blind ablation**, which is the axis
+IndustReal and FORGE are evaluated on and for which this repository already owns
+both halves — a working `BladeContactWrenchObservation` and a certified
+force-feedback task lineage.
 
 ## Demonstration assets
 
@@ -808,10 +873,15 @@ Cumulative secured-grasp profiles:
   about 0.06 and 0.15 m. This is why the grasp gate fails. Insertion is
   unaffected because the fixed joint welds the blade to the tool frame, but no
   physical grasp can work until the grasp pose is corrected.
-- The head-on grapple pin holds 59 N against the 66.4 N gate. It is the first
-  interface in this project to form a real grip and to hold an order of
-  magnitude more than flat pads, but it is not certified and no skill has been
-  trained on it.
+- The head-on grapple pin holds 69 N against the 66.4 N requirement with the
+  capture/hold split, and 59 N against any single closure command. It is the
+  first interface in this project to form a real grip, but no policy has been
+  certified on it: the three skills that were trained on it are deleted, and P2
+  is where a policy goes back onto it.
+- A single-point pin does not constrain yaw once the rails release the blade,
+  measured at 0.93 rad of blade rotation in failing extractions. An anti-yaw
+  feature is the highest-value change available to the interface specification
+  and it has not been made.
 - The contact task's finger commands are still inverted. Measured pad separation
   falls monotonically with the command, so `finger_joint` 0 is fully open, and
   the task's "pregrasp 0.80 / closed 0.68" pair opens the fingers by 14 mm. The
@@ -829,9 +899,15 @@ Cumulative secured-grasp profiles:
   not been trained from the promoted insertion policy.
 - Only one PPO training seed produced each promoted policy. The certification
   seeds are held-out *evaluation* seeds; training repeatability is untested.
-- `train.py --smoke` runs a scripted axial feasibility probe tuned for the
-  contact task. On the rigid-grasp task it exhausts its 300-step budget with
-  23.5 mm residual axial error. Verified identical before and after the
-  evaluator change, so it is a probe defect, not a task defect: the learned
-  policy inserts in 35 control steps at stage 0. Normal training is unaffected
-  because it does not run this probe.
+- `train.py --smoke`'s scripted axial feasibility probe is now scoped to the
+  contact-grasp family it was written for, so the rigid-grasp, force, and vision
+  tasks smoke cleanly. Normal training never ran this probe.
+- The contact task and the capture-in-slot task both fail `train.py --smoke` for
+  pre-existing reasons recorded under *Static validation*: an inverted finger
+  command that must not be corrected without re-certifying, and a
+  `contact_grasp` flag inconsistent with its parent's disabled handle collider.
+- No policy has been trained on `Isaac-ZeroG-Blade-Insertion-Vision-v0`. It
+  exists so the camera and both Replicator randomizers stay reachable and
+  exercised after the swap task was deleted. Its camera pose is the one authored
+  for that deleted scene, and whether it frames the slot well enough to regress a
+  millimetre-scale pose error is unmeasured.

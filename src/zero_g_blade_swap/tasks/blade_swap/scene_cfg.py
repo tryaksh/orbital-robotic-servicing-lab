@@ -9,7 +9,6 @@ from isaaclab.sensors import TiledCameraCfg
 from isaaclab.utils import configclass
 
 from .assets import (
-    BLADE_CFG,
     CONTACT_INSERTION_BLADE_CFG,
     GRAPPLE_PIN_BLADE_CFG,
     INSERTION_BLADE_CFG,
@@ -26,61 +25,16 @@ from .assets import (
     ROBUST_INSERTION_SLOT_CFG,
     ROBUST_INSERTION_SLOT_LEFT_GUIDE_CFG,
     ROBUST_INSERTION_SLOT_RIGHT_GUIDE_CFG,
-    SERVICE_CADDY_CFG,
-    SERVICE_CADDY_LEFT_GUIDE_CFG,
-    SERVICE_CADDY_RIGHT_GUIDE_CFG,
-    SLOT_CFG,
     SLOT_ENTRY_LEFT_FLARE_CFG,
     SLOT_ENTRY_RIGHT_FLARE_CFG,
-    SLOT_LEFT_GUIDE_CFG,
-    SLOT_RIGHT_GUIDE_CFG,
     SLOT_UPPER_LEFT_LIP_CFG,
     SLOT_UPPER_RIGHT_LIP_CFG,
-    SPARE_BLADE_CFG,
-    SUPPLY_CADDY_CFG,
-    SUPPLY_CADDY_LEFT_GUIDE_CFG,
-    SUPPLY_CADDY_RIGHT_GUIDE_CFG,
     CompliantD6JointCfg,
     FixedGraspJointCfg,
     make_contact_insertion_robot_cfg,
     make_grapple_pin_robot_cfg,
     make_insertion_robot_cfg,
-    make_robot_cfg,
 )
-
-
-@configclass
-class ZeroGBladeSwapSceneCfg(InteractiveSceneCfg):
-    """Minimal physics scene shared by teacher, vision, and play variants.
-
-    Asset declaration order is intentional: both rigid bodies used by the D6
-    mount joint must exist before the joint spawner validates and connects them.
-    There is no ground plane and no dome light, so the renderer's background is
-    black and only the orbital sun illuminates the task.
-    """
-
-    mount_anchor = MOUNT_ANCHOR_CFG
-    robot = make_robot_cfg()
-    base_compliance = AssetBaseCfg(
-        prim_path="{ENV_REGEX_NS}/BaseCompliance",
-        spawn=CompliantD6JointCfg(),
-    )
-
-    blade = BLADE_CFG
-    spare_blade = SPARE_BLADE_CFG
-    blade_slot = SLOT_CFG
-    blade_slot_left_guide = SLOT_LEFT_GUIDE_CFG
-    blade_slot_right_guide = SLOT_RIGHT_GUIDE_CFG
-    supply_caddy = SUPPLY_CADDY_CFG
-    supply_caddy_left_guide = SUPPLY_CADDY_LEFT_GUIDE_CFG
-    supply_caddy_right_guide = SUPPLY_CADDY_RIGHT_GUIDE_CFG
-    service_caddy = SERVICE_CADDY_CFG
-    service_caddy_left_guide = SERVICE_CADDY_LEFT_GUIDE_CFG
-    service_caddy_right_guide = SERVICE_CADDY_RIGHT_GUIDE_CFG
-    rack = RACK_CFG
-
-    # Kept absent in the teacher scene to avoid allocating render products.
-    camera: TiledCameraCfg | None = None
 
 
 @configclass
@@ -205,7 +159,6 @@ def make_tiled_camera_cfg() -> TiledCameraCfg:
 
 
 __all__ = [
-    "ZeroGBladeSwapSceneCfg",
     "ZeroGInsertionSceneCfg",
     "ZeroGRobustInsertionSceneCfg",
     "ZeroGContactInsertionSceneCfg",

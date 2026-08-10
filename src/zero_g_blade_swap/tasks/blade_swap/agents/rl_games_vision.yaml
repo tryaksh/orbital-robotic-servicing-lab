@@ -26,7 +26,7 @@ params:
   load_checkpoint: false
   load_path: ""
   config:
-    name: zero_g_blade_swap_vision
+    name: zero_g_blade_insertion_vision
     env_name: rlgpu
     device: cuda:0
     device_name: cuda:0

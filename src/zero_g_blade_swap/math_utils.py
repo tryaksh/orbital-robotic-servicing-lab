@@ -11,7 +11,6 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 GRIPPER_COUPLING = np.asarray((1.0, 1.0, -1.0, 1.0, -1.0, -1.0), dtype=np.float32)
-NUM_SWAP_PHASES = 8
 INSERTION_CURRICULUM_MIXTURES = (
     (1.00, 0.00, 0.00),
     (0.25, 0.75, 0.00),
@@ -116,30 +115,6 @@ def exponential_moving_average(previous: ArrayLike, sample: ArrayLike, alpha: fl
     return history + alpha * (latest - history)
 
 
-def full_swap_success(
-    faulty_position_error: ArrayLike,
-    faulty_angle_error: ArrayLike,
-    spare_lateral_error: ArrayLike,
-    spare_angle_error: ArrayLike,
-    spare_speed: ArrayLike,
-    gripper_open: ArrayLike,
-    retreat_distance: ArrayLike,
-    stable_time: ArrayLike,
-) -> NDArray[np.bool_]:
-    """Evaluate the project's documented full-swap terminal thresholds."""
-
-    return (
-        (np.asarray(faulty_position_error) < 0.03)
-        & (np.asarray(faulty_angle_error) < np.deg2rad(8.0))
-        & (np.asarray(spare_lateral_error) < 0.0025)
-        & (np.asarray(spare_angle_error) < np.deg2rad(3.0))
-        & (np.asarray(spare_speed) < 0.02)
-        & np.asarray(gripper_open, dtype=bool)
-        & (np.asarray(retreat_distance) > 0.12)
-        & (np.asarray(stable_time) >= 0.5)
-    )
-
-
 def gaussian_camera_noise(
     image: ArrayLike,
     sigma: float = 0.025,
@@ -153,50 +128,6 @@ def gaussian_camera_noise(
     rng = np.random.default_rng(seed)
     noisy = source + rng.normal(0.0, sigma, size=source.shape).astype(np.float32)
     return np.clip(noisy, 0.0, 1.0)
-
-
-def advance_swap_phase(
-    phase: ArrayLike,
-    *,
-    failed_reached: ArrayLike = False,
-    gripper_closed: ArrayLike = False,
-    failed_extracted: ArrayLike = False,
-    failed_stowed: ArrayLike = False,
-    spare_near: ArrayLike = False,
-    spare_extracted: ArrayLike = False,
-    spare_aligned: ArrayLike = False,
-    spare_inserted: ArrayLike = False,
-) -> NDArray[np.int64]:
-    """Pure NumPy reference for the runtime's ordered eight-phase state machine."""
-
-    result = np.asarray(phase, dtype=np.int64).copy()
-    if np.any((result < 0) | (result >= NUM_SWAP_PHASES)):
-        raise ValueError(f"phase must be in [0, {NUM_SWAP_PHASES - 1}]")
-
-    shape = result.shape
-
-    def condition(value: ArrayLike) -> NDArray[np.bool_]:
-        return np.broadcast_to(np.asarray(value, dtype=bool), shape)
-
-    reached = condition(failed_reached)
-    closed = condition(gripper_closed)
-    extracted = condition(failed_extracted)
-    at_service_caddy = condition(failed_stowed)
-    near_spare = condition(spare_near)
-    spare_clear = condition(spare_extracted)
-    aligned = condition(spare_aligned)
-    inserted = condition(spare_inserted)
-
-    # Keep this order identical to ``mdp.commands.update_swap_phase``. Sequential
-    # evaluation intentionally permits a phase to advance again when the next
-    # phase's completion predicate is already true in the same control step.
-    result = np.where((result == 0) & reached, 1, result)
-    result = np.where((result == 1) & reached & closed, 2, result)
-    result = np.where((result == 2) & extracted, 3, result)
-    result = np.where((result == 3) & at_service_caddy & ~closed, 4, result)
-    result = np.where((result == 4) & near_spare & closed & spare_clear, 5, result)
-    result = np.where((result == 5) & aligned, 6, result)
-    return np.where((result == 6) & inserted, 7, result).astype(np.int64, copy=False)
 
 
 def update_curriculum_stage(

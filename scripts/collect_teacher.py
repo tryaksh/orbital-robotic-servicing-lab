@@ -1,4 +1,10 @@
-"""Collect synchronized RGB/proprio/phase demonstrations from a teacher policy."""
+"""Collect synchronized RGB/proprio/pose demonstrations from a state teacher.
+
+Repointed on 2026-08-10 from the deleted eight-phase swap task onto the vision
+insertion task. The per-sample label changed with it: the old dataset stored a
+one-hot task phase, and this one stores the *true blade-to-goal error*, which is
+what a P3 pose-regression head has to learn to predict from the image.
+"""
 
 # ruff: noqa: E402, I001 -- Isaac modules must be imported after AppLauncher.
 
@@ -15,8 +21,12 @@ assert hasattr(jinja2, "Environment"), "The Jinja2 installation is incomplete."
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--task", default="Isaac-ZeroG-BladeSwap-Play-v0")
-    parser.add_argument("--teacher_task", default="Isaac-ZeroG-BladeSwap-Teacher-v0")
+    parser.add_argument("--task", default="Isaac-ZeroG-Blade-Insertion-Vision-Play-v0")
+    parser.add_argument(
+        "--teacher_task",
+        default="Isaac-ZeroG-Blade-Insertion-ForceFeedback-v0",
+        help="Task whose PPO configuration the state teacher checkpoint was trained under.",
+    )
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=Path("datasets/teacher_250k.h5"))
     parser.add_argument("--samples", type=int, default=250_000)
@@ -26,7 +36,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--teacher_group", default="policy")
     parser.add_argument("--proprio_group", default="proprio")
     parser.add_argument("--rgb_group", default="rgb")
-    parser.add_argument("--phase_group", default="phase")
+    parser.add_argument("--pose_group", default="blade_pose")
     AppLauncher.add_app_launcher_args(parser)
     return parser
 
@@ -59,13 +69,13 @@ from zero_g_blade_swap.tasks.blade_swap.agents import register_rl_games_networks
 
 
 def _require_groups(observations: dict[str, torch.Tensor]) -> None:
-    required = {args.teacher_group, args.proprio_group, args.rgb_group}
+    required = {args.teacher_group, args.proprio_group, args.rgb_group, args.pose_group}
     missing = sorted(required.difference(observations))
     if missing:
         raise KeyError(
-            f"The {args.task} observation config is missing {missing}. Demonstration collection requires the play "
-            f"environment to expose teacher state, proprioception, and RGB concurrently; available groups: "
-            f"{sorted(observations)}"
+            f"The {args.task} observation config is missing {missing}. Demonstration collection requires the "
+            f"environment to expose the teacher's state, proprioception, RGB, and the ground-truth blade pose "
+            f"concurrently; available groups: {sorted(observations)}"
         )
 
 
@@ -113,20 +123,6 @@ def _raw_observations(env) -> dict[str, torch.Tensor]:
     if not isinstance(observations, dict):
         raise TypeError("ManagerBasedRLEnv observation manager did not return a group dictionary")
     return observations
-
-
-def _phase_observation(env, observations: dict[str, torch.Tensor]) -> torch.Tensor:
-    """Use an explicit phase group when provided, otherwise query task state.
-
-    The deployable proprio group already includes phase.  Keeping a dedicated
-    dataset field makes demonstrations easy to inspect without changing the
-    RL-Games actor contract.
-    """
-    if args.phase_group in observations:
-        return observations[args.phase_group]
-    from zero_g_blade_swap.tasks.blade_swap import mdp
-
-    return mdp.task_phase_one_hot(env.unwrapped, command_name="blade_goal")
 
 
 def main() -> None:
@@ -179,7 +175,7 @@ def main() -> None:
             args.output.resolve(),
             args.compression,
             {
-                "format": "zero-g-blade-swap-demonstrations-v1",
+                "format": "zero-g-blade-insertion-demonstrations-v2",
                 "created_utc": datetime.now(UTC).isoformat(),
                 "task": args.task,
                 "teacher_task": args.teacher_task,
@@ -203,7 +199,7 @@ def main() -> None:
                 {
                     "rgb": rgb,
                     "proprio": raw_obs[args.proprio_group][:take].detach().cpu().numpy().astype(np.float32),
-                    "phase": _phase_observation(raw_env, raw_obs)[:take].detach().cpu().numpy().astype(np.float32),
+                    "blade_pose": raw_obs[args.pose_group][:take].detach().cpu().numpy().astype(np.float32),
                     "teacher_action": actions[:take].detach().cpu().numpy().astype(np.float32),
                 }
             )

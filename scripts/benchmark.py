@@ -16,14 +16,22 @@ from isaaclab.app import AppLauncher
 
 
 DEFAULT_CANDIDATES = {
-    "teacher": (1024, 768, 512, 256),
+    "state": (1024, 768, 512, 256),
     "vision": (256, 128, 64),
+}
+
+# The state profile benchmarks the force-feedback insertion task because that is
+# the lineage every current and planned run sits on, and its contact sensor
+# forbids Fabric cloning, which is exactly the cost worth measuring.
+PROFILE_TASKS = {
+    "state": "Isaac-ZeroG-Blade-Insertion-ForceFeedback-v0",
+    "vision": "Isaac-ZeroG-Blade-Insertion-Vision-v0",
 }
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--profile", choices=("teacher", "vision", "all"), default="all")
+    parser.add_argument("--profile", choices=("state", "vision", "all"), default="all")
     parser.add_argument("--candidates", type=int, nargs="+", default=None)
     parser.add_argument("--warmup", type=int, default=200)
     parser.add_argument("--steps", type=int, default=500)
@@ -60,7 +68,7 @@ if args.quick:
 def _run_parent() -> int:
     if args.profile == "all" and args.candidates:
         parser.error("--candidates is profile-specific; run teacher and vision separately to override it")
-    profiles = ("teacher", "vision") if args.profile == "all" else (args.profile,)
+    profiles = ("state", "vision") if args.profile == "all" else (args.profile,)
     profile_results: dict[str, list[dict]] = {}
     with tempfile.TemporaryDirectory(prefix="blade_swap_benchmark_") as temp_dir:
         for profile in profiles:
@@ -165,7 +173,7 @@ def _gpu_memory_mib() -> int | None:
 
 
 def _run_child() -> int:
-    task = f"Isaac-ZeroG-BladeSwap-{'Teacher' if args.profile == 'teacher' else 'Vision'}-v0"
+    task = PROFILE_TASKS[args.profile]
     env = None
     result = {"profile": args.profile, "num_envs": args.num_envs, "ok": False}
     try:

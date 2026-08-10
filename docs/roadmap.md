@@ -1,6 +1,40 @@
 # Roadmap and research basis
 
-## Recommended next work, in order
+## The current line of work, decided 2026-08-10
+
+Items 1 to 13 below are the pre-pivot roadmap and are kept for provenance. The
+active plan is different, because every task in that list trains against a
+problem containing no uncertainty: the policy is told its exact pose error. The
+staging now is
+
+- **P0, done.** Delete the three grapple-pin skills and the eight-phase swap
+  task; repoint the visual randomizers at the insertion scene. See
+  `docs/status.md`.
+- **P1, active.** One task on the certified force-feedback lineage where the
+  actor sees `true_error + episode_bias + per_step_noise` instead of ground
+  truth, with the critic keeping ground truth. Train a force-aware policy and a
+  force-blind ablation from scratch on an identical schedule, then sweep the bias
+  and publish success rate against pose-belief error for both.
+- **P2.** Repeat P1's best configuration with the blade held by the physical
+  grapple pin instead of the fixed joint, which connects the interface
+  specification to the learning result.
+- **P3.** Replace the injected belief with a pose regressed from the 64x64 tiled
+  camera under randomized orbital lighting and rack materials. Do not start
+  before P1 certifies.
+- **P4.** Package: README leading with the curve, demo clips from a trained
+  checkpoint only, evidence index.
+
+Two established formulations are adopted rather than reinvented. IndustReal
+(RSS 2023) transfers contact-rich assembly at 83-99% over 600 real trials on a
+UR10e, the same arm as here; its sampling-based curriculum samples the whole
+initial-state range from the first step and raises only the easy bound as
+success improves, which is the direct fix for the Grasp-v1 pathology recorded in
+`docs/status.md`. FORGE (arXiv 2408.04587) targets force-aware manipulation under
+pose uncertainty, conditioning the policy on a per-episode maximum allowable
+force and charging a hinge penalty above it, and injects the fixed part's pose
+error as a per-episode constant, which is exactly the belief model P1 needs.
+
+## Pre-pivot roadmap, kept for provenance
 
 1. ~~**Make evaluation release-grade.**~~ Done 2026-08-08. `TerminalMetricsMixin`
    in `src/zero_g_blade_swap/evaluation.py` intercepts `_reset_idx`;

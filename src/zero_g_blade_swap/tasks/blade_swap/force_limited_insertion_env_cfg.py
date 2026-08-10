@@ -222,6 +222,7 @@ __all__ = [
     "STRICT_CONTACT_FORCE_LIMIT_N",
     "ForceFeedbackObservationsCfg",
     "ForceFeedbackPolicyObsCfg",
+    "ForceLimitedInsertionSceneCfg",
     "ZeroGBladeForceFeedbackInsertionEnvCfg",
     "ZeroGBladeForceFeedbackInsertionPlayEnvCfg",
     "ZeroGBladeStrictForceLimitedInsertionEnvCfg",

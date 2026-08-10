@@ -179,15 +179,12 @@ for _guided_id, _guided_cls in (
         },
     )
 
+# Only the capture scene survives of the head-on grapple-pin work. The three
+# skills trained on it (grasp, extract, insert) were deleted on 2026-08-10; this
+# is the scene scripts/grasp_diagnostics.py measures the interface against.
 for _grapple_id, _grapple_cls in (
     ("Isaac-ZeroG-Blade-GrapplePin-Capture-v0", "ZeroGBladeGrapplePinCaptureEnvCfg"),
     ("Isaac-ZeroG-Blade-GrapplePin-Capture-Play-v0", "ZeroGBladeGrapplePinCapturePlayEnvCfg"),
-    ("Isaac-ZeroG-Blade-GrapplePin-Grasp-v0", "ZeroGBladeGrapplePinGraspEnvCfg"),
-    ("Isaac-ZeroG-Blade-GrapplePin-Grasp-Play-v0", "ZeroGBladeGrapplePinGraspPlayEnvCfg"),
-    ("Isaac-ZeroG-Blade-GrapplePin-Extract-v0", "ZeroGBladeGrapplePinExtractEnvCfg"),
-    ("Isaac-ZeroG-Blade-GrapplePin-Extract-Play-v0", "ZeroGBladeGrapplePinExtractPlayEnvCfg"),
-    ("Isaac-ZeroG-Blade-GrapplePin-Insert-v0", "ZeroGBladeGrapplePinInsertEnvCfg"),
-    ("Isaac-ZeroG-Blade-GrapplePin-Insert-Play-v0", "ZeroGBladeGrapplePinInsertPlayEnvCfg"),
 ):
     gym.register(
         id=_grapple_id,
@@ -199,35 +196,22 @@ for _grapple_id, _grapple_cls in (
         },
     )
 
-gym.register(
-    id="Isaac-ZeroG-BladeSwap-Teacher-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": f"{__name__}.env_cfg:ZeroGBladeSwapTeacherEnvCfg",
-        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_teacher.yaml",
-    },
-)
-
-gym.register(
-    id="Isaac-ZeroG-BladeSwap-Vision-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": f"{__name__}.env_cfg:ZeroGBladeSwapVisionEnvCfg",
-        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_vision.yaml",
-    },
-)
-
-gym.register(
-    id="Isaac-ZeroG-BladeSwap-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": f"{__name__}.env_cfg:ZeroGBladeSwapPlayEnvCfg",
-        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_teacher.yaml",
-    },
-)
+# The camera and the visual randomizers were reachable only from the deleted
+# eight-phase swap task. They are repointed here, at the insertion scene. No
+# policy has been trained on this task; it is P3's scaffold.
+for _vision_id, _vision_cls in (
+    ("Isaac-ZeroG-Blade-Insertion-Vision-v0", "ZeroGBladeVisionInsertionEnvCfg"),
+    ("Isaac-ZeroG-Blade-Insertion-Vision-Play-v0", "ZeroGBladeVisionInsertionPlayEnvCfg"),
+):
+    gym.register(
+        id=_vision_id,
+        entry_point=INSERTION_ENTRY_POINT,
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{__name__}.vision_insertion_env_cfg:{_vision_cls}",
+            "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_vision.yaml",
+        },
+    )
 
 
 __all__ = []

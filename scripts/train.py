@@ -19,6 +19,7 @@ ROBUST_FAMILY_TASKS = (
     "Insertion-ForceLimited",
     "Insertion-StrictForceLimited",
     "Insertion-ForceFeedback",
+    "Insertion-Vision",
     "Insertion-GuidedSlot",
     "Blade-CaptureInSlot",
     "Blade-GrapplePin",
@@ -110,8 +111,14 @@ def _validate_robust_smoke_contract(env, robustness_level: int) -> None:
         )
     if tuple(float(value) for value in task.cfg.sim.gravity) != (0.0, 0.0, 0.0):
         raise RuntimeError(f"Phase-2 gravity is not zero: {task.cfg.sim.gravity}")
-    if task.scene.sensors:
-        raise RuntimeError(f"State-only Phase 2 unexpectedly created sensors: {tuple(task.scene.sensors)}")
+    # The force profiles legitimately carry a blade contact sensor and the
+    # vision profile a tiled camera. Anything else is an accident, and a render
+    # product on a state-only profile is the expensive kind.
+    unexpected_sensors = tuple(name for name in task.scene.sensors if name not in ("blade_contact", "camera"))
+    if unexpected_sensors:
+        raise RuntimeError(f"Task unexpectedly created sensors: {unexpected_sensors}")
+    if getattr(task.cfg.scene, "camera", None) is not None and "Vision" not in args.task:
+        raise RuntimeError("A state-only profile allocated a tiled camera")
     if getattr(task.cfg, "contact_grasp", False):
         if task.cfg.events.secured_blade_constraint is not None:
             raise RuntimeError("Contact insertion unexpectedly enabled the secured-blade fixture")
@@ -346,15 +353,17 @@ def main() -> None:
             # termination terms by name, so it is meaningless on a task whose
             # objective is capture or extraction, and those tasks do not define
             # the terms it asks for.
-            insertion_probe_applies = getattr(env_cfg, "contact_grasp", False) or getattr(
-                env_cfg, "rigid_grasp", False
-            )
+            #
+            # It is scoped to the contact-grasp family, which is what it was
+            # written and tuned for. docs/status.md recorded it exhausting its
+            # 300-step budget with 23.5 mm of residual axial error on the
+            # rigid-grasp task while the learned policy inserts in 35 control
+            # steps, so running it there reported a probe defect as a task
+            # failure. On a rigid grasp the blade is welded to the tool anyway,
+            # so axial feasibility is true by construction and the probe tests
+            # nothing. A head-on capture task defines neither term it reads.
+            insertion_probe_applies = getattr(env_cfg, "contact_grasp", False)
             insertion_probe_applies &= getattr(env_cfg.terminations, "insertion_success", None) is not None
-            # It also reads the insertion task's failure term and its stashed
-            # failure metrics by name, and it is already recorded in
-            # docs/status.md as tuned for the contact task and defective on the
-            # rigid-grasp one. A head-on capture task defines neither, so this
-            # is skipped rather than half-run.
             insertion_probe_applies &= not head_on
             if insertion_probe_applies:
                 env.reset()
