@@ -40,7 +40,7 @@ from .actions import (
     RobotiqBinaryActionCfg,
     robotiq_2f85_coupled_targets,
 )
-from .insertion import attached_blade_pose_world, attached_blade_velocity
+from .insertion import attached_blade_pose_world, attached_blade_velocity, insertion_error_metrics
 from .observations import end_effector_pose_world
 
 # A grasp counts as formed only when the drive torque rises off its noise floor,
@@ -245,7 +245,7 @@ def reset_grapple_progress(env, env_ids: torch.Tensor | None) -> None:
     """Clear every per-episode counter this module keeps on the environment."""
 
     ids = torch.arange(env.num_envs, device=env.device) if env_ids is None else env_ids
-    for name in ("_grapple_capture_hold", "_grapple_extract_hold"):
+    for name in ("_grapple_capture_hold", "_grapple_extract_hold", "_grapple_insert_hold"):
         value = getattr(env, name, None)
         if value is not None and value.shape[0] == env.num_envs:
             value[ids] = 0
@@ -361,6 +361,55 @@ def capture_failure(
 
 def capture_failure_reward(env) -> torch.Tensor:
     return env.termination_manager.get_term("capture_failed").to(torch.float32) / float(env.step_dt)
+
+
+def grapple_insertion_conditions(
+    env,
+    command_name: str = "insertion_goal",
+    grip_position_tolerance: float = 0.020,
+    grip_orientation_tolerance: float = 0.20,
+) -> dict[str, torch.Tensor]:
+    """Insertion success, with the grip judged in the head-on convention.
+
+    The shared ``insertion_success_conditions`` measures grasp orientation with
+    ``gripper_handle_orientation_error``, which is written against the top-down
+    ``GRIPPER_GRASP_ROT``. A head-on capture sits a quarter turn away from that,
+    so the check reports about 2.1 rad of grasp error against a 0.15 rad limit
+    and can never pass, whatever the policy does.
+
+    That is not hypothetical. The first insert policy drove the blade to 0.1 mm
+    of the goal with the grip holding at 8.3 mm and still timed out in 1024 of
+    1024 episodes, because this one condition could not be satisfied. The
+    geometric thresholds below are the promoted task's, unchanged.
+    """
+
+    axial, lateral, orientation = insertion_error_metrics(env, command_name)
+    grip_position, grip_orientation = grapple_grip_error_metrics(env)
+    velocity = attached_blade_velocity(env)
+    return {
+        "axial_depth": axial <= 0.012,
+        "lateral_alignment": lateral <= 0.0025,
+        "orientation": orientation <= 0.0523599,
+        "linear_velocity": torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= 0.030,
+        "angular_velocity": torch.linalg.vector_norm(velocity[:, 3:], dim=-1) <= 0.080,
+        "grip_position": grip_position <= grip_position_tolerance,
+        "grip_orientation": grip_orientation <= grip_orientation_tolerance,
+    }
+
+
+def grapple_insertion_success_mask(env, command_name: str = "insertion_goal", hold_time_s: float = 0.20) -> torch.Tensor:
+    """Terminate once a correctly inserted blade has been held, grip intact."""
+
+    conditions = grapple_insertion_conditions(env, command_name)
+    geometric = torch.stack(tuple(conditions.values()), dim=-1).all(dim=-1)
+    held = _hold_counter(env, "_grapple_insert_hold", geometric, hold_time_s)
+    conditions["hold_duration"] = held
+    env._insertion_latest_success_conditions = conditions
+    return held
+
+
+def grapple_insertion_success_reward(env, command_name: str = "insertion_goal") -> torch.Tensor:
+    return grapple_insertion_success_mask(env, command_name).to(torch.float32) / float(env.step_dt)
 
 
 def blade_centre_x(env) -> torch.Tensor:
@@ -537,6 +586,9 @@ __all__ = [
     "grapple_grip_error_metrics",
     "grapple_grip_error_observation",
     "grapple_grip_pose_error",
+    "grapple_insertion_conditions",
+    "grapple_insertion_success_mask",
+    "grapple_insertion_success_reward",
     "grip_drive_torque",
     "grip_retention_penalty",
     "gripper_state_observation",

@@ -540,7 +540,7 @@ class ZeroGBladeGrapplePinExtractEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
 @configclass
 class InsertRewardsCfg:
     progress = RewTerm(func=mdp.insertion_progress_reward, weight=12.0)
-    success = RewTerm(func=mdp.insertion_success_reward, weight=30.0)
+    success = RewTerm(func=mdp.grapple_insertion_success_reward, weight=30.0)
     retention = RewTerm(func=mdp.grip_retention_penalty, weight=-0.50)
     time = RewTerm(func=mdp.elapsed_time_penalty, weight=-0.10)
     misalignment = RewTerm(func=mdp.insertion_misalignment_penalty, weight=-0.03)
@@ -552,7 +552,11 @@ class InsertRewardsCfg:
 @configclass
 class InsertTerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
-    insertion_success = DoneTerm(func=mdp.insertion_success_mask)
+    # Not the shared insertion predicate: its grasp check is written against the
+    # top-down convention and reads a head-on capture as 2.1 rad of grasp error,
+    # so it can never fire here. The first insert policy drove the blade to
+    # 0.1 mm of the goal and still timed out in 1024 of 1024 episodes.
+    insertion_success = DoneTerm(func=mdp.grapple_insertion_success_mask)
     # Reuses extraction's predicate on purpose: it is the one that asks whether
     # a *physical* grip is still there, rather than measuring a fixed joint
     # against the frame that fixed joint defines.
