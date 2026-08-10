@@ -158,6 +158,7 @@ ROBUST_FAMILY_TASKS = (
     "Insertion-ForceFeedback",
     "Insertion-GuidedSlot",
     "Blade-CaptureInSlot",
+    "Blade-GrapplePin",
 )
 
 # Task labels that share the rigid-grasp PPO configuration and checkpoint tree.
