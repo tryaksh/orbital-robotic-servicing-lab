@@ -22,6 +22,7 @@ from zero_g_blade_swap.evaluation import (
     TerminalEpisodeRecorder,
 )
 
+from .grapple import grapple_grip_error_metrics
 from .insertion import (
     attached_blade_velocity,
     insertion_error_metrics,
@@ -80,7 +81,17 @@ class InsertionTerminalMetrics:
     def __call__(self, env, env_ids) -> int:
         axial, lateral, orientation = insertion_error_metrics(env)
         velocity = attached_blade_velocity(env)
-        grasp_position, grasp_orientation = secured_blade_error_metrics(env)
+        # A head-on capture is held a quarter turn from the top-down grasp
+        # convention secured_blade_error_metrics is written against, so on
+        # those tasks that function reports a constant ~2.15 rad and the
+        # recorded column says nothing about whether the grip is intact.
+        # Measure the grip in the convention the task actually holds it in.
+        grip_metrics = (
+            grapple_grip_error_metrics
+            if getattr(env.cfg, "tool_target_rot", None) is not None
+            else secured_blade_error_metrics
+        )
+        grasp_position, grasp_orientation = grip_metrics(env)
         reason = self.termination_reason_ids(env)
         stage = getattr(env, "_insertion_curriculum_stage", None)
         stage_values = (
