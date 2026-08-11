@@ -24,7 +24,7 @@ mkdir -p "$OUT" evidence
 CKPT_ROOT="logs/rl_games/zero_g_blade_insertion_contact"
 GRASP_CKPT="$CKPT_ROOT/grapple_grasp_l0_seed70_v3/nn/last_zero_g_blade_insertion_contact_ep_700_rew__36.020187_.pth"
 EXTRACT_CKPT="$CKPT_ROOT/grapple_extract_l0_seed70_v4/nn/last_zero_g_blade_insertion_contact_ep_1200_rew__162.91257_.pth"
-INSERT_CKPT="$CKPT_ROOT/grapple_insert_l0_seed70_v5/nn/last_zero_g_blade_insertion_contact_ep_2400_rew__-0.54621196_.pth"
+INSERT_CKPT="${INSERT_CKPT:-$CKPT_ROOT/grapple_insert_l0_seed70_v6/nn/last_zero_g_blade_insertion_contact_ep_3200_rew__24.907995_.pth}"
 
 skills=("$@")
 if [ ${#skills[@]} -eq 0 ]; then
@@ -39,7 +39,7 @@ for skill in "${skills[@]}"; do
     # for the chain, so its poses_by_stage carries one entry. Asking for stage 1
     # or 2 would clamp back onto the same pose and file three copies of one
     # measurement under three stage labels.
-    Insert)  checkpoint="$INSERT_CKPT";  version=v5; stages=(0) ;;
+    Insert)  checkpoint="$INSERT_CKPT";  version="${INSERT_VERSION:-v6}"; stages=(0) ;;
     *) echo "unknown skill $skill"; exit 1 ;;
   esac
   if [ ! -f "$checkpoint" ]; then

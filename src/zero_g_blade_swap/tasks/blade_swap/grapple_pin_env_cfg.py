@@ -608,9 +608,22 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
     rewards: InsertRewardsCfg = InsertRewardsCfg()
     terminations: InsertTerminationsCfg = InsertTerminationsCfg()
     curriculum: SingleStageCurriculumCfg = SingleStageCurriculumCfg()
-    # 167 mm at the 45 mm/s axial scale is 3.7 s of pure travel, so 12 s leaves
-    # room to search but not to dawdle.
-    episode_length_s: float = 12.0
+    # 167 mm at the 45 mm/s axial scale is 3.7 s of pure travel, and 12 s looked
+    # like room to search without room to dawdle. Certification says otherwise:
+    # successful insertions complete at a median of 11.70 s and a maximum of
+    # 12.00 s, so every success was finishing on the buzzer, and 52% of failures
+    # were still outside the 12 mm axial tolerance when the clock stopped. 20 s
+    # is about 1.7x the measured time a success actually takes.
+    #
+    # This is deliberately not the whole fix. The larger half of the failures is
+    # the interface rather than the clock: 93% of them are outside the
+    # grip-orientation tolerance at the step they end on, which is the pin's free
+    # yaw and which no episode length improves. See docs/status.md.
+    #
+    # The chained workflow reads this field for its own insert-phase budget, so
+    # the skill and the chain cannot disagree about how long an insertion is
+    # allowed to take.
+    episode_length_s: float = 20.0
 
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)

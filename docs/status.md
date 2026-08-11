@@ -1169,21 +1169,56 @@ part it misses is the larger one:
 | All five at once | 2.59% |
 
 **Ninety-three per cent of failures are out of tolerance on grip orientation at
-the moment they end**, and that is not a quantity a longer episode improves. The
-214 successes make the point from the other side: their grip attitude has a
-median of 0.1902 rad, a 95th percentile of 0.1934, and a maximum of 0.1945,
-against a limit of 0.20. Every single successful insertion is pressed up against
-that limit.
+the moment they end.** The 214 successes make the point from the other side:
+their grip attitude has a median of 0.1902 rad, a 95th percentile of 0.1934, and
+a maximum of 0.1945, against a limit of 0.20. Every single successful insertion
+is pressed up against that limit, and the blade itself is straight — its
+orientation error against the goal is 0.0043 rad, satisfied in 100% of episodes —
+so the 0.27 rad is the wrist rotating relative to a module the rails hold still.
 
-Half the failures do also miss axial depth, so the clock is real and lengthening
-the episode is still worth doing. But the binding constraint on this skill is the
-same one the interface specification records as its known limitation, and it is
-now measured on the skill rather than only on a return leg: **a single-point pin
-does not constrain rotation about the closing axis.** The blade itself is
-straight — its orientation error against the goal is 0.0043 rad, satisfied in
-100% of episodes — so the 0.27 rad is the wrist rotating relative to a module the
-rails are holding still. That is the pin's free yaw, and nothing in the reward,
-the clock, or the policy can remove it.
+**The reading taken from that table was that a longer episode could not fix a
+condition which was not converging. That was wrong, and lengthening the episode
+proved it wrong.** See the next section: at 20 s the same skill scores 95.57%.
+Grip orientation *was* converging; it was converging slowly, and the 12 s episode
+was cutting it off. A distribution of terminal states says which condition is
+unsatisfied when the clock stops. It does not say whether that condition was
+still moving, and reading the first as the second is the mistake this paragraph
+records.
+
+The pin's free yaw is real and is measured elsewhere on this page. It is not what
+was capping the insert skill.
+
+## Insert v6: the clock was the whole of it
+
+`episode_length_s` 12 → 20 s, fine-tuned 800 PPO epochs from the v5 checkpoint at
+512 environments, seed 70, one change and nothing else. Certified on the same
+three held-out seeds:
+
+| Insert | Episode | Episodes | Success | Gate |
+| --- | ---: | ---: | ---: | --- |
+| v5 | 12 s | 3,074 | 6.96% | fails |
+| **v6** | **20 s** | **3,000** | **95.57%** | **passes** |
+
+Report: `evidence/grapple_insert_v6_certification.json`, checkpoint SHA-256
+`7E9A0C33…`. Terminations: 2,867 insertion successes, 90 timeouts, 43 lost grips.
+**This is the first head-on grapple-pin skill to pass its promotion gate.**
+
+The reason 12 s was not enough is now plain: successful insertions take a median
+of **13.43 s** and a 95th percentile of 16.83 s, so the previous episode ended
+before the median success had happened. The old table showing every success
+landing at 11.7 s of a 12 s budget was not describing a fast skill with a little
+headroom, it was describing a distribution with its right tail cut off.
+
+The residual 133 failures still look the way v5's did — 81% of them outside the
+grip-orientation tolerance, 68% short on axial depth — but there are 22 times
+fewer of them. Whether the remainder is the pin's yaw or simply more of the same
+slow convergence is the question the anti-yaw yoke is built to answer.
+
+Two things this does **not** change. The insert task is single-stage and starts
+from the certified staging pose, so this is not a claim about insertion from an
+arbitrary approach. And the reconciled chain budget follows this field
+automatically, so the workflow now grants its insert phase 20 s because the skill
+is certified on 20 s, not because 20 s was convenient.
 
 ## Two chained servicing workflows, and the three defects chaining exposed
 
@@ -1236,10 +1271,18 @@ so the chain is gated exactly the way a skill is. Three held-out seeds
 | Workflow | Success | Wilson 95% | Report |
 | --- | ---: | ---: | --- |
 | Removal | **0 / 576, 0.00%** | [0.00%, 0.66%] | `evidence/workflow_remove_certification.json` |
-| Installation | **87 / 576, 15.10%** | [12.41%, 18.26%] | `evidence/workflow_install_certification.json` |
+| Installation, insert v5 | 87 / 576, 15.10% | [12.41%, 18.26%] | `evidence/workflow_install_certification.json` |
+| **Installation, insert v6** | **497 / 576, 86.28%** | **[83.23%, 88.85%]** | `evidence/workflow_install_v6insert_certification.json` |
 
-Neither passes the gate. Both videos below are therefore **demonstrations of
-capability, not evidence of reliability**, and every document now says so.
+Neither passes the 95% gate, but installation is now within nine points of it,
+and the whole of that improvement came from giving the insert skill the clock its
+own motion needs. Its remaining failures are 47 insert overruns and **29 capture
+overruns** — the capture skill's own 95.55% is now a visible contributor to the
+chain rather than being masked by a larger failure downstream. Removal is
+untouched by any of this: it is blocked on extraction, which is blocked on yaw.
+
+Both videos below are therefore **demonstrations of capability, not evidence of
+reliability**, and every document now says so.
 
 Three things had to be settled before those numbers meant anything.
 
