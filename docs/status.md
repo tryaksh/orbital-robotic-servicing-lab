@@ -832,11 +832,12 @@ IndustReal and FORGE are evaluated on and for which this repository already owns
 both halves — a working `BladeContactWrenchObservation` and a certified
 force-feedback task lineage.
 
-## Insertion under a wrong pose belief: built and verified, not yet measured
+## Insertion under a wrong pose belief: the ablation refutes the hypothesis
 
-The task the pivot exists for. Training is running at the time of writing and no
-success number is claimed here; what follows is the mechanism and the two faults
-found while building it, both of which would have produced a meaningless result.
+The task the pivot exists for, and its result is negative: **force feedback did
+not extend the pose error this policy tolerates, and beyond the trained range it
+made it worse.** The mechanism, the geometry it forced, the faults found while
+building it, and the measured curve are all below.
 
 **The first construction was fake, and measuring it is what showed that.** The
 obvious way to inject pose uncertainty is to add a bias to the reported goal
@@ -914,6 +915,87 @@ one schedule. The force-aware actor sees 58 values and the force-blind one 51,
 differing by exactly the seven contact values, against an identical 71-value
 critic. `tests/test_belief_curriculum.py` asserts that difference by parsing the
 configuration, so the two cannot silently drift apart.
+
+### The result: force sensing did not buy robustness to pose error
+
+Both arms trained to convergence, 1800 PPO epochs each at 512 environments,
+robustness level 2, seed 80, one shared configuration. Evaluated on three
+held-out seeds (1080/2080/3080) at seven displacements, 33,500 episodes in total.
+
+| Slot displacement | Force-aware | Force-blind |
+| ---: | ---: | ---: |
+| 0 mm | 100.00% | 99.94% |
+| 1 mm | 100.00% | 99.83% |
+| 2 mm | 100.00% | 99.83% |
+| **4 mm** (trained ceiling) | **99.87%** | **99.77%** |
+| 6 mm | 96.94% | 99.56% |
+| 8 mm | 87.50% | 94.90% |
+| 10 mm | 74.07% | 82.31% |
+
+Reports: `evidence/uncertain_insertion_aware_certification.json`,
+`evidence/uncertain_insertion_blind_certification.json`, and the two
+`*_envelope.json` files, which carry `evidence_type:
+simulation_capability_envelope` because they sweep past the trained ceiling.
+
+**The prediction was that the force-aware policy would hold out further. It does
+not. Beyond the trained range it is consistently and substantially worse**, by
+2.6 points at 6 mm, 7.4 at 8 mm, and 8.2 at 10 mm, in the same direction on every
+one of the three evaluation seeds. Both arms certify at the trained 4 mm
+displacement, where they are indistinguishable, so the gate passes for both and
+the interesting part of this result is entirely outside it.
+
+Contact load explains the direction, and it is the second surprise:
+
+| Displacement | Aware peak p95 | Blind peak p95 | Aware impulse p95 | Blind impulse p95 |
+| ---: | ---: | ---: | ---: | ---: |
+| 0 mm | 25.41 N | 12.02 N | 5.25 N·s | 4.90 N·s |
+| 4 mm | 27.65 N | 13.72 N | 5.72 N·s | 5.15 N·s |
+| 8 mm | 47.47 N | 20.43 N | 79.65 N·s | 7.41 N·s |
+| 10 mm | 44.98 N | 30.93 N | 82.58 N·s | 80.72 N·s |
+
+**The policy that can feel contact pushes about twice as hard at every
+displacement**, and its failures are force-limit aborts and timeouts while it
+grinds. Median cycle time is 7.07 s for both at every point, so this is not speed
+traded for anything.
+
+### Why, and what it says about the next experiment
+
+Two mechanisms fit, and they compound.
+
+**The lead-in already solves the alignment.** The guided channel's entry flares
+catch a blade arriving up to 16.6 mm per side off centre and walk it in, which is
+recorded on this page as the reason they were built. The displacement being
+injected is 4 mm. One swallows the other, so neither policy has to work out which
+way to correct: the ramp corrects for it. Putting those two numbers next to each
+other before launching would have predicted a flat curve, and that is the
+methodological miss in this experiment.
+
+**Force in the observation cannot become compliance in a position-controlled
+action space.** The arm commands relative Cartesian pose through
+damped-least-squares differential IK. A policy that reads a contact force has no
+action that yields to it; the one thing it can do with a force reading, given a
+per-episode force budget it is conditioned on, is decide how hard to push. It
+learned to spend the budget. Spending it is counterproductive here, because
+harder pushing into a passive ramp raises contact and trips the abort without
+helping the blade slide across.
+
+That is exactly what the two 2026 papers say, and it is the half of them this
+experiment deliberately did not adopt. arXiv 2604.19677 selects per axis between
+position and force control; arXiv 2602.14174 commands a force *direction* and
+lets a fixed magnitude supply compliance. Both make force actionable. This task
+made force observable and left the action space stiff, and the measured answer is
+that observability alone is worth nothing here and is mildly harmful.
+
+**So the deferred change is the load-bearing one.** Roadmap item 7, an admittance
+or impedance action space, moves from "the remaining lever on peak contact force"
+to the precondition for force sensing to pay at all.
+
+**Limitations of this comparison, stated plainly.** One training seed per arm.
+The three evaluation seeds vary initial conditions only, so the 6-to-10 mm gap is
+consistent across evaluation but training repeatability is untested and could
+account for part of it. The comparison is otherwise tight: identical
+configuration, schedule, seed, reward, and terminations, with one observation
+term removed, and a CPU test asserts that.
 
 **Verification before any GPU was spent.** Fourteen simulator checks: the rails
 and flares move with the goal to within 0.6 micrometres, the blade starts clear
@@ -999,6 +1081,12 @@ Cumulative secured-grasp profiles:
   pre-existing reasons recorded under *Static validation*: an inverted finger
   command that must not be corrected without re-certifying, and a
   `contact_grasp` flag inconsistent with its parent's disabled handle collider.
+- Force sensing did not buy robustness to pose error on this task. Beyond the
+  trained 4 mm displacement the force-aware policy is worse than its force-blind
+  control by up to 8.2 points, and it uses about twice the peak contact force at
+  every displacement. The diagnosis is that the lead-in flares already handle a
+  4 mm offset mechanically, and that a position-controlled action space gives a
+  policy no way to convert a force reading into compliance. See the section above.
 - The pose-belief task's channel is 210 mm long against the certified 600 mm, and
   carries one reset distance instead of three. Both are consequences of moving the
   mouth ahead of the blade's start and are stated in its own section above; its

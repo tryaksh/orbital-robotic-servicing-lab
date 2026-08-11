@@ -1,0 +1,743 @@
+{
+  "title": "Success against pose-belief error, force-aware",
+  "generated_utc": "2026-08-11T01:38:14+00:00",
+  "evidence_type": "simulation_capability_envelope",
+  "out_of_distribution": true,
+  "policy": {
+    "algorithm": "PPO (RL-Games), deterministic evaluation",
+    "checkpoint_sha256": "73CF60141128D807F1A24B255DB06B70A246F23C407423C4E53F7BA507776ABC",
+    "checkpoint": "last_zero_g_blade_insertion_uncertain_ep_1800_rew__91.9397_.pth",
+    "grasp_model": "physx_fixed_joint_already_secured_abstraction"
+  },
+  "protocol": {
+    "tasks": [
+      "Isaac-ZeroG-Blade-Insertion-Uncertain-Play-v0"
+    ],
+    "robustness_levels": [
+      2
+    ],
+    "held_out_evaluation_seeds": [
+      1080,
+      2080,
+      3080
+    ],
+    "curriculum_stages": [
+      "near_stage_0"
+    ],
+    "runs": 21,
+    "gravity": "zero",
+    "policy_rate_hz": 30,
+    "physics_rate_hz": 120,
+    "metric_capture": "per-episode terminal state recorded before Isaac Lab's automatic reset",
+    "environments_per_run": [
+      128
+    ],
+    "belief_bias_mm": [
+      0.0,
+      1.0,
+      2.0,
+      4.0,
+      6.0,
+      8.0,
+      10.0
+    ],
+    "trained_belief_bias_ceiling_mm": [
+      4.0
+    ],
+    "contact_force_limit_n": [
+      60.0
+    ],
+    "success_definition": "zero_g_blade_swap.tasks.blade_swap.mdp.insertion:insertion_success_conditions via contact_insertion_success_mask"
+  },
+  "overall": {
+    "episodes": 13829,
+    "successes": 13078,
+    "success_rate": 0.945694,
+    "success_rate_wilson_95": {
+      "low": 0.941792,
+      "high": 0.949349
+    },
+    "termination_reasons": {
+      "insertion_success": 13078,
+      "time_out": 698,
+      "excessive_contact_force": 53
+    },
+    "instability_terminations": 0,
+    "safety_abort_terminations": 53,
+    "non_finite_metric_episodes": 0,
+    "terminal_metrics": {
+      "axial_error_m": {
+        "count": 13829,
+        "non_finite": 0,
+        "mean": 0.014409,
+        "p50": 0.007428,
+        "p95": 0.136664,
+        "max": 0.137172,
+        "min": 0.002331
+      },
+      "lateral_error_m": {
+        "count": 13829,
+        "non_finite": 0,
+        "mean": 0.001801,
+        "p50": 5.8e-05,
+        "p95": 0.020555,
+        "max": 0.037047,
+        "min": 0.0
+      },
+      "orientation_error_rad": {
+        "count": 13829,
+        "non_finite": 0,
+        "mean": 0.014367,
+        "p50": 0.005077,
+        "p95": 0.1095,
+        "max": 0.20026,
+        "min": 0.004439
+      },
+      "blade_linear_velocity_mps": {
+        "count": 13829,
+        "non_finite": 0,
+        "mean": 0.023927,
+        "p50": 0.024953,
+        "p95": 0.026957,
+        "max": 0.029968,
+        "min": 0.001187
+      },
+      "blade_angular_velocity_radps": {
+        "count": 13829,
+        "non_finite": 0,
+        "mean": 0.029633,
+        "p50": 0.031181,
+        "p95": 0.0459,
+        "max": 0.075078,
+        "min": 0.001125
+      },
+      "tool_to_handle_error_m": {
+        "count": 13829,
+        "non_finite": 0,
+        "mean": 2e-06,
+        "p50": 2e-06,
+        "p95": 6e-06,
+        "max": 5.5e-05,
+        "min": 0.0
+      },
+      "tool_to_handle_orientation_rad": {
+        "count": 13829,
+        "non_finite": 0,
+        "mean": 6e-06,
+        "p50": 4e-06,
+        "p95": 1.9e-05,
+        "max": 6.2e-05,
+        "min": 1e-06
+      },
+      "control_steps": {
+        "count": 13829,
+        "non_finite": 0,
+        "mean": 219.880324,
+        "p50": 212.0,
+        "p95": 360.0,
+        "max": 360.0,
+        "min": 54.0
+      },
+      "cycle_time_s": {
+        "count": 13829,
+        "non_finite": 0,
+        "mean": 7.329345,
+        "p50": 7.066667,
+        "p95": 12.000001,
+        "max": 12.000001,
+        "min": 1.8
+      },
+      "peak_contact_force_n": {
+        "count": 13829,
+        "non_finite": 0,
+        "mean": 10.508681,
+        "p50": 6.650023,
+        "p95": 33.624509,
+        "max": 75.366875,
+        "min": 2.646648
+      },
+      "contact_impulse_ns": {
+        "count": 13829,
+        "non_finite": 0,
+        "mean": 8.336207,
+        "p50": 4.497476,
+        "p95": 66.95118,
+        "max": 92.761757,
+        "min": 2.129542
+      }
+    },
+    "successful_episode_metrics": {
+      "axial_error_m": {
+        "count": 13078,
+        "non_finite": 0,
+        "mean": 0.007398,
+        "p50": 0.007404,
+        "p95": 0.007783,
+        "max": 0.00793,
+        "min": 0.002331
+      },
+      "lateral_error_m": {
+        "count": 13078,
+        "non_finite": 0,
+        "mean": 6.2e-05,
+        "p50": 5.5e-05,
+        "p95": 0.000132,
+        "max": 0.000314,
+        "min": 0.0
+      },
+      "orientation_error_rad": {
+        "count": 13078,
+        "non_finite": 0,
+        "mean": 0.00508,
+        "p50": 0.00506,
+        "p95": 0.005435,
+        "max": 0.005769,
+        "min": 0.004439
+      },
+      "blade_linear_velocity_mps": {
+        "count": 13078,
+        "non_finite": 0,
+        "mean": 0.025061,
+        "p50": 0.025041,
+        "p95": 0.027001,
+        "max": 0.029968,
+        "min": 0.020973
+      },
+      "blade_angular_velocity_radps": {
+        "count": 13078,
+        "non_finite": 0,
+        "mean": 0.030076,
+        "p50": 0.032036,
+        "p95": 0.046049,
+        "max": 0.075078,
+        "min": 0.001125
+      },
+      "tool_to_handle_error_m": {
+        "count": 13078,
+        "non_finite": 0,
+        "mean": 2e-06,
+        "p50": 1e-06,
+        "p95": 5e-06,
+        "max": 1.3e-05,
+        "min": 0.0
+      },
+      "tool_to_handle_orientation_rad": {
+        "count": 13078,
+        "non_finite": 0,
+        "mean": 6e-06,
+        "p50": 4e-06,
+        "p95": 1.8e-05,
+        "max": 6.2e-05,
+        "min": 1e-06
+      },
+      "control_steps": {
+        "count": 13078,
+        "non_finite": 0,
+        "mean": 213.051766,
+        "p50": 212.0,
+        "p95": 220.0,
+        "max": 316.0,
+        "min": 206.0
+      },
+      "cycle_time_s": {
+        "count": 13078,
+        "non_finite": 0,
+        "mean": 7.101726,
+        "p50": 7.066667,
+        "p95": 7.333333,
+        "max": 10.533334,
+        "min": 6.866667
+      },
+      "peak_contact_force_n": {
+        "count": 13078,
+        "non_finite": 0,
+        "mean": 9.650304,
+        "p50": 6.399747,
+        "p95": 29.924295,
+        "max": 75.366875,
+        "min": 2.646648
+      },
+      "contact_impulse_ns": {
+        "count": 13078,
+        "non_finite": 0,
+        "mean": 4.682816,
+        "p50": 4.456902,
+        "p95": 6.454707,
+        "max": 23.704565,
+        "min": 2.75723
+      }
+    }
+  },
+  "by_stress_setting": {
+    "belief_bias_00.00mm_pose_noise_x01.00": {
+      "episodes": 1807,
+      "successes": 1807,
+      "success_rate": 1.0,
+      "success_rate_wilson_95": {
+        "low": 0.997879,
+        "high": 1.0
+      }
+    },
+    "belief_bias_01.00mm_pose_noise_x01.00": {
+      "episodes": 1811,
+      "successes": 1811,
+      "success_rate": 1.0,
+      "success_rate_wilson_95": {
+        "low": 0.997883,
+        "high": 1.0
+      }
+    },
+    "belief_bias_02.00mm_pose_noise_x01.00": {
+      "episodes": 1806,
+      "successes": 1806,
+      "success_rate": 1.0,
+      "success_rate_wilson_95": {
+        "low": 0.997877,
+        "high": 1.0
+      }
+    },
+    "belief_bias_04.00mm_pose_noise_x01.00": {
+      "episodes": 3004,
+      "successes": 3000,
+      "success_rate": 0.998668,
+      "success_rate_wilson_95": {
+        "low": 0.996581,
+        "high": 0.999482
+      }
+    },
+    "belief_bias_06.00mm_pose_noise_x01.00": {
+      "episodes": 1800,
+      "successes": 1745,
+      "success_rate": 0.969444,
+      "success_rate_wilson_95": {
+        "low": 0.96044,
+        "high": 0.97645
+      }
+    },
+    "belief_bias_08.00mm_pose_noise_x01.00": {
+      "episodes": 1800,
+      "successes": 1575,
+      "success_rate": 0.875,
+      "success_rate_wilson_95": {
+        "low": 0.858919,
+        "high": 0.889484
+      }
+    },
+    "belief_bias_10.00mm_pose_noise_x01.00": {
+      "episodes": 1801,
+      "successes": 1334,
+      "success_rate": 0.7407,
+      "success_rate_wilson_95": {
+        "low": 0.719962,
+        "high": 0.760412
+      }
+    }
+  },
+  "by_blade_mass_bucket": {
+    "range": [
+      5.0,
+      15.0
+    ],
+    "episodes_without_value": 0,
+    "low": {
+      "episodes": 4480,
+      "successes": 4194,
+      "success_rate": 0.936161,
+      "success_rate_wilson_95": {
+        "low": 0.928622,
+        "high": 0.942952
+      }
+    },
+    "mid": {
+      "episodes": 3956,
+      "successes": 3762,
+      "success_rate": 0.950961,
+      "success_rate_wilson_95": {
+        "low": 0.943783,
+        "high": 0.957263
+      }
+    },
+    "high": {
+      "episodes": 5393,
+      "successes": 5122,
+      "success_rate": 0.94975,
+      "success_rate_wilson_95": {
+        "low": 0.943592,
+        "high": 0.955267
+      }
+    },
+    "minimum_observed_success_rate": 0.936161,
+    "observed_value_range": [
+      5.030427,
+      14.995436
+    ]
+  },
+  "by_curriculum_stage": {
+    "near_stage_0": {
+      "episodes": 13829,
+      "successes": 13078,
+      "success_rate": 0.945694,
+      "success_rate_wilson_95": {
+        "low": 0.941792,
+        "high": 0.949349
+      },
+      "termination_reasons": {
+        "insertion_success": 13078,
+        "time_out": 698,
+        "excessive_contact_force": 53
+      },
+      "instability_terminations": 0,
+      "terminal_metrics": {
+        "axial_error_m": {
+          "count": 13829,
+          "non_finite": 0,
+          "mean": 0.014409,
+          "p50": 0.007428,
+          "p95": 0.136664,
+          "max": 0.137172,
+          "min": 0.002331
+        },
+        "lateral_error_m": {
+          "count": 13829,
+          "non_finite": 0,
+          "mean": 0.001801,
+          "p50": 5.8e-05,
+          "p95": 0.020555,
+          "max": 0.037047,
+          "min": 0.0
+        },
+        "orientation_error_rad": {
+          "count": 13829,
+          "non_finite": 0,
+          "mean": 0.014367,
+          "p50": 0.005077,
+          "p95": 0.1095,
+          "max": 0.20026,
+          "min": 0.004439
+        },
+        "blade_linear_velocity_mps": {
+          "count": 13829,
+          "non_finite": 0,
+          "mean": 0.023927,
+          "p50": 0.024953,
+          "p95": 0.026957,
+          "max": 0.029968,
+          "min": 0.001187
+        },
+        "blade_angular_velocity_radps": {
+          "count": 13829,
+          "non_finite": 0,
+          "mean": 0.029633,
+          "p50": 0.031181,
+          "p95": 0.0459,
+          "max": 0.075078,
+          "min": 0.001125
+        },
+        "cycle_time_s": {
+          "count": 13829,
+          "non_finite": 0,
+          "mean": 7.329345,
+          "p50": 7.066667,
+          "p95": 12.000001,
+          "max": 12.000001,
+          "min": 1.8
+        },
+        "peak_contact_force_n": {
+          "count": 13829,
+          "non_finite": 0,
+          "mean": 10.508681,
+          "p50": 6.650023,
+          "p95": 33.624509,
+          "max": 75.366875,
+          "min": 2.646648
+        }
+      }
+    }
+  },
+  "by_evaluation_seed": {
+    "1080": {
+      "episodes": 4614,
+      "successes": 4367,
+      "success_rate": 0.946467,
+      "success_rate_wilson_95": {
+        "low": 0.939593,
+        "high": 0.952599
+      }
+    },
+    "2080": {
+      "episodes": 4609,
+      "successes": 4367,
+      "success_rate": 0.947494,
+      "success_rate_wilson_95": {
+        "low": 0.940674,
+        "high": 0.953569
+      }
+    },
+    "3080": {
+      "episodes": 4606,
+      "successes": 4344,
+      "success_rate": 0.943118,
+      "success_rate_wilson_95": {
+        "low": 0.936052,
+        "high": 0.949445
+      }
+    }
+  },
+  "by_stage_and_seed": [
+    {
+      "stage": "near_stage_0",
+      "seed": 1080,
+      "episodes": 604,
+      "successes": 604,
+      "success_rate": 1.0,
+      "success_rate_wilson_95": {
+        "low": 0.99368,
+        "high": 1.0
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 1080,
+      "episodes": 604,
+      "successes": 604,
+      "success_rate": 1.0,
+      "success_rate_wilson_95": {
+        "low": 0.99368,
+        "high": 1.0
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 1080,
+      "episodes": 605,
+      "successes": 605,
+      "success_rate": 1.0,
+      "success_rate_wilson_95": {
+        "low": 0.993691,
+        "high": 1.0
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 1080,
+      "episodes": 1001,
+      "successes": 999,
+      "success_rate": 0.998002,
+      "success_rate_wilson_95": {
+        "low": 0.992744,
+        "high": 0.999452
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 1080,
+      "episodes": 600,
+      "successes": 585,
+      "success_rate": 0.975,
+      "success_rate_wilson_95": {
+        "low": 0.959164,
+        "high": 0.984792
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 1080,
+      "episodes": 600,
+      "successes": 527,
+      "success_rate": 0.878333,
+      "success_rate_wilson_95": {
+        "low": 0.849742,
+        "high": 0.902111
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 1080,
+      "episodes": 600,
+      "successes": 443,
+      "success_rate": 0.738333,
+      "success_rate_wilson_95": {
+        "low": 0.701726,
+        "high": 0.771908
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 2080,
+      "episodes": 603,
+      "successes": 603,
+      "success_rate": 1.0,
+      "success_rate_wilson_95": {
+        "low": 0.99367,
+        "high": 1.0
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 2080,
+      "episodes": 604,
+      "successes": 604,
+      "success_rate": 1.0,
+      "success_rate_wilson_95": {
+        "low": 0.99368,
+        "high": 1.0
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 2080,
+      "episodes": 601,
+      "successes": 601,
+      "success_rate": 1.0,
+      "success_rate_wilson_95": {
+        "low": 0.993649,
+        "high": 1.0
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 2080,
+      "episodes": 1000,
+      "successes": 1000,
+      "success_rate": 1.0,
+      "success_rate_wilson_95": {
+        "low": 0.996173,
+        "high": 1.0
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 2080,
+      "episodes": 600,
+      "successes": 580,
+      "success_rate": 0.966667,
+      "success_rate_wilson_95": {
+        "low": 0.949076,
+        "high": 0.97832
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 2080,
+      "episodes": 600,
+      "successes": 527,
+      "success_rate": 0.878333,
+      "success_rate_wilson_95": {
+        "low": 0.849742,
+        "high": 0.902111
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 2080,
+      "episodes": 601,
+      "successes": 452,
+      "success_rate": 0.75208,
+      "success_rate_wilson_95": {
+        "low": 0.716029,
+        "high": 0.784929
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 3080,
+      "episodes": 600,
+      "successes": 600,
+      "success_rate": 1.0,
+      "success_rate_wilson_95": {
+        "low": 0.993638,
+        "high": 1.0
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 3080,
+      "episodes": 603,
+      "successes": 603,
+      "success_rate": 1.0,
+      "success_rate_wilson_95": {
+        "low": 0.99367,
+        "high": 1.0
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 3080,
+      "episodes": 600,
+      "successes": 600,
+      "success_rate": 1.0,
+      "success_rate_wilson_95": {
+        "low": 0.993638,
+        "high": 1.0
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 3080,
+      "episodes": 1003,
+      "successes": 1001,
+      "success_rate": 0.998006,
+      "success_rate_wilson_95": {
+        "low": 0.992759,
+        "high": 0.999453
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 3080,
+      "episodes": 600,
+      "successes": 580,
+      "success_rate": 0.966667,
+      "success_rate_wilson_95": {
+        "low": 0.949076,
+        "high": 0.97832
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 3080,
+      "episodes": 600,
+      "successes": 521,
+      "success_rate": 0.868333,
+      "success_rate_wilson_95": {
+        "low": 0.838919,
+        "high": 0.893061
+      }
+    },
+    {
+      "stage": "near_stage_0",
+      "seed": 3080,
+      "episodes": 600,
+      "successes": 439,
+      "success_rate": 0.731667,
+      "success_rate_wilson_95": {
+        "low": 0.694821,
+        "high": 0.765565
+      }
+    }
+  ],
+  "gate": {
+    "minimum_stage_success_rate": 0.95,
+    "worst_stage_success_rate": 0.945694,
+    "pooled_success_rate": 0.945694,
+    "every_stage_meets_minimum": false,
+    "pooled_meets_minimum": false,
+    "zero_instability_terminations": true,
+    "zero_non_finite_metric_episodes": true,
+    "blade_mass_range_kg": [
+      5.0,
+      15.0
+    ],
+    "minimum_mass_bucket_success_rate": 0.8,
+    "worst_mass_bucket_success_rate": 0.936161,
+    "every_mass_bucket_meets_minimum": true,
+    "passed": false,
+    "applies": false,
+    "note": "capability envelope sweep; the gate certifies in-distribution runs only"
+  },
+  "scope_and_limitations": [
+    "MEASUREMENT, not certification. Belief error is swept past the 4 mm ceiling either policy trained on.",
+    "One reset distance, the full-distance approach; the moved channel leaves no room for the nearer stages.",
+    "Simulation only. One PPO training seed."
+  ]
+}

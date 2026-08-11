@@ -10,7 +10,13 @@ staging now is
 - **P0, done.** Delete the three grapple-pin skills and the eight-phase swap
   task; repoint the visual randomizers at the insertion scene. See
   `docs/status.md`.
-- **P1, built and training.** `Isaac-ZeroG-Blade-Insertion-Uncertain-v0` and its
+- **P1, measured 2026-08-10, hypothesis refuted.** Force sensing did not extend
+  the tolerable pose error and is worse beyond the trained range. The diagnosis
+  promotes item 7 below from an optimisation to a precondition: force has to be
+  *actionable*, not merely observable. The immediate cheap probe is to re-evaluate
+  both existing checkpoints with the lead-in flares disabled, which costs no
+  training and settles whether the ramp was doing the alignment.
+- **P1 build, for reference.** `Isaac-ZeroG-Blade-Insertion-Uncertain-v0` and its
   force-blind ablation. The slot physically moves by an amount the actor is never
   told, rather than a bias being added to a reported error, because on this
   workcell an injected bias is recoverable from the observed tool pose. The
@@ -61,8 +67,12 @@ error as a per-episode constant, which is exactly the belief model P1 needs.
    median; peak contact force did not move. Sensing was the binding constraint
    on sustained rubbing, and peak force really is geometrically irreducible in
    this action space. See `docs/status.md`.
-7. **Try an admittance or impedance action space.** This is the untested half of
-   the item above and the only remaining lever on *peak* contact force, which
+7. **Try an admittance or impedance action space. Now the main open question.**
+   The pose-belief ablation measured that force in the observation buys nothing
+   under a stiff position-controlled arm, because no action yields to it; both
+   2026 papers make force actionable instead (hybrid position/force selection in
+   arXiv 2604.19677, commanded force direction in arXiv 2602.14174). This is also
+   the only remaining lever on *peak* contact force, which
    force feedback left unchanged at about 10.5 N mean and 31 N p95 at full
    reset distance. Replace position-based differential IK with a controller
    whose commanded motion yields to measured force, and retrain; the action
