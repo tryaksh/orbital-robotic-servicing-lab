@@ -511,14 +511,24 @@ def main() -> dict[str, object]:
             )
         terminal_metrics = InsertionTerminalMetrics(task_env)
         task_env.enable_terminal_metrics(terminal_metrics)
-        # Resolve the success term from the task rather than assuming it, so a
-        # profile that renames its predicate is not silently scored as 0%.
+        # Each skill ends on its own named success term. Resolve it from the task
+        # rather than assuming, so a grasp run is not scored against an insertion
+        # predicate it never defines, and fail loudly if none is present rather
+        # than silently reporting 0%.
         active_terms = env.unwrapped.termination_manager.active_terms
-        if "insertion_success" not in active_terms:
+        success_term_name = next(
+            (
+                name
+                for name in ("insertion_success", "extraction_success", "capture_success")
+                if name in active_terms
+            ),
+            None,
+        )
+        if success_term_name is None:
             raise RuntimeError(
-                f"{args.task} declares no 'insertion_success' termination; active terms are {sorted(active_terms)}"
+                f"{args.task} declares no known success termination; active terms are {sorted(active_terms)}"
             )
-        success_term_name = "insertion_success"
+        print(f"[INFO] Success term: {success_term_name}")
         if args.video:
             video_dir = args.video_dir or (checkpoint.parent.parent / "videos" / "play")
             print(f"[INFO] Recording to {video_dir}")

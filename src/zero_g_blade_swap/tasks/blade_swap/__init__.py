@@ -187,6 +187,16 @@ for _uncertain_id, _uncertain_cls in (
     ("Isaac-ZeroG-Blade-Insertion-Uncertain-Play-v0", "ZeroGBladeUncertainInsertionPlayEnvCfg"),
     ("Isaac-ZeroG-Blade-Insertion-UncertainBlind-v0", "ZeroGBladeUncertainInsertionBlindEnvCfg"),
     ("Isaac-ZeroG-Blade-Insertion-UncertainBlind-Play-v0", "ZeroGBladeUncertainInsertionBlindPlayEnvCfg"),
+    # Evaluation-only: the same policies with the lead-in flares removed, which
+    # tests whether the ramp rather than the sensing was doing the alignment.
+    (
+        "Isaac-ZeroG-Blade-Insertion-UncertainNoLeadIn-Play-v0",
+        "ZeroGBladeUncertainInsertionNoLeadInPlayEnvCfg",
+    ),
+    (
+        "Isaac-ZeroG-Blade-Insertion-UncertainBlindNoLeadIn-Play-v0",
+        "ZeroGBladeUncertainInsertionBlindNoLeadInPlayEnvCfg",
+    ),
 ):
     gym.register(
         id=_uncertain_id,
@@ -198,12 +208,23 @@ for _uncertain_id, _uncertain_cls in (
         },
     )
 
-# Only the capture scene survives of the head-on grapple-pin work. The three
-# skills trained on it (grasp, extract, insert) were deleted on 2026-08-10; this
-# is the scene scripts/grasp_diagnostics.py measures the interface against.
+# The head-on grapple-pin work: the capture scene the interface specification was
+# measured against, and the three skills a replacement demonstration needs.
+#
+# The skills were deleted on 2026-08-10 and restored on 2026-08-11. Deleting them
+# was defensible on the evidence at the time — all three had failed — but it also
+# removed the only path to a chained replacement demonstration, and each had
+# failed for a cause that was identified and corrected in the same session and
+# then never retested. They are back to be retested.
 for _grapple_id, _grapple_cls in (
     ("Isaac-ZeroG-Blade-GrapplePin-Capture-v0", "ZeroGBladeGrapplePinCaptureEnvCfg"),
     ("Isaac-ZeroG-Blade-GrapplePin-Capture-Play-v0", "ZeroGBladeGrapplePinCapturePlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-Grasp-v0", "ZeroGBladeGrapplePinGraspEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-Grasp-Play-v0", "ZeroGBladeGrapplePinGraspPlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-Extract-v0", "ZeroGBladeGrapplePinExtractEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-Extract-Play-v0", "ZeroGBladeGrapplePinExtractPlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-Insert-v0", "ZeroGBladeGrapplePinInsertEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-Insert-Play-v0", "ZeroGBladeGrapplePinInsertPlayEnvCfg"),
 ):
     gym.register(
         id=_grapple_id,

@@ -452,6 +452,40 @@ class ZeroGBladeUncertainInsertionBlindPlayEnvCfg(ZeroGBladeUncertainInsertionBl
         configure_insertion_play_presentation(self)
 
 
+@configclass
+class ZeroGBladeUncertainInsertionNoLeadInPlayEnvCfg(ZeroGBladeUncertainInsertionPlayEnvCfg):
+    """The same policy, evaluated with the lead-in taken away.
+
+    The Stage-1 ablation returned a flat curve, and the leading explanation is
+    that the flares were doing the alignment: they catch a blade arriving up to
+    16.6 mm per side off centre, and the displacement being injected is 4 mm, so
+    the ramp corrects for a policy that never worked out which way to correct.
+
+    This profile removes exactly that and changes nothing else, so the difference
+    it makes is attributable to the lead-in alone. **Both policies trained with
+    the flares present**, so this is an out-of-distribution measurement for both
+    of them equally, not a certification, and it cannot by itself separate "the
+    ramp did the work during training" from "the ramp matters at test time". What
+    it can do, for the price of an evaluation rather than a retrain, is say
+    whether the alignment was mechanical.
+    """
+
+    def configure_robustness(self, level: int) -> None:
+        super().configure_robustness(level)
+        for name in FLARE_ASSET_NAMES:
+            getattr(self.scene, name).spawn.collision_props.collision_enabled = False
+
+
+@configclass
+class ZeroGBladeUncertainInsertionBlindNoLeadInPlayEnvCfg(ZeroGBladeUncertainInsertionBlindPlayEnvCfg):
+    """The matched control for :class:`ZeroGBladeUncertainInsertionNoLeadInPlayEnvCfg`."""
+
+    def configure_robustness(self, level: int) -> None:
+        super().configure_robustness(level)
+        for name in FLARE_ASSET_NAMES:
+            getattr(self.scene, name).spawn.collision_props.collision_enabled = False
+
+
 __all__ = [
     "BELIEF_BIAS_CEILING_M",
     "BELIEF_BIAS_DECREASE_M",
@@ -475,7 +509,9 @@ __all__ = [
     "UncertainSlotSceneCfg",
     "UncertainInsertionRewardsCfg",
     "ZeroGBladeUncertainInsertionBlindEnvCfg",
+    "ZeroGBladeUncertainInsertionBlindNoLeadInPlayEnvCfg",
     "ZeroGBladeUncertainInsertionBlindPlayEnvCfg",
+    "ZeroGBladeUncertainInsertionNoLeadInPlayEnvCfg",
     "ZeroGBladeUncertainInsertionEnvCfg",
     "ZeroGBladeUncertainInsertionPlayEnvCfg",
 ]
