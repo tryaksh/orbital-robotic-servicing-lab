@@ -591,9 +591,19 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)
         self.events = ExtractEventsCfg()
-        self.events.reset_arm.params["noise_by_stage"] = (
-            (0.0005, 0.001, 0.002) if level == 0 else (0.001, 0.002, 0.004)
-        )
+        # Wide enough that a policy handed over from a capture is still inside
+        # the distribution it trained on.
+        #
+        # This was (0.0005, 0.001, 0.002) rad, which is three hundredths of a
+        # degree: the skill only ever saw one arm configuration. Certified alone
+        # that is fine, and chained it is fatal, because a capture finishes
+        # wherever the grasp policy's servoing puts it, never on the nominal
+        # pose. Measured on the chained run, the hand-off grip error matches the
+        # reset's to within a millimetre and the policy still reverses, which is
+        # the joint configuration being out of distribution rather than the grip.
+        # A skill that is going to be chained has to be trained across the states
+        # its predecessor actually produces.
+        self.events.reset_arm.params["noise_by_stage"] = (0.010, 0.015, 0.020)
         self.events.reset_blade.params["poses_by_stage"] = CONTACT_INSERTION_STAGE_BLADE_POSE
         if level < 2:
             self.events.blade_mass = None

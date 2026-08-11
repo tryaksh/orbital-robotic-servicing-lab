@@ -249,6 +249,11 @@ def reset_grapple_progress(env, env_ids: torch.Tensor | None) -> None:
         value = getattr(env, name, None)
         if value is not None and value.shape[0] == env.num_envs:
             value[ids] = 0
+    # The holding closure latches for the episode, so it has to be released here
+    # or a new episode would start already believing it holds the module.
+    latched = getattr(env, "_grapple_hold_latched", None)
+    if latched is not None and latched.shape[0] == env.num_envs:
+        latched[ids] = False
     # Invalidate rather than zero the potentials: zeroing would charge the next
     # step the entire distance from the goal.
     for key in ("capture", "extract"):
@@ -544,15 +549,30 @@ def hold_two_stage_grip(
 
     Letting the capture actually happen, inside the action term's settling
     window, produces the same preloaded state the pull gate measured 69 N on.
+
+    **The holding closure latches, and that matters more than it looks.** This
+    term used to command the capture closure again whenever
+    :func:`capture_established` went false, which is correct while capturing and
+    destructive afterwards: the predicate fails as soon as grip error passes
+    20 mm, and rail contact during an insertion pushes it past that routinely.
+    The fingers then open from the hold command to the gentler capture one, about
+    21 mm of travel, and drop the module mid-task. It is the most likely single
+    cause of the insert skill losing its grip in 6,023 of 9,014 episodes, and of
+    the module being released mid-transit when the three skills were first
+    chained. A real servicer does not relax its grip because the part shifted.
     """
 
     ids = torch.arange(env.num_envs, device=env.device) if env_ids is None else env_ids
     robot = env.scene[asset_cfg.name]
     capture = robot.data.joint_pos.new_tensor(capture_positions).expand(len(ids), -1)
     hold = robot.data.joint_pos.new_tensor(hold_positions).expand(len(ids), -1)
-    established = capture_established(env)[ids].unsqueeze(-1)
+    latched = getattr(env, "_grapple_hold_latched", None)
+    if latched is None or latched.shape[0] != env.num_envs:
+        latched = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        env._grapple_hold_latched = latched
+    latched[ids] |= capture_established(env)[ids]
     robot.set_joint_position_target(
-        torch.where(established, hold, capture), joint_ids=asset_cfg.joint_ids, env_ids=ids
+        torch.where(latched[ids].unsqueeze(-1), hold, capture), joint_ids=asset_cfg.joint_ids, env_ids=ids
     )
 
 

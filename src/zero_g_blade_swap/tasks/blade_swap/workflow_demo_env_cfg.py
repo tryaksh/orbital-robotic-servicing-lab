@@ -1,0 +1,181 @@
+"""One episode that runs the whole servicing motion, for demonstration only.
+
+The three head-on grapple-pin skills are trained and certified separately, which
+is right: "did the grasp form", "is the module clear of the rack", and "is it
+seated" are three different questions and one blended reward would let a policy
+trade them against each other. But a servicing demonstration has to show them in
+sequence, in one continuous episode, on one blade.
+
+This profile is that episode. It changes **no physics**: same scene, same robot,
+same pin, same contacts as the grasp task. What it changes is bookkeeping —
+the skill terminations are removed so the episode does not end when a phase
+succeeds, and it runs long enough for all of them.
+
+Three things about the design are worth stating, because they are what makes the
+demonstration honest.
+
+*The policies are the trained ones.* ``scripts/run_workflow_demo.py`` loads the
+three checkpoints and switches between them on measured conditions, never on a
+timer. No phase is scripted open-loop except the transit below.
+
+*The transit is deliberately scripted, and says so.* Extraction ends with the
+module clear of the rack at x = 0.225 and insertion was trained from the
+certified staging pose at x = 0.583. The 358 mm between them is free space with
+no contact in it, so there is nothing there for a policy to learn; a scripted
+axial move is the honest and cheaper answer, and it is the same division of
+labour the rest of this project uses — deterministic motion where it is cheap,
+learned control where contact and uncertainty live.
+
+*Each phase keeps the action scale its policy trained under.* The three skills
+use different Cartesian scales, 2 mm per step for the capture against 8 mm for
+the pull, because they are different motions. Running one policy at another's
+scale would silently change what its actions mean, so the driver rewrites the
+action term's scale at each transition.
+
+This task must never be used for training. It has no curriculum, no success
+termination, and therefore nothing to optimise.
+"""
+
+from __future__ import annotations
+
+from isaaclab.managers import ObservationTermCfg as ObsTerm
+from isaaclab.managers import TerminationTermCfg as DoneTerm
+from isaaclab.utils import configclass
+
+from . import mdp
+from .grapple_pin_env_cfg import (
+    GrappleSkillObsCfg,
+    GraspActionsCfg,
+    GraspEventsCfg,
+    ZeroGBladeGrapplePinGraspEnvCfg,
+)
+from .robust_insertion_env_cfg import configure_insertion_play_presentation
+
+#: Cartesian action scales, in the order the workflow runs them. Each is copied
+#: from the task the corresponding policy was trained on, and the driver writes
+#: the matching one into the action term at every transition.
+GRASP_ACTION_SCALE = (0.002, 0.001, 0.001, 0.008, 0.008, 0.008)
+EXTRACT_ACTION_SCALE = (0.008, 0.001, 0.001, 0.008, 0.008, 0.008)
+INSERT_ACTION_SCALE = (0.0015, 0.00075, 0.00075, 0.006, 0.006, 0.006)
+
+#: Where the scripted transit hands over to the insert policy: the blade centre
+#: the insert skill was trained to start from.
+TRANSIT_TARGET_BLADE_X = 0.5829
+
+
+@configclass
+class WorkflowGraspObsCfg(GrappleSkillObsCfg):
+    """Exactly the grasp policy's input. Its ``previous_action`` is the full
+    seven-value command, because the grasp task owned the gripper too."""
+
+
+@configclass
+class WorkflowExtractObsCfg(GrappleSkillObsCfg):
+    """Exactly the extract policy's input.
+
+    Two things have to match the training task rather than this one. The
+    previous action is the arm's six values, because the extract task did not
+    command the gripper, and ``remaining_travel`` is appended last, which is
+    where subclassing put it during training.
+    """
+
+    previous_action = ObsTerm(func=mdp.last_action, params={"action_name": "arm"})
+    remaining_travel = ObsTerm(func=mdp.extraction_remaining_observation)
+
+
+@configclass
+class WorkflowInsertObsCfg(GrappleSkillObsCfg):
+    """Exactly the insert policy's input."""
+
+    previous_action = ObsTerm(func=mdp.last_action, params={"action_name": "arm"})
+    blade_goal_error = ObsTerm(func=mdp.insertion_goal_error)
+
+
+@configclass
+class WorkflowObservationsCfg:
+    """All three policies' inputs, computed every step.
+
+    The driver reads whichever group belongs to the phase it is in. Computing
+    all three costs a few tensor operations and removes any chance of feeding a
+    policy an observation assembled in the wrong order, which is the class of
+    bug that has cost this project the most time.
+    """
+
+    grasp: WorkflowGraspObsCfg = WorkflowGraspObsCfg()
+    extract: WorkflowExtractObsCfg = WorkflowExtractObsCfg()
+    insert: WorkflowInsertObsCfg = WorkflowInsertObsCfg()
+
+
+@configclass
+class WorkflowTerminationsCfg:
+    """Nothing ends this episode except time or a broken simulation.
+
+    The skill terminations are deliberately absent. A capture that ends the
+    episode is correct when certifying a grasp and useless when the point is to
+    carry on and pull the module out.
+    """
+
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    non_finite = DoneTerm(func=mdp.insertion_non_finite_state)
+
+
+@configclass
+class WorkflowCurriculumCfg:
+    """Empty. There is nothing to learn here and nothing to promote."""
+
+
+@configclass
+class WorkflowRewardsCfg:
+    """Empty, and it has to be.
+
+    The grasp task's reward set reads the ``capture_failed`` termination, which
+    this profile removes so the episode can continue past a capture. Leaving it
+    in raises a KeyError on the first step. Nothing here is being optimised, so
+    there is no reason to compute a reward at all.
+    """
+
+
+@configclass
+class ZeroGBladeGrapplePinWorkflowEnvCfg(ZeroGBladeGrapplePinGraspEnvCfg):
+    """Capture, extract, transit, and re-insert, in one episode."""
+
+    observations: WorkflowObservationsCfg = WorkflowObservationsCfg()
+    actions: GraspActionsCfg = GraspActionsCfg()
+    events: GraspEventsCfg = GraspEventsCfg()
+    rewards: WorkflowRewardsCfg = WorkflowRewardsCfg()
+    terminations: WorkflowTerminationsCfg = WorkflowTerminationsCfg()
+    curriculum: WorkflowCurriculumCfg = WorkflowCurriculumCfg()
+    # Generous: the capture takes about 2 s, the 495 mm pull and the 358 mm
+    # transit a few more each, and the insertion is the slowest motion in the
+    # project. A demonstration that runs out of time mid-insertion is worse than
+    # one that idles at the end.
+    episode_length_s: float = 45.0
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.scene.num_envs = 1
+        configure_insertion_play_presentation(self)
+
+    def configure_robustness(self, level: int) -> None:
+        super().configure_robustness(level)
+        # The parent rebuilds the event set and re-applies the grasp task's
+        # widened reset noise, which is what this demonstration wants: the
+        # capture has to be a real approach, not a reset that already solved it.
+        self.rewards = WorkflowRewardsCfg()
+        self.terminations = WorkflowTerminationsCfg()
+        self.curriculum = WorkflowCurriculumCfg()
+
+
+__all__ = [
+    "EXTRACT_ACTION_SCALE",
+    "GRASP_ACTION_SCALE",
+    "INSERT_ACTION_SCALE",
+    "TRANSIT_TARGET_BLADE_X",
+    "WorkflowExtractObsCfg",
+    "WorkflowGraspObsCfg",
+    "WorkflowInsertObsCfg",
+    "WorkflowObservationsCfg",
+    "WorkflowRewardsCfg",
+    "WorkflowTerminationsCfg",
+    "ZeroGBladeGrapplePinWorkflowEnvCfg",
+]

@@ -236,6 +236,21 @@ for _grapple_id, _grapple_cls in (
         },
     )
 
+# One episode that runs capture, extraction, a scripted transit, and re-insertion
+# with the three trained checkpoints. Demonstration only: no curriculum, no
+# success termination, nothing to train against.
+gym.register(
+    id="Isaac-ZeroG-Blade-GrapplePin-Workflow-v0",
+    entry_point=INSERTION_ENTRY_POINT,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{__name__}.workflow_demo_env_cfg:ZeroGBladeGrapplePinWorkflowEnvCfg"
+        ),
+        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+    },
+)
+
 # The camera and the visual randomizers were reachable only from the deleted
 # eight-phase swap task. They are repointed here, at the insertion scene. No
 # policy has been trained on this task; it is P3's scaffold.
