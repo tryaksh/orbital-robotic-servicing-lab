@@ -523,9 +523,13 @@ class ZeroGBladeGrapplePinExtractEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)
         self.events = ExtractEventsCfg()
-        self.events.reset_arm.params["noise_by_stage"] = (
-            (0.0005, 0.001, 0.002) if level == 0 else (0.001, 0.002, 0.004)
-        )
+        # Wide enough to cover the states a capture hands over, for the same
+        # reason as the insert task; see its configure_robustness. Measured on
+        # the chained run: with the old 0.0005 rad reset the hand-off grip error
+        # matched this task's own to within a millimetre and the policy still
+        # reversed into the rack on all eight seeds tried, because the arm's
+        # joint configuration was outside anything it had trained on.
+        self.events.reset_arm.params["noise_by_stage"] = (0.010, 0.015, 0.020)
         self.events.reset_blade.params["poses_by_stage"] = CONTACT_INSERTION_STAGE_BLADE_POSE
         if level < 2:
             self.events.blade_mass = None
@@ -569,6 +573,23 @@ class InsertTerminationsCfg:
 
 
 @configclass
+class SingleStageCurriculumCfg:
+    """One reset distance, so the stage mixture validator has nothing to ramp."""
+
+    pose_noise = CurrTerm(
+        func=mdp.InsertionSuccessRateCurriculum,
+        params={
+            "success_term": "insertion_success",
+            "threshold": 0.80,
+            "window_size": 2_000,
+            "max_stage": 0,
+            "minimum_level_steps": 1_600,
+            "stage_mixtures": ((1.0,),),
+        },
+    )
+
+
+@configclass
 class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
     """Insert a blade the gripper is physically holding, with no fixed joint.
 
@@ -586,6 +607,9 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
     events: ExtractEventsCfg = ExtractEventsCfg()
     rewards: InsertRewardsCfg = InsertRewardsCfg()
     terminations: InsertTerminationsCfg = InsertTerminationsCfg()
+    curriculum: SingleStageCurriculumCfg = SingleStageCurriculumCfg()
+    # 167 mm at the 45 mm/s axial scale is 3.7 s of pure travel, so 12 s leaves
+    # room to search but not to dawdle.
     episode_length_s: float = 12.0
 
     def configure_robustness(self, level: int) -> None:
@@ -604,7 +628,16 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         # A skill that is going to be chained has to be trained across the states
         # its predecessor actually produces.
         self.events.reset_arm.params["noise_by_stage"] = (0.010, 0.015, 0.020)
-        self.events.reset_blade.params["poses_by_stage"] = CONTACT_INSERTION_STAGE_BLADE_POSE
+        # Full distance only. Measured on the v4 checkpoint: the stage curriculum
+        # never promoted past its first level, so the policy solved the 31 mm
+        # near reset perfectly (500/500) and the 167 mm full reset barely at all
+        # (7%, and 469 of 512 failures were timeouts rather than lost grips, so
+        # the approach was never learned rather than the grip failing). A chained
+        # workflow only ever asks for the full distance, so that is what it
+        # trains on.
+        self.events.reset_arm.params["poses_by_stage"] = (GRAPPLE_HEAD_ON_ARM_JOINT_POS[2],)
+        self.events.reset_blade.params["poses_by_stage"] = (CONTACT_INSERTION_STAGE_BLADE_POSE[2],)
+        self.events.reset_arm.params["noise_by_stage"] = (0.020,)
         if level < 2:
             self.events.blade_mass = None
         if level < 3:

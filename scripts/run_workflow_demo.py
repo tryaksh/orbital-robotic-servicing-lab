@@ -73,12 +73,14 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--workflow",
-        choices=("install", "full"),
+        choices=("remove", "install", "full"),
         default="install",
         help=(
-            "install: capture the module at the rack mouth and seat it, which is the contact-rich half of a "
-            "replacement and the half where damage happens. full: additionally pull it out first and fly it "
-            "back, which needs an extract policy robust to the state a capture hands it."
+            "remove: capture a fully installed module and pull it clear of the rack, both learned. "
+            "install: capture a module at the rack mouth and seat it, both learned. "
+            "full: remove, fly back, and re-install. The return leg is blocked by the pin's yaw limitation, "
+            "not by the controller: a single-point pin does not constrain rotation once the rails release the "
+            "module, and the grip degrades from 15 mm to 35 mm during the return whatever speed it is flown at."
         ),
     )
     parser.add_argument("--steps", type=int, default=1200)
@@ -90,6 +92,15 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--video", action="store_true")
     parser.add_argument("--video_dir", type=Path, default=Path("artifacts/demo/workflow"))
     parser.add_argument("--report", type=Path, default=Path("artifacts/demo/workflow_report.json"))
+    parser.add_argument(
+        "--transit_slowdown",
+        type=int,
+        default=3,
+        help=(
+            "Replay the return path this many times slower than the pull. A single-point pin does not constrain "
+            "yaw once the rails release the module, so a full-speed replay rotates it in the pads."
+        ),
+    )
     parser.add_argument(
         "--settle_steps",
         type=int,
@@ -242,6 +253,7 @@ def main() -> dict[str, object]:
         held = 0
         seat_until = 0
         seated_at = 0
+        transit_started = 0
         # Tool positions visited during the pull, sampled so the transit can fly
         # them backwards. Every one of them was reachable a moment ago.
         extraction_path: list[torch.Tensor] = []
@@ -314,7 +326,7 @@ def main() -> dict[str, object]:
                 actions[:] = 0.0
                 actions[:, 6] = 1.0
                 if step >= seat_until:
-                    phase = "extract" if args.workflow == "full" else "insert"
+                    phase = "insert" if args.workflow == "install" else "extract"
                     set_phase(phase)
                     note(f"seat -> {phase}", step)
             elif phase == "extract":
@@ -335,10 +347,16 @@ def main() -> dict[str, object]:
                     )
                 blade_x = float(task.scene["spare_blade"].data.root_pos_w[0, 0] - task.scene.env_origins[0, 0])
                 if blade_x <= EXTRACTED_BLADE_CENTRE_X:
-                    phase = "transit"
-                    set_phase(phase)
-                    waypoint = len(extraction_path) - 1
-                    note("extract -> transit (scripted)", step)
+                    if args.workflow == "remove":
+                        note("extract: module clear of the rack", step)
+                        seated_at = step
+                        phase = "done"
+                    else:
+                        phase = "transit"
+                        set_phase(phase)
+                        waypoint = len(extraction_path) - 1
+                        transit_started = step
+                        note("extract -> transit (scripted)", step)
             elif phase == "transit":
                 # Scripted, and the only segment no policy drives: fly the tool
                 # back along the waypoints the extraction just visited. Closing
@@ -347,9 +365,15 @@ def main() -> dict[str, object]:
                 actions[:] = 0.0
                 actions[:, 6] = 1.0
                 tool = end_effector_pose_world(task)[0][0]
-                while waypoint > 0 and float(torch.linalg.vector_norm(extraction_path[waypoint] - tool)) < 0.004:
-                    waypoint -= 1
-                target = extraction_path[max(waypoint, 0)]
+                # Walk the recorded path backwards on the clock, not on proximity.
+                # Advancing only when close stalls: the last waypoint was sampled
+                # up to a stride before the hand-off, so the tool is already past
+                # it and the follower sits there driving the module further out.
+                # Replaying at the stride it was recorded at flies the same arc
+                # at the same speed, which the arm has just demonstrated it can.
+                if (step - transit_started) % (TRANSIT_WAYPOINT_STRIDE * args.transit_slowdown) == 0:
+                    waypoint = max(waypoint - 1, 0)
+                target = extraction_path[waypoint]
                 scale = torch.tensor(scales["transit"][:3], device=task.device)
                 actions[0, :3] = ((target - tool) / scale).clamp(-1.0, 1.0)
                 blade_x = float(task.scene["spare_blade"].data.root_pos_w[0, 0] - task.scene.env_origins[0, 0])
@@ -396,10 +420,12 @@ def main() -> dict[str, object]:
             "curriculum_stage": args.curriculum_stage,
             "reached_phase": phase,
             "checkpoints": {name: str(policy.path) for name, policy in policies.items()},
-            "learned_phases": (
-                ["capture", "extract", "insert"] if args.workflow == "full" else ["capture", "insert"]
-            ),
-            "scripted_phases": ["transit"] if args.workflow == "full" else [],
+            "learned_phases": {
+                "remove": ["capture", "extract"],
+                "install": ["capture", "insert"],
+                "full": ["capture", "extract", "insert"],
+            }[args.workflow],
+            "scripted_phases": ["seat"] + (["transit"] if args.workflow == "full" else []),
             "timeline": timeline,
             "final": {
                 "axial_error_m": float(axial[0]),
@@ -411,7 +437,12 @@ def main() -> dict[str, object]:
             "insertion_conditions": {name: bool(value[0]) for name, value in conditions.items()},
         }
         result["workflow"] = args.workflow
-        result["completed"] = phase in ("insert", "done") and all(result["insertion_conditions"].values())
+        if args.workflow == "remove":
+            blade_x = float(task.scene["spare_blade"].data.root_pos_w[0, 0] - task.scene.env_origins[0, 0])
+            result["completed"] = bool(phase == "done" and blade_x <= EXTRACTED_BLADE_CENTRE_X)
+            result["final"]["blade_centre_x_m"] = blade_x
+        else:
+            result["completed"] = phase in ("insert", "done") and all(result["insertion_conditions"].values())
         return result
     finally:
         if env is not None:
