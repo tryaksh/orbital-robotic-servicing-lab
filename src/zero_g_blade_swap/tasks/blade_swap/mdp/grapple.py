@@ -21,6 +21,8 @@ extraction ends. Extraction therefore carries its own bounds.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import torch
 from isaaclab.managers import ActionTerm, SceneEntityCfg
 from isaaclab.utils import configclass
@@ -155,6 +157,25 @@ class TwoStageRobotiqAction(RobotiqBinaryAction):
 
     cfg: TwoStageRobotiqActionCfg
 
+    def __init__(self, cfg: TwoStageRobotiqActionCfg, env) -> None:
+        super().__init__(cfg, env)
+        #: Per environment: "the part is taken, stop reconsidering".
+        #:
+        #: :func:`capture_established` goes false as soon as grip error passes
+        #: 20 mm, which rail contact does routinely, and this term would then
+        #: drop back to the gentler capture closure and open the fingers about
+        #: 21 mm mid-task. Right while capturing, catastrophic afterwards. A
+        #: driver that has decided the hand-off happened sets this for the
+        #: environments it applies to.
+        #:
+        #: It is a tensor rather than a configuration value because a config
+        #: field is one scalar shared by every environment: overwriting
+        #: ``cfg.closed_position`` at run time, which is what the workflow driver
+        #: used to do, latches all of them at once and is only correct when there
+        #: is exactly one. Nothing in a training task sets this, so every trained
+        #: policy still sees the behaviour its certification was produced under.
+        self.hold_latch = torch.zeros((self.num_envs, 1), dtype=torch.bool, device=self.device)
+
     def process_actions(self, actions: torch.Tensor) -> None:
         if actions.shape != self._raw_actions.shape:
             raise ValueError(
@@ -162,7 +183,7 @@ class TwoStageRobotiqAction(RobotiqBinaryAction):
             )
         self._raw_actions.copy_(actions)
         closing = actions > self.cfg.threshold if self.cfg.close_on_positive else actions < self.cfg.threshold
-        established = capture_established(self._env).unsqueeze(-1)
+        established = capture_established(self._env).unsqueeze(-1) | self.hold_latch
         target = torch.where(
             closing & established,
             torch.full_like(actions, self.cfg.hold_position),
@@ -173,6 +194,11 @@ class TwoStageRobotiqAction(RobotiqBinaryAction):
             ),
         )
         self._processed_actions.copy_(robotiq_2f85_coupled_targets(target))
+
+    def reset(self, env_ids: Sequence[int] | None = None) -> None:
+        super().reset(env_ids)
+        # A new episode has not taken anything yet.
+        self.hold_latch[env_ids if env_ids is not None else slice(None)] = False
 
 
 @configclass

@@ -7,9 +7,13 @@ active plan is different, because every task in that list trains against a
 problem containing no uncertainty: the policy is told its exact pose error. The
 staging now is
 
-- **P0, done.** Delete the three grapple-pin skills and the eight-phase swap
-  task; repoint the visual randomizers at the insertion scene. See
-  `docs/status.md`.
+- **P0, done, and half of it reversed.** The eight-phase swap task is deleted and
+  stays deleted; `tests/test_configuration_contract.py` fails if it returns. The
+  three grapple-pin skills went with it on 2026-08-10 and were **restored on
+  2026-08-11**, because each had failed for a cause identified and corrected in
+  the same session and then never retested, and because deleting them removed the
+  only path to a servicing demonstration. Retested, they chain. The visual
+  randomizers stay repointed at the insertion scene. See `docs/status.md`.
 - **P1, measured 2026-08-10, hypothesis refuted.** Force sensing did not extend
   the tolerable pose error and is worse beyond the trained range. The diagnosis
   promotes item 7 below from an optimisation to a precondition: force has to be
@@ -22,15 +26,23 @@ staging now is
   workcell an injected bias is recoverable from the observed tool pose. The
   critic keeps ground truth. See `docs/status.md` for the mechanism and the two
   faults found while building it.
-- **P2.** Repeat P1's best configuration with the blade held by the physical
-  grapple pin instead of the fixed joint, which connects the interface
-  specification to the learning result.
+- **P2, in progress 2026-08-11.** The blade is held by the physical grapple pin
+  instead of the fixed joint, and capture, extract and insert chain into two
+  servicing workflows that run end to end in one continuous episode. What is left
+  is evidence rather than capability, in this order: certify the checkpoints the
+  demonstration actually loads; certify the *chain*, across many seeds, with a
+  Wilson interval, because nothing in `evidence/` covers a chained run and the two
+  workflow videos are n = 1; give the insert skill a clock long enough for the
+  motion it is measured making; and constrain yaw, which is the one thing
+  blocking a full remove-and-replace round trip.
 - **P3.** Replace the injected displacement with one regressed from the tiled
-  camera under randomized orbital lighting and rack materials. Do not start
-  before P1 certifies. `docs/perception_plan.md` is the design, and it already
-  carries a blocking finding: the authored 64x64 camera resolves a 4 mm slot
-  displacement as **0.13 pixels**, so the field of view has to narrow before any
-  image is collected.
+  camera under randomized orbital lighting and rack materials. **Do not start
+  before the chain is certified.** `docs/perception_plan.md` is the design, and it
+  already carries a blocking finding: the authored 64x64 camera resolves a 4 mm
+  slot displacement as **0.13 pixels**, so the field of view has to narrow before
+  any image is collected. The accuracy it has to reach is not a guess either: it
+  is written into `docs/service_interface_spec.md` as a requirement, 4 mm
+  laterally, derived from the measured envelope.
 - **P4.** Package: README leading with the curve, demo clips from a trained
   checkpoint only, evidence index.
 
@@ -95,6 +107,21 @@ error as a per-episode constant, which is exactly the belief model P1 needs.
      to form closure. Do not remove the fixed joint from insertion until a grasp
      gate passes on three held-out seeds.
      See `evidence/grasp_axial_pull_gate.json`.
+   - Closed 2026-08-11. The head-on pin passed its axial pull gate at 69 N
+     against the 66.4 N required, and all three skills are trained on it and
+     chained. Its one unfixed limitation is yaw: see item 14.
+14. **Constrain yaw on the interface, not in the controller.** A single-point
+   tapered pin clamped by flat pads cannot resist rotation about the closing
+   axis, because the pads' contact normals lie along that axis and a normal force
+   cannot oppose a moment about its own direction. Measured: 0.93 rad of module
+   rotation in failing extractions, and a return leg that degrades the grip from
+   15 mm to 35 mm and gets *worse* when replayed fourfold slower, so it is
+   rotation under sustained load rather than an acceleration artefact. This is
+   the only thing blocking a full remove-and-replace round trip, and it is a
+   second-generation interface result rather than a bug fix. The measured
+   gripper envelope says where the feature fits: no gripper body other than an
+   inner finger reaches past 0.1245 m from the flange at any closure, so a wall
+   narrower than the 17.5 mm knuckles has a 37.6 mm band to live in.
 9. **Resolve L3 physically before training.** Plot rail force, blade velocity,
    contact impulse, and action versus time. Check whether the stiction
    implementation injects energy or chatters at zero velocity. Prefer a

@@ -1097,6 +1097,94 @@ Force feedback's one measured win is unaffected and still stands: contact impuls
 fell 59% at the mean and 89% at the median when force entered the observation.
 Sustained rubbing is regulable. The first strike is not.
 
+## Certifying the policies the demonstration actually loads
+
+`evidence/` carried certifications for grasp v2, extract v2 and insert v3 while
+`scripts/run_workflow_demo.py` loaded grasp **v3**, extract **v4** and insert
+**v5**. Every figure this page quoted about the demonstration therefore described
+a superseded policy. The three checkpoints the demonstration loads have now been
+evaluated on three held-out seeds each and the reports are named after the
+version they describe, so the two cannot drift apart silently again.
+
+| Skill | Checkpoint SHA-256 | Report | Episodes | Success | Gate |
+| --- | --- | --- | ---: | ---: | --- |
+| Capture v3 | `AF579F5A…` | `evidence/grapple_grasp_v3_certification.json` | 9,020 | 95.55% | **fails** |
+| Extract v4 | `C0AB5F42…` | `evidence/grapple_extract_v4_certification.json` | 9,078 | **0.00%** | **fails** |
+| Insert v5 | `A1567059…` | `evidence/grapple_insert_v5_certification.json` | 3,074 | 6.96% | **fails** |
+
+**All three fail their gate, and one of them fails completely.** The stale files
+said 95.5%, 91.5% and 30.7%. Two of those three numbers are not merely out of
+date, they point the wrong way.
+
+### Capture v3 is indistinguishable from capture v2
+
+| Stage | v2 | v3 |
+| --- | ---: | ---: |
+| Near | 3,010 / 3,010 | 3,012 / 3,012 |
+| Medium | 93.70% | 94.04% |
+| Full | 92.78% | 92.61% |
+| Pooled | 95.50% | 95.55% |
+
+The reward change between them raised the blade-disturbance penalty fivefold and
+widened its free band past the seating feed. It traded 22 capture failures for 17
+extra timeouts and moved the pooled figure by 0.05 points. Recorded because a
+change that does nothing is worth knowing about, and because it is the honest
+reading of two numbers that look different in a commit message.
+
+### Extract v4 scores zero, and the reason is not the pull
+
+0 successes in 9,078 episodes, at every curriculum stage, against 91.5% for the
+superseded v2. The two numbers are not comparable — v2 was certified before the
+reset noise was widened 40× for chaining, so it describes an easier task — but
+the v4 result stands on its own and the terminal metrics say exactly what fails:
+
+| Terminal quantity | Median | Requirement |
+| --- | ---: | ---: |
+| Grip **position** error | 12.2 mm | ≤ 20 mm |
+| Grip **attitude** error | **0.299 rad** | **≤ 0.20 rad** |
+| Distance travelled toward clear | about 458 mm | 495 mm |
+| Blade orientation error | 0.142 rad | — |
+
+**The grip holds and the module travels; the tool rotates in the grip.** Position
+error sits comfortably inside tolerance for the whole 15 s, and the pull covers
+more than nine tenths of the required distance. `capture_established` then fails
+on its orientation term, so `extraction_success` can never fire, and 2,842 of the
+episodes go on to trip the 0.35 rad grip-attitude failure limit outright.
+
+### Insert v5 is not primarily slow, it is rotating
+
+The handover recorded insert's problem as a clock: 473 of 479 failures were
+timeouts with the median module 11.29 mm from a 12 mm tolerance, so "it is slow,
+not unreliable". Splitting the 2,860 failures by which success condition each one
+satisfies at its terminal step shows that diagnosis is incomplete, and that the
+part it misses is the larger one:
+
+| Success condition | Failures satisfying it |
+| --- | ---: |
+| Lateral alignment ≤ 2.5 mm | 100.00% |
+| Blade orientation ≤ 0.0524 rad | 100.00% |
+| Grip position ≤ 20 mm | 94.20% |
+| Axial depth ≤ 12 mm | 52.06% |
+| **Grip orientation ≤ 0.20 rad** | **6.99%** |
+| All five at once | 2.59% |
+
+**Ninety-three per cent of failures are out of tolerance on grip orientation at
+the moment they end**, and that is not a quantity a longer episode improves. The
+214 successes make the point from the other side: their grip attitude has a
+median of 0.1902 rad, a 95th percentile of 0.1934, and a maximum of 0.1945,
+against a limit of 0.20. Every single successful insertion is pressed up against
+that limit.
+
+Half the failures do also miss axial depth, so the clock is real and lengthening
+the episode is still worth doing. But the binding constraint on this skill is the
+same one the interface specification records as its known limitation, and it is
+now measured on the skill rather than only on a return leg: **a single-point pin
+does not constrain rotation about the closing axis.** The blade itself is
+straight — its orientation error against the goal is 0.0043 rad, satisfied in
+100% of episodes — so the 0.27 rad is the wrist rotating relative to a module the
+rails are holding still. That is the pin's free yaw, and nothing in the reward,
+the clock, or the policy can remove it.
+
 ## Two chained servicing workflows, and the three defects chaining exposed
 
 Three skills certified separately at 92.5%, 91.5% and 100% composed into **zero**
@@ -1137,9 +1225,60 @@ A fourth, smaller one: the grasp policy declares capture at finger angle 0.085
 while the pin sits home at 0.223, so the chain adds the 1 s seating pause the
 extract task gets free from its own settling window.
 
+### The chain, certified: 0.00% and 15.10%
+
+Nothing in `evidence/` covered a chained run and both workflow videos were n = 1.
+`run_workflow_demo.py --episodes` now runs the same driver headless across many
+environments and writes the rows `scripts/aggregate_evaluation.py` already pools,
+so the chain is gated exactly the way a skill is. Three held-out seeds
+(4070/5070/6070), 64 environments, 576 workflows each:
+
+| Workflow | Success | Wilson 95% | Report |
+| --- | ---: | ---: | --- |
+| Removal | **0 / 576, 0.00%** | [0.00%, 0.66%] | `evidence/workflow_remove_certification.json` |
+| Installation | **87 / 576, 15.10%** | [12.41%, 18.26%] | `evidence/workflow_install_certification.json` |
+
+Neither passes the gate. Both videos below are therefore **demonstrations of
+capability, not evidence of reliability**, and every document now says so.
+
+Three things had to be settled before those numbers meant anything.
+
+**Each phase gets the clock its own skill was certified on.** `PHASE_BUDGET_S`
+reads `episode_length_s` off the three task configurations, so a phase that
+overruns fails the workflow. Before this the chain granted 45 s while the insert
+skill was certified on 12 s, and "it completes in the chain" and "it scores 6.5%
+alone" were both true statements about different tasks. Reconciled, the overruns
+are the headline failure mode:
+
+| Workflow | Overran capture's 6 s | Overran extract's 15 s | Overran insert's 12 s |
+| --- | ---: | ---: | ---: |
+| Removal | 7 | **569** | — |
+| Installation | 40 | — | **448** |
+
+**Success is re-checked after the predicate fires.** The driver holds still for
+0.70 s and asks again, which is stricter than the skills' own criteria and is
+what separates a module that is seated from one that was briefly in tolerance.
+One installation in 576 fired the predicate and then failed the re-check.
+
+**`completed` and `conditions_still_held_after_settling` are now both reported,
+and the gap between them is the yaw.** Of the 87 successful installations, only
+16 still satisfy every condition including the grip after settling. The module
+stays exactly where it was put — its axial, lateral, and orientation errors all
+hold — and the *pin* relaxes in the pads. Pooled over all 576 installations the
+grip attitude is inside its 0.20 rad tolerance at the end in 24.5% of episodes;
+over the removals, in **3.8%**.
+
+That is the same measurement the per-skill certifications above produce, from a
+third direction. Removal's median run reaches a module centre of 0.2737 m against
+the 0.225 m that clears the rack, so it is 49 mm short after 15 s of pulling
+while the grip *position* sits at 12.7 mm — holding fine, rotating badly.
+
 ### Removal: capture and extract, both learned
 
-`scripts/run_workflow_demo.py --workflow remove`, one continuous episode:
+One continuous episode, `scripts/run_workflow_demo.py --workflow remove`. **This
+is one run of a workflow certified at 0.00%.** It is kept because it shows the
+motion is achievable, and because its own timeline is what shows why the pooled
+number is zero: the pull needs 16.7 s and the extract skill is certified on 15 s.
 
 | Phase | Kind | Time | Module centre x | Grip |
 | --- | --- | ---: | ---: | ---: |
@@ -1188,16 +1327,21 @@ retraces the path the extraction flew, advancing waypoints on the clock;
 advancing them on proximity stalls, because the last waypoint is sampled up to a
 stride before the hand-off.
 
-### Insert's remaining limitation
+### Insert's remaining limitation, and a diagnosis that was half wrong
 
-At full distance the insert skill alone scores 6.5% over 512 episodes, and 473 of
-479 failures are timeouts rather than lost grips. At timeout the median module is
-11.29 mm from the goal against a 12 mm tolerance and 0.62 mm laterally against
-2.5 mm, and successful insertions take 11.77 s against the task's 12 s episode.
-It is being cut off rather than failing. In the chained workflow, where the
-episode is 45 s, it completes. The honest reading is that the skill is slow, not
-that it is unreliable, and the cheap fix is a longer episode with retraining
-rather than any change to the policy.
+The reading recorded here first was that the insert skill is slow rather than
+unreliable: 473 of 479 failures were timeouts, the median module was 11.29 mm
+from a 12 mm tolerance, and successful insertions took 11.77 s against a 12 s
+episode, so a longer episode with retraining looked like the whole fix.
+
+Half of that survives certification and half does not. On 3,074 held-out
+episodes, 52.06% of failures do miss axial depth, so the clock is real. But
+**93.01% of failures are outside the grip-orientation tolerance at the step they
+end on**, and every one of the 214 successes is pressed against that limit, with
+a maximum of 0.1945 rad against 0.20. A longer episode cannot fix a condition
+that is not converging. Both changes are needed and they are separate
+experiments: lengthen the episode, and constrain yaw on the interface. The
+per-skill table above has the full split.
 
 ## Demonstration assets
 

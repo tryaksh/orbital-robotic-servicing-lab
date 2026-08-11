@@ -176,26 +176,136 @@ specify a stronger gripper to fix a capture problem.
 
 ---
 
-## 6. Known limitation: yaw is unconstrained
+## 6. Required rack-side geometry: the lead-in flare is load-bearing
 
-A single-point tapered pin clamped by flat pads does not constrain rotation
-about the pin axis. While the module is in its rails this does not matter. Once
-the rails release it, it does.
+Everything above specifies the *module*. This section specifies the **rack**, and
+it is here because a measurement forced it, not because the scope grew.
 
-Measured during extraction: the module reaches **0.93 rad (53 degrees)** of
-orientation error in failing episodes, while grip *position* stays at 13.5 mm,
-the normal seated value. The grip is not slipping; the module is levering.
+The rack's slot mouth carries two 80 mm entry plates, each rotated 12 degrees
+outward, which widen the lateral catch from the channel's own 0.75 mm per side to
+**16.6 mm per side**. They were built as an aid. They are not an aid.
 
-Failures concentrate at the curriculum stage that starts with the module
-furthest out, which is the stage that spends longest unconstrained.
+Removing the flares and changing nothing else, evaluated on two fully trained
+insertion policies:
 
-**A second-generation interface should add an anti-yaw feature** — a keyway or
-flats the pads can bear against laterally. That is the highest-value change
-available to this specification and it is not yet made.
+| Slot lateral displacement | Force-aware policy | Force-blind policy |
+| ---: | ---: | ---: |
+| 0 mm | **0.00%** | **0.00%** |
+| 4 mm | 0.00% | 0.00% |
+| 8 mm | 0.17% | 0.00% |
+
+**Both policies fail every episode, including at zero displacement, where there
+is no uncertainty in the task at all.** The flares were not helping with the
+offset; they were performing the insertion. Neither policy ever learned to align
+a module into a 0.75 mm-per-side channel, because with a 16.6 mm-per-side catch
+in front of it neither ever had to.
+
+| Feature | Requirement | Why |
+| --- | --- | --- |
+| **Lead-in flare**, lateral catch | 16.6 mm per side | Below this, no policy measured here inserts at all. |
+| **Lead-in flare**, plate length | 80 mm | With a 12-degree flare, this is what produces the 16.6 mm catch. |
+| **Lead-in flare**, half-angle | 12 degrees | 0.2126 m of opening per metre of length. Shallower needs a longer mouth. |
+| **Lead-in flare**, surface | Lowest friction in the slot | A lead-in must guide, not grab. |
+
+Raw rows: `artifacts/noleadin/`. No pooled report is published for this probe:
+the runs predate the reporting change that records whether the lead-in is
+present, and a 0% result filed as a certification would read as a failed policy
+rather than as a removed mechanism.
+
+Two caveats, because this number is strong enough to be misread. Both policies
+trained *with* the flares, so this measures dependence on the lead-in, not the
+impossibility of learning without one; a policy trained without flares might
+learn to align, and none has been. And this is the rack half of the same finding
+section 1 records for the module half — there, a parallel-jaw grip could not hold
+the module and the fix was geometry on the module; here, a policy cannot align
+the module and the fix is geometry on the rack. **Design-for-serviceability is
+doing work that control cannot substitute for, measured twice, from opposite
+directions.**
 
 ---
 
-## 7. What this specification does not cover
+## 7. Pose accuracy this interface requires
+
+The flare dimension in section 6 is not only a rack requirement. It sets the
+pose tolerance the whole system has to hold, and therefore the accuracy any
+future pose estimator has to deliver.
+
+Measured by displacing the slot laterally by a known amount the policy is told
+nothing about, on two independently trained policies:
+
+| Slot lateral displacement | Force-aware | Force-blind |
+| ---: | ---: | ---: |
+| 0 mm | 100.00% | 99.94% |
+| 2 mm | 100.00% | 99.83% |
+| **4 mm** | **99.87%** | **99.77%** |
+| 6 mm | 96.94% | 99.56% |
+| 8 mm | 87.50% | 94.90% |
+| 10 mm | 74.07% | 82.31% |
+
+Reports: `evidence/uncertain_insertion_aware_certification.json`,
+`evidence/uncertain_insertion_blind_certification.json`, and the two
+`*_envelope.json` files, which are flagged `simulation_capability_envelope`
+because they sweep past the trained ceiling.
+
+> **Requirement.** Module and rack pose must be known to **4 mm laterally** at
+> the moment of insertion. Inside that, insertion succeeds essentially always
+> and the mechanical lead-in absorbs the residual. Outside it, success falls off
+> monotonically and no amount of contact sensing recovers it.
+
+Three things this requirement is not:
+
+- **It is not the geometric catch.** The flares catch 16.6 mm per side. 4 mm is
+  where policies were *trained and certified*; 6 to 10 mm is an envelope sweep
+  outside the training distribution. The mechanism may support more than 4 mm;
+  no policy has been trained there, so the specification claims 4 mm.
+- **It is not a case for force sensing.** Force feedback was the hypothesis for
+  extending this tolerance and it was refuted: beyond 4 mm the force-aware policy
+  is *worse* than its force-blind control, by up to 8.2 points, at roughly twice
+  the peak contact force. Under a position-controlled action space a policy has
+  no action that yields to a force it can read.
+- **It is not yet achievable with the camera this project owns.** The authored
+  64x64 camera resolves 4 mm as **0.13 pixels**, which is an absent signal rather
+  than a hard regression problem. `docs/perception_plan.md` derives the fix — a
+  narrower field of view rather than more pixels, 180 mm focal length putting
+  4 mm at 1.3 px — and requires a rendered frame before anything is trained on
+  it.
+
+---
+
+## 8. Second-generation requirement: yaw must be constrained
+
+A single-point tapered pin clamped by flat pads does not constrain rotation about
+the pin axis. While the module is in its rails this does not matter. Once the
+rails release it, it does. This is filed as an interface *result* rather than as
+a controller bug, because no controller change fixes it.
+
+| Measurement | Value |
+| --- | ---: |
+| Module orientation error in failing extractions | **0.93 rad (53 degrees)** |
+| Grip *position* error in the same episodes | 13.5 mm, the normal seated value |
+| Grip error on the return leg of a round trip, start to end | 15 mm to 35 mm |
+| Effect of replaying that return leg 4x slower | **worse** |
+
+The grip is not slipping; the module is levering. Failures concentrate at the
+curriculum stage that starts with the module furthest out, which is the stage
+that spends longest unconstrained. That slowing the return fourfold makes the
+degradation worse rather than better is the load-bearing detail: this is rotation
+under sustained load, not an acceleration artefact, so it cannot be flown around.
+
+**Consequence.** The remove-and-replace round trip does not close on this
+interface. Removal works and installation works; carrying a module between them
+does not. An anti-yaw feature — a keyway, or flats the pads bear against
+laterally — is the change that closes it.
+
+| Feature | Requirement | Why |
+| --- | --- | --- |
+| **Anti-yaw feature** | Bearing surfaces that oppose rotation about the pull axis | 0.93 rad of free rotation once the rails release the module |
+| Must preserve | 66.4 N axial capacity | The insertion contact reaction does not change because the pin did |
+| Must preserve | 8.5 mm per side approach clearance | Or capture stops working, which is a worse trade |
+
+---
+
+## 9. What this specification does not cover
 
 - Simulation only. PhysX Coulomb friction between primitive geometry, not a
   measured pad compound on a machined fixture.

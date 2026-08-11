@@ -17,6 +17,8 @@
 | `mdp/randomization.py` | Reset state, rail stiction, mount wobble, Replicator materials, and orbital sun |
 | `mdp/terminations.py` | The compliant mount's D6 envelope |
 | `uncertain_insertion_env_cfg.py` | Insertion under a displaced slot, and its force-blind ablation |
+| `grapple_pin_env_cfg.py` | The head-on capture scene and the three skills it makes possible |
+| `workflow_demo_env_cfg.py` | The three skills in one continuous episode; bookkeeping only, never train on it |
 | `vision_insertion_env_cfg.py` | The camera task the visual randomizers were repointed at (untrained) |
 | `agents/` | RL-Games PPO configurations and the multimodal vision actor |
 | `scripts/` | Setup, cleanup, smoke, benchmark, train, play, demonstration, and BC entry points |
@@ -51,15 +53,48 @@ gripper-joint targets with coupling signs `[+,+,-,+,-,-]`. Every insertion task
 uses a PhysX fixed joint to represent a blade that was already secured. **This
 is not learned grasping.**
 
+## The chained workflow, and how it is judged
+
+`scripts/run_workflow_demo.py` drives one episode with three checkpoints,
+switching between them on **measured conditions** rather than on a timer. It runs
+one workflow for a video and many in parallel, headless, for evidence: with
+`--episodes` it writes one row per completed workflow in the format
+`scripts/aggregate_evaluation.py` already pools, so a chain is gated exactly the
+way a single skill is.
+
+Three properties make the chain's number comparable with the skills' numbers
+rather than merely adjacent to them.
+
+*Each phase gets the clock its own skill was certified on.* `PHASE_BUDGET_S`
+reads `episode_length_s` off the three task configurations, so a phase that
+overruns fails the workflow. Before this the chain granted 45 s while the insert
+skill was certified on 12 s, and "it completes in the chain" and "it scores 6.5%
+alone" were both true statements about different tasks.
+
+*Success is re-checked after the workflow's predicate fires.* The driver holds
+still for 0.70 s and asks again. That is strictly harder than the skills' own
+criteria, and it is what separates a module that is seated from one that was
+briefly in tolerance.
+
+*The holding closure latches per environment.* `TwoStageRobotiqAction.hold_latch`
+is a per-environment flag the driver sets at the hand-off. Nothing in a training
+task sets it, so every trained policy still sees the behaviour its certification
+was produced under.
+
 ## What was deleted, and why it is not coming back
 
 An eight-phase full-swap task (approach, grasp, extract, stow, acquire, align,
-insert, retreat) and three head-on grapple-pin skills (grasp, extract, insert)
-were removed on 2026-08-10. Four of the five servicing stages carried no physics
-content — in simulation they are a state machine — and each of the three skills
-failed for a reason established work already solves: a reset that solved the
-task, a 495 mm credit-assignment horizon, and a success predicate written in the
-wrong frame. `docs/status.md` keeps the measurements that found those faults.
+insert, retreat) was removed on 2026-08-10 and is not coming back: four of its
+five servicing stages carried no physics content — in simulation they are a state
+machine — and `tests/test_configuration_contract.py` fails if it returns.
+
+The three head-on grapple-pin skills (grasp, extract, insert) were removed with
+it and **restored on 2026-08-11**. Each had failed for a reason established work
+already solves — a reset that solved the task, a 495 mm credit-assignment
+horizon, and a success predicate written in the wrong frame — but each of those
+causes had been identified and corrected in the same session and then never
+retested. `docs/status.md` keeps the measurements that found the faults and the
+measurements that followed the corrections.
 
 The camera, `RackMaterialRandomizer`, `OrbitalLightingRandomizer`,
 `camera_rgb_with_radiation_noise`, and the `VisionActor` were reachable only from
