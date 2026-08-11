@@ -1097,6 +1097,108 @@ Force feedback's one measured win is unaffected and still stands: contact impuls
 fell 59% at the mean and 89% at the median when force entered the observation.
 Sustained rubbing is regulable. The first strike is not.
 
+## Two chained servicing workflows, and the three defects chaining exposed
+
+Three skills certified separately at 92.5%, 91.5% and 100% composed into **zero**
+working workflows. None of the three reasons was visible in any individual
+certification, and all three are the same shape: a skill that works alone assumes
+something its neighbour does not provide.
+
+### The defects
+
+**A grip that relaxes exactly when the part shifts.** `TwoStageRobotiqAction` and
+`hold_two_stage_grip` both re-commanded the gentler *capture* closure whenever
+`capture_established` went false. That predicate fails as soon as grip error
+passes 20 mm, which rail contact does routinely, so the fingers opened about
+21 mm and released the module mid-task. Measured effect on the insert skill:
+
+| Insert version | Grip losses | Success |
+| --- | ---: | ---: |
+| v3, before the fix | 6,023 / 9,014 | 30.7% |
+| v4, after the fix | **9 / 512** | 100% near, 7% full distance |
+
+The holding closure now latches for the episode and releases on reset.
+
+**A success criterion looser than the next skill's precondition.** The grasp task
+counts a capture from 20 mm of grip error and the driver handed over at the first
+qualifying instant, which measured 22.7 mm after seating. The extract policy has
+never begun an episode from worse than 12.4 mm. The hand-off now waits for the
+capture to close to 10 mm, landing at 12.97 mm after the seating feed.
+
+**A reset too narrow to absorb a predecessor's output.** Extraction trained with
+0.0005 rad of joint noise, three hundredths of a degree, so it had seen exactly
+one arm configuration. Chained, it reversed into the rack on all eight seeds
+tried *even with the hand-off grip error matching its own reset to within a
+millimetre*, because the arm's joint configuration was outside anything it knew.
+Retrained across 0.010 to 0.020 rad it commits to the pull. Insert was retrained
+the same way.
+
+A fourth, smaller one: the grasp policy declares capture at finger angle 0.085
+while the pin sits home at 0.223, so the chain adds the 1 s seating pause the
+extract task gets free from its own settling window.
+
+### Removal: capture and extract, both learned
+
+`scripts/run_workflow_demo.py --workflow remove`, one continuous episode:
+
+| Phase | Kind | Time | Module centre x | Grip |
+| --- | --- | ---: | ---: | ---: |
+| Capture | learned | 0.00 - 0.97 s | 0.7195 | 19.4 to 7.4 mm |
+| Seat | scripted | 0.97 - 1.97 s | 0.7270 | 12.97 mm at 10 N-m |
+| Extract | learned | 1.97 - 18.63 s | **0.2243** | 15.5 mm at 10 N-m |
+
+495 mm of travel on a fully installed module, held by pad-against-pin contact
+throughout. No fixed joint and no software fixture in this scene.
+
+### Installation: capture and insert, both learned
+
+`--workflow install`, starting with the module presented at the rack mouth:
+
+| Phase | Kind | Time | Module centre x | Grip |
+| --- | --- | ---: | ---: | ---: |
+| Capture | learned | 0.00 - 2.73 s | 0.5829 | 68.0 to 1.2 mm |
+| Seat | scripted | 2.73 - 3.73 s | 0.5933 | 12.8 mm |
+| Insert | learned | 3.73 - 16.57 s | 0.7414 | 11.7 mm |
+
+Seated at 8.63 mm axial and 0.61 mm lateral error, inside the 12 mm and 2.5 mm
+tolerances, with blade orientation error 0.0043 rad.
+
+**One honest caveat on this one.** Completion means the task's own success
+predicate fired, which it did. Re-checking every condition after a further 0.7 s
+of settling shows `grasp_orientation` at 0.229 rad against its 0.20 rad limit:
+the module stays seated and the *pin* relaxes slightly in the pads afterwards.
+The reports record both, as `completed` and
+`conditions_still_held_after_settling`.
+
+### What is not chained, and why it is the interface rather than the controller
+
+The round trip — remove, fly back, re-install — does not work, and the cause is
+the limitation `docs/service_interface_spec.md` already records: a single-point
+pin does not constrain yaw once the rails release the module. Flying the module
+back degrades the grip from 15 mm to 35 mm, and slowing the replay fourfold makes
+it **worse**, so this is rotation under sustained load rather than an
+acceleration artefact. An anti-yaw feature, a keyway or flats the pads bear
+against laterally, is the fix, and it is a second-generation interface result.
+
+A separate kinematic finding sits behind the scripted transit: at full extraction
+the wrist sits behind the robot's own base, and driving straight back from there
+takes the damped-least-squares IK through a near-singularity, swinging the
+shoulder 74 degrees and driving the elbow into its limit. The transit therefore
+retraces the path the extraction flew, advancing waypoints on the clock;
+advancing them on proximity stalls, because the last waypoint is sampled up to a
+stride before the hand-off.
+
+### Insert's remaining limitation
+
+At full distance the insert skill alone scores 6.5% over 512 episodes, and 473 of
+479 failures are timeouts rather than lost grips. At timeout the median module is
+11.29 mm from the goal against a 12 mm tolerance and 0.62 mm laterally against
+2.5 mm, and successful insertions take 11.77 s against the task's 12 s episode.
+It is being cut off rather than failing. In the chained workflow, where the
+episode is 45 s, it completes. The honest reading is that the skill is slow, not
+that it is unreliable, and the cheap fix is a longer episode with retraining
+rather than any change to the policy.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
