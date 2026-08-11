@@ -304,6 +304,15 @@ def _apply_stress(env_cfg) -> dict[str, object]:
         ),
         "belief_bias_mm": args.belief_bias_mm,
         "force_threshold_n": args.force_threshold_n,
+        # Whether the slot's lead-in flares are collidable. Removing them is a
+        # deliberate change to the task, not to the initial-condition
+        # distribution, so it has to reach the report or a 0% result would be
+        # filed as a failed certification instead of a mechanism probe.
+        "lead_in_present": (
+            bool(env_cfg.scene.blade_slot_entry_left_flare.spawn.collision_props.collision_enabled)
+            if getattr(env_cfg.scene, "blade_slot_entry_left_flare", None) is not None
+            else None
+        ),
     }
     if args.belief_bias_mm is not None and belief_term is None:
         raise ValueError("--belief_bias_mm needs a task whose actor observes a pose belief")
@@ -327,7 +336,14 @@ def _apply_stress(env_cfg) -> dict[str, object]:
         and trained_bias_ceiling_m is not None
         and args.belief_bias_mm > 1_000.0 * trained_bias_ceiling_m + 1.0e-9
     )
-    stress["out_of_distribution"] = bool(args.pose_noise_scale > 1.0 or outside_mass or outside_belief)
+    stress["out_of_distribution"] = bool(
+        args.pose_noise_scale > 1.0
+        or outside_mass
+        or outside_belief
+        # Every policy trained with the lead-in present, so evaluating without it
+        # is out of distribution by construction.
+        or stress["lead_in_present"] is False
+    )
     return stress
 
 

@@ -1007,6 +1007,96 @@ that unit tests could not reach: the curriculum term hard-coded three stage
 buckets and raised `IndexError` on a single-stage task, and the displacement
 event assumed every profile carries lips and flares.
 
+## Two probes that closed the force line of work
+
+Both follow directly from the flat ablation above, and both are evaluation-only:
+no retraining, on the two Stage-1 checkpoints.
+
+### The lead-in was doing the insertion, not helping with the offset
+
+Removing the guided channel's entry flares and changing nothing else:
+
+| Slot displacement | Force-aware | Force-blind |
+| ---: | ---: | ---: |
+| 0 mm | 0.00% | 0.00% |
+| 4 mm | 0.00% | 0.00% |
+| 8 mm | 0.17% | 0.00% |
+
+**Both policies fail every episode, including at zero displacement where there is
+no uncertainty at all.** The flares were not assisting with the offset; they were
+performing the insertion. Neither policy ever learned to align a blade into a
+0.75 mm-per-side channel, because with a 16.6 mm-per-side catch in front of it
+neither ever had to. That is a complete explanation of the flat ablation: if the
+mechanics do all of the alignment, sensing cannot contribute to it.
+
+Both policies trained with the flares present, so this measures *dependence on*
+the lead-in, not the impossibility of learning without one. A policy trained
+without flares might learn to align; none has been.
+
+The force-aware arm keeps its signature even in collapse, at 21.9 N mean contact
+and 35 to 51 force aborts per point against 14.7 N and 1 to 4 for the control.
+
+This echoes the interface specification's central finding from the opposite
+direction. There, a parallel-jaw grip could not hold the module and the fix was
+geometry on the module. Here, a policy cannot align the module and the fix is
+geometry on the rack. **Design-for-serviceability is doing work that control
+cannot substitute for**, twice, measured both times.
+
+Raw rows: `artifacts/noleadin/`. No pooled report is published for this probe,
+because the runs predate the reporting change that records whether the lead-in is
+present, and a 0% result filed as a certification would misread as a failed
+policy rather than a removed mechanism.
+
+### A commanded force budget is ignored
+
+FORGE conditions a policy on a maximum allowable contact force so it can be asked
+at deployment for a gentler or a firmer insertion. Stage 1 built that mechanism
+and sampled the budget uniformly per episode, which averages any modulation away.
+Pinning it exposes whether the policy tracks the command. Four budgets, three
+held-out seeds each, at the trained displacement:
+
+| Commanded budget | Aware peak mean | Aware peak p95 | Blind peak mean | Blind peak p95 |
+| ---: | ---: | ---: | ---: | ---: |
+| 5 N | 10.03 N | 31.81 N | 7.05 N | 14.72 N |
+| 10 N | 8.90 N | 27.15 N | 7.17 N | 14.67 N |
+| 15 N | 9.08 N | 30.09 N | 6.71 N | 12.84 N |
+| 20 N | 9.19 N | 30.34 N | 6.82 N | 13.39 N |
+
+Reports: `evidence/uncertain_force_threshold_aware.json`,
+`evidence/uncertain_force_threshold_blind.json`.
+
+**Neither policy tracks the command.** The force-aware arm sits at about 9 N mean
+whatever it is told, and the only visible response to the tightest budget is the
+wrong way: 10.03 N mean, 7 force aborts, and its lowest success rate. The
+force-blind arm is flat by construction, since it is handed a limit it has no
+sense to respect.
+
+The arithmetic says why the penalty never binds. It is linear, weighted -3.0, and
+normalised by 20 N, so a 30 N peak against a 5 N budget costs 3.75 in the step it
+occurs. The success term is 35 per step-second, which is 1,050 for a single
+terminal step, and the progress term is weighted 12. A transient strike is
+therefore worth paying for, every time.
+
+### The finding these three converge on
+
+| Intervention | Effect on peak contact force |
+| --- | --- |
+| Quadratic penalty, mild and strict profiles | None (2.6% at the mean) |
+| Contact force in the observation | None (about 1%), though sustained rubbing fell 59% |
+| Per-episode commanded budget, conditioned | None (about 1% across a fourfold range) |
+
+Three independent mechanisms, three nulls. **Peak contact force is not regulable
+under position-based differential IK on this workcell, and the binding constraint
+is the action space rather than the reward or the sensing.** Roadmap item 7, an
+admittance or impedance action space, is now the only untried lever, and both
+2026 papers this project read make force *actionable* rather than merely
+observable for exactly this reason. Until that exists, further force-reward
+tuning here is known waste.
+
+Force feedback's one measured win is unaffected and still stands: contact impulse
+fell 59% at the mean and 89% at the median when force entered the observation.
+Sustained rubbing is regulable. The first strike is not.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300

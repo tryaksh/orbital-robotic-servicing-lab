@@ -128,10 +128,16 @@ def _stress_label(stress: dict[str, Any]) -> str:
     bias = stress.get("belief_bias_mm")
     # The pose-belief sweep varies only this axis, so lead the label with it:
     # sorted output then reads as the curve it is meant to produce.
+    threshold = stress.get("force_threshold_n")
     label = f"belief_bias_{bias:05.2f}mm_" if bias is not None else ""
+    # A commanded force budget is a swept axis in its own right, and pooling two
+    # budgets into one row would average away the modulation being measured.
+    label += f"force_threshold_{threshold:05.1f}N_" if threshold is not None else ""
     label += f"pose_noise_x{scale:05.2f}"
     if mass:
         label += f"_mass_{mass[0]:g}-{mass[1]:g}kg"
+    if stress.get("lead_in_present") is False:
+        label += "_no_lead_in"
     return label
 
 
