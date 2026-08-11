@@ -64,62 +64,95 @@ measured from its collision meshes rather than its body origins: the pads close
 along wrist x, span 105 to 162 mm from the flange, open to 87.08 mm at
 `finger_joint` 0 and close at 106.2 mm/rad, so **zero is fully open** and the
 contact task's finger commands are still inverted. A head-on tapered grapple pin
-built on those measurements forms the project's first real grip and holds 59 N,
-ten times the flat-pad grip but 10% short of the gate. Full numbers,
-limitations, and the pre-existing `train.py --smoke` probe defect live in
-`docs/status.md`.
+built on those measurements forms the project's first real grip and holds 69 N
+against the 66.4 N the insertion reaction demands, where flat pads on a smooth
+post held about 6 N. Three skills — capture, extract, insert — now train against
+that pin and chain into two workflows that each run end to end in one continuous
+episode: removal, which pulls a fully installed module 495 mm clear of the rack,
+and installation, which seats one at 8.63 mm axial and 0.61 mm lateral error.
+Both hold the module by pad-against-pin contact alone, with no fixed joint.
+**Neither the chain nor the retrained policies driving it are certified**, and
+that is the first thing the next session fixes. Full numbers, limitations, and
+the pre-existing `train.py --smoke` probe defect live in `docs/status.md`.
 
-## Next action, decided 2026-08-10: pivot to pose uncertainty
+## Next action, decided 2026-08-11: certify what exists, then fix the interface
 
-**P0 and the P1 build are done; P1 is training.** The three head-on grapple-pin skills, the eight-phase swap task,
-and their reward/termination/curriculum classes were deleted on 2026-08-10. The
-capture scene, the pin geometry, the interface specification, every file in
-`evidence/`, the contact-force machinery, and the evaluator all survive. The
-visual-randomization machinery was repointed at the insertion scene as
-`Isaac-ZeroG-Blade-Insertion-Vision-v0`, which is untrained scaffolding for P3.
-`docs/status.md` records the smoke sweep and the two pre-existing failures.
+**The pose-uncertainty pivot ran and its hypothesis was refuted.** Force-aware
+and force-blind policies are indistinguishable up to 4 mm of pose-belief error,
+and the force-aware arm is *worse* past it at roughly twice the contact force.
+The cause is worth more than the hypothesis was: the rack's lead-in flares,
+16.6 mm per side, do the final alignment mechanically. Remove them and **both**
+policies score 0% even at zero belief error. That is not a failed experiment, it
+is a module-side design requirement — the lead-in is load-bearing, and its
+dimension sets the pose tolerance the whole system must hold. It belongs in
+`docs/service_interface_spec.md`, which is the actual deliverable.
+`Isaac-ZeroG-Blade-Insertion-Uncertain-v0` and `-UncertainBlind-v0` stay for the
+record. Do not re-run that sweep expecting a different answer.
 
-`Isaac-ZeroG-Blade-Insertion-Uncertain-v0` and `-UncertainBlind-v0` are built,
-verified, and training. Read the pose-belief section of `docs/status.md` before
-touching them: the obvious way to inject the uncertainty is recoverable from the
-observed tool pose and was discarded, the channel had to be relocated to make
-room, and that cost two of the three reset distances.
+Chaining the three skills exposed four defects that no single-skill certification
+could have caught, all the same shape: a skill that works alone assumes something
+its neighbour does not provide. They are written up in `docs/status.md`. The one
+worth internalising is that extraction had trained with ±0.0005 rad of reset
+noise and had therefore seen exactly one arm configuration in its entire life.
 
-**Do not edit `src/` or `scripts/` while an evaluation sweep is running.** Every
-`play.py` launch re-imports the package, so a broken edit fails every remaining
-run in the sweep rather than one.
+### Do these in order
 
-Next after P1 measures: P2 puts the grapple pin in the loop, and P3 is
-perception. `docs/perception_plan.md` already carries a blocking finding for P3 —
-the authored camera resolves a 4 mm displacement as 0.13 pixels — so read it
-before collecting any images. The full original plan is
+**1. Certify the policies the demo actually runs.** `evidence/` holds
+certifications for grasp v2, extract v2 and insert v3. `run_workflow_demo.py`
+loads grasp **v3**, extract **v4**, insert **v5**. Every figure currently quoted
+about the demo describes a superseded policy, and the retrains changed reset
+noise 40×. Run `play.py` per skill per seed with `--episode_metrics`, pool with
+`scripts/aggregate_evaluation.py`, supersede the stale files. Do this before
+touching geometry — it is also the before-baseline step 4 is measured against.
+
+**2. Certify the chain itself, not only its parts.** Nothing in `evidence/`
+covers a chained run; the two workflow videos are n=1. Extend
+`run_workflow_demo.py` to run headless across many seeds and emit the same
+episode rows the evaluator already pools, then gate it and report a success rate
+with a Wilson interval. Until that report exists the videos are demonstrations,
+not evidence, and every document must describe them that way.
+
+**3. Fix insert's clock, not its policy.** Insert scores 6.5% at full distance
+alone, and 473 of 479 failures are timeouts with the median module 11.29 mm from
+a 12 mm tolerance and 0.62 mm laterally against 2.5 mm. Successful insertions
+take 11.77 s against a 12 s episode. It is slow, not unreliable. Lengthen the
+episode, retrain, re-certify. Per-skill certification and the chain currently
+disagree about what the task is, because the chain grants 45 s — reconcile them
+rather than quoting whichever number reads better.
+
+**4. Design an anti-yaw grapple pin and measure it.** A single-point pin does not
+constrain yaw once the rails release the module: 0.93 rad in failing extractions,
+and the return leg degrades the grip from 15 mm to 35 mm. Slowing the replay
+fourfold makes it *worse*, so this is rotation under sustained load, not an
+acceleration artefact. It is the one thing blocking a full remove-and-replace
+round trip, and a keyway or bearing flats is a legitimate second-generation
+interface result. Re-run `scripts/grasp_diagnostics.py` and the axial pull gate
+on the new geometry, expect to retrain capture because changing the pin changes
+the contact, then re-certify the chain and record the round trip.
+
+**5. Only then, perception readiness.** The pose envelope already implies the
+requirement: the skills tolerate about 4 mm of pose error before the flares stop
+catching, so that is the accuracy perception must deliver. Write it into the spec
+as a stated requirement rather than rediscovering it later.
+`docs/perception_plan.md` carries a blocking finding — the authored camera
+resolves 4 mm as **0.13 pixels** — so the camera has to be fixed before a single
+image is collected. The full original plan is
 `C:\Users\tryak\.claude\plans\with-this-literature-research-merry-gray.md`.
-
-Why the direction changed. Every RL task in this repo trains against a task that
-contains no uncertainty. The policy observes `insertion_goal_error`, derived
-from `attached_blade_pose_world`, which is simulator ground truth; reset noise
-randomizes the initial condition and the policy is then told the exact resulting
-error. With a rigid known object on a constrained axis and full observability,
-that is a motion-planning and force-control problem, and a scripted controller
-would solve it. RL cannot demonstrate its value there, which is why three
-hand-rolled skills cost a night of GPU and certified nothing.
-
-The target result is now one falsifiable plot: **success rate against
-pose-belief error, force-aware policy versus force-blind ablation.** That is the
-axis IndustReal and FORGE are evaluated on, and the repo already owns both
-halves it needs: a working `BladeContactWrenchObservation` and a certified
-force-feedback task lineage.
 
 Adopt established formulations rather than inventing reward terms. IndustReal
 (sampling-based curriculum, SDF dense reward, simulation-aware policy update)
 transfers contact-rich assembly at 83-99% over 600 trials on a UR10e, the same
-arm as here. FORGE (arXiv 2408.04587) targets force-aware manipulation under
-pose uncertainty directly. Note that the Grasp v1 failure recorded in
-`docs/status.md`, where the policy succeeded at reset and never learned an
-approach, is exactly the overfitting pathology IndustReal's sampling-based
-curriculum exists to prevent.
+arm as here. Its curriculum samples the whole initial-state range from the first
+step and raises only its *easy* bound as success improves, which is the direct
+fix for the Grasp-v1 pathology in `docs/status.md`; the mixture ramp in
+`InsertionSuccessRateCurriculum` does the opposite. FORGE (arXiv 2408.04587)
+conditions the policy on a per-episode maximum allowable force rather than the
+two fixed penalty profiles this repository already measured as ineffective.
 
-What survived the prune and must not be deleted: the grapple pin geometry and
+Must not be deleted. The three grapple-pin skills were pruned on 2026-08-10 and
+restored on 2026-08-11 once it was clear the uncertainty pivot had no
+demonstrable artefact; they are now the only thing in the repo that grasps
+anything. Also keep the grapple pin geometry and
 `docs/service_interface_spec.md`, everything in `evidence/` including the
 negative results, the contact-force machinery in `mdp/insertion.py`, the
 evaluator and its promotion gate, `TwoStageRobotiqAction` and
@@ -163,9 +196,17 @@ extractions. An anti-yaw feature is a legitimate second-generation result.
 - Never call a fixed joint, compliant spring, or scripted action a learned
   grasp.
 - Never weaken a success threshold to make a gate pass.
-- Do not advance to Phase 3 while L2 is unpromoted and L3 settling is blocked.
+- Never quote a success rate without checking that the certification in
+  `evidence/` names the same policy version the demo loads. This rule exists
+  because grasp v3, extract v4 and insert v5 were quoted using v2/v2/v3 numbers.
+- A recorded video is a demonstration. A pooled multi-seed report is evidence.
+  Never let the first stand in for the second, in any document or commit message.
+- Do not edit `src/` or `scripts/` while an evaluation sweep is running. Every
+  `play.py` launch re-imports the package, so a broken edit fails every remaining
+  run in the sweep rather than one.
+- Do not start perception while the chained workflow is uncertified.
 - Keep `.deps`, logs, datasets, checkpoints, artifacts, and videos out of Git.
-- Do not reintroduce the eight-phase swap task or the three grapple-pin skills.
+- Do not reintroduce the eight-phase swap task.
   `tests/test_configuration_contract.py` fails if the swap state machine returns.
 
 ## Where to read, by task
