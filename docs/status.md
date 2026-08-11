@@ -1343,6 +1343,87 @@ that is not converging. Both changes are needed and they are separate
 experiments: lengthen the episode, and constrain yaw on the interface. The
 per-skill table above has the full split.
 
+## The anti-yaw yoke: designed from measurement, axially validated, yaw untested
+
+Three separate certifications now point at the same property of the interface —
+extraction at 0%, 93% of insertion failures out of grip-orientation tolerance,
+and the chained removal inside it in 3.8% of episodes — so the second-generation
+feature the specification has been asking for was built.
+
+**The measured envelope decides where it can go.** Re-reading
+`evidence/gripper_collision_envelope.json` over the whole 0 to 0.8203 rad closure
+range rather than at one command gives two numbers that had not been extracted
+before:
+
+| Quantity | Measured |
+| --- | ---: |
+| Deepest any body that is *not* an inner finger reaches from the flange | 0.1245 m |
+| Deepest an inner finger reaches | 0.1621 m |
+| Widest half-extent of a non-finger body on the third axis (the inner knuckle) | 17.5 mm |
+| Inner finger half-width | 13.5 mm |
+
+So there is a **37.6 mm band immediately behind the collar in which the only
+gripper body present is a finger**, and inside it a wall narrower than 17.5 mm
+cannot foul anything. The pin is already 30 mm across against a 27 mm finger, so
+the feature is the wedge's own side faces raised into two walls the fingers run
+between, and the pin gains no width at all.
+
+| Feature | Value | Why |
+| --- | ---: | --- |
+| Wall inner half-gap | 15.0 mm | Flush with the pin's flanks; 1.5 mm per side against a 13.5 mm finger |
+| Yoke length from the collar | 34 mm | Puts the mouth 0.128 m from the flange, 3.5 mm clear of the knuckle band |
+| Parallel section | 24 mm | The part that constrains yaw |
+| Lead-in flare | 10 mm at 20 degrees, to an 18.6 mm half-gap | 5.14 mm of catch per side |
+| Wall height | ±45 mm | The collar's own, so the yoke never exceeds the depth stop's envelope |
+| Predicted free yaw | 0.125 rad | Geometry: 2c/L. Against 0.93 rad measured with no yoke |
+
+The lead-in is not decoration. A 1.5 mm slot the capture has to hit blind would
+trade a yaw problem for a capture problem, and this project has already measured
+what a missing lead-in costs: remove the rack's and two fully trained insertion
+policies both score 0%. `tests/test_grapple_geometry.py` defends every bound
+above against the measured gripper numbers and runs without a simulator.
+
+**The axial pull gate still passes, which was the thing that could have killed
+it.** Adding geometry that fixes rotation is worthless if it costs the hold:
+
+| Interface | Best axial force held at 0.48 rad | Angular slip p95 under axial pull |
+| --- | ---: | ---: |
+| Plain pin | 69 N | 0.1481 rad |
+| Yoked pin | **67 N** | **0.1312 rad** |
+| Required | 66.36 N | — |
+
+Report: `evidence/grapple_pin_axial_pull_gate_yoked.json`, 3 closures by 121
+forces at 1 N resolution, the same grid the 69 N result was measured on. The
+yoke costs 2 N of holding capacity, still clears the requirement, and moves
+angular slip under axial load in the right direction.
+
+**The yaw gate does not work, and the reason is worth more than the gate was.**
+A probe was added to `scripts/grasp_diagnostics.py` to load the interface about
+the closing axis and measure how far the payload rotates. On the capture scene it
+measures **0.079 rad whatever load is applied, identically with and without the
+yoke**, and 200 N of lateral force at the module's centre moves it 1.2 mm.
+
+That is not a null result about the yoke. It is the rails: the capture scene
+holds the module in its slot, the slot constrains lateral motion, and a module
+that cannot translate sideways cannot yaw. The pull gate's own notes said as much
+already — the blade "only starts to lever once the pull has dragged it clear of
+the rails that were constraining it" — and that sentence turns out to be a
+constraint on what a static probe can ever measure here. **Yaw is not a property
+of the seated interface; it is a property of the interface once the rack lets
+go.** Measuring it needs a moving extraction, not a held pose.
+
+Reports: `evidence/grapple_pin_yaw_probe_railed_plain.json` and
+`_yoked.json`, named for what they are. They carry `gate.applies: false`.
+
+**So the yoke is built, dimensioned from measurement, defended by tests, and
+proven not to cost the axial hold — and whether it fixes yaw is unmeasured.**
+It is off by default (`GrapplePinBladeCfg.anti_yaw_yoke`), because turning it on
+changes the contact every trained policy was produced against. The next step is
+the one this project has used since the first grapple-pin session: retrain the
+capture skill on the new geometry, then extract, then re-certify the chain, and
+read the answer off the extraction success rate, which is the measurement that
+already isolates yaw at 0%.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300

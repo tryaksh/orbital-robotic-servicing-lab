@@ -31,6 +31,12 @@ from zero_g_blade_swap.grapple_geometry import (
     GRAPPLE_PIN_WEDGE_HALF_HEIGHT,
     GRAPPLE_PIN_WEDGE_X,
     GRAPPLE_TOOL_OFFSET_POS,
+    GRAPPLE_YOKE_HALF_GAP_M,
+    GRAPPLE_YOKE_HALF_HEIGHT,
+    GRAPPLE_YOKE_MOUTH_HALF_GAP_M,
+    GRAPPLE_YOKE_PARALLEL_X,
+    GRAPPLE_YOKE_WALL_THICKNESS_M,
+    GRAPPLE_YOKE_X,
     RATED_GRIP_FORCE_N,
     drive_torque_for_grip_force_nm,
     wedge_taper_deg,
@@ -712,6 +718,84 @@ def _define_wedge(stage: Usd.Stage, path: str, cfg: GrapplePinBladeCfg, material
     sim_utils.bind_physics_material(path, material_path, stage=stage)
 
 
+def _define_yoke_flare(
+    stage: Usd.Stage, path: str, cfg: GrapplePinBladeCfg, material_path: str, sign: float
+) -> None:
+    """Author one flared mouth of the anti-yaw yoke as a convex hexahedron.
+
+    The yoke's parallel walls leave 1.5 mm per side against a 27 mm finger, which
+    is what constrains yaw and would otherwise be a slot the capture has to hit
+    blind. This is the lead-in that stops it being one, and it is here for the
+    same reason the rack has lead-in flares: measured, removing the rack's takes
+    two fully trained insertion policies to 0%.
+    """
+
+    mouth_x, _ = cfg.yoke_x
+    parallel_x, _ = cfg.yoke_parallel_x
+    half_height = cfg.yoke_half_height
+    thickness = cfg.yoke_wall_thickness
+    # Ordered low-to-high on the third axis so both walls wind identically and
+    # neither renders inside out.
+    mouth_low, mouth_high = sorted((sign * cfg.yoke_mouth_half_gap, sign * (cfg.yoke_mouth_half_gap + thickness)))
+    join_low, join_high = sorted((sign * cfg.yoke_half_gap, sign * (cfg.yoke_half_gap + thickness)))
+    points = [
+        (mouth_x, mouth_low, -half_height),
+        (mouth_x, mouth_high, -half_height),
+        (mouth_x, mouth_high, half_height),
+        (mouth_x, mouth_low, half_height),
+        (parallel_x, join_low, -half_height),
+        (parallel_x, join_high, -half_height),
+        (parallel_x, join_high, half_height),
+        (parallel_x, join_low, half_height),
+    ]
+    mesh = UsdGeom.Mesh.Define(stage, path)
+    mesh.CreatePointsAttr([Gf.Vec3f(*point) for point in points])
+    mesh.CreateFaceVertexCountsAttr([4] * 6)
+    mesh.CreateFaceVertexIndicesAttr(
+        [0, 3, 2, 1] + [4, 5, 6, 7] + [0, 4, 7, 3] + [1, 2, 6, 5] + [3, 7, 6, 2] + [0, 1, 5, 4]
+    )
+    mesh.CreateExtentAttr(
+        [
+            Gf.Vec3f(*(min(point[axis] for point in points) for axis in range(3))),
+            Gf.Vec3f(*(max(point[axis] for point in points) for axis in range(3))),
+        ]
+    )
+    sim_utils.standardize_xform_ops(mesh.GetPrim())
+    sim_utils.define_collision_properties(path, cfg.collision_props, stage=stage)
+    UsdPhysics.MeshCollisionAPI.Apply(mesh.GetPrim()).CreateApproximationAttr().Set(UsdPhysics.Tokens.convexHull)
+    sim_utils.bind_physics_material(path, material_path, stage=stage)
+
+
+def _define_yoke(stage: Usd.Stage, pin_path: str, cfg: GrapplePinBladeCfg, material_path: str) -> list[str]:
+    """Author both yoke walls, each a parallel section plus a flared mouth.
+
+    Two convex prims a side rather than one, because a wall whose inner face is
+    parallel then flared is a pentagonal prism, and PhysX wants convex hulls it
+    can take literally.
+    """
+
+    parallel_low, parallel_high = cfg.yoke_parallel_x
+    names: list[str] = []
+    for label, sign in (("Left", 1.0), ("Right", -1.0)):
+        wall = f"{pin_path}/Yoke{label}Wall"
+        _define_box(
+            stage,
+            wall,
+            (
+                0.5 * (parallel_low + parallel_high),
+                sign * (cfg.yoke_half_gap + 0.5 * cfg.yoke_wall_thickness),
+                0.0,
+            ),
+            (parallel_high - parallel_low, cfg.yoke_wall_thickness, 2.0 * cfg.yoke_half_height),
+            cfg,
+            material_path,
+        )
+        flare = f"{pin_path}/Yoke{label}Flare"
+        _define_yoke_flare(stage, flare, cfg, material_path, sign)
+        names.extend((f"Yoke{label}Wall", f"Yoke{label}Flare"))
+    return names
+
+
 def spawn_blade_with_grapple_pin(
     prim_path: str,
     cfg: GrapplePinBladeCfg,
@@ -755,10 +839,13 @@ def spawn_blade_with_grapple_pin(
             material_path,
         )
         _define_wedge(stage, f"{pin_path}/Wedge", cfg, material_path)
+        names = ["Shaft", "Collar", "Wedge"]
+        if cfg.anti_yaw_yoke:
+            names.extend(_define_yoke(stage, pin_path, cfg, material_path))
 
         visual_path = f"{root_path}/geometry/{cfg.visual_material_path}"
         if stage.GetPrimAtPath(visual_path).IsValid():
-            for name in ("Shaft", "Collar", "Wedge"):
+            for name in names:
                 sim_utils.bind_visual_material(f"{pin_path}/{name}", visual_path, stage=stage)
     return root
 
@@ -782,6 +869,18 @@ class GrapplePinBladeCfg(sim_utils.CuboidCfg):
     shaft_half_height: float = GRAPPLE_PIN_SHAFT_HALF_HEIGHT
     collar_half_height: float = GRAPPLE_PIN_COLLAR_HALF_HEIGHT
     wedge_half_height: tuple[float, float] = GRAPPLE_PIN_WEDGE_HALF_HEIGHT
+    # The second-generation anti-yaw walls, off by default. Turning them on
+    # changes the contact every trained policy was produced against, so they are
+    # measured on the physics gates first and only then trained against. That
+    # order is the same one the pull gate established: never train a policy
+    # against an interface that has not been characterised.
+    anti_yaw_yoke: bool = False
+    yoke_x: tuple[float, float] = GRAPPLE_YOKE_X
+    yoke_parallel_x: tuple[float, float] = GRAPPLE_YOKE_PARALLEL_X
+    yoke_half_gap: float = GRAPPLE_YOKE_HALF_GAP_M
+    yoke_mouth_half_gap: float = GRAPPLE_YOKE_MOUTH_HALF_GAP_M
+    yoke_wall_thickness: float = GRAPPLE_YOKE_WALL_THICKNESS_M
+    yoke_half_height: float = GRAPPLE_YOKE_HALF_HEIGHT
     pin_physics_material_path: str = "grapplePinPhysicsMaterial"
     # The wedge is meant to hold by geometry, so the gate must not be able to
     # pass on friction the interface would not have. This is an ordinary

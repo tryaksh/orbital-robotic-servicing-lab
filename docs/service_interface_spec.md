@@ -297,11 +297,52 @@ interface. Removal works and installation works; carrying a module between them
 does not. An anti-yaw feature — a keyway, or flats the pads bear against
 laterally — is the change that closes it.
 
+### 8.1 The feature, and where the gripper allows it
+
+Re-reading `evidence/gripper_collision_envelope.json` across the whole closure
+range gives the constraint that decides the design:
+
+| Quantity | Measured |
+| --- | ---: |
+| Deepest reach from the flange of any body that is not an inner finger | 0.1245 m |
+| Deepest reach of an inner finger | 0.1621 m |
+| Widest half-extent of a non-finger body on the third axis | 17.5 mm |
+| Inner finger half-width | 13.5 mm |
+
+There is therefore a **37.6 mm band immediately behind the collar containing only
+fingers**, and a wall narrower than 17.5 mm is safe inside it and nowhere else.
+The module already presents 30 mm of pin width against a 27 mm finger, so the
+feature costs no width: it is the wedge's side faces raised into a channel the
+fingers run between.
+
 | Feature | Requirement | Why |
 | --- | --- | --- |
-| **Anti-yaw feature** | Bearing surfaces that oppose rotation about the pull axis | 0.93 rad of free rotation once the rails release the module |
+| **Yoke walls**, inner half-gap | 15.0 mm | Flush with the pin flanks. 1.5 mm per side against a 13.5 mm finger |
+| **Yoke**, length from the collar face | 34 mm | Keeps the mouth at 0.128 m from the flange, clear of the knuckle band |
+| **Yoke**, parallel section | 24 mm | The engagement length that sets the free yaw, 2c/L = 0.125 rad |
+| **Yoke**, lead-in flare | 10 mm at 20 degrees to an 18.6 mm half-gap | 5.14 mm of catch per side, so the capture is not asked to hit a 1.5 mm slot blind |
+| **Yoke**, wall height | ±45 mm | The collar's own, so the depth stop's envelope is not exceeded |
 | Must preserve | 66.4 N axial capacity | The insertion contact reaction does not change because the pin did |
 | Must preserve | 8.5 mm per side approach clearance | Or capture stops working, which is a worse trade |
+
+### 8.2 What has been measured about it, and what has not
+
+**The axial hold survives.** On the same 3-closure by 121-force grid the 69 N
+result was measured on, the yoked interface holds **67 N** at the 0.48 rad
+capture command against the 66.4 N required, and angular slip under axial pull
+falls from 0.1481 to 0.1312 rad at p95. Report:
+`evidence/grapple_pin_axial_pull_gate_yoked.json`.
+
+**Whether it fixes yaw is not measured, and a static probe cannot measure it.**
+Loading the seated interface laterally moves the module 1.2 mm under 200 N and
+rotates it 0.079 rad regardless of load, identically with and without the yoke,
+because the module is in its rails and the rails constrain it. That is consistent
+with what section 6 of this specification says about the rack doing mechanical
+work, and it means **yaw is a property of the interface after the rack releases
+the module, not of the seated interface.** It has to be measured on a moving
+extraction. Reports:
+`evidence/grapple_pin_yaw_probe_railed_plain.json` and `_yoked.json`, both
+carrying `gate.applies: false`.
 
 ---
 

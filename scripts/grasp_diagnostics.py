@@ -81,6 +81,38 @@ def _parser() -> argparse.ArgumentParser:
         default=0.002,
         help="Tool-to-handle movement above this counts as slip. The insertion task aborts at 0.025 m.",
     )
+    parser.add_argument(
+        "--load_axis",
+        choices=("axial", "yaw"),
+        default="axial",
+        help=(
+            "axial applies a pull along the extraction axis and measures holding capacity, which is the gate the "
+            "interface was designed against. yaw applies a torque about the gripper's closing axis and measures "
+            "how far the payload rotates in the pads, which is the failure the pin does not resist: a normal "
+            "force cannot oppose a moment about its own direction, so nothing but friction does."
+        ),
+    )
+    parser.add_argument(
+        "--max_torque_nm",
+        type=float,
+        default=12.0,
+        help="Largest yaw torque applied, in newton-metres. Only used with --load_axis yaw.",
+    )
+    parser.add_argument(
+        "--slip_tolerance_rad",
+        type=float,
+        default=0.20,
+        help=(
+            "Rotation above this counts as slip on the yaw gate. The default is capture_established's own "
+            "orientation tolerance, so the gate asks the same question the skills' success predicates ask."
+        ),
+    )
+    parser.add_argument(
+        "--anti_yaw_yoke",
+        action="store_true",
+        help="Spawn the second-generation anti-yaw walls on the pin. Off by default; every trained policy was "
+        "produced against the plain pin.",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--report", type=Path, default=Path("artifacts/grasp_diagnostics.json"))
     AppLauncher.add_app_launcher_args(parser)
@@ -99,6 +131,10 @@ if args.slip_tolerance_m <= 0.0:
     parser.error("--slip_tolerance_m must be positive")
 if any(value <= 0.0 for value in args.closures):
     parser.error("--closures must be positive radians")
+if args.max_torque_nm <= 0.0:
+    parser.error("--max_torque_nm must be positive")
+if args.slip_tolerance_rad <= 0.0:
+    parser.error("--slip_tolerance_rad must be positive")
 
 app_launcher = AppLauncher(args)
 simulation_app = app_launcher.app
@@ -119,6 +155,8 @@ from zero_g_blade_swap.tasks.blade_swap.mdp.insertion import (
     attached_blade_pose_world,
     secured_blade_pose_error,
 )
+from zero_g_blade_swap.grapple_geometry import GRAPPLE_PIN_GRIP_OFFSET
+from zero_g_blade_swap.tasks.blade_swap.mdp.grapple import grapple_grip_error_metrics
 from zero_g_blade_swap.tasks.blade_swap.mdp.observations import end_effector_pose_world
 
 
@@ -135,16 +173,30 @@ def _configure(env_cfg) -> None:
     # The script drives the fingers so each environment can hold its own closure
     # target; the interval event would overwrite all of them with one value.
     env_cfg.events.hold_gripper_closed = None
+    if args.anti_yaw_yoke:
+        spawn = env_cfg.scene.spare_blade.spawn
+        if not hasattr(spawn, "anti_yaw_yoke"):
+            raise ValueError(f"{args.task} does not carry a grapple pin, so it has nothing to fit a yoke to")
+        spawn.anti_yaw_yoke = True
 
 
 def _grid(device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
-    """Return the per-environment closure target and pull force."""
+    """Return the per-environment closure target and applied load.
+
+    The load is a force in newtons on the axial gate and a torque in
+    newton-metres on the yaw gate; everything downstream treats it as one swept
+    scalar, so the two gates share a grid, a settling window, and a report shape.
+    """
 
     closures = torch.tensor(args.closures, dtype=torch.float32, device=device)
-    forces = torch.linspace(0.0, float(args.max_force_n), args.force_levels, device=device)
+    # Both gates sweep a force now: the axial one pulls along the extraction
+    # axis, the yaw one pushes sideways at the module centre and the moment arm
+    # to the grip point turns it into a yaw moment.
+    largest = float(args.max_force_n)
+    loads = torch.linspace(0.0, largest, args.force_levels, device=device)
     closure_grid = closures.repeat_interleave(args.force_levels)
-    force_grid = forces.repeat(len(args.closures))
-    return closure_grid, force_grid
+    load_grid = loads.repeat(len(args.closures))
+    return closure_grid, load_grid
 
 
 def _breakaway(
@@ -257,7 +309,23 @@ def main() -> dict[str, object]:
             pad_midpoint = robot.data.body_pos_w[:, pad_ids].mean(dim=1)
             tool_to_pad = torch.linalg.vector_norm(pad_midpoint - tool_position, dim=-1)
             pad_to_handle = torch.linalg.vector_norm(pad_midpoint - handle_centre, dim=-1)
-            wrench[:, 0, 0] = float(args.pull_sign) * pull_force
+            # One swept scalar, two gates. The axial gate pulls along the
+            # extraction axis. The yaw gate pushes sideways at the module's
+            # centre of mass, which is a moment about the grip point because the
+            # pads hold the pin 0.34 m away from it, and that moment is about the
+            # closing axis -- the one a pair of flat pads cannot oppose, because
+            # their contact normals lie along it.
+            #
+            # A lateral force rather than a pure couple, deliberately. It is the
+            # disturbance a real servicing arm actually delivers, it reproduces
+            # the geometry of the failure, and it goes through the same wrench
+            # path the axial gate is already validated on.
+            if args.load_axis == "yaw":
+                wrench[:, 0, 1] = pull_force
+            else:
+                wrench[:, 0, 0] = float(args.pull_sign) * pull_force
+            baseline_attitude = grapple_grip_error_metrics(task)[1].clone()
+            peak_yaw = torch.zeros(num_envs, device=task.device)
             peak_slip = torch.zeros(num_envs, device=task.device)
             peak_grip_torque = torch.zeros(num_envs, device=task.device)
             # Capture and hold are separate commands. Closing hard enough to
@@ -277,6 +345,14 @@ def main() -> dict[str, object]:
                 torch.maximum(peak_slip, slip, out=peak_slip)
                 grip = robot.data.applied_torque[:, joint_ids[0]].abs()
                 torch.maximum(peak_grip_torque, grip, out=peak_grip_torque)
+                # Rotation of the payload in the pads, in the head-on
+                # convention, measured as the change from the seated baseline so
+                # the number isolates what the load did rather than how well the
+                # capture happened to seat. This is the same quantity
+                # capture_established tests, so the gate asks the question the
+                # skills' own success predicates ask.
+                attitude = grapple_grip_error_metrics(task)[1]
+                torch.maximum(peak_yaw, (attitude - baseline_attitude).abs(), out=peak_yaw)
                 # How far the load forces the fingers back open. If the
                 # interface is failing because the payload cams the pads apart,
                 # this rises with pull force; if it is sliding, this stays flat.
@@ -294,7 +370,13 @@ def main() -> dict[str, object]:
             angular_slip = (final_angle - baseline_angle).abs()
             blade_travel = (attached_blade_pose_world(task)[0][:, 0] - baseline_blade_x).abs()
             finite = torch.isfinite(final_slip) & torch.isfinite(blade_travel)
-            slipped = peak_slip > float(args.slip_tolerance_m)
+            final_attitude = grapple_grip_error_metrics(task)[1]
+            yaw_slip = (final_attitude - baseline_attitude).abs()
+            slipped = (
+                peak_yaw > float(args.slip_tolerance_rad)
+                if args.load_axis == "yaw"
+                else peak_slip > float(args.slip_tolerance_m)
+            )
             # Whether a grasp formed is decided by the solver, not by geometry
             # guessed from link origins: a blocked finger cannot reach its
             # commanded angle, so drive torque rises off the noise floor.
@@ -329,8 +411,20 @@ def main() -> dict[str, object]:
                 "closure_targets_rad": list(args.closures),
                 "hold_closure_delta_rad": args.hold_closure_delta,
                 "force_levels": args.force_levels,
+                "load_axis": args.load_axis,
+                "load_units": "N",
+                "load_description": (
+                    "axial pull along the extraction axis"
+                    if args.load_axis == "axial"
+                    else "lateral force at the module centre, which is a yaw moment about the grip point"
+                ),
+                "anti_yaw_yoke": bool(args.anti_yaw_yoke),
                 "max_force_n": args.max_force_n,
                 "force_step_n": args.max_force_n / (args.force_levels - 1),
+                "max_torque_nm": args.max_torque_nm,
+                "torque_step_nm": args.max_torque_nm / (args.force_levels - 1),
+                "yaw_moment_arm_m": abs(GRAPPLE_PIN_GRIP_OFFSET[0]),
+                "slip_tolerance_rad": args.slip_tolerance_rad,
                 "pull_direction": "extraction_minus_x" if args.pull_sign < 0 else "insertion_plus_x",
                 "settle_s": args.settle_s,
                 "hold_s": args.hold_s,
@@ -373,6 +467,13 @@ def main() -> dict[str, object]:
                 "final_axial_slip_m": summarize_distribution(axial_slip.abs()),
                 "final_lateral_slip_m": summarize_distribution(lateral_slip),
                 "final_angular_slip_rad": summarize_distribution(angular_slip),
+                # The head-on convention, which is the one capture_established
+                # and every skill success predicate use. The top-down
+                # angular_slip above reads about 2.1 rad on this scene and is
+                # kept only so the two gates share a report shape.
+                "peak_yaw_slip_rad": summarize_distribution(peak_yaw),
+                "final_yaw_slip_rad": summarize_distribution(yaw_slip),
+                "seated_grip_attitude_rad": summarize_distribution(baseline_attitude),
                 "reached_finger_joint_rad": summarize_distribution(reached_finger),
                 "finger_splay_under_load_rad": summarize_distribution(splay),
                 "blade_axial_travel_m": summarize_distribution(blade_travel),
@@ -383,6 +484,13 @@ def main() -> dict[str, object]:
             "gate": {
                 "grasp_contact_established": bool(grasp_established.all()),
                 "environments_where_a_finger_was_blocked": int(grasp_established.sum()),
+                # The yaw gate has no absolute requirement to clear, because
+                # nothing in this project measures an applied servicing moment.
+                # It is a comparison: the same grid on the plain pin and on the
+                # yoke, judged against capture_established's own 0.20 rad
+                # tolerance. Its pass/fail is therefore not applicable and the
+                # number that matters is the breakaway torque.
+                "applies": args.load_axis == "axial",
                 "required_axial_force_n": required,
                 "rationale": (
                     "Worst-case peak contact force measured on the promoted Level-2 insertion policy "
@@ -391,7 +499,9 @@ def main() -> dict[str, object]:
                 ),
                 "reference_p95_contact_force_n": LEVEL_2_P95_CONTACT_FORCE_N,
                 "best_force_held_n": best,
-                "passed": bool(grasp_established.all() and best >= required),
+                "passed": bool(
+                    grasp_established.all() and (best >= required if args.load_axis == "axial" else True)
+                ),
                 "interpretation": (
                     "held capacity is only a friction result once a grasp actually forms; with "
                     "drive torque at the noise floor the blade is an unconstrained body and its "
