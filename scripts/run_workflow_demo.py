@@ -66,9 +66,6 @@ SEAT_STEPS = 30
 #: feed adds about 3 mm on top, landing near the 12.4 mm the extract task starts
 #: its own episodes from.
 HANDOVER_GRIP_M = 0.010
-#: Held still after the workflow's own predicate fires, before the outcome is
-#: judged. A success that evaporates in two thirds of a second was not one.
-SETTLE_STEPS = 21
 
 #: Phases, as integers, because the driver runs them per environment in parallel.
 CAPTURE, SEAT, EXTRACT, TRANSIT, INSERT, DONE = range(6)
@@ -176,6 +173,9 @@ from zero_g_blade_swap.evaluation import (
     wilson_interval,
 )
 from zero_g_blade_swap.tasks.blade_swap.mdp.grapple import (
+    EXTRACTION_ANGULAR_VELOCITY_LIMIT,
+    EXTRACTION_LINEAR_VELOCITY_LIMIT,
+    WORKFLOW_SETTLE_S,
     capture_established,
     extraction_success_mask,
     grapple_grip_error_metrics,
@@ -200,6 +200,12 @@ from zero_g_blade_swap.tasks.blade_swap.workflow_demo_env_cfg import (
     TRANSIT_TARGET_BLADE_X,
 )
 from zero_g_blade_swap.grapple_geometry import EXTRACTED_BLADE_CENTRE_X
+
+#: Held still after the workflow's own predicate fires, before the outcome is
+#: judged. A success that evaporates in two thirds of a second was not one.
+#: Read from the skill module, because the extraction velocity limits are
+#: *derived* from this window and the two must not be able to disagree.
+SETTLE_STEPS = round(WORKFLOW_SETTLE_S * 30.0)
 
 def _certified_episode_length_s(cfg_class: type) -> float:
     """Read a skill's episode length off its own task configuration.
@@ -315,8 +321,14 @@ def _extraction_held(task) -> torch.Tensor:
     return (
         (_blade_centre_x(task) <= EXTRACTED_BLADE_CENTRE_X)
         & capture_established(task)
-        & (torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= 0.10)
-        & (torch.linalg.vector_norm(velocity[:, 3:], dim=-1) <= 0.30)
+        # Read from the skill, never restated. These limits are derived from
+        # this driver's own settling window -- a module still moving at v drifts
+        # v * 0.70 s before it is judged -- so a copy here that drifted from the
+        # skill's would let the two disagree about the very quantity the settle
+        # exists to test. Two constants restated instead of read have already
+        # cost this workflow a full certification each.
+        & (torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= EXTRACTION_LINEAR_VELOCITY_LIMIT)
+        & (torch.linalg.vector_norm(velocity[:, 3:], dim=-1) <= EXTRACTION_ANGULAR_VELOCITY_LIMIT)
     )
 
 

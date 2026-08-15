@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -99,6 +100,59 @@ def test_the_plain_pin_stays_rebuildable() -> None:
     assert '"--plain_pin"' in diagnostics
     gates = (ROOT / "scripts/run_yoke_gates.sh").read_text(encoding="utf-8")
     assert "--plain_pin" in gates
+
+
+def test_extraction_velocity_limits_are_derived_from_the_settling_window() -> None:
+    """A skill may not declare success in a state the chain cannot confirm.
+
+    The chained workflow stops commanding the moment a phase succeeds and
+    re-checks the same condition 0.70 s later. In zero gravity nothing damps
+    what is left moving, so a module declared removed at velocity ``v`` drifts
+    ``v * t`` before it is judged. The old limits -- 0.30 rad/s and 0.10 m/s --
+    allowed 0.210 rad and 70 mm of drift against a 0.20 rad and 20 mm tolerance,
+    which is 105% and 350% of the budget: mathematically guaranteed to fail.
+    Measured exactly there, 191 of 192 chained removals fired their predicate
+    and not one survived the re-check.
+
+    So the limits are computed from the window rather than chosen, and this test
+    exists to stop anyone replacing the derivation with the number it currently
+    produces.
+    """
+
+    source = (ROOT / "src/zero_g_blade_swap/tasks/blade_swap/mdp/grapple.py").read_text(encoding="utf-8")
+    assert "EXTRACTION_ANGULAR_VELOCITY_LIMIT = 0.5 * CAPTURE_ATTITUDE_TOLERANCE_RAD / WORKFLOW_SETTLE_S" in source
+    assert "EXTRACTION_LINEAR_VELOCITY_LIMIT = 0.5 * CAPTURE_POSITION_TOLERANCE_M / WORKFLOW_SETTLE_S" in source
+
+    # Half the tolerance spent on drift, half left for the pull's own error.
+    settle, attitude, position = 0.70, 0.20, 0.020
+    assert (0.5 * attitude / settle) * settle == pytest.approx(0.5 * attitude)
+    assert (0.5 * position / settle) * settle == pytest.approx(0.5 * position)
+
+    # The workflow driver must read both limits and the window, never restate
+    # them. Two constants restated instead of read have each cost this chain a
+    # full certification.
+    demo = (ROOT / "scripts/run_workflow_demo.py").read_text(encoding="utf-8")
+    assert "EXTRACTION_ANGULAR_VELOCITY_LIMIT" in demo
+    assert "EXTRACTION_LINEAR_VELOCITY_LIMIT" in demo
+    assert "SETTLE_STEPS = round(WORKFLOW_SETTLE_S * 30.0)" in demo
+
+
+def test_the_workflow_reads_action_scales_from_the_tasks() -> None:
+    """The chain must drive each policy with the action term it trained under.
+
+    Extract's scales were rebalanced on the task and the workflow's copy stayed
+    at the old values, so the chain drove the policy at a quarter of its lateral
+    authority: all 598 removals overran their budget while the same checkpoint
+    certified at 94.23% alone. Reading beats restating.
+    """
+
+    workflow = (
+        ROOT / "src/zero_g_blade_swap/tasks/blade_swap/workflow_demo_env_cfg.py"
+    ).read_text(encoding="utf-8")
+    for name in ("GRASP_ACTION_SCALE", "EXTRACT_ACTION_SCALE", "INSERT_ACTION_SCALE"):
+        assert f"{name} = _certified_action_scale(" in workflow, name
+    # No literal tuple of scales may survive next to them.
+    assert "EXTRACT_ACTION_SCALE = (" not in workflow
 
 
 def test_no_large_runtime_artifacts_are_tracked_by_layout() -> None:

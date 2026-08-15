@@ -51,6 +51,31 @@ from .observations import end_effector_pose_world
 # the word means.
 GRIP_TORQUE_THRESHOLD_NM = 0.05
 
+#: Seconds the chained workflow holds still before re-checking that a phase
+#: really succeeded. ``run_workflow_demo.SETTLE_STEPS`` is this at 30 Hz.
+WORKFLOW_SETTLE_S = 0.70
+#: Grip attitude a capture is allowed, and the margin an extraction has to hand
+#: over inside it. ``capture_established`` keys on the first.
+CAPTURE_ATTITUDE_TOLERANCE_RAD = 0.20
+CAPTURE_POSITION_TOLERANCE_M = 0.020
+
+#: How fast a "removed" module may still be moving, **derived** from the two
+#: numbers above rather than chosen.
+#:
+#: The chain stops commanding the moment a phase succeeds and re-checks the same
+#: condition ``WORKFLOW_SETTLE_S`` later. In zero gravity nothing damps what is
+#: left moving, so a module declared removed at velocity ``v`` drifts ``v * t``
+#: before it is judged. With the old limits -- 0.30 rad/s and 0.10 m/s -- that
+#: is 0.21 rad and 70 mm of drift against a 0.20 rad and 20 mm tolerance, so the
+#: skill was allowed to declare success in states the chain could not possibly
+#: confirm. Measured exactly there: 191 of 192 chained removals fired the
+#: predicate and none survived the re-check.
+#:
+#: Half the remaining margin is spent on drift, which leaves the other half for
+#: the attitude the pull itself ends with.
+EXTRACTION_ANGULAR_VELOCITY_LIMIT = 0.5 * CAPTURE_ATTITUDE_TOLERANCE_RAD / WORKFLOW_SETTLE_S
+EXTRACTION_LINEAR_VELOCITY_LIMIT = 0.5 * CAPTURE_POSITION_TOLERANCE_M / WORKFLOW_SETTLE_S
+
 
 def grapple_grip_pose_error(env) -> tuple[torch.Tensor, torch.Tensor]:
     """Return the tool-to-grip-point vector in world axes and the orientation error.
@@ -656,24 +681,15 @@ def extraction_progress_reward(env, target_x: float = EXTRACTED_BLADE_CENTRE_X) 
 def extraction_success_mask(
     env,
     target_x: float = EXTRACTED_BLADE_CENTRE_X,
-    hold_time_s: float = 0.70,
-    linear_velocity_limit: float = 0.10,
-    angular_velocity_limit: float = 0.30,
+    hold_time_s: float = 0.30,
+    linear_velocity_limit: float = EXTRACTION_LINEAR_VELOCITY_LIMIT,
+    angular_velocity_limit: float = EXTRACTION_ANGULAR_VELOCITY_LIMIT,
 ) -> torch.Tensor:
-    """Clear of the slot, still gripped, and no longer moving fast.
+    """Clear of the slot, still gripped, and genuinely settled.
 
-    ``hold_time_s`` is 0.70 to match the chained workflow's settling window
-    exactly, and that alignment is the point rather than a detail. The chain
-    re-checks this same condition 0.70 s after the predicate fires, so a skill
-    that only had to hold it for 0.20 s was being certified more loosely than
-    the chain judges it. Measured: with the extract skill certifying at 68.36%,
-    the chained removal fired its predicate in 191 of 192 episodes and **none**
-    survived the re-check, because in zero gravity a module that is merely
-    below the velocity limit keeps drifting once the arm stops commanding.
-
-    A skill's success criterion must be at least as strict as the criterion the
-    chain it belongs to applies, or the two can never agree. This is the same
-    reconciliation ``PHASE_BUDGET_S`` makes for episode length.
+    The velocity limits are **derived from the chain's settling window**, not
+    chosen, and that is what makes this criterion consistent rather than
+    convenient. See :data:`EXTRACTION_ANGULAR_VELOCITY_LIMIT`.
     """
 
     velocity = attached_blade_velocity(env)
