@@ -530,7 +530,24 @@ class ExtractEventsCfg(GrapplePinEventsCfg):
 class ExtractRewardsCfg:
     progress = RewTerm(func=mdp.extraction_progress_reward, weight=12.0)
     success = RewTerm(func=mdp.extraction_success_reward, weight=30.0)
-    retention = RewTerm(func=mdp.grip_retention_penalty, weight=-0.50)
+    # Attitude is charged far harder here than the shared default, and the
+    # default is left alone because insert v6 was certified under it.
+    #
+    # Extract v6 certifies at 10.09% and 7,971 of its 8,093 failures end at the
+    # 0.350 rad grip-attitude limit with grip *position* still holding at
+    # 12.5 mm. Under the defaults, attitude at the 0.20 rad success limit costs
+    # about 0.16 per step against a progress term weighted 12, so the policy was
+    # being paid to trade attitude for travel. It is not a control failure that
+    # more training fixes; it is the objective.
+    #
+    # Free below 0.04 rad, normalised over 0.06, weighted 1.0: about 3.6 per
+    # step at the success limit and 9.4 at 0.30, which is the same order as
+    # progress rather than two orders below it.
+    retention = RewTerm(
+        func=mdp.grip_retention_penalty,
+        weight=-0.50,
+        params={"free_rad": 0.04, "orientation_scale": 0.06, "orientation_weight": 1.0},
+    )
     time = RewTerm(func=mdp.elapsed_time_penalty, weight=-0.10)
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.003)
     failure = RewTerm(func=mdp.extraction_failure_reward, weight=-15.0)

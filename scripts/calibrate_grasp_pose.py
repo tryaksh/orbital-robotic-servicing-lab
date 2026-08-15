@@ -113,6 +113,16 @@ def _parser() -> argparse.ArgumentParser:
             "which makes the pads foul the interface they are supposed to be driven around."
         ),
     )
+    parser.add_argument(
+        "--robot_base_x",
+        type=float,
+        default=None,
+        help=(
+            "Move the robot base along world x before servoing. This is a workcell probe, not a task change: "
+            "extraction ends with the tool 0.336 m horizontally from the base and 0.570 m above it, folded back "
+            "over the shoulder, and this says whether that pose is the reason the grip attitude cannot be held."
+        ),
+    )
     parser.add_argument("--report", type=Path, default=Path("artifacts/grasp_pose_calibration.json"))
     AppLauncher.add_app_launcher_args(parser)
     return parser
@@ -159,6 +169,11 @@ def main() -> dict[str, object]:
         seed_offsets = args.seed_wrist_1_offsets
 
         env_cfg = parse_env_cfg(args.task, device=args.device or "cuda:0", num_envs=1)
+        if args.robot_base_x is not None:
+            base = list(env_cfg.scene.robot.init_state.pos)
+            print(f"[INFO] Robot base moved from x={base[0]:.4f} to x={args.robot_base_x:.4f} (workcell probe)")
+            base[0] = args.robot_base_x
+            env_cfg.scene.robot.init_state.pos = tuple(base)
         if target_rot is None:
             target_rot = getattr(env_cfg, "tool_target_rot", None)
         if seed_offsets is None:

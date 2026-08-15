@@ -705,13 +705,30 @@ def extraction_failure_reward(env) -> torch.Tensor:
     return env.termination_manager.get_term("extraction_failed").to(torch.float32) / float(env.step_dt)
 
 
-def grip_retention_penalty(env, free_m: float = 0.004, free_rad: float = 0.08) -> torch.Tensor:
-    """Penalize the grip drifting, without paying a policy to stand still."""
+def grip_retention_penalty(
+    env,
+    free_m: float = 0.004,
+    free_rad: float = 0.08,
+    orientation_scale: float = 0.15,
+    orientation_weight: float = 0.25,
+) -> torch.Tensor:
+    """Penalize the grip drifting, without paying a policy to stand still.
+
+    The two orientation parameters exist because the defaults are too soft for
+    extraction and must not change for insertion, whose certification was
+    produced under them. Measured on extract v6: 7,971 of 8,093 failures end with
+    the grip attitude at the 0.350 rad failure limit while grip *position* holds
+    at 12.5 mm, and under the defaults that attitude costs about 0.16 per step at
+    the 0.20 rad success limit against a progress reward weighted 12. The policy
+    was trading attitude for travel because attitude was very nearly free until
+    the episode died on it, which is the policy optimising exactly what it was
+    asked to.
+    """
 
     position, orientation = grapple_grip_error_metrics(env)
     position_excess = ((position - free_m) / 0.010).clamp_min(0.0)
-    orientation_excess = ((orientation - free_rad) / 0.15).clamp_min(0.0)
-    return (position_excess.square() + 0.25 * orientation_excess.square()).clamp(max=25.0)
+    orientation_excess = ((orientation - free_rad) / orientation_scale).clamp_min(0.0)
+    return (position_excess.square() + orientation_weight * orientation_excess.square()).clamp(max=25.0)
 
 
 def reset_grapple_blade_pose(

@@ -1458,14 +1458,203 @@ go.** Measuring it needs a moving extraction, not a held pose.
 Reports: `evidence/grapple_pin_yaw_probe_railed_plain.json` and
 `_yoked.json`, named for what they are. They carry `gate.applies: false`.
 
-**So the yoke is built, dimensioned from measurement, defended by tests, and
-proven not to cost the axial hold — and whether it fixes yaw is unmeasured.**
-It is off by default (`GrapplePinBladeCfg.anti_yaw_yoke`), because turning it on
-changes the contact every trained policy was produced against. The next step is
-the one this project has used since the first grapple-pin session: retrain the
-capture skill on the new geometry, then extract, then re-certify the chain, and
-read the answer off the extraction success rate, which is the measurement that
-already isolates yaw at 0%.
+**So the yoke was built, dimensioned from measurement, defended by tests, and
+proven not to cost the axial hold.** Whether it fixed yaw was then measured, by
+training all three skills against it. It did not, and the section below is that
+result.
+
+## The yoke, trained against and turned back off
+
+Decided by measurement on 2026-08-15. All three skills were fine-tuned onto the
+yoked pin at 512 environments, seed 70, robustness level 0, and certified on the
+same three held-out seeds as their plain-pin predecessors. Resuming was
+legitimate: the yoke changes contact geometry and changes neither the
+observation nor the action dimension.
+
+| Skill | Plain pin | Yoked pin | Report |
+| --- | ---: | ---: | --- |
+| Capture | 95.55% | **88.81%** | `evidence/grapple_grasp_v4_certification.json` |
+| Extract | 0.00% | **0.13%** | `evidence/grapple_extract_v5_certification.json` |
+| Insert | 95.57% | **28.70%** | one seed, `artifacts/certify/insert_v7_s0_seed1070_play.json` |
+
+**It costs 6.7 points of capture and 67 of insertion to buy 0.13 of
+extraction.** `GrapplePinBladeCfg.anti_yaw_yoke` and the task-level flag are
+both back to off, and the walls stay implemented, dimensioned, and defended by
+`tests/test_grapple_geometry.py` and `tests/test_yoke_asset.py`, because the
+measurement is the result and the feature may matter on a stiffer gripper.
+
+Two honest caveats on those numbers. Capture's fine-tune was still climbing
+steeply when its budget ran out — reward 21.3 to 30.5 over the final 100 epochs
+— so 88.81% conflates the yoke's cost with an unfinished retrain, and insertion
+was worse still at reward 1.4 against the plain pin's 24.9. A matched plain-pin
+control at the same budget was not run. What is not in doubt is the direction.
+
+### The yoke was aimed at the wrong axis, and nobody had measured which
+
+`grapple_grip_attitude_axes` decomposes the capture attitude error into the
+gripper's own axes, recorded per episode behind `play.py --grip_axis_metrics`.
+Until 2026-08-15 only the *magnitude* was recorded, and a magnitude cannot say
+which axis a rotation is about. Measured on extraction with the plain pin:
+
+| Component | Terminal p50 |
+| --- | ---: |
+| About the **closing** axis — the only axis the yoke's walls oppose | 0.198 rad |
+| About the **transverse** axis | 0.199 rad |
+| About the approach axis | 0.070 rad |
+
+**The rotation is split roughly evenly between two axes and the yoke addresses
+one of them.** That is the whole explanation for recovering 12%. Three sessions
+of this project called this failure "yaw" and designed a feature against that
+name without ever measuring the axis. The lesson is the same one the railed yaw
+probe taught in a different costume: check that the thing you are measuring is
+the thing you think it is.
+
+## A modelled latch, and why a torque is not form closure
+
+Flight servicing hardware does not hold a module against extraction by friction
+on a passive feature. The SSRMS latching end effector snares a grapple fixture
+and then rigidizes it; Dextre's ORU Tool Changeout Mechanism grips a
+standardised fixture — H-fixture, micro-fixture, or micro-conical — and carries
+a powered socket drive. The load path after capture is form closure through a
+latch. So a latch was modelled: `mdp.GrappleLatch` engages the first step a
+capture qualifies, applies a rated restoring torque and no force, so the axial
+hold is still the wedge's measured 69 N and still has to be earned.
+
+Swept against the **unchanged** extract v4 policy, so nothing in the comparison
+can be a training artefact:
+
+| Latch rating | Extract success | Transverse rotation p50 | Module travel p50 |
+| ---: | ---: | ---: | ---: |
+| none (plain pin) | 0.00% | — | 458 mm |
+| 10 N·m | 0.00% | 0.293 rad | 24 mm |
+| 20 N·m | 0.00% | 0.296 rad | 22 mm |
+| 40 N·m | 0.00% | 0.298 rad | 26 mm |
+| 80 N·m | 0.00% | 0.299 rad | 29 mm |
+
+Report directory: `artifacts/latch/`. **An eightfold change in rating moves the
+rotation it targets by 0.006 rad and destroys the extraction**, because a
+restoring torque applied to a module the rails still hold jams it in the rails:
+travel collapses from 458 mm to about 25 mm. `latch_enabled` is off.
+
+One methodological note worth keeping. The first latch had stiffness and no
+damping, and it was worse than useless — the module pinned itself against the
+0.35 rad failure limit and travelled 84 mm. In zero gravity nothing dissipates
+the energy a stiffness injects, so a spring alone is a catapult. The damping
+term, sized from the payload's measured inertia, stayed.
+
+## What the evidence actually points at: the wrist, not the module
+
+Three measurements, none of them new, say the same thing once they are put next
+to each other:
+
+- The module's own orientation error against its goal is **0.0043 rad** — it
+  stays straight — while the grip attitude reads **0.30 rad**. A straight module
+  and a wrong grip attitude is the *wrist* rotated relative to it. No change to
+  the pin can fix a wrist.
+- Extraction stalls at a hard **478 mm of the required 495** whatever clock it
+  is given, and a distance ceiling that does not move with time is kinematic.
+- Servoing the task's own 6-DoF IK to points along the extraction path leaves
+  **0.10 to 0.26 rad** of orientation residual, at poses the trained policy
+  traverses successfully as well as at the end point.
+
+At full extraction the tool has to sit 0.336 m horizontally from the robot base
+while 0.570 m above it, pointing back over the base, which puts the wrist centre
+about 0.20 m in front of the shoulder. That is a folded configuration and it is
+where this project's own handover said the risk was: *"inside the UR10e's reach
+but folded, and it has not been checked kinematically."*
+
+### It has now been checked, and the workcell is not the problem
+
+Servoing the task's own 6-DoF IK onto the extraction end pose with 2,000 steps
+instead of 400, and sweeping the robot base along world x with
+`calibrate_grasp_pose.py --robot_base_x`:
+
+| Robot base x | Position shortfall | Orientation residual |
+| ---: | ---: | ---: |
+| **−0.45 m, as built** | **3.6 mm** | **0.0114 rad** |
+| −0.65 m | 13.1 mm | 0.1114 rad |
+| −0.85 m | 12.7 mm | 0.1153 rad |
+
+**The arm reaches the extraction end pose and holds the head-on attitude there
+to 0.0114 rad, seventeen times inside the 0.20 rad tolerance**, and moving the
+base back makes it slightly worse rather than better. The 0.10–0.26 rad
+residuals recorded above were an under-converged 400-step servo, not a
+kinematic wall, and reading them as one would have been a third interface
+redesign aimed at a fourth wrong cause.
+
+So the pose is reachable, the interface holds 69 N, and the module stays
+straight. **The grip attitude failure is neither hardware nor kinematics. It is
+the objective.** See the next section.
+
+### The reward was paying the policy to give the attitude away
+
+`grip_retention_penalty` charges attitude as `0.25 * ((error - 0.08) / 0.15)^2`.
+At the 0.20 rad success limit that is about **0.16 per step**, against an
+extraction progress term weighted **12**. The policy was not failing to control
+attitude; it was correctly trading an almost-free quantity for a well-paid one,
+and then dying on the 0.35 rad limit for a one-off −15.
+
+That is the same class of mistake as the 12 s insert episode: a number that
+looked like a physical limitation and was a specification. The extract task now
+charges attitude about 3.6 per step at the success limit — free below 0.04 rad,
+normalised over 0.06, weighted 1.0 — through parameters on the shared function,
+so **insertion keeps the defaults its certification was produced under**.
+
+## Extract's clock: 15 s was never enough
+
+Certified on a 15 s episode, extract v4's median cycle time is **15.000 s** —
+every episode ran the clock out — while the module reached 458 mm of the
+required 495. That is insert v5's situation exactly, and insert v5 → v6 was
+fixed by lengthening the episode *and* fine-tuning against the new horizon,
+which took it from 6.96% to 95.57%.
+
+The clock alone is not the fix, and that was measured before changing anything.
+Replaying extract v4 unchanged at longer episodes:
+
+| Episode | Timeouts | Lost grips | Travel p50 | Grip attitude p50 |
+| ---: | ---: | ---: | ---: | ---: |
+| 15 s | 449 | 63 | 458 mm | 0.299 rad |
+| 25 s | 3 | **510** | 478 mm | 0.350 rad |
+| 40 s | 0 | **512** | 478 mm | 0.350 rad |
+
+More time converts timeouts into lost grips at a fixed 478 mm ceiling, because a
+policy asked to work past its trained horizon degrades rather than continues.
+So the task's `episode_length_s` moved to 25 s **and** the skill was fine-tuned
+against it, which is what insert v6 did. `PHASE_BUDGET_S` reads that field, so
+the chain's extract budget followed automatically.
+
+### Extract v6: the first extraction this project has ever completed
+
+600 PPO epochs fine-tuned from the v4 checkpoint at 512 environments, seed 70,
+one change and nothing else. Certified on held-out seeds 1070/2070/3070:
+
+| Extract | Episode | Episodes | Success | Timeouts | Lost grips |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| v4 | 15 s | 9,078 | **0.00%** | 6,236 | 2,842 |
+| **v6** | **25 s** | **9,001** | **10.09%** | **122** | 7,971 |
+
+Report: `evidence/grapple_extract_v6_certification.json`, checkpoint SHA-256
+`8B310405…`. Wilson 95% [9.48%, 10.73%]. Consistent across seeds — 10.43%,
+8.70%, 11.13% — and falling with reset distance: 12.47% near, 10.40% medium,
+7.40% full.
+
+**This is the first time a module has been pulled clear of the rack by a
+certified policy.** It is not a working skill and it does not approach the 95%
+gate. What it is, is the end of a zero that had survived four sessions and two
+interface redesigns, and it converts a dead measurement into a live one.
+
+The clock was genuinely binding: timeouts fell from 6,236 to 122, and successful
+extractions take a median of **18.23 s**, which the old 15 s episode made
+impossible by construction. The 458 mm the module used to reach was never the
+policy's ceiling, it was the buzzer.
+
+**What remains is now unambiguous.** 7,971 of the 8,093 failures end on
+`extraction_failed` with the grip attitude at 0.350 rad, which is that
+predicate's own limit, while grip *position* holds at 12.5 mm. Every failure is
+the same failure, and it is the rotation the section above shows is split across
+two axes and which the module itself does not share — the module stays straight
+to 0.0043 rad. Fixing it is a workcell or a controller question, and the two
+interface features built against it are both measured as harmful.
 
 ## Demonstration assets
 
@@ -1513,10 +1702,21 @@ Cumulative secured-grasp profiles:
   first interface in this project to form a real grip, but no policy has been
   certified on it: the three skills that were trained on it are deleted, and P2
   is where a policy goes back onto it.
-- A single-point pin does not constrain yaw once the rails release the blade,
-  measured at 0.93 rad of blade rotation in failing extractions. An anti-yaw
-  feature is the highest-value change available to the interface specification
-  and it has not been made.
+- The rotation that fails the grip-attitude tolerance is **not** yaw about the
+  closing axis alone, and calling it that for three sessions cost two interface
+  designs. Decomposed on 2026-08-15 it is 0.198 rad about the closing axis,
+  0.199 about the transverse axis, and 0.070 about the approach axis. Two
+  features were built against the closing axis and both are now off: the
+  anti-yaw yoke, which bought extraction 0.13 points and cost insertion 67, and
+  a modelled latch, which jams the module in the rails and collapses extraction
+  travel from 458 mm to 25 mm at every rating from 10 to 160 N·m.
+- The leading remaining suspect is the **workcell layout**, not the interface.
+  The module stays straight to 0.0043 rad while the grip attitude reads 0.30, so
+  the wrist is what rotates; extraction stalls at a fixed 478 mm of 495 whatever
+  clock it is given; and the extraction end pose folds the arm to 0.336 m
+  horizontally from its own base at 0.570 m height. This has not been proven —
+  the IK calibrator under-converges along the whole path and is not yet a clean
+  reachability oracle — and proving or refuting it is the next experiment.
 - The contact task's finger commands are still inverted. Measured pad separation
   falls monotonically with the command, so `finger_joint` 0 is fully open, and
   the task's "pregrasp 0.80 / closed 0.68" pair opens the fingers by 14 mm. The
