@@ -251,6 +251,25 @@ gym.register(
     },
 )
 
+# The servicing workflow seen through a camera. The collect profile records what
+# a camera would have seen while the certified checkpoints drive the workflow;
+# the workflow profile replaces the ground-truth grip vector with one regressed
+# from that camera. Same physics, same pin, same policies -- the only difference
+# between the two is where the module's pose comes from.
+for _grapple_vision_id, _grapple_vision_cls in (
+    ("Isaac-ZeroG-Blade-GrappleVision-Collect-v0", "ZeroGBladeGrappleVisionCollectEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrappleVision-Workflow-v0", "ZeroGBladeGrappleVisionWorkflowEnvCfg"),
+):
+    gym.register(
+        id=_grapple_vision_id,
+        entry_point=INSERTION_ENTRY_POINT,
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{__name__}.vision_grapple_env_cfg:{_grapple_vision_cls}",
+            "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+        },
+    )
+
 # The camera and the visual randomizers were reachable only from the deleted
 # eight-phase swap task. They are repointed here, at the insertion scene. No
 # policy has been trained on this task; it is P3's scaffold.

@@ -16,8 +16,8 @@ set -u
 
 PYTHON="C:/isaac-sim/python.bat"
 CKPT_ROOT="logs/rl_games/zero_g_blade_insertion_contact"
-RUN=grapple_extract_l0_seed70_v9settle
-FINAL_EPOCH=4300
+RUN=grapple_extract_l0_seed70_v10settled
+FINAL_EPOCH=5100
 LOCK=artifacts/.certification.lock
 mkdir -p artifacts evidence
 
@@ -46,15 +46,15 @@ say "training done -> $(basename "$EXTRACT_CKPT")"
 sleep 60
 
 say "certifying extract v9"
-EXTRACT_CKPT="$EXTRACT_CKPT" EXTRACT_VERSION=v9 \
-  INTERFACE="the plain grapple pin, chain-aligned 0.70 s hold" \
+EXTRACT_CKPT="$EXTRACT_CKPT" EXTRACT_VERSION=v10 \
+  INTERFACE="the plain grapple pin, settle-consistent velocity limits" \
   bash scripts/certify_demo_policies.sh Extract
 
 say "certifying both chains"
 GRASP_CKPT="$GRASP_CKPT" EXTRACT_CKPT="$EXTRACT_CKPT" INSERT_CKPT="$INSERT_CKPT" \
-  TAG=_v9 bash scripts/certify_workflow.sh remove install
+  TAG=_v10 bash scripts/certify_workflow.sh remove install
 
 say "auditing that every quoted chain loads a certified policy"
-"$PYTHON" scripts/check_evidence_currency.py artifacts/workflow_cert/*_v9_seed*_report.json || true
+"$PYTHON" scripts/check_evidence_currency.py artifacts/workflow_cert/*_v10_seed*_report.json || true
 
 say "CHAIN CERTIFICATION DONE"

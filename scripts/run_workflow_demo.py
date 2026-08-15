@@ -97,6 +97,28 @@ def _parser() -> argparse.ArgumentParser:
             "module, and the grip degrades from 15 mm to 35 mm during the return whatever speed it is flown at."
         ),
     )
+    parser.add_argument(
+        "--task",
+        default=TASK,
+        help=(
+            "Workflow profile to run. The GrappleVision profile adds a camera and takes the module's pose "
+            "from it instead of from the simulator; everything physical is identical."
+        ),
+    )
+    parser.add_argument(
+        "--pose_head_checkpoint",
+        type=Path,
+        default=None,
+        help="Trained module-pose head. Required by the vision profile unless --oracle is given.",
+    )
+    parser.add_argument(
+        "--oracle",
+        action="store_true",
+        help=(
+            "Run the vision profile's control arm: the module pose comes from the simulator, through the "
+            "identical code path, so the difference between the arms is the estimator and nothing else."
+        ),
+    )
     parser.add_argument("--steps", type=int, default=1200)
     parser.add_argument(
         "--num_envs",
@@ -151,7 +173,11 @@ if args.episodes < 0:
     parser.error("--episodes must be non-negative")
 if args.video and args.num_envs > 1:
     parser.error("--video records one workflow; use --num_envs 1")
-if args.video:
+if args.video or "Vision" in args.task:
+    # The vision profile renders a camera and drives Replicator randomizers, and
+    # both need the rendering extensions up before the app launches. Without
+    # this the rack-albedo randomizer fails to build its Replicator graph and
+    # the environment cannot be constructed at all.
     args.enable_cameras = True
 app_launcher = AppLauncher(args)
 simulation_app = app_launcher.app
@@ -767,9 +793,18 @@ def main() -> dict[str, object]:
     env = None
     try:
         device = args.device or "cuda:0"
-        env_cfg = parse_env_cfg(TASK, device=device, num_envs=args.num_envs)
+        env_cfg = parse_env_cfg(args.task, device=device, num_envs=args.num_envs)
         env_cfg.configure_robustness(0)
         env_cfg.seed = args.seed
+        if args.pose_head_checkpoint is not None:
+            if not args.pose_head_checkpoint.is_file():
+                raise FileNotFoundError(args.pose_head_checkpoint)
+            env_cfg.pose_head_checkpoint = str(args.pose_head_checkpoint.resolve())
+        if args.oracle:
+            # The control arm: the module pose comes from the simulator but
+            # through the identical observation term, so the difference between
+            # the arms is the estimator and cannot be a different code path.
+            env_cfg.pose_head_oracle_blend = 1.0
         # Derive the episode from the phases this workflow actually runs, each at
         # the budget its own skill was certified on, instead of one round number
         # generous enough to hide an overrun. It is also what makes a many-seed
@@ -813,7 +848,7 @@ def main() -> dict[str, object]:
                 flush=True,
             )
 
-        env = gym.make(TASK, cfg=env_cfg, render_mode="rgb_array" if args.video else None)
+        env = gym.make(args.task, cfg=env_cfg, render_mode="rgb_array" if args.video else None)
         task = env.unwrapped
         # The reset event picks the arm and blade pose from this buffer, so it has
         # to exist and hold the wanted stage *before* the first reset. Nothing has
@@ -909,7 +944,7 @@ def main() -> dict[str, object]:
             .upper()
         )
         result: dict[str, object] = {
-            "task": TASK,
+            "task": args.task,
             "workflow": args.workflow,
             "seed": args.seed,
             "num_envs": task.num_envs,
@@ -940,7 +975,7 @@ def main() -> dict[str, object]:
                     metadata=np.asarray(
                         json.dumps(
                             {
-                                "task": TASK,
+                                "task": args.task,
                                 "seed": args.seed,
                                 "curriculum_stage": args.curriculum_stage,
                                 "robustness_level": getattr(env_cfg, "robustness_level", None),
@@ -990,7 +1025,7 @@ if __name__ == "__main__":
         report = main()
     except BaseException as exc:
         traceback.print_exc()
-        report = {"task": TASK, "error": f"{type(exc).__name__}: {exc}", "completed": False}
+        report = {"task": args.task, "error": f"{type(exc).__name__}: {exc}", "completed": False}
         raise
     finally:
         args.report.parent.mkdir(parents=True, exist_ok=True)
