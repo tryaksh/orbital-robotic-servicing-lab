@@ -46,6 +46,17 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--seed", type=int, default=90)
     parser.add_argument("--curriculum_stages", type=int, nargs="+", default=[0, 1, 2])
+    parser.add_argument(
+        "--camera_offset_mm",
+        type=float,
+        default=0.0,
+        help=(
+            "Displace the camera's configured mount by this much along a random direction, constant for "
+            "the run. Collecting several runs at different offsets is how the head is made robust to "
+            "calibration error, which it is sharply brittle to when trained through a perfect camera."
+        ),
+    )
+    parser.add_argument("--camera_tilt_mrad", type=float, default=0.0, help="Mount rotation error for the run.")
     AppLauncher.add_app_launcher_args(parser)
     return parser
 
@@ -73,6 +84,29 @@ def main() -> None:
         # The oracle path, so the term does not demand a head that does not exist
         # yet. Nothing here reads the grip error anyway; the arm holds still.
         env_cfg.pose_head_oracle_blend = 1.0
+        if args.camera_offset_mm != 0.0 or args.camera_tilt_mrad != 0.0:
+            rng = np.random.default_rng(args.seed)
+            direction = rng.normal(size=3)
+            direction /= np.linalg.norm(direction)
+            offset = args.camera_offset_mm / 1_000.0
+            nominal = tuple(env_cfg.scene.camera.offset.pos)
+            env_cfg.scene.camera.offset.pos = tuple(
+                float(p + offset * d) for p, d in zip(nominal, direction, strict=True)
+            )
+            if args.camera_tilt_mrad != 0.0:
+                half = 0.5 * args.camera_tilt_mrad / 1_000.0
+                w, x, y, z = env_cfg.scene.camera.offset.rot
+                cw, cz = float(np.cos(half)), float(np.sin(half))
+                env_cfg.scene.camera.offset.rot = (
+                    cw * w - cz * z,
+                    cw * x - cz * y,
+                    cw * y + cz * x,
+                    cw * z + cz * w,
+                )
+            print(
+                f"[INFO] camera mount displaced {args.camera_offset_mm} mm, "
+                f"tilted {args.camera_tilt_mrad} mrad for this run"
+            )
         env = gym.make(args.task, cfg=env_cfg)
         task = env.unwrapped
         stages = torch.tensor(args.curriculum_stages, device=task.device)

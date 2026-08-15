@@ -41,17 +41,17 @@ done
 
 say() { echo "[$(date +%H:%M:%S)] $*"; }
 
-for arm in oracle camera; do
+for arm in ${ARMS:-oracle camera}; do
   if [ "$arm" = "oracle" ]; then
     extra=(--oracle)
     title="Vision servicing workflow, ORACLE arm: the module pose read from the simulator"
   else
     extra=(--pose_head_checkpoint "$HEAD")
-    title="Vision servicing workflow, CAMERA arm: the module pose regressed from 64x64 RGB"
+    title="${CAMERA_TITLE:-Vision servicing workflow, CAMERA arm: the module pose regressed from 64x64 RGB}"
   fi
   rows=()
   for seed in $SEEDS; do
-    out="$OUT/${arm}_seed${seed}"
+    out="$OUT/${arm}${TAG:-}_seed${seed}"
     say "$arm seed=$seed"
     "$PYTHON" scripts/run_workflow_demo.py --headless \
         --task "$TASK" --workflow install --curriculum_stage 2 \
@@ -68,7 +68,7 @@ for arm in oracle camera; do
 
   "$PYTHON" scripts/aggregate_evaluation.py \
       --episodes "${rows[@]}" \
-      --output "evidence/vision_workflow_${arm}_certification.json" \
+      --output "evidence/vision_workflow_${arm}${TAG:-}_certification.json" \
       --title "$title" \
       --scope \
         "Simulation only. A rendered camera, not a calibrated real one." \
@@ -78,7 +78,7 @@ for arm in oracle camera; do
         "Orbital lighting, rack albedo, and camera noise are randomized in both arms." \
         "One PPO training seed per skill and one training run for the pose head. Evaluation seeds are held out." \
       > "$OUT/aggregate_${arm}.log" 2>&1
-  say "aggregate $arm -> evidence/vision_workflow_${arm}_certification.json"
+  say "aggregate $arm -> evidence/vision_workflow_${arm}${TAG:-}_certification.json"
   tail -4 "$OUT/aggregate_${arm}.log"
 done
 
