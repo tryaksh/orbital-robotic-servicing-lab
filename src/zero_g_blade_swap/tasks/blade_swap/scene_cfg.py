@@ -149,7 +149,19 @@ def make_tiled_camera_cfg() -> TiledCameraCfg:
             convention="world",
         ),
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=18.0,
+            # 180 mm, not the 18 mm this started with, and the difference is
+            # between a perception stage that can work and one that cannot.
+            # docs/perception_plan.md derives it: at 18 mm the camera resolves a
+            # 4 mm slot displacement as 0.13 px, which is an absent signal
+            # rather than a hard regression problem. At 180 mm it is 1.31 px,
+            # which sub-pixel regression handles routinely, and the 64x64 tile
+            # and its measured 256-environment throughput are unchanged.
+            #
+            # The fix is a narrower field of view rather than more pixels, and a
+            # servicing camera aimed at the interface rather than at the room is
+            # the more realistic instrument anyway. Verified by rendering, not
+            # by trusting this arithmetic: see scripts/check_camera_scale.py.
+            focal_length=180.0,
             horizontal_aperture=22.0,
             focus_distance=1.4,
             f_stop=0.0,

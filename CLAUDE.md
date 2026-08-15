@@ -183,7 +183,19 @@ Bias low.
 - Never resume a checkpoint after changing action or observation dimensions.
   Resuming across a *physics* or *reward* change is allowed and is how the
   L0→L1→L2 lineage and extract v6 and v7 were produced; say so when you do.
-- Change one failure category per experiment and save a JSON report.
+- Change one failure category per experiment and save a JSON report. **Two
+  changes may be combined once each is independently diagnosed and they target
+  different measured failure modes** — extract v8 moved both the action scales
+  and the reset envelope, because one addressed a tracking limit measured in
+  rad/s and the other a chain hand-off measured in budget overruns. Say so in
+  the report; the rule exists to keep diagnoses attributable, not to slow down
+  fixes whose diagnosis is already paid for.
+- **Re-derive inherited constants for the task that inherits them.** Extract
+  carried the insertion task's action scales for four sessions: 0.03 m/s
+  lateral against 0.24 axial, and 0.24 rad/s of rotation. Those are correct for
+  a module inside rails and wrong for one that ends free, and the module was
+  measured rotating at up to 0.767 rad/s — faster than the wrist could follow.
+  No reward function can fix an authority ceiling.
 - A scripted controller is allowed only as a physics feasibility test;
   demonstrations must use a checkpoint.
 - Never call a fixed joint, compliant spring, or scripted action a learned
@@ -215,7 +227,17 @@ Bias low.
 - Do not edit `src/` or `scripts/` while an evaluation sweep is running. Every
   `play.py` launch re-imports the package, so a broken edit fails every remaining
   run in the sweep rather than one.
-- Do not start perception while the chained workflow is uncertified.
+- **Perception is not blocked, and the old rule saying so was wrong.** It read
+  "do not start perception while the chained workflow is uncertified", which
+  turned a cheap sensor question into an indefinite wall. The correct split:
+  *characterising* the camera is a one-frame, GPU-light gate and should be run
+  whenever the optics change — `scripts/check_camera_scale.py` renders a frame
+  and gates on millimetres per pixel **and** on whether the interface is
+  actually in shot, which arithmetic cannot tell you. *Training* a perception
+  policy is what waits for the chain, because a student distilled from an
+  uncertified teacher inherits its failures. The 0.13-pixel finding that made
+  perception look unreachable was a **focal length**: 18 mm to 180 mm takes a
+  4 mm displacement to 1.31 px, and that change is now applied.
 - Keep `.deps`, logs, datasets, checkpoints, artifacts, and videos out of Git.
 - Do not reintroduce the eight-phase swap task.
   `tests/test_configuration_contract.py` fails if the swap state machine returns.

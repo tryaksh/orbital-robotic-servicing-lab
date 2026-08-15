@@ -371,7 +371,25 @@ class ExtractActionsCfg(GrapplePinActionsCfg):
         # levelled off, so that is a horizon too long to credit-assign across,
         # not a policy that cannot hold the pin. Halving the step count is the
         # cheaper half of the fix; the other half is simply more epochs.
-        scale=(0.008, 0.001, 0.001, 0.008, 0.008, 0.008),
+        # Rebalanced 2026-08-15, and this is the measurement that forced it.
+        #
+        # The old scales were inherited from the insertion task, where the module
+        # is inside its rails and lateral motion *must* be tiny. Extraction is
+        # the opposite problem: the module ends completely unconstrained and has
+        # to be steered. The inherited numbers gave the tool 0.24 m/s along the
+        # pull axis and 0.03 m/s across it, an 8:1 asymmetry, and 0.24 rad/s of
+        # rotation.
+        #
+        # Measured on extract v7 over 9,002 held-out episodes, the *module*
+        # rotates at 0.296 rad/s at p95 and 0.767 rad/s at maximum. The wrist
+        # could not follow it even in principle, so the grip attitude ran away to
+        # the 0.350 rad limit in 99% of failures and no reward weighting could
+        # have fixed it: the policy was being asked to track something faster
+        # than its action space could move.
+        #
+        # Lateral goes to 0.12 m/s, still half the axial rate, and rotation to
+        # 0.60 rad/s, comfortably above the module's observed maximum.
+        scale=(0.008, 0.004, 0.004, 0.020, 0.020, 0.020),
         # Long enough for the capture to complete and preload the collar before
         # the policy is allowed to pull. The gate needed 1.0 s to settle.
         settling_time_s=1.0,
@@ -624,7 +642,15 @@ class ZeroGBladeGrapplePinExtractEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         # matched this task's own to within a millimetre and the policy still
         # reversed into the rack on all eight seeds tried, because the arm's
         # joint configuration was outside anything it had trained on.
-        self.events.reset_arm.params["noise_by_stage"] = (0.010, 0.015, 0.020)
+        #
+        # Doubled again on 2026-08-15, because (0.010, 0.015, 0.020) was still
+        # too narrow and the chain says so precisely. Extract v7 certifies at
+        # 28.48% alone with a 15.2 s median, and chained it overruns its own
+        # 25 s budget in 138 of 192 removals while the *module's* orientation
+        # error reaches 0.85 rad against 0.12 rad in isolation. A skill that
+        # tumbles the payload only when its predecessor hands it over is a skill
+        # trained on the wrong initial states, not a skill that cannot pull.
+        self.events.reset_arm.params["noise_by_stage"] = (0.020, 0.030, 0.040)
         self.events.reset_blade.params["poses_by_stage"] = CONTACT_INSERTION_STAGE_BLADE_POSE
         if level < 2:
             self.events.blade_mass = None
