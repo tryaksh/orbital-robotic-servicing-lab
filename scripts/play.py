@@ -57,6 +57,25 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--episode_length_s",
+        type=float,
+        default=None,
+        help=(
+            "Override the task's episode length. For diagnosis only: a skill whose median cycle time equals its "
+            "episode length is being cut off, and this says whether the unsatisfied condition was still moving. "
+            "Never quote a certification run under an override -- change the task and let PHASE_BUDGET_S read it."
+        ),
+    )
+    parser.add_argument(
+        "--latch_rated_torque_nm",
+        type=float,
+        default=None,
+        help=(
+            "Override the modelled capture latch's rated torque. Sweeping this is how the interface "
+            "specification's latch rating is derived: it is the smallest rating at which extraction certifies."
+        ),
+    )
+    parser.add_argument(
         "--grip_axis_metrics",
         action="store_true",
         help=(
@@ -435,6 +454,17 @@ def main() -> dict[str, object]:
         # Stress knobs must be applied after configure_robustness, which rebuilds
         # the event configuration and would otherwise discard them.
         stress = _apply_stress(env_cfg)
+        if args.episode_length_s is not None:
+            env_cfg.episode_length_s = args.episode_length_s
+            print(f"[INFO] Episode length overridden to {args.episode_length_s} s (diagnosis only)")
+        if args.latch_rated_torque_nm is not None:
+            if getattr(env_cfg, "latch_enabled", None) is None:
+                raise ValueError("--latch_rated_torque_nm is valid only for a grapple-pin task")
+            env_cfg.latch_rated_torque_nm = args.latch_rated_torque_nm
+            # configure_robustness already ran in __post_init__, so push the new
+            # rating into the event set that is actually installed.
+            env_cfg._configure_latch()
+            print(f"[INFO] Capture latch rated at {args.latch_rated_torque_nm} N-m")
         if args.grip_axis_metrics:
             if getattr(env_cfg, "tool_target_rot", None) is None:
                 raise ValueError("--grip_axis_metrics is valid only for a head-on capture task")

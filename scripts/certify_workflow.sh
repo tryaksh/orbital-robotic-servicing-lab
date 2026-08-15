@@ -34,7 +34,10 @@ mkdir -p "$OUT" evidence
 CKPT_ROOT="logs/rl_games/zero_g_blade_insertion_contact"
 GRASP_CKPT="${GRASP_CKPT:-$CKPT_ROOT/grapple_grasp_l0_seed70_v3/nn/last_zero_g_blade_insertion_contact_ep_700_rew__36.020187_.pth}"
 EXTRACT_CKPT="${EXTRACT_CKPT:-$CKPT_ROOT/grapple_extract_l0_seed70_v4/nn/last_zero_g_blade_insertion_contact_ep_1200_rew__162.91257_.pth}"
-INSERT_CKPT="${INSERT_CKPT:-$CKPT_ROOT/grapple_insert_l0_seed70_v5/nn/last_zero_g_blade_insertion_contact_ep_2400_rew__-0.54621196_.pth}"
+# v6, not v5. The default used to name v5, which certifies at 6.96%, so a run
+# that forgot to override INSERT_CKPT silently measured a superseded policy and
+# reported it as the chain. Keep this pointing at the best *certified* insert.
+INSERT_CKPT="${INSERT_CKPT:-$CKPT_ROOT/grapple_insert_l0_seed70_v6/nn/last_zero_g_blade_insertion_contact_ep_3200_rew__24.907995_.pth}"
 TAG="${TAG:-}"
 
 workflows=("$@")

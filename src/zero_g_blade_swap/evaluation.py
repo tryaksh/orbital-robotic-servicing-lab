@@ -115,6 +115,10 @@ DEFAULT_METRIC_FIELDS = (
     # record are skipped, so this list is safe for every run.
     PEAK_CONTACT_FORCE_FIELD,
     CONTACT_IMPULSE_FIELD,
+    # Present only when a run asked for the attitude decomposition.
+    GRIP_YAW_CLOSING_AXIS_FIELD,
+    GRIP_ATTITUDE_THIRD_AXIS_FIELD,
+    GRIP_ATTITUDE_APPROACH_AXIS_FIELD,
 )
 
 CATEGORICAL_FIELDS = ("success", "termination_reason", "curriculum_stage")

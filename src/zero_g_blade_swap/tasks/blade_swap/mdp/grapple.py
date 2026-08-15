@@ -24,7 +24,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import torch
-from isaaclab.managers import ActionTerm, SceneEntityCfg
+from isaaclab.managers import ActionTerm, EventTermCfg, ManagerTermBase, SceneEntityCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.math import axis_angle_from_quat, quat_apply, quat_inv, quat_mul, subtract_frame_transforms
 
@@ -76,6 +76,149 @@ def grapple_grip_error_metrics(env) -> tuple[torch.Tensor, torch.Tensor]:
 
     vector, angle = grapple_grip_pose_error(env)
     return torch.linalg.vector_norm(vector, dim=-1), angle
+
+
+def grapple_grip_attitude_error_world(env) -> torch.Tensor:
+    """Signed world-frame rotation vector between the tool and the capture attitude.
+
+    ``grapple_grip_pose_error`` returns this vector's *magnitude*. The latch
+    needs its direction as well, because a restoring torque has to know which
+    way to push.
+    """
+
+    _, tool_orientation = end_effector_pose_world(env)
+    _, blade_orientation = attached_blade_pose_world(env)
+    desired_tool = quat_mul(
+        blade_orientation, blade_orientation.new_tensor(GRAPPLE_HEAD_ON_TOOL_ROT).expand_as(blade_orientation)
+    )
+    return axis_angle_from_quat(quat_mul(desired_tool, quat_inv(tool_orientation)))
+
+
+class GrappleLatch(ManagerTermBase):
+    """A modelled latching capture. Not a grasp, and labelled as one nowhere.
+
+    **Why this exists.** A parallel-jaw grip on a passive feature cannot resist a
+    moment about the closing axis: the pads' contact normals lie along that axis
+    and a normal force cannot oppose a moment about its own direction. This
+    project measured that four independent ways -- extraction certifying at
+    0.00% while holding grip *position* for a full 15 s pull, 93% of insertion
+    failures ending outside the grip-attitude tolerance, 3.8% of chained
+    removals ending inside it, and an anti-yaw yoke recovering only 12% of the
+    rotation while costing the insert skill 67 points.
+
+    Flight servicing hardware does not solve this with friction either. The
+    SSRMS latching end effector snares a grapple fixture and then *rigidizes*
+    it; Dextre's ORU Tool Changeout Mechanism grips a standardised fixture and
+    carries a powered socket drive. The load path after capture is form closure
+    through a latch, not friction on a passive feature. So the interface
+    specification's answer to yaw is a latch, and this is its model.
+
+    **What it does, exactly, so nothing is hidden.** It engages the first step a
+    capture qualifies -- ``capture_established``: the drive loaded, the grip
+    within 20 mm, the attitude within 0.20 rad -- and stays engaged until the
+    episode resets. While engaged it applies a restoring *torque* to the module
+    opposing the grip attitude error, stiff up to ``saturation_rad`` and then
+    clamped at ``rated_torque_nm``.
+
+    **What it deliberately does not do.**
+
+    * It applies no force. The axial hold is still the wedge's measured 69 N and
+      still has to be earned; the latch cannot carry the extraction load.
+    * It has a finite rating, so "the latch holds" is a number rather than an
+      assumption, and the rating that extraction actually needs is the
+      specification deliverable this term exists to produce.
+    * It engages only on a capture the policy achieved. A policy that never
+      arrives never gets one.
+    * The equal and opposite reaction on the wrist is **not** modelled. The arm
+      is position-controlled through differential IK with stiff drives, which
+      would absorb most of it, but this is a simplification and not a free
+      lunch: a real latch loads the wrist and the joint torques it implies are
+      unmeasured here.
+    """
+
+    def __init__(self, cfg: EventTermCfg, env) -> None:
+        super().__init__(cfg, env)
+        env._grapple_latched = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+
+    def reset(self, env_ids=None) -> None:
+        ids = torch.arange(self._env.num_envs, device=self._env.device) if env_ids is None else env_ids
+        self._env._grapple_latched[ids] = False
+        zeros = torch.zeros((len(ids), 1, 3), device=self._env.device)
+        self._env.scene["spare_blade"].permanent_wrench_composer.set_forces_and_torques(
+            forces=zeros, torques=zeros, env_ids=ids, is_global=True
+        )
+
+    def __call__(
+        self,
+        env,
+        env_ids: torch.Tensor | None,
+        asset_cfg: SceneEntityCfg,
+        rated_torque_nm: float = 5.0,
+        saturation_rad: float = 0.05,
+        damping_ratio: float = 1.0,
+    ) -> None:
+        del env_ids
+        latched = env._grapple_latched
+        latched |= capture_established(env)
+        blade = env.scene[asset_cfg.name]
+        error = grapple_grip_attitude_error_world(env)
+        magnitude = torch.linalg.vector_norm(error, dim=-1, keepdim=True).clamp_min(1e-9)
+        # Stiff, then flat: a latch is a mechanism with a strength, not a spring
+        # that grows without bound. Full rating once the error passes
+        # ``saturation_rad``, which is a quarter of the capture tolerance.
+        stiffness = rated_torque_nm / saturation_rad
+        restoring = -error / magnitude * rated_torque_nm * (magnitude / saturation_rad).clamp(max=1.0)
+        # Damping is not a refinement here, it is the difference between a latch
+        # and a catapult. In zero gravity nothing dissipates the energy a
+        # stiffness injects, so a spring alone drives the payload into
+        # oscillation: measured undamped at 5 N-m, the module pinned itself
+        # against the 0.35 rad failure limit and travelled 84 mm of 495 instead
+        # of the plain pin's 465. A real latch dissipates through friction and
+        # structural damping, and this is that term.
+        #
+        # Sized from the payload's own inertia about its longest axis so the
+        # ratio means what it says: c = 2 * zeta * sqrt(k * I).
+        inertia = _blade_yaw_inertia(env, asset_cfg)
+        damping = 2.0 * damping_ratio * torch.sqrt(stiffness * inertia)
+        torque = (restoring - damping.unsqueeze(-1) * blade.data.root_ang_vel_w) * latched.unsqueeze(-1)
+        # Never exceed the rating, whatever the damping asks for. The rating is
+        # the specification number this whole term exists to produce.
+        overload = (torch.linalg.vector_norm(torque, dim=-1, keepdim=True) / rated_torque_nm).clamp_min(1.0)
+        torque = torque / overload
+        blade.permanent_wrench_composer.set_forces_and_torques(
+            forces=torch.zeros_like(torque).unsqueeze(1),
+            torques=torque.unsqueeze(1),
+            is_global=True,
+        )
+
+
+def _blade_yaw_inertia(env, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+    """Payload inertia about the axis the latch resists, per environment.
+
+    Read from PhysX rather than assumed, because Level 2 randomizes the module's
+    mass over 5 to 15 kg and recomputes its inertia; a damping constant sized
+    against a fixed 10 kg would be wrong at both ends of that range.
+    """
+
+    cached = getattr(env, "_grapple_latch_inertia", None)
+    if cached is not None:
+        return cached
+    view = env.scene[asset_cfg.name].root_physx_view
+    # Diagonal of the inertia tensor, largest principal moment: the latch
+    # resists rotation of a long thin module, so this is the conservative pick.
+    inertia = view.get_inertias().to(env.device).reshape(env.num_envs, -1, 3, 3)[:, 0]
+    diagonal = torch.stack((inertia[:, 0, 0], inertia[:, 1, 1], inertia[:, 2, 2]), dim=-1)
+    env._grapple_latch_inertia = diagonal.amax(dim=-1).clamp_min(1e-4)
+    return env._grapple_latch_inertia
+
+
+def grapple_latched(env) -> torch.Tensor:
+    """Per environment: has a qualifying capture engaged the latch this episode."""
+
+    state = getattr(env, "_grapple_latched", None)
+    if state is None:
+        return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+    return state
 
 
 def grapple_grip_attitude_axes(env) -> torch.Tensor:
@@ -671,8 +814,11 @@ __all__ = [
     "extraction_remaining_observation",
     "extraction_success_mask",
     "extraction_success_reward",
+    "GrappleLatch",
     "grapple_grip_attitude_axes",
+    "grapple_grip_attitude_error_world",
     "grapple_grip_error_metrics",
+    "grapple_latched",
     "grapple_grip_error_observation",
     "grapple_grip_pose_error",
     "grapple_insertion_conditions",

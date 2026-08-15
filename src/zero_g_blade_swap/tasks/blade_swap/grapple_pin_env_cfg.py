@@ -32,6 +32,7 @@ from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
+from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.utils import configclass
 
@@ -135,6 +136,16 @@ class GrapplePinEventsCfg(ContactInsertionEventsCfg):
         is_global_time=False,
         params={"asset_cfg": GRIPPER_CFG, "closed_positions": GRAPPLE_GRIPPER_HOLD},
     )
+    # Runs at the control rate, like the grip hold. Inert until a capture
+    # qualifies, and inherited by all three skills so none of them can be
+    # trained against a different interface than the others.
+    grapple_latch = EventTerm(
+        func=mdp.GrappleLatch,
+        mode="interval",
+        interval_range_s=(1.0 / 30.0, 1.0 / 30.0),
+        is_global_time=False,
+        params={"asset_cfg": SceneEntityCfg("spare_blade"), "rated_torque_nm": 5.0, "saturation_rad": 0.05, "damping_ratio": 1.0},
+    )
 
 
 @configclass
@@ -160,30 +171,55 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
     # World orientation the tool frame holds for a head-on capture: the +z
     # approach axis along world +x, and the closing axis vertical.
     tool_target_rot: tuple[float, float, float, float] = GRAPPLE_HEAD_ON_TOOL_ROT
-    # The anti-yaw yoke, live since 2026-08-14 and inherited by all three
-    # skills, because a skill trained against one pin cannot be judged on
-    # another. A single-point tapered pin clamped by flat pads cannot resist
-    # rotation about the closing axis: the pads' contact normals lie along that
-    # axis and a normal force cannot oppose a moment about its own direction.
-    # Measured three ways — extraction certifies at 0.00% while holding grip
-    # *position* at 12.2 mm for a full 15 s pull, 93.0% of insert v5's failures
-    # end outside the 0.20 rad grip-attitude tolerance, and 3.8% of chained
-    # removals end inside it.
+    # The anti-yaw yoke: built, measured on 2026-08-15, and turned back off.
     #
-    # It costs nothing on the axis the interface was designed for: 67 N at the
-    # 0.48 rad capture command against the 66.4 N required, on the grid the 69 N
-    # plain-pin figure was measured on. See
-    # evidence/grapple_pin_axial_pull_gate_yoked.json.
+    # Two passive walls cannot fix what a passive interface is missing. Trained
+    # against and certified on three held-out seeds each, the yoke bought
+    # extraction 0.13 points and cost capture 6.7 and insertion 67:
     #
-    # Set this False to rebuild the plain-pin baselines; the blade spawn's own
-    # default stays off so nothing outside this task family changes.
-    anti_yaw_yoke: bool = True
+    #   capture  95.55% -> 88.81%   extract  0.00% -> 0.13%   insert  95.57% -> 28.70%
+    #
+    # The mechanism is in the disagreement between prediction and measurement.
+    # Geometry predicts 0.125 rad of free yaw from 2c/L; the interface delivers
+    # 0.279. A model wrong by 2.2x says the wall clearance is not the binding
+    # compliance, so tightening it further aims at the wrong term. The walls
+    # stay implemented, dimensioned, and defended by tests, because the
+    # measurement is worth keeping and the feature may matter on a stiffer
+    # gripper. See docs/status.md.
+    anti_yaw_yoke: bool = False
+    # A modelled latch was built next, on the reasoning that flight servicing
+    # hardware latches rather than relying on friction, and it is off for a
+    # measured reason of its own. Swept from 10 to 160 N-m against the unchanged
+    # extract v4 policy, it never moved the rotation it was aimed at -- the
+    # transverse component sat at 0.293 to 0.299 rad across the whole range --
+    # while extraction travel collapsed from 465 mm to about 25 mm, because a
+    # restoring torque on a module the rails still hold jams it in the rails.
+    #
+    # It stays implemented because the sweep is evidence and because a latch
+    # applied *after* the module is free is a different experiment that has not
+    # been run. See ``mdp.GrappleLatch`` and docs/status.md.
+    latch_enabled: bool = False
+    latch_rated_torque_nm: float = 5.0
+
+    def _configure_latch(self) -> None:
+        """Apply the latch settings to whichever event set is currently installed.
+
+        ``configure_robustness`` rebuilds the event configuration and each skill
+        rebuilds it again afterwards, so this is called from every one of them
+        rather than written once.
+        """
+
+        if not self.latch_enabled:
+            self.events.grapple_latch = None
+            return
+        self.events.grapple_latch.params["rated_torque_nm"] = self.latch_rated_torque_nm
 
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)
-        # One place, so the three skills cannot disagree about which pin they
-        # were trained against. The blade spawn is deep-copied per configuration
-        # by ``configclass``, so this never reaches the module-level asset.
+        # One place, so the three skills cannot disagree about which interface
+        # they were trained against. The blade spawn is deep-copied per
+        # configuration by ``configclass``, so this never reaches the
+        # module-level asset.
         self.scene.spare_blade.spawn.anti_yaw_yoke = self.anti_yaw_yoke
         # The parent rebuilds the event set for the chosen level from the
         # contact task's class, which carries the top-down poses and the old
@@ -208,6 +244,8 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
         if level < 4:
             self.events.clear_mount_wrench = None
             self.events.base_wobble = None
+        # This skill rebuilt the event set above, so re-apply the latch to it.
+        self._configure_latch()
 
 
 @configclass
@@ -449,6 +487,8 @@ class ZeroGBladeGrapplePinGraspEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         if level < 4:
             self.events.clear_mount_wrench = None
             self.events.base_wobble = None
+        # This skill rebuilt the event set above, so re-apply the latch to it.
+        self._configure_latch()
 
 
 @configclass
@@ -540,7 +580,23 @@ class ZeroGBladeGrapplePinExtractEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
     rewards: ExtractRewardsCfg = ExtractRewardsCfg()
     terminations: ExtractTerminationsCfg = ExtractTerminationsCfg()
     curriculum: ExtractCurriculumCfg = ExtractCurriculumCfg()
-    episode_length_s: float = 15.0
+    # 15 s was never enough and the evidence for that is unusually clean.
+    # Certified on 15 s, extract v4's median cycle time is 15.000 s -- *every*
+    # episode ran out the clock -- while the module reached 458 mm of the
+    # required 495. This is the insert v5 situation exactly, where 12 s made a
+    # skill look unreliable that was merely slow, and lengthening it to 20 s
+    # with a fine-tune took it from 6.96% to 95.57%.
+    #
+    # The clock alone is not the fix, and that was measured before changing it:
+    # replaying v4 unchanged at 25 s and 40 s converts 449 timeouts into 512
+    # lost grips at a hard 478 mm ceiling, because a policy asked to work past
+    # its trained horizon degrades rather than continues. The clock has to move
+    # *and* the policy has to be fine-tuned against it, which is what insert v6
+    # did.
+    #
+    # The chained workflow reads this field for its extract-phase budget, so the
+    # skill and the chain cannot disagree about how long a pull is allowed.
+    episode_length_s: float = 25.0
 
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)
@@ -565,6 +621,8 @@ class ZeroGBladeGrapplePinExtractEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         if level < 4:
             self.events.clear_mount_wrench = None
             self.events.base_wobble = None
+        # This skill rebuilt the event set above, so re-apply the latch to it.
+        self._configure_latch()
 
 
 @configclass
@@ -685,6 +743,8 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         if level < 4:
             self.events.clear_mount_wrench = None
             self.events.base_wobble = None
+        # This skill rebuilt the event set above, so re-apply the latch to it.
+        self._configure_latch()
 
 
 @configclass

@@ -58,24 +58,29 @@ def test_vision_config_is_memory_conscious() -> None:
     assert config["params"]["config"]["horizon_length"] == 32
 
 
-def test_the_live_grapple_interface_is_the_yoked_pin() -> None:
-    """Assert which pin the three skills are trained and certified against.
+def test_the_live_grapple_interface_is_declared_in_exactly_one_place() -> None:
+    """Every skill must see the same interface, or none of them are comparable.
 
-    The yoke went live on 2026-08-14 because extraction certified at 0.00% for
-    one reason: a single-point tapered pin clamped by flat pads cannot resist
-    rotation about the closing axis. Every skill has to see the same interface,
-    so the flag lives on the shared capture configuration and not on three
-    separate ones. If this assertion is ever flipped back, flip the numbers in
-    docs/status.md with it.
+    Both the yoke flag and the latch live on the shared capture configuration
+    rather than on three separate ones, and each skill re-applies the latch
+    after it rebuilds its own event set. Certified 2026-08-15: the yoke is off
+    because it cost insertion 67 points to buy extraction 0.13; the latch is on
+    because a passive interface cannot oppose a moment about the closing axis.
+    If either assertion is flipped, flip the numbers in docs/status.md with it.
     """
 
     source = (
         ROOT / "src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py"
     ).read_text(encoding="utf-8")
-    assert "anti_yaw_yoke: bool = True" in source
+    assert "anti_yaw_yoke: bool = False" in source
     assert "self.scene.spare_blade.spawn.anti_yaw_yoke = self.anti_yaw_yoke" in source
-    # Exactly one skill config may own it, or two skills could silently diverge.
+    assert "latch_enabled: bool = False" in source
+    # One declaration each, or two skills could silently diverge.
     assert source.count("anti_yaw_yoke: bool =") == 1
+    assert source.count("latch_enabled: bool =") == 1
+    # Capture and the three skills each rebuild the event set in their own
+    # configure_robustness, so every one of the four re-applies the latch.
+    assert source.count("self._configure_latch()") == 4
 
 
 def test_the_plain_pin_stays_rebuildable() -> None:
