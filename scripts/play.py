@@ -57,6 +57,16 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--grip_axis_metrics",
+        action="store_true",
+        help=(
+            "Record the capture-attitude error split into the gripper's own closing, third, and approach axes, "
+            "instead of only its magnitude. An anti-yaw feature opposes rotation about the closing axis alone, "
+            "so this is what says whether tightening one can help. Head-on capture tasks only; off by default "
+            "so existing certifications keep their exact column set."
+        ),
+    )
+    parser.add_argument(
         "--pose_noise_scale",
         type=float,
         default=1.0,
@@ -425,6 +435,12 @@ def main() -> dict[str, object]:
         # Stress knobs must be applied after configure_robustness, which rebuilds
         # the event configuration and would otherwise discard them.
         stress = _apply_stress(env_cfg)
+        if args.grip_axis_metrics:
+            if getattr(env_cfg, "tool_target_rot", None) is None:
+                raise ValueError("--grip_axis_metrics is valid only for a head-on capture task")
+            # Read by InsertionTerminalMetrics when it builds its column set.
+            env_cfg.record_grip_axes = True
+            print("[INFO] Recording capture attitude per gripper axis")
         if args.contact_metrics and getattr(env_cfg.scene, "blade_contact", None) is not None:
             print("[INFO] Task already reports blade contacts; --contact_metrics is redundant")
         elif args.contact_metrics:

@@ -45,8 +45,10 @@ run() {
   fi
 }
 
+# --plain_pin is explicit because the task now configures the yoke on. Without
+# it the "plain" baseline would silently measure the yoked pin.
 run yaw_gate_plain_pin \
-    --load_axis yaw --force_levels "$TORQUE_LEVELS" --max_torque_nm "$MAX_TORQUE" \
+    --load_axis yaw --plain_pin --force_levels "$TORQUE_LEVELS" --max_torque_nm "$MAX_TORQUE" \
     --report evidence/grapple_pin_yaw_gate_plain.json
 
 run yaw_gate_yoked_pin \

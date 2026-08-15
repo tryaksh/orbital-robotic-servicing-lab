@@ -58,6 +58,44 @@ def test_vision_config_is_memory_conscious() -> None:
     assert config["params"]["config"]["horizon_length"] == 32
 
 
+def test_the_live_grapple_interface_is_the_yoked_pin() -> None:
+    """Assert which pin the three skills are trained and certified against.
+
+    The yoke went live on 2026-08-14 because extraction certified at 0.00% for
+    one reason: a single-point tapered pin clamped by flat pads cannot resist
+    rotation about the closing axis. Every skill has to see the same interface,
+    so the flag lives on the shared capture configuration and not on three
+    separate ones. If this assertion is ever flipped back, flip the numbers in
+    docs/status.md with it.
+    """
+
+    source = (
+        ROOT / "src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py"
+    ).read_text(encoding="utf-8")
+    assert "anti_yaw_yoke: bool = True" in source
+    assert "self.scene.spare_blade.spawn.anti_yaw_yoke = self.anti_yaw_yoke" in source
+    # Exactly one skill config may own it, or two skills could silently diverge.
+    assert source.count("anti_yaw_yoke: bool =") == 1
+
+
+def test_the_plain_pin_stays_rebuildable() -> None:
+    """The baseline evidence has to describe something that can be rebuilt.
+
+    ``evidence/grapple_pin_axial_pull_gate.json`` and
+    ``evidence/grapple_pin_yaw_probe_railed_plain.json`` were measured on the
+    plain pin. Turning the yoke on at the task level must not erase the ability
+    to reproduce them, so the blade spawn's own default stays off and the
+    diagnostics script keeps a switch that forces it off.
+    """
+
+    assets = (ROOT / "src/zero_g_blade_swap/tasks/blade_swap/assets.py").read_text(encoding="utf-8")
+    assert "anti_yaw_yoke: bool = False" in assets
+    diagnostics = (ROOT / "scripts/grasp_diagnostics.py").read_text(encoding="utf-8")
+    assert '"--plain_pin"' in diagnostics
+    gates = (ROOT / "scripts/run_yoke_gates.sh").read_text(encoding="utf-8")
+    assert "--plain_pin" in gates
+
+
 def test_no_large_runtime_artifacts_are_tracked_by_layout() -> None:
     ignored = (ROOT / ".gitignore").read_text(encoding="utf-8")
     for expected in (".deps/", "datasets/", "checkpoints/", "videos/", "*.hdf5", "*.onnx"):

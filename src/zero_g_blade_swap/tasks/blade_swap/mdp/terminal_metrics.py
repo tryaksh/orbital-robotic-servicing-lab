@@ -14,6 +14,9 @@ from zero_g_blade_swap.evaluation import (
     BELIEF_BIAS_FIELD,
     BLADE_MASS_FIELD,
     CONTACT_IMPULSE_FIELD,
+    GRIP_ATTITUDE_APPROACH_AXIS_FIELD,
+    GRIP_ATTITUDE_THIRD_AXIS_FIELD,
+    GRIP_YAW_CLOSING_AXIS_FIELD,
     PEAK_CONTACT_FORCE_FIELD,
     SUCCESS_TERMINATIONS,
     TERMINAL_METRIC_FIELDS,
@@ -23,7 +26,7 @@ from zero_g_blade_swap.evaluation import (
     TerminalEpisodeRecorder,
 )
 
-from .grapple import grapple_grip_error_metrics
+from .grapple import grapple_grip_attitude_axes, grapple_grip_error_metrics
 from .insertion import (
     attached_blade_velocity,
     insertion_error_metrics,
@@ -52,6 +55,10 @@ class InsertionTerminalMetrics:
         # Only the pose-belief tasks carry a bias, and it is the swept axis, so
         # record what each episode actually ran at rather than trusting the flag.
         self._records_belief = getattr(env, "_belief_bias_magnitude_m", None) is not None
+        # A head-on capture is held a quarter turn from the top-down grasp
+        # convention, so it needs the grapple grip metrics rather than the
+        # secured-blade ones. One flag, read in both places that care.
+        self._head_on = getattr(env.cfg, "tool_target_rot", None) is not None
         fields = TERMINAL_METRIC_FIELDS
         if self._records_mass:
             fields = (*fields, BLADE_MASS_FIELD)
@@ -59,6 +66,17 @@ class InsertionTerminalMetrics:
             fields = (*fields, PEAK_CONTACT_FORCE_FIELD, CONTACT_IMPULSE_FIELD)
         if self._records_belief:
             fields = (*fields, BELIEF_BIAS_FIELD)
+        # Opt-in, and only where a head-on capture makes the decomposition mean
+        # anything. Default off so every certification already produced keeps
+        # its exact column set and stays poolable with new runs.
+        self._records_grip_axes = bool(getattr(env.cfg, "record_grip_axes", False)) and self._head_on
+        if self._records_grip_axes:
+            fields = (
+                *fields,
+                GRIP_YAW_CLOSING_AXIS_FIELD,
+                GRIP_ATTITUDE_THIRD_AXIS_FIELD,
+                GRIP_ATTITUDE_APPROACH_AXIS_FIELD,
+            )
         self.recorder = TerminalEpisodeRecorder(fields) if recorder is None else recorder
         self._blade_mass: torch.Tensor | None = None
         self._peak_force = torch.zeros(env.num_envs, dtype=torch.float32, device=env.device)
@@ -93,11 +111,7 @@ class InsertionTerminalMetrics:
         # those tasks that function reports a constant ~2.15 rad and the
         # recorded column says nothing about whether the grip is intact.
         # Measure the grip in the convention the task actually holds it in.
-        grip_metrics = (
-            grapple_grip_error_metrics
-            if getattr(env.cfg, "tool_target_rot", None) is not None
-            else secured_blade_error_metrics
-        )
+        grip_metrics = grapple_grip_error_metrics if self._head_on else secured_blade_error_metrics
         grasp_position, grasp_orientation = grip_metrics(env)
         reason = self.termination_reason_ids(env)
         stage = getattr(env, "_insertion_curriculum_stage", None)
@@ -131,6 +145,9 @@ class InsertionTerminalMetrics:
             columns.append(self._impulse)
         if self._records_belief:
             columns.append(belief_bias_magnitude(env).to(dtype=torch.float32))
+        if self._records_grip_axes:
+            axes = grapple_grip_attitude_axes(env).to(dtype=torch.float32)
+            columns.extend((axes[:, 0], axes[:, 1], axes[:, 2]))
         rows = torch.stack(tuple(columns), dim=-1)
         recorded = self.recorder.record(rows[env_ids].detach().cpu())
         if self._records_contact:

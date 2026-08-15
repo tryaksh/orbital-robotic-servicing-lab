@@ -22,9 +22,17 @@ OUT="artifacts/certify"
 mkdir -p "$OUT" evidence
 
 CKPT_ROOT="logs/rl_games/zero_g_blade_insertion_contact"
-GRASP_CKPT="$CKPT_ROOT/grapple_grasp_l0_seed70_v3/nn/last_zero_g_blade_insertion_contact_ep_700_rew__36.020187_.pth"
-EXTRACT_CKPT="$CKPT_ROOT/grapple_extract_l0_seed70_v4/nn/last_zero_g_blade_insertion_contact_ep_1200_rew__162.91257_.pth"
+GRASP_CKPT="${GRASP_CKPT:-$CKPT_ROOT/grapple_grasp_l0_seed70_v3/nn/last_zero_g_blade_insertion_contact_ep_700_rew__36.020187_.pth}"
+EXTRACT_CKPT="${EXTRACT_CKPT:-$CKPT_ROOT/grapple_extract_l0_seed70_v4/nn/last_zero_g_blade_insertion_contact_ep_1200_rew__162.91257_.pth}"
 INSERT_CKPT="${INSERT_CKPT:-$CKPT_ROOT/grapple_insert_l0_seed70_v6/nn/last_zero_g_blade_insertion_contact_ep_3200_rew__24.907995_.pth}"
+# The report file is named for the policy version, so a retrain must pass its
+# own. Defaults describe the plain-pin lineage.
+GRASP_VERSION="${GRASP_VERSION:-v3}"
+EXTRACT_VERSION="${EXTRACT_VERSION:-v4}"
+INSERT_VERSION="${INSERT_VERSION:-v6}"
+# Which physical interface these policies were trained against, recorded in the
+# report so a yoked and a plain certification can never be read as comparable.
+INTERFACE="${INTERFACE:-the plain grapple pin}"
 
 skills=("$@")
 if [ ${#skills[@]} -eq 0 ]; then
@@ -33,13 +41,13 @@ fi
 
 for skill in "${skills[@]}"; do
   case "$skill" in
-    Grasp)   checkpoint="$GRASP_CKPT";   version=v3; stages=(0 1 2) ;;
-    Extract) checkpoint="$EXTRACT_CKPT"; version=v4; stages=(0 1 2) ;;
+    Grasp)   checkpoint="$GRASP_CKPT";   version="$GRASP_VERSION"; stages=(0 1 2) ;;
+    Extract) checkpoint="$EXTRACT_CKPT"; version="$EXTRACT_VERSION"; stages=(0 1 2) ;;
     # The insert task collapsed to a single reset distance when it was retrained
     # for the chain, so its poses_by_stage carries one entry. Asking for stage 1
     # or 2 would clamp back onto the same pose and file three copies of one
     # measurement under three stage labels.
-    Insert)  checkpoint="$INSERT_CKPT";  version="${INSERT_VERSION:-v6}"; stages=(0) ;;
+    Insert)  checkpoint="$INSERT_CKPT";  version="$INSERT_VERSION"; stages=(0) ;;
     *) echo "unknown skill $skill"; exit 1 ;;
   esac
   if [ ! -f "$checkpoint" ]; then
@@ -79,6 +87,7 @@ for skill in "${skills[@]}"; do
       --title "Head-on grapple-pin ${lower} skill, ${version} (the checkpoint the workflow demo loads)" \
       --scope \
         "Simulation only. No result here was produced on real hardware." \
+        "Interface: ${INTERFACE}. A policy trained against one pin says nothing about the other." \
         "The grasp is physical pad-against-pin contact, not a fixed joint." \
         "One PPO training seed. The evaluation seeds are held out, but training repeatability is untested." \
         "This certifies the skill in isolation. It says nothing about the chained workflow, which is certified separately." \

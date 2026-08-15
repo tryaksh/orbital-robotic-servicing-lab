@@ -78,6 +78,38 @@ def grapple_grip_error_metrics(env) -> tuple[torch.Tensor, torch.Tensor]:
     return torch.linalg.vector_norm(vector, dim=-1), angle
 
 
+def grapple_grip_attitude_axes(env) -> torch.Tensor:
+    """Decompose the capture-attitude error into the tool's own three axes.
+
+    ``grapple_grip_error_metrics`` reports the *magnitude* of that rotation, and
+    a magnitude cannot say which axis it is about. That distinction decides
+    whether an anti-yaw feature can help at all: the yoke's walls oppose
+    rotation about the **closing** axis and nothing else, because that is the
+    axis whose moment a pair of flat pad normals cannot resist.
+
+    Measured on the yoked pin, extraction still ends at 0.279 rad against a
+    0.125 rad geometric prediction, so the wall clearance is not the term that
+    dominates. This function is what tells the difference between "the walls are
+    too loose" and "most of that rotation is not the yaw the walls oppose".
+
+    Returns one row per environment as ``(closing, third, approach)`` in the
+    tool frame: the measured 2F-85 closes along its own x and approaches along
+    its own z (``evidence/gripper_collision_envelope.json``), so component 0 is
+    the yoke's axis.
+    """
+
+    tool_position, tool_orientation = end_effector_pose_world(env)
+    _, blade_orientation = attached_blade_pose_world(env)
+    desired = quat_mul(
+        blade_orientation, blade_orientation.new_tensor(GRAPPLE_HEAD_ON_TOOL_ROT).expand_as(blade_orientation)
+    )
+    # Expressed in the tool's frame rather than the world's, so the components
+    # are the gripper's own closing/approach axes at whatever attitude the arm
+    # happens to hold.
+    relative = quat_mul(quat_inv(tool_orientation), desired)
+    return axis_angle_from_quat(relative).abs()
+
+
 def grapple_grip_error_observation(env) -> torch.Tensor:
     """Six values: the tool-to-grip offset in tool axes, and the attitude error."""
 
@@ -639,6 +671,7 @@ __all__ = [
     "extraction_remaining_observation",
     "extraction_success_mask",
     "extraction_success_reward",
+    "grapple_grip_attitude_axes",
     "grapple_grip_error_metrics",
     "grapple_grip_error_observation",
     "grapple_grip_pose_error",

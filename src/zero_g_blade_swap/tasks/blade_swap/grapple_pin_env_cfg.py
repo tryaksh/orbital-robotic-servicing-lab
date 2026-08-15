@@ -160,9 +160,31 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
     # World orientation the tool frame holds for a head-on capture: the +z
     # approach axis along world +x, and the closing axis vertical.
     tool_target_rot: tuple[float, float, float, float] = GRAPPLE_HEAD_ON_TOOL_ROT
+    # The anti-yaw yoke, live since 2026-08-14 and inherited by all three
+    # skills, because a skill trained against one pin cannot be judged on
+    # another. A single-point tapered pin clamped by flat pads cannot resist
+    # rotation about the closing axis: the pads' contact normals lie along that
+    # axis and a normal force cannot oppose a moment about its own direction.
+    # Measured three ways — extraction certifies at 0.00% while holding grip
+    # *position* at 12.2 mm for a full 15 s pull, 93.0% of insert v5's failures
+    # end outside the 0.20 rad grip-attitude tolerance, and 3.8% of chained
+    # removals end inside it.
+    #
+    # It costs nothing on the axis the interface was designed for: 67 N at the
+    # 0.48 rad capture command against the 66.4 N required, on the grid the 69 N
+    # plain-pin figure was measured on. See
+    # evidence/grapple_pin_axial_pull_gate_yoked.json.
+    #
+    # Set this False to rebuild the plain-pin baselines; the blade spawn's own
+    # default stays off so nothing outside this task family changes.
+    anti_yaw_yoke: bool = True
 
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)
+        # One place, so the three skills cannot disagree about which pin they
+        # were trained against. The blade spawn is deep-copied per configuration
+        # by ``configclass``, so this never reaches the module-level asset.
+        self.scene.spare_blade.spawn.anti_yaw_yoke = self.anti_yaw_yoke
         # The parent rebuilds the event set for the chosen level from the
         # contact task's class, which carries the top-down poses and the old
         # finger commands, so re-assert the head-on ones afterwards.

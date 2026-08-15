@@ -45,6 +45,14 @@ CONTACT_IMPULSE_FIELD = "contact_impulse_ns"
 # swept evaluation point can be audited rather than trusted: a pinned bias that
 # silently failed to take effect would otherwise look like a robust policy.
 BELIEF_BIAS_FIELD = "belief_bias_m"
+# The capture attitude error split into the gripper's own axes. Recorded only
+# when asked for, because it answers one question: an anti-yaw feature opposes
+# rotation about the *closing* axis alone, so a residual that is mostly pitch or
+# roll cannot be fixed by tightening it. The magnitude column already recorded
+# cannot distinguish those cases.
+GRIP_YAW_CLOSING_AXIS_FIELD = "grip_attitude_closing_axis_rad"
+GRIP_ATTITUDE_THIRD_AXIS_FIELD = "grip_attitude_third_axis_rad"
+GRIP_ATTITUDE_APPROACH_AXIS_FIELD = "grip_attitude_approach_axis_rad"
 
 UNCATEGORIZED_TERMINATION = "uncategorized"
 
@@ -411,6 +419,9 @@ __all__ = [
     "BLADE_MASS_FIELD",
     "BUCKET_LABELS",
     "CONTACT_IMPULSE_FIELD",
+    "GRIP_ATTITUDE_APPROACH_AXIS_FIELD",
+    "GRIP_ATTITUDE_THIRD_AXIS_FIELD",
+    "GRIP_YAW_CLOSING_AXIS_FIELD",
     "PEAK_CONTACT_FORCE_FIELD",
     "CATEGORICAL_FIELDS",
     "DEFAULT_METRIC_FIELDS",
