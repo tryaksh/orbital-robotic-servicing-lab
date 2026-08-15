@@ -40,199 +40,159 @@ or retracted, and they stay in the record.
 
 ## Current state in one paragraph
 
-Levels 0, 1, and 2 of the secured-grasp insertion curriculum are promoted, each
-on three held-out evaluation seeds, at 100% success over roughly 9,000 episodes
-per level (27,121 total) with terminal metrics captured before Isaac Lab's
-automatic reset. Level 2 covers 1.5 mm side clearance and 5–15 kg payload mass.
-Envelope sweeps past the trained range show initial pose error is the binding
-axis (half-success near 7× trained noise, failing by lateral divergence, never by
-numerical instability), while blade mass is not a meaningful axis in this regime,
-which weakens the Level-2 mass claim. Level 3 stiction is physically blocked.
-Those policies hold the blade with a PhysX fixed joint; that is not learned
-grasping. Contact force is measured per episode (Level-2 peak p95 16.6 N, max
-66.4 N). Reward shaping at two strengths failed to constrain it; adding contact
-force to the observation and retraining against a matched control cut contact
-impulse 59% at the mean and 89% at the median while leaving peak force and cycle
-time unchanged, so sensing binds sustained rubbing and peak force is
-geometrically irreducible under position-based IK. Force sensing did **not** buy
-robustness to pose error: that ablation was run, refuted, and its cause found —
-the rack's 16.6 mm lead-in flares were doing the alignment mechanically. On the
-physical side, the head-on grapple pin holds 69 N of axial pull against the
-66.4 N the insertion reaction demands, where flat pads on a smooth post held
-about 6 N, and three skills — capture, extract, insert — train against it and
-chain into two servicing workflows that run end to end in one continuous episode
-holding the module by pad-against-pin contact with no fixed joint. **Everything
-in that last sentence is capability, and as of 2026-08-11 all of it is
-certified and none of it passes its gate.**
+Levels 0, 1 and 2 of the secured-grasp insertion curriculum are promoted at 100%
+over 27,121 held-out episodes, but those policies hold the module with a PhysX
+fixed joint and that is not learned grasping. The real work is the head-on
+grapple pin, where the module is held by pad-against-pin contact with no fixed
+joint: the pin holds **69 N** of axial pull against the 66.4 N the insertion
+reaction demands, where flat pads on a smooth post held about 6 N. On that
+interface three skills are certified on three held-out seeds each — **capture
+95.55%**, **insert 95.57%**, and, as of 2026-08-15, **extract 10.09%**, which is
+the first time a module has been pulled clear of the rack by a certified policy
+at all. They chain into two servicing workflows that run end to end in one
+continuous episode: **installation certifies at 86.28%** and **removal at
+14.06%**, both up from a chain that composed to zero four sessions ago. Nothing
+passes the 95% gate yet, and the single remaining failure is now precisely
+located: 7,971 of extract's 8,093 failures end at the 0.350 rad grip-attitude
+limit while grip *position* holds at 12.5 mm.
 
-## What the 2026-08-11 certification session established
+## What 2026-08-15 established, and what it demolished
 
-Read this before planning anything. It overturned two things the previous
-handover asserted.
+Read this before planning anything. Four hypotheses were tested and **three were
+refuted**, which is the session's real output.
 
-**The demonstration was quoting the wrong policies.** `evidence/` named grasp v2,
-extract v2 and insert v3 while `run_workflow_demo.py` loaded v3, v4 and v5. All
-three are now certified as the versions the demonstration loads, on three
-held-out seeds each, in files named for the version:
+**The anti-yaw yoke is a net negative and is off.** All three skills were
+fine-tuned onto it and certified: capture 95.55% → 88.81%, insert 95.57% →
+28.70%, extract 0.00% → 0.13%. It costs 6.7 points of capture and 67 of
+insertion to buy 0.13 of extraction.
 
-| Skill | Report | Episodes | Success |
-| --- | --- | ---: | ---: |
-| Capture v3 | `evidence/grapple_grasp_v3_certification.json` | 9,020 | 95.55% |
-| Extract v4 | `evidence/grapple_extract_v4_certification.json` | 9,078 | **0.00%** |
-| Insert v5 | `evidence/grapple_insert_v5_certification.json` | 3,074 | 6.96% |
-| **Insert v6** | `evidence/grapple_insert_v6_certification.json` | 3,000 | **95.57%, gate passes** |
+**And it was aimed at the wrong axis.** `play.py --grip_axis_metrics` now
+decomposes the capture attitude into the gripper's own axes; only its magnitude
+was ever recorded before, and a magnitude cannot say which axis a rotation is
+about. Measured: **0.198 rad about the closing axis, 0.199 about the transverse
+axis, 0.070 about the approach axis.** The yoke's walls oppose the closing axis
+and nothing else. Three sessions called this failure "yaw" and designed against
+that name without measuring it.
 
-**The chain is certified too**, across three seeds and 576 workflows each:
-removal `evidence/workflow_remove_certification.json` at **0 / 576**, and
-installation at **497 / 576, 86.28%**, Wilson 95% [83.23, 88.85]
-(`evidence/workflow_install_v6insert_certification.json`; the 15.10% in
-`workflow_install_certification.json` is the same chain before the insert clock
-was fixed). Neither passes the 95% gate.
+**A modelled latch is also a net negative and is off.** `mdp.GrappleLatch`
+engages on a qualifying capture and applies a rated restoring torque, which is
+what flight hardware does — the SSRMS latching end effector rigidizes a grapple
+fixture, Dextre's tool changeout mechanism carries a powered socket drive. Swept
+from 10 to 160 N·m against the *unchanged* extract v4 policy, it moves the
+rotation it targets by 0.006 rad and collapses extraction travel from 458 mm to
+about 25 mm, because a restoring torque on a module the rails still hold jams it
+in the rails.
 
-**One property of the interface explains almost all of it, and it is not a
-training problem.** A single-point tapered pin clamped by flat pads cannot resist
-rotation about the closing axis, because the pads' contact normals lie along that
-axis and a normal force cannot oppose a moment about its own direction. Measured
-three independent ways:
+**The workcell is not the problem either.** Extraction ends with the tool
+0.336 m horizontally from the base and 0.570 m above it, folded back over the
+shoulder, and two handovers flagged that this was never checked kinematically.
+Checked with 2,000 servo steps instead of 400, and the base swept along x, the
+arm holds the head-on attitude there to **0.0114 rad** — seventeen times inside
+the 0.20 rad tolerance — and moving the base back makes it *worse*. The
+0.10–0.26 rad residuals recorded earlier were an under-converged servo.
 
-- extraction holds grip *position* at 12.2 mm for a whole 15 s pull and fails on
-  grip *attitude* at 0.299 rad against a 0.20 rad limit, which is why it scores
-  zero while travelling 458 of the required 495 mm;
-- of insert v5's 2,860 failures, **93.01%** are outside that same tolerance at
-  the step they end on, while 100% satisfy lateral alignment and blade
-  orientation, and all 214 successes sit against the limit at a maximum of
-  0.1945 rad;
-- pooled over 576 chained removals the grip attitude is inside tolerance at the
-  end in **3.8%** of episodes.
+**What was true: the clock, and then the objective.** Extract certified on a
+15 s episode whose median cycle time was 15.000 s — every episode ran out the
+clock. Lengthening it to 25 s *and* fine-tuning took extraction from 0.00% to
+10.09% and removal from 0.00% to 14.06%. Successful extractions take 18.23 s,
+so 15 s made them impossible by construction. Lengthening the clock **without**
+fine-tuning was measured first and does not work: it converts 449 timeouts into
+512 lost grips at a hard 478 mm ceiling.
 
-The module itself stays straight — its orientation error against the goal is
-0.0043 rad — so this is the wrist rotating relative to a module the rails hold
-still.
+Then the arithmetic that explains the rest. `grip_retention_penalty` charges
+attitude about **0.16 per step** at the 0.20 rad success limit, against a
+progress term weighted **12**. The policy was not failing to control attitude;
+it was correctly trading an almost-free quantity for a well-paid one and taking
+a one-off −15 at the end. The extract task now charges about 3.6 per step, via
+parameters on the shared function so **insertion keeps the defaults its own
+certification was produced under**.
 
-**The previous handover's reading of insert as "slow, not unreliable" was
-right, and a mid-session reading that contradicted it was wrong.** Insert v5's
-failures are 93% out of grip-orientation tolerance at the step they end on, which
-looked like the pin's yaw capping the skill. Lengthening the episode from 12 s to
-20 s and fine-tuning took it from 6.96% to **95.57%**, and the install chain from
-15.10% to **86.28%**. Grip orientation was converging, slowly, and the old
-episode cut it off before the median success had happened: successful insertions
-take 13.43 s. The lesson is in `docs/status.md` and worth carrying: a
-distribution of terminal states says which condition is unsatisfied when the
-clock stops, not whether that condition was still moving.
+## Next action, decided 2026-08-15
 
-Extraction is a different case and the yaw diagnosis there still stands: it
-scores zero while holding grip *position* at 12.2 mm for a full 15 s pull, so
-nothing about it is a clock problem.
+**1. Read `evidence/grapple_extract_v7_certification.json` first.** Extract v7
+was training against the attitude-weighted objective when the session ended, and
+`scripts/run_extract_attitude_pipeline.sh` certifies it and re-closes both
+chains unattended. If it is not there, re-run that script. The comparison is
+extract v6 at 10.09% with 98% of failures on grip attitude.
 
-**A per-phase budget now reconciles the chain with per-skill certification.**
-`PHASE_BUDGET_S` in `run_workflow_demo.py` reads `episode_length_s` off the three
-task configurations, so a phase that overruns its skill's own episode fails the
-workflow. That is what turned "it completes in the chain" into 569 removals
-overrunning extract's 15 s and 448 installations overrunning insert's 12 s. Do
-not widen the workflow episode to make a number look better; the budget is
-derived on purpose.
+**2. If v7 moved attitude but not enough, the next lever is the action space,
+not the interface.** The arm commands relative Cartesian pose through
+damped-least-squares IK, and this repository has now measured twice that a
+position-controlled action space cannot convert a sensed quantity into
+compliance — once on contact force (`docs/status.md`, force feedback moved
+impulse and not peak force) and once on attitude. Roadmap item 7, an admittance
+or impedance action space, is the change both results point at. Do not build a
+third passive interface feature; two are already measured as harmful.
 
-## The anti-yaw yoke: built, dimensioned, axially validated, yaw untested
+**3. Raise capture, which is the install chain's remaining bottleneck.** Capture
+certifies at 95.55% with its worst stage at 92.61%, and 29 of the install
+chain's 79 failures are capture overrunning its own 6 s budget. It has never had
+the IndustReal sampling-based curriculum the roadmap points at:
+`InsertionSuccessRateCurriculum` ramps *into* the hard stages through mixtures,
+which is the pathology that produced the hollow 99.3% in `docs/status.md`.
+`BeliefSamplingCurriculum` in `mdp/uncertainty.py` is already IndustReal's SBC
+written against the slot displacement; write a sibling over the reset-noise
+envelope. Change the curriculum on its own, never alongside a physics change.
 
-The second-generation interface feature is implemented and off by default
-(`GrapplePinBladeCfg.anti_yaw_yoke`). Two walls at a 15 mm half-gap, 34 mm long
-from the collar face, with a 10 mm lead-in flare at 20 degrees giving 5.14 mm of
-catch per side. Every dimension comes from a re-reading of
-`evidence/gripper_collision_envelope.json` across the whole closure range: no
-gripper body other than an inner finger reaches past 0.1245 m from the flange,
-and the widest non-finger body reaches 17.5 mm against the fingers' 13.5 mm, so
-there is a 37.6 mm band behind the collar where a 15 mm wall is safe and nowhere
-else. `tests/test_grapple_geometry.py` defends all of it without a simulator.
-
-**It does not cost the hold**: 67 N at the 0.48 rad capture command against the
-66.4 N required, on the same grid the 69 N plain-pin figure was measured on, with
-angular slip under axial pull falling from 0.1481 to 0.1312 rad at p95.
-`evidence/grapple_pin_axial_pull_gate_yoked.json`.
-
-**Whether it fixes yaw is unmeasured, and a static probe cannot measure it.** The
-yaw probe reports 0.079 rad whatever load is applied, identically with and
-without the yoke, and 200 N of lateral force moves the module 1.2 mm — because
-the capture scene holds the module in its rails and the rails constrain it. Yaw
-is a property of the interface *after* the rack lets go, so it has to be measured
-on a moving extraction. The two probe files are named
-`grapple_pin_yaw_probe_railed_*` and carry `gate.applies: false` so they cannot
-be misread as evidence the yoke does nothing.
-
-## Next action, decided 2026-08-11: turn the yoke on and re-measure
-
-The order below is chosen so that each step's answer is readable off a number
-that already exists.
-
-**1. Raise the capture skill, which is now the chain's second bottleneck.**
-With insert fixed, 29 of the install chain's 79 remaining failures are capture
-overrunning its own 6 s budget, and capture v3 certifies at 95.55% with its worst
-stage at 92.61%. It has never had the IndustReal sampling-based curriculum the
-roadmap has been pointing at: `InsertionSuccessRateCurriculum` ramps *into* the
-hard stages through mixtures, which is the pathology that produced the hollow
-99.3% recorded in `docs/status.md`. This is the cheapest remaining point.
-
-**2. Turn the yoke on and retrain capture.** Set `anti_yaw_yoke = True` on the
-grapple-pin blade config. Changing the pin changes the contact, so the capture
-skill must be retrained before anything downstream is judged; run
-`scripts/grasp_diagnostics.py` first to confirm a grip still forms, then train
-`Isaac-ZeroG-Blade-GrapplePin-Grasp-v0` and certify it. Watch the capture rate:
-the yoke's 1.5 mm parallel clearance is the one thing that could make capture
-harder, and the 5.14 mm lead-in exists to stop it.
-
-**3. Retrain extract on the yoked pin and read the answer off it.** Extract is
-the cleanest instrument this project has for yaw, because it currently scores
-**0.00%** for that reason alone and its grip-position error is already fine.
-Anything above zero is the yoke working. Certify on the same three seeds.
-
-**4. Re-certify the chain, both workflows.** `scripts/certify_workflow.sh`. Then,
-and only then, attempt `--workflow full` and record the round trip.
-
-**5. Only after the chain is certified, perception.** The requirement is already
-written into `docs/service_interface_spec.md` section 7: 4 mm laterally. The
-camera has to be fixed first — `docs/perception_plan.md` measures it resolving
-4 mm as **0.13 pixels** — and the fix is a narrower field of view, not more
-pixels.
+**4. Only after both chains certify, perception.** The requirement is written
+into `docs/service_interface_spec.md` section 7: 4 mm laterally. The camera has
+to be fixed first — `docs/perception_plan.md` measures it resolving 4 mm as
+**0.13 pixels** — and the fix is a narrower field of view, not more pixels.
 
 Adopt established formulations rather than inventing reward terms. IndustReal's
 sampling-based curriculum samples the whole initial-state range from the first
-step and raises only its *easy* bound as success improves, which is the direct
-fix for the Grasp-v1 pathology in `docs/status.md`; the mixture ramp in
-`InsertionSuccessRateCurriculum` does the opposite. FORGE (arXiv 2408.04587)
-conditions the policy on a per-episode maximum allowable force rather than the
-two fixed penalty profiles this repository already measured as ineffective.
+step and raises only its *easy* bound as success improves. FORGE (arXiv
+2408.04587) conditions the policy on a per-episode maximum allowable force
+rather than the two fixed penalty profiles this repository already measured as
+ineffective.
 
-Must not be deleted: the grapple pin geometry and the yoke,
+Must not be deleted: the grapple pin geometry, the yoke and `mdp.GrappleLatch`
+(both off, both measured, both worth keeping as evidence),
 `docs/service_interface_spec.md`, everything in `evidence/` including the
-negative results and the two inconclusive yaw probes, the contact-force machinery
-in `mdp/insertion.py`, the evaluator and its promotion gate,
+negative results and the two inconclusive yaw probes, the contact-force
+machinery in `mdp/insertion.py`, the evaluator and its promotion gate,
 `TwoStageRobotiqAction` (including its per-environment `hold_latch`) and
 `hold_two_stage_grip` in `mdp/grapple.py`, the per-phase budget in
-`run_workflow_demo.py`, and the visual-randomization modules hanging off
-`vision_insertion_env_cfg.py`.
+`run_workflow_demo.py`, `scripts/check_evidence_currency.py`, and the
+visual-randomization modules hanging off `vision_insertion_env_cfg.py`.
 
 What the head-on grapple pin established, and why it stays: it is the first
-interface here to form a real grip, holding **69 N** of axial pull against the
-66.4 N the insertion contact reaction demands, where flat pads on a smooth post
-held about 6 N. The step that got there was recognising that **capture and hold
-are two different commands** — a wedge converts closing force into thrust along
-the pull axis, so a firm capture drives the payload away before it is taken.
-Capture at 0.48 rad, firm to 0.68 once loaded. The window is narrow and
-asymmetric: 0.44 holds 63 N, 0.52 holds 68 N, 0.56 collapses to 26 N. Bias low.
+interface here to form a real grip, holding **69 N** of axial pull where flat
+pads on a smooth post held about 6 N. The step that got there was recognising
+that **capture and hold are two different commands** — a wedge converts closing
+force into thrust along the pull axis, so a firm capture drives the payload away
+before it is taken. Capture at 0.48 rad, firm to 0.68 once loaded. The window is
+narrow and asymmetric: 0.44 holds 63 N, 0.52 holds 68 N, 0.56 collapses to 26 N.
+Bias low.
 
 ## Operating rules
 
 - Preserve exact zero gravity and the 30 Hz policy / 120 Hz physics timing
   unless an experiment explicitly tests a change.
 - Never resume a checkpoint after changing action or observation dimensions.
+  Resuming across a *physics* or *reward* change is allowed and is how the
+  L0→L1→L2 lineage and extract v6 and v7 were produced; say so when you do.
 - Change one failure category per experiment and save a JSON report.
 - A scripted controller is allowed only as a physics feasibility test;
   demonstrations must use a checkpoint.
 - Never call a fixed joint, compliant spring, or scripted action a learned
-  grasp.
-- Never weaken a success threshold to make a gate pass.
+  grasp. `GrappleLatch` is a modelled mechanism and is labelled as one.
+- Never weaken a success threshold to make a gate pass. Extract's 854-per-1000
+  failures at the 0.350 rad limit are a standing temptation to loosen that
+  predicate; do not.
+- **Measure the axis before designing against it.** Two interface features were
+  built against a rotation nobody had decomposed, and it turned out to be split
+  evenly across two axes with only one of them addressed. `--grip_axis_metrics`
+  exists so this cannot recur.
+- **Before believing a servo, converge it.** The extraction end pose was
+  declared kinematically marginal on a 400-step IK residual; at 2,000 steps it
+  converges to 0.0114 rad. An under-converged solver is not a reachability
+  oracle.
 - Never quote a success rate without checking that the certification in
-  `evidence/` names the same policy version the demo loads. This rule exists
-  because grasp v3, extract v4 and insert v5 were quoted using v2/v2/v3 numbers.
+  `evidence/` names the same policy version the demo loads. Run
+  `scripts/check_evidence_currency.py` on the workflow reports; it compares
+  SHA-256, not filenames, and it caught a chain running insert v5 on the night
+  it was written.
 - A recorded video is a demonstration. A pooled multi-seed report is evidence.
   Never let the first stand in for the second, in any document or commit message.
 - A chained workflow gives every phase the episode length its own skill was
@@ -272,11 +232,13 @@ checkpoints, or every task file.
 | Grasp physics before any grasp PPO | `scripts/grasp_diagnostics.py`, `evidence/grapple_pin_axial_pull_gate.json` |
 | Gripper geometry, ever | `scripts/measure_gripper_envelope.py`, `evidence/gripper_collision_envelope.json` |
 | Head-on capture task, and the three skills | `src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py` |
-| Pin and yoke dimensions, and their derivation | `src/zero_g_blade_swap/grapple_geometry.py`, `tests/test_grapple_geometry.py` |
+| Pin, yoke and latch, and their derivation | `src/zero_g_blade_swap/grapple_geometry.py`, `tests/test_grapple_geometry.py`, `tests/test_yoke_asset.py` |
 | The chained workflow and how it is judged | `scripts/run_workflow_demo.py`, `scripts/certify_workflow.sh` |
 | Re-certifying a skill after a retrain | `scripts/certify_demo_policies.sh` |
-| Measuring a new interface before training on it | `scripts/run_yoke_gates.sh` |
-| Capture/hold gripper action | `src/zero_g_blade_swap/tasks/blade_swap/mdp/grapple.py` |
+| Auditing that a quoted number describes the loaded policy | `scripts/check_evidence_currency.py` |
+| Is a pose reachable | `scripts/calibrate_grasp_pose.py --robot_base_x`, and converge it |
+| Measuring a new interface before training on it | `scripts/run_yoke_gates.sh`, `scripts/run_latch_rating_sweep.sh` |
+| Capture/hold gripper action, the latch, grip metrics | `src/zero_g_blade_swap/tasks/blade_swap/mdp/grapple.py` |
 | Rewards, terminations, curriculum | `src/zero_g_blade_swap/tasks/blade_swap/mdp/insertion.py` |
 | Evaluation statistics and gates | `src/zero_g_blade_swap/evaluation.py`, `scripts/aggregate_evaluation.py` |
 | Training and playback entry points | `scripts/train.py`, `scripts/play.py` |
@@ -293,8 +255,8 @@ evaluator installs it, so training is unaffected.
 Certification is one `play.py` run per curriculum stage and seed writing
 `--episode_metrics`, then `scripts/aggregate_evaluation.py` pooling those raw
 rows into a single gated report under `evidence/`. Reports align runs by column
-name, so a task may record extra columns such as randomized blade mass without
-invalidating earlier runs.
+name, so a task may record extra columns — randomized blade mass, contact force,
+the grip-attitude decomposition — without invalidating earlier runs.
 
 Promotion gate: at least the stated success rate pooled *and* in every
 curriculum stage, at least 80% in every randomized-parameter bucket, zero

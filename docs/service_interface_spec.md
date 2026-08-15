@@ -272,12 +272,20 @@ Three things this requirement is not:
 
 ---
 
-## 8. Second-generation requirement: yaw must be constrained
+## 8. Attitude must be constrained — and two attempts to do it mechanically failed
+
+> **Read 8.3 before designing anything against this section.** Two features were
+> built on the reasoning below, both were trained against and certified, and
+> both are measured as net negatives. The rotation this section calls "yaw" was
+> decomposed on 2026-08-15 and is not principally about the closing axis at all.
+> The section is kept in its original form because the reasoning it records is
+> what the refutation is a refutation *of*.
 
 A single-point tapered pin clamped by flat pads does not constrain rotation about
 the pin axis. While the module is in its rails this does not matter. Once the
-rails release it, it does. This is filed as an interface *result* rather than as
-a controller bug, because no controller change fixes it.
+rails release it, it does. This was filed as an interface *result* rather than as
+a controller bug, on the argument that no controller change fixes it. That
+argument is now known to be wrong; see 8.3.
 
 | Measurement | Value |
 | --- | ---: |
@@ -343,6 +351,60 @@ the module, not of the seated interface.** It has to be measured on a moving
 extraction. Reports:
 `evidence/grapple_pin_yaw_probe_railed_plain.json` and `_yoked.json`, both
 carrying `gate.applies: false`.
+
+### 8.3 Both mechanical fixes were built, measured, and refuted
+
+**The yoke costs far more than it buys.** All three skills fine-tuned onto it
+and certified on three held-out seeds each:
+
+| Skill | Plain pin | Yoked pin |
+| --- | ---: | ---: |
+| Capture | 95.55% | 88.81% |
+| Extract | 0.00% | 0.13% |
+| Insert | 95.57% | 28.70% |
+
+**And the axis was never measured.** The capture attitude error decomposed into
+the gripper's own axes, on extraction with the plain pin:
+
+| Component | Terminal p50 |
+| --- | ---: |
+| About the **closing** axis — the only axis these walls oppose | 0.198 rad |
+| About the **transverse** axis | 0.199 rad |
+| About the approach axis | 0.070 rad |
+
+The rotation is split roughly evenly across two axes and every dimension in 8.1
+addresses one of them. That is the entire explanation for recovering 12% of it,
+and it is the specification's own version of a mistake this project has made
+before: designing against a name instead of a measurement.
+
+**A modelled latch fails differently.** Flight servicing hardware does not hold
+a module against extraction by friction on a passive feature — the SSRMS
+latching end effector snares a grapple fixture and rigidizes it, and Dextre's
+tool changeout mechanism grips a standardised fixture and carries a powered
+socket drive. Modelled here as a rated restoring torque engaged by a qualifying
+capture, and swept against an *unchanged* policy so no difference can be a
+training artefact:
+
+| Latch rating | Transverse rotation p50 | Module travel p50 |
+| ---: | ---: | ---: |
+| none | — | 458 mm |
+| 10 N·m | 0.293 rad | 24 mm |
+| 80 N·m | 0.299 rad | 29 mm |
+
+An eightfold rating change moves the target by 0.006 rad and destroys the
+extraction, because a restoring torque applied while the rails still hold the
+module jams it in the rails.
+
+**What the requirement actually is.** Attitude must be held within 0.20 rad
+through the pull — that part of this section stands, and four certifications
+measure it. What does not stand is the inference that a passive module-side
+feature is how to hold it. The measurements now point at the controller and the
+objective: the extraction end pose is reachable with the attitude held to
+0.0114 rad, and the reward was charging attitude 0.16 per step against a
+progress term weighted 12. **A module-side interface requirement should not be
+written against this failure until a force- or impedance-controlled action space
+has been tried**, because two passive features have now been paid for and both
+made the system worse.
 
 ---
 
