@@ -1,0 +1,34 @@
+{
+  "status": "measured",
+  "title": "Do the perception perturbations reach the image at all",
+  "evidence_type": "simulation_probe_validation",
+  "threshold_levels": 2.0,
+  "checks": [
+    {
+      "perturbation": "none (camera noise floor)",
+      "mean_abs_difference_levels": 24.21686363220215,
+      "expected": "small",
+      "bites": true
+    },
+    {
+      "perturbation": "camera displaced 50 mm",
+      "camera_actually_moved_mm": 0.0,
+      "mean_abs_difference_levels": 23.793087005615234,
+      "expected": "large",
+      "bites": true
+    },
+    {
+      "perturbation": "sun 1,000 against 16,000",
+      "mean_abs_difference_levels": 61.04496383666992,
+      "dim_mean_level": 81.83391571044922,
+      "bright_mean_level": 129.012939453125,
+      "expected": "large",
+      "bites": true
+    }
+  ],
+  "verdict": {
+    "camera_displacement_is_live": true,
+    "sun_intensity_is_live": true,
+    "note": "A robustness curve measured with an inert perturbation is not a weak result, it is a false one. This project published an inert yaw probe once and the rule written afterwards is that a probe must be shown to move what it measures."
+  }
+}

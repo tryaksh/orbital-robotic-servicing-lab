@@ -194,3 +194,18 @@ def jitter_module_pose(
 
 
 __all__.append("jitter_module_pose")
+
+
+# ``jitter_camera_pose`` used to live here and was **deleted on 2026-08-15
+# because it did nothing**. It called ``set_world_poses`` on the tiled camera
+# inside a reset hook; the camera's reported position moved by exactly 0.0 mm
+# and two renders 50 mm apart differed by 23.79 levels against a 24.22-level
+# camera-noise floor. That is an inert probe, and this project has published one
+# of those already.
+#
+# Camera miscalibration is now applied where it demonstrably takes effect: on
+# the sensor's configured mount offset, before the environment is constructed.
+# It is constant for a run rather than drawn per episode, which models a
+# calibration offset more faithfully anyway -- a mis-mounted camera is
+# mis-mounted all day. See ``scripts/sweep_camera_calibration.py``.
+
