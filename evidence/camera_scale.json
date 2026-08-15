@@ -1,0 +1,51 @@
+{
+  "status": "failed",
+  "title": "Servicing camera scale and framing, measured by rendering",
+  "evidence_type": "simulation_sensor_characterization",
+  "protocol": {
+    "task": "Isaac-ZeroG-Blade-Insertion-Vision-v0",
+    "resolution_px": 64,
+    "focal_length_mm": 180.0,
+    "horizontal_aperture_mm": 22.0,
+    "horizontal_field_of_view_deg": 6.994119478596499,
+    "camera_to_slot_mouth_m": 1.2678327560424805
+  },
+  "resolution": {
+    "metres_per_pixel": 0.0024212083882755703,
+    "millimetres_per_pixel": 2.4212083882755704,
+    "required_lateral_resolution_m": 0.004,
+    "pixels_per_required_displacement": 1.652067628449311
+  },
+  "framing": {
+    "pixel_coordinates": {
+      "slot_mouth": [
+        -19.037108299546595,
+        58.5760588443019
+      ],
+      "module_centre": [
+        32.07768729115567,
+        29.833094451168773
+      ]
+    },
+    "in_frame": {
+      "slot_mouth": false,
+      "module_centre": true
+    }
+  },
+  "signal": {
+    "mean": 60.51212692260742,
+    "std": 60.2404899597168,
+    "unique_intensity_levels": 23
+  },
+  "frame": "artifacts\\perception\\frame.png",
+  "gate": {
+    "applies": true,
+    "minimum_pixels_per_displacement": 1.0,
+    "passed": false,
+    "rationale": "A displacement smaller than a pixel is absent signal, not a hard regression problem. Framing is gated as well because a correctly scaled camera aimed at the wrong place resolves nothing, and that cannot be caught by arithmetic."
+  },
+  "scope_and_limitations": [
+    "Simulation only. This characterises the authored sensor, not a calibrated real camera.",
+    "One frame at one reset. It says the interface is framed and resolvable, not that a policy can learn from it."
+  ]
+}

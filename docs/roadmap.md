@@ -26,23 +26,37 @@ staging now is
   workcell an injected bias is recoverable from the observed tool pose. The
   critic keeps ground truth. See `docs/status.md` for the mechanism and the two
   faults found while building it.
-- **P2, in progress 2026-08-11.** The blade is held by the physical grapple pin
-  instead of the fixed joint, and capture, extract and insert chain into two
-  servicing workflows that run end to end in one continuous episode. What is left
-  is evidence rather than capability, in this order: certify the checkpoints the
-  demonstration actually loads; certify the *chain*, across many seeds, with a
-  Wilson interval, because nothing in `evidence/` covers a chained run and the two
-  workflow videos are n = 1; give the insert skill a clock long enough for the
-  motion it is measured making; and constrain yaw, which is the one thing
-  blocking a full remove-and-replace round trip.
-- **P3.** Replace the injected displacement with one regressed from the tiled
-  camera under randomized orbital lighting and rack materials. **Do not start
-  before the chain is certified.** `docs/perception_plan.md` is the design, and it
-  already carries a blocking finding: the authored 64x64 camera resolves a 4 mm
-  slot displacement as **0.13 pixels**, so the field of view has to narrow before
-  any image is collected. The accuracy it has to reach is not a guess either: it
-  is written into `docs/service_interface_spec.md` as a requirement, 4 mm
-  laterally, derived from the measured envelope.
+- **P2, and the whole of it is now evidence rather than capability.** The module
+  is held by the physical grapple pin instead of the fixed joint, and capture,
+  extract and insert chain into two servicing workflows that run end to end in
+  one continuous episode. Every checkpoint the demonstration loads is certified
+  as the version it loads, and both chains are certified across three held-out
+  seeds with Wilson intervals. What is left is the success *rates*.
+
+  **The last item on this list used to say "constrain yaw", and that was wrong
+  in three separate ways, each of which cost a session.** The rotation was never
+  decomposed and turned out to be split evenly across two axes; two mechanical
+  features built against one of them were both measured as net negatives, the
+  yoke costing insertion 67 points; and what actually moved extraction from
+  0.00% was three things with nothing mechanical among them — an episode shorter
+  than the median success, an attitude term two orders of magnitude below the
+  progress term it competed with, and an action space that could rotate at
+  0.24 rad/s while the module rotated at up to 0.767. **Do not add a fourth
+  interface feature.** The remaining lever is roadmap item 7.
+- **P3, and it is not the wall this file implied.** Replace the injected
+  displacement with one regressed from the tiled camera under randomized orbital
+  lighting and rack materials. The "blocking finding" that a 64x64 camera
+  resolves a 4 mm displacement as 0.13 pixels was a **focal length**, derived in
+  `docs/perception_plan.md` and never applied: 18 mm to 180 mm puts it at
+  1.31 px, and that change is now in `scene_cfg.make_tiled_camera_cfg`.
+  `scripts/check_camera_scale.py` renders a frame and gates on millimetres per
+  pixel, on whether the interface is genuinely inside a 7-degree cone, and on
+  the image carrying signal at all. Run that gate whenever the optics change;
+  it costs one frame. What waits for a certified chain is *training* a
+  perception policy, because a student distilled from an uncertified teacher
+  inherits its failures. The accuracy it has to reach is not a guess: 4 mm
+  laterally, written into `docs/service_interface_spec.md` and derived from the
+  measured envelope.
 - **P4.** Package: README leading with the curve, demo clips from a trained
   checkpoint only, evidence index.
 

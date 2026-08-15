@@ -38,6 +38,8 @@ termination, and therefore nothing to optimise.
 
 from __future__ import annotations
 
+import dataclasses
+
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.utils import configclass
@@ -47,16 +49,44 @@ from .grapple_pin_env_cfg import (
     GrappleSkillObsCfg,
     GraspActionsCfg,
     GraspEventsCfg,
+    ZeroGBladeGrapplePinExtractEnvCfg,
     ZeroGBladeGrapplePinGraspEnvCfg,
+    ZeroGBladeGrapplePinInsertEnvCfg,
 )
 from .robust_insertion_env_cfg import configure_insertion_play_presentation
 
-#: Cartesian action scales, in the order the workflow runs them. Each is copied
-#: from the task the corresponding policy was trained on, and the driver writes
-#: the matching one into the action term at every transition.
-GRASP_ACTION_SCALE = (0.002, 0.001, 0.001, 0.008, 0.008, 0.008)
-EXTRACT_ACTION_SCALE = (0.008, 0.001, 0.001, 0.008, 0.008, 0.008)
-INSERT_ACTION_SCALE = (0.0015, 0.00075, 0.00075, 0.006, 0.006, 0.006)
+
+#: Cartesian action scales, in the order the workflow runs them. Each is *read*
+#: from the task the corresponding policy was trained on -- never copied -- and
+#: the driver writes the matching one into the action term at every transition.
+def _certified_action_scale(cfg_class: type) -> tuple[float, ...]:
+    """Read a skill's action scale off its own task configuration.
+
+    Copied constants drift, and this file proved it the expensive way. Extract's
+    scales were rebalanced on the task -- lateral 0.001 to 0.004 and rotation
+    0.008 to 0.020, because the module was measured rotating faster than the
+    wrist could follow -- and the copy here stayed at the old values. The chain
+    then drove a policy at a quarter of the lateral authority it had trained
+    with, and the removal workflow went to 0.00% with every one of 598 episodes
+    overrunning its budget, while the same checkpoint certified at 94.23% on
+    that stage running alone.
+
+    ``PHASE_BUDGET_S`` in ``run_workflow_demo.py`` already derives the episode
+    lengths for exactly this reason. This is the same fix for the same class of
+    bug: a policy must be driven by the action term it was trained against, and
+    the only way to guarantee that is to read it rather than restate it.
+    """
+
+    for field in dataclasses.fields(cfg_class):
+        if field.name == "actions":
+            actions = field.default_factory() if field.default is dataclasses.MISSING else field.default
+            return tuple(float(value) for value in actions.arm.scale)
+    raise AttributeError(f"{cfg_class.__name__} declares no actions")
+
+
+GRASP_ACTION_SCALE = _certified_action_scale(ZeroGBladeGrapplePinGraspEnvCfg)
+EXTRACT_ACTION_SCALE = _certified_action_scale(ZeroGBladeGrapplePinExtractEnvCfg)
+INSERT_ACTION_SCALE = _certified_action_scale(ZeroGBladeGrapplePinInsertEnvCfg)
 
 #: Where the scripted transit hands over to the insert policy: the blade centre
 #: the insert skill was trained to start from.
