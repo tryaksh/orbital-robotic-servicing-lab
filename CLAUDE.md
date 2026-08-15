@@ -47,14 +47,16 @@ grapple pin, where the module is held by pad-against-pin contact with no fixed
 joint: the pin holds **69 N** of axial pull against the 66.4 N the insertion
 reaction demands, where flat pads on a smooth post held about 6 N. On that
 interface three skills are certified on three held-out seeds each — **capture
-95.55%**, **insert 95.57%**, and, as of 2026-08-15, **extract 10.09%**, which is
-the first time a module has been pulled clear of the rack by a certified policy
-at all. They chain into two servicing workflows that run end to end in one
-continuous episode: **installation certifies at 86.28%** and **removal at
-14.06%**, both up from a chain that composed to zero four sessions ago. Nothing
-passes the 95% gate yet, and the single remaining failure is now precisely
-located: 7,971 of extract's 8,093 failures end at the 0.350 rad grip-attitude
-limit while grip *position* holds at 12.5 mm.
+95.55%**, **insert 95.57%**, and **extract 28.48%**, the last having gone
+0.00% → 10.09% → 28.48% on 2026-08-15 without a single hardware change. They
+chain into two servicing workflows that run end to end in one continuous
+episode: **installation certifies at 86.28%** and **removal at 14.06%**, both up
+from a chain that composed to zero four sessions ago. Nothing passes the 95%
+gate, the remaining failure is entirely grip attitude — 6,387 of extract's 6,438
+failures end at the 0.350 rad limit while grip *position* holds at 13.0 mm — and
+there is one live contradiction to resolve first: **extract v7 is the better
+skill and the worse chain component**, scoring 28.48% alone but dropping the
+removal chain from 14.06% to 3.30%, so the chain currently loads v6.
 
 ## What 2026-08-15 established, and what it demolished
 
@@ -109,20 +111,29 @@ certification was produced under**.
 
 ## Next action, decided 2026-08-15
 
-**1. Read `evidence/grapple_extract_v7_certification.json` first.** Extract v7
-was training against the attitude-weighted objective when the session ended, and
-`scripts/run_extract_attitude_pipeline.sh` certifies it and re-closes both
-chains unattended. If it is not there, re-run that script. The comparison is
-extract v6 at 10.09% with 98% of failures on grip attitude.
+**1. Resolve why the better skill is the worse chain component.** Extract v7
+certifies at 28.48% alone and drops the removal chain to 3.30%, where v6 at
+10.09% alone gives 14.06%. In the chain 557 of 576 failures are timeouts;
+running alone, 51 in 9,002 are. Installation is bit-identical at 86.28% because
+it never calls extract, so the difference is extract and nothing else. The
+hypothesis to test first is that a large attitude penalty makes standing still
+cheaper than pulling when the episode starts outside the policy's comfortable
+region, and a chained extract always starts wherever capture's servoing left the
+arm rather than on the nominal reset. That is the same class of defect as the
+0.0005 rad reset noise that made the first chained extract reverse into the
+rack, and the fix shape is the same: train across the states the predecessor
+actually produces. `run_workflow_demo.py --episodes` with per-phase reporting is
+the instrument; do not widen the workflow episode.
 
-**2. If v7 moved attitude but not enough, the next lever is the action space,
-not the interface.** The arm commands relative Cartesian pose through
-damped-least-squares IK, and this repository has now measured twice that a
-position-controlled action space cannot convert a sensed quantity into
-compliance — once on contact force (`docs/status.md`, force feedback moved
-impulse and not peak force) and once on attitude. Roadmap item 7, an admittance
-or impedance action space, is the change both results point at. Do not build a
-third passive interface feature; two are already measured as harmful.
+**2. Then the action space, not the interface.** The arm commands relative
+Cartesian pose through damped-least-squares IK, and this repository has now
+measured twice that a position-controlled action space cannot convert a sensed
+quantity into compliance — once on contact force (`docs/status.md`, force
+feedback moved impulse and not peak force) and once on attitude, where charging
+it properly was worth 18 points and the residual failure is still 99% attitude.
+Roadmap item 7, an admittance or impedance action space, is the change both
+results point at. **Do not build a third passive interface feature; two are
+already measured as harmful.**
 
 **3. Raise capture, which is the install chain's remaining bottleneck.** Capture
 certifies at 95.55% with its worst stage at 92.61%, and 29 of the install

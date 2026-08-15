@@ -1600,6 +1600,67 @@ charges attitude about 3.6 per step at the success limit — free below 0.04 rad
 normalised over 0.06, weighted 1.0 — through parameters on the shared function,
 so **insertion keeps the defaults its certification was produced under**.
 
+### Extract v7: the objective was worth 18 points
+
+600 PPO epochs fine-tuned from v6, one change and nothing else. Certified on the
+same three held-out seeds:
+
+| Extract | What changed | Episodes | Success | Timeouts | Lost grips |
+| --- | --- | ---: | ---: | ---: | ---: |
+| v4 | — | 9,078 | 0.00% | 6,236 | 2,842 |
+| v6 | 15 s → 25 s | 9,001 | 10.09% | 122 | 7,971 |
+| **v7** | **attitude weighted** | **9,002** | **28.48%** | **51** | 6,387 |
+
+Report: `evidence/grapple_extract_v7_certification.json`, checkpoint SHA-256
+`58785D8A…`, Wilson 95% [27.56%, 29.42%].
+
+**Extraction went from nothing to nearly a third, and no part of that was a
+hardware change.** Two objective defects, each found by reading a distribution
+rather than by redesigning a part: an episode shorter than the median success,
+and an attitude term two orders of magnitude below the progress term it competed
+with. Between them they had absorbed four sessions and two interface features.
+
+One curiosity worth carrying: the stage ordering inverted. Full distance now
+scores **32.07%** against 26.88% near and 26.50% medium, where every previous
+version fell monotonically with distance. A policy that does better from further
+out is not one whose limit is the pull.
+
+**What is still unfixed is unchanged in kind.** 6,387 of the 6,438 failures end
+at the 0.350 rad grip-attitude limit, and timeouts are now negligible at 51.
+Attitude is still the whole of the remaining failure; it is simply no longer
+being given away for free. The next lever is the action space — this repository
+has now measured twice that a position-controlled action space cannot convert a
+sensed quantity into compliance, once on contact force and once on attitude —
+and **not** a third passive interface feature.
+
+### The better skill is the worse chain component, and that is a real result
+
+Both workflows were re-certified against extract v7 on the same three held-out
+seeds and 576 workflows each:
+
+| Workflow | With extract v6 | With extract v7 |
+| --- | ---: | ---: |
+| Removal | **14.06%** | **3.30%** |
+| Installation | 86.28% | 86.28% (does not use extract) |
+
+**Extraction alone improved from 10.09% to 28.48% while the removal chain it
+sits in fell from 14.06% to 3.30%**, and 557 of the 576 chained failures are
+timeouts against 51 in 9,002 when the skill runs alone. Installation is
+identical because it never calls extract, which is the control that says the
+difference is extract and not drift somewhere else.
+
+This is the same lesson the chain taught the first time it was certified, in the
+opposite direction: **a skill certification is not evidence about the chain.**
+The plausible mechanism, and it is a hypothesis rather than a measurement, is
+that a large attitude penalty makes standing still cheaper than pulling when the
+episode begins outside the state the policy is comfortable in — and a chained
+extract begins wherever the capture policy's servoing left the arm, never on the
+nominal reset. That is the same class of defect as the 0.0005 rad reset noise
+that made the first chained extract reverse into the rack.
+
+Until that is diagnosed, **extract v6 is what the removal chain should load and
+extract v7 is the better skill**, and those two sentences are both true.
+
 ## Extract's clock: 15 s was never enough
 
 Certified on a 15 s episode, extract v4's median cycle time is **15.000 s** —
