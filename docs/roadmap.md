@@ -17,55 +17,25 @@ their parts. At today's rates the relocation would complete well under half the
 time, and a flagship demonstration that fails more often than it succeeds is
 worse than a smaller one that works. So the order is fixed:
 
-1. **Close the installation chain.** Capture + insert, camera in the loop, sits
-   at 80.38% and the state-based chain at 84.38%. **The bottleneck is now
-   measured and three fixes for it are refuted — read `docs/status.md` before
-   attempting a fourth.**
+**The plan is in `CLAUDE.md` and that is the authority.** Six items, each with a
+gate, in order:
 
-   Insert scores 95.57% on its own reset and about **80%** on the states the
-   chain actually hands it. That gap is the whole chain shortfall, it was
-   invisible in every per-skill certification, and it predates every change made
-   to capture. `run_workflow_demo.py --handoff_trace` measures it.
+1. **Insert trained inside the chain.** Closes the install chain, 84.38% -> 95%.
+   The only remaining gap, and the only hard research item. Four attempts to
+   reproduce the hand-off as a reset distribution have failed, so train in place.
+2. **Second slot geometry** at y = -0.22 m. Reachability already verified.
+3. **Insert retrained for slot 2.**
+4. **Lateral transit**, waypoint-followed, with `retain_latch` set while the
+   module is free.
+5. **Certify the relocation chain** end to end, >= 95%.
+6. **Perception reads which slot is occupied**, which is the version worth
+   demonstrating.
 
-   Three resets were built to reproduce the hand-off, each gated by running
-   insert v6 *unchanged* on it: a per-joint noise box (0.00%), measured arm poses
-   with the module left nominal (26.32%), and measured arm **and** module poses
-   paired (47.17%). None reaches ~80%, so **a hand-off is not a pose.** The
-   chained driver also latches the holding closure at hand-over
-   (`TwoStageRobotiqAction.hold_latch`) and no training task sets it, so the
-   module is carried under a different gripper controller as well.
-
-   **Next: change the training loop, not the reset.** Train insert inside the
-   chain — run the capture, latch the grip, hand over to the policy being
-   trained. Every cheaper approximation is now measured and refuted.
-2. ~~**Make removal work in the chain.**~~ **DONE 2026-08-16 — 98.78%, gate
-   passed**, 569 of 576 on three held-out seeds, zero instability.
-   `evidence/workflow_remove_retain_certification.json`.
-
-   Three fixes, in order, none sufficient alone and none mechanical: a dense
-   reward for arriving settled; raising `grip_retention_penalty`'s clamp, which
-   had been saturating at 0.325 rad while the policy parked at 0.3538 so attitude
-   cost nothing past the knee; and a third gripper command. The last is the one
-   that took the chain from 0.00% to 98.78% — the pads rest at 0.223 rad on the
-   wedge, both the capture and hold commands overdrive it, the drive saturates at
-   10 N·m, and a wedge turns closing force into thrust along the pull axis. Rails
-   absorb that; a module pulled free does not. **Capture gently, hold hard to
-   pull, retain gently once the part is free.**
-
-   Extraction alone certifies at 68.62%, which understates it: 25% of its
-   episodes die on the first control step because the task resets the arm with up
-   to 0.040 rad of noise and places the module at a fixed pose, so the scripted
-   capture closes on nothing. Excluding those it is 92.21%, and the chain does not
-   inherit the defect. Fixing it is the next small job on this skill.
-
-3. **Two slots — now the live work.** Second slot geometry, a real lateral transit, and
-   insertion retrained for a second goal pose.
-
-Step 2 certified on 2026-08-16, so step 3 is open. The caution it replaces still
-applies to *how* to build it: a relocation is a product of four stages and chained
-numbers here have consistently landed below the product of their parts, so build
-and certify it in pieces rather than assembling the whole scene and measuring
-once.
+Removal certified at 98.78% on 2026-08-16, so the gate that held step 3 back is
+cleared. The caution it replaces still applies to *how*: a relocation is a product
+of four stages and chained numbers here have consistently landed below the product
+of their parts, so build and certify in pieces rather than assembling the whole
+scene and measuring once.
 
 ## The current line of work, decided 2026-08-10
 
