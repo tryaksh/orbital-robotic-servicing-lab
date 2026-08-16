@@ -2562,13 +2562,68 @@ the training distribution not the chain's, which is the exact defect the task
 exists to fix. `tests/test_chained_insert_contract.py` now asserts the
 termination set.
 
+### What the remaining insert failures actually miss
+
+From the gate run's own condition breakdown, of the seven insert-phase overruns
+at seed 4070 (`artifacts/chain/gate2_v6_on_chain_4070.json`):
+
+| Condition unmet at the step the episode ended | Count |
+| --- | ---: |
+| `hold_duration` | 7 |
+| `axial_depth` | 6 |
+| `grasp_orientation` | 6 |
+| `grasp_position` | 1 |
+| `lateral_alignment`, `orientation`, both velocities | 0 |
+
+So the binding pair is **depth and grip attitude**, and the geometry of the seat
+itself — lateral, orientation, and settling — is never what fails. Successful
+insertions terminate at a grip attitude of 0.1927 rad at the median against a
+0.20 rad tolerance, which is 96% of the budget: the skill lives on that limit.
+
+**Whether the objective charges for that is worth the arithmetic, because this
+project has been caught by it five times.** With the insert task's parameters —
+`grip_retention_penalty` free below 0.08 rad, normalised over 0.15, orientation
+weighted 0.25, clamped at 25.0, term weight −0.50 — a grip attitude sitting
+exactly on the 0.20 rad failure boundary costs
+
+    0.25 * ((0.20 - 0.08) / 0.15)^2 * 0.50 = 0.08 per step
+
+against `elapsed_time_penalty` at **0.10 per step**. The policy is charged more
+for taking one extra control step than for sitting at the attitude that ends the
+episode.
+
+Two things follow, and the second is the one that keeps the next experiment
+honest. First, unlike extraction this is **not** a saturation defect: with a
+typical grip position the raw cost reaches the 25.0 clamp only near 1.56 rad,
+far past the 0.35 rad an episode can reach, so the term has a gradient
+everywhere — it is simply two orders below the terms it competes with. Second,
+that makes an attitude reweighting a *separate* experiment from training in the
+chain, and it is deliberately not being run at the same time. Extract v7 already
+showed an over-weighted attitude term makes standing still cheaper than working
+and cost the removal chain 11 points, so this is a change to make once the
+in-chain result is measured on its own, not alongside it.
+
 ## The install chain's 84.38% is stale, and the current number is 89.41%
 
 `evidence/workflow_install_final_certification.json` was generated at
-**2026-08-15T18:42Z**. Its recorded policy-set hash matches no combination of the
-checkpoints now on disk, and the promoted capture and the capture phase's 10 s
-budget both post-date it — the grasp task's episode length was raised from 6 s to
-10 s precisely because chained captures were overrunning it.
+**2026-08-15T18:42Z**. Its recorded policy-set hash resolves, over all 147
+checkpoints on disk, to capture v5 + extract v8handoff + insert v6 — and
+installation never runs extract, so **it describes the same two policies the
+promoted set uses**. The number did not move because the policies changed.
+
+It moved because the *task* did. `git log -S` on the two constants the capture
+phase is judged by puts both in commit `ffac648`, "The chain is the deliverable,
+and capture is 68% of what breaks it", at 2026-08-15 22:18 local — **8.5 hours
+after the certification was written**. That commit raised the grasp task's
+episode length from 6 s to 10 s and tightened `capture_success_mask` onto
+`WORKFLOW_HANDOVER_GRIP_M`, and `PHASE_BUDGET_S` reads the first of those
+straight into the chain's capture budget. The certification therefore describes a
+chain whose capture phase had four fewer seconds than the one in the code.
+
+This is the same failure mode as the retracted extraction figures, one level
+over: not a stale checkpoint, a stale *criterion*, and the only thing that
+catches it is checking a report's timestamp against `git log -S` on what it
+measures.
 
 Re-measured today on the promoted set (capture v5, insert v6), same three
 held-out seeds, same 64 environments and 192 episodes per seed:
@@ -2653,10 +2708,11 @@ Cumulative secured-grasp profiles:
   first interface in this project to form a real grip, but no policy has been
   certified on it: the three skills that were trained on it are deleted, and P2
   is where a policy goes back onto it.
-- **The installation chain's 84.38% is stale and must not be quoted.** Its
-  certification predates the promoted capture and the 10 s capture phase budget,
-  and its recorded policy-set hash matches nothing on disk. Re-measured on the
-  promoted set over the same three held-out seeds it is **89.41%**
+- **The installation chain's 84.38% is stale and must not be quoted.** It
+  describes the same two policies the promoted set uses, but it was certified
+  8.5 hours before commit `ffac648` raised the capture phase's budget from 6 s to
+  10 s. Re-measured on the promoted set over the same three held-out seeds it is
+  **89.41%**
   (`evidence/workflow_install_promoted_certification.json`), still short of the
   95% gate by 5.6 points.
 - **Extraction's 68.36% is stale and must not be quoted, and so is the removal
