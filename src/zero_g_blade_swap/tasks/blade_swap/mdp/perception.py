@@ -101,7 +101,8 @@ class PerceivedGraspError(ManagerTermBase):
         super().__init__(cfg, env)
         checkpoint = getattr(env.cfg, "pose_head_checkpoint", None)
         self._blend = float(getattr(env.cfg, "pose_head_oracle_blend", 0.0))
-        if checkpoint is None and self._blend < 1.0:
+        self._blind = bool(getattr(env.cfg, "pose_head_blind", False))
+        if checkpoint is None and self._blend < 1.0 and not self._blind:
             raise ValueError(
                 "PerceivedGraspError needs env.cfg.pose_head_checkpoint. Refusing to fall back to "
                 "ground truth: a vision result computed from the simulator's own answer is worse "
@@ -110,9 +111,27 @@ class PerceivedGraspError(ManagerTermBase):
         self._head = None if checkpoint is None else load_pose_head(checkpoint, env.device)
         self._sensor_cfg = SceneEntityCfg("camera")
         self._error = torch.zeros(env.num_envs, device=env.device)
+        # ``self._blind`` is the control that says whether the camera does any
+        # work at all: the robot assumes the module is exactly where the rack
+        # nominally presents it, reading no image. If a blind run scores as well
+        # as a seeing one, the perception result is measuring nothing.
 
     def __call__(self, env) -> torch.Tensor:
         truth_pose = module_pose_label(env)
+        if self._blind:
+            # The pose the rack nominally presents, recorded before the episode's
+            # displacement was applied. No image is read at all.
+            stored = getattr(env, "_module_nominal_pose", None)
+            if stored is None:
+                # The observation manager evaluates every term once while the
+                # environment is being built, before any reset has run. There is
+                # no displacement yet either, so the truth *is* the nominal.
+                return grip_error_from_module_pose(env, truth_pose)
+            believed = torch.cat(
+                (stored[:, :3] - env.scene.env_origins, axis_angle_from_quat(stored[:, 3:7])), dim=-1
+            )
+            self._error = torch.linalg.vector_norm(believed[:, :3] - truth_pose[:, :3], dim=-1)
+            return grip_error_from_module_pose(env, believed)
         if self._blend >= 1.0:
             self._error = torch.zeros_like(self._error)
             return grip_error_from_module_pose(env, truth_pose)
@@ -182,6 +201,14 @@ def jitter_module_pose(
     ids = torch.arange(env.num_envs, device=env.device) if env_ids is None else env_ids
     blade = env.scene[asset_cfg.name]
     pose = blade.data.root_state_w[ids, :7].clone()
+    # Keep the pose *before* the displacement. That is what a robot working from
+    # the drawing rather than from an image would believe, and it is the control
+    # the perception result has to be measured against.
+    nominal = getattr(env, "_module_nominal_pose", None)
+    if nominal is None or nominal.shape[0] != env.num_envs:
+        nominal = torch.zeros((env.num_envs, 7), device=env.device)
+        env._module_nominal_pose = nominal
+    nominal[ids] = pose
     noise = blade.data.root_state_w.new_tensor(position_noise_m)
     pose[:, :3] += (2.0 * torch.rand((len(ids), 3), device=env.device) - 1.0) * noise
     if yaw_noise_rad > 0.0:

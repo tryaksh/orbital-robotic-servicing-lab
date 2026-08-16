@@ -149,25 +149,37 @@
         robot's observations reveals, so the image is the only source of the answer.
       </p>
     </div>
-    <div class="band two">
+    <div class="band three">
       <div class="cell">
-        <span class="k">Oracle — simulator's answer</span>
-        <span class="v">80.38<span style="font-size:1rem">%</span></span>
-        <span class="n">463 of 576 workflows · 95% CI [76.9, 83.4]</span>
+        <span class="k">Blind — no camera</span>
+        <span class="v bad">43.58<span style="font-size:1rem">%</span></span>
+        <span class="n">251 of 576 · CI [39.6, 47.7]</span>
       </div>
       <div class="cell">
         <span class="k">Camera — 64×64 RGB</span>
         <span class="v good">80.38<span style="font-size:1rem">%</span></span>
-        <span class="n">463 of 576 workflows · 95% CI [76.9, 83.4]</span>
+        <span class="n">463 of 576 · CI [76.9, 83.4]</span>
+      </div>
+      <div class="cell">
+        <span class="k">Oracle — simulator's answer</span>
+        <span class="v">80.38<span style="font-size:1rem">%</span></span>
+        <span class="n">463 of 576 · CI [76.9, 83.4]</span>
       </div>
     </div>
     <div class="col">
-      <p class="note">
-        The identical totals are a coincidence of sums — the per-seed runs differ (camera 148/157/158,
-        oracle 156/158/149). What is not coincidence is that a 1.75 mm visual estimate, against a
-        20 mm capture tolerance, has 11× of margin and therefore costs nothing.
+      <p>
+        <strong>Vision closes the entire gap.</strong> Working blind — no camera, the module assumed to
+        be exactly where the rack nominally presents it — the workflow manages 43.58%. Given the
+        camera it reaches 80.38%, statistically indistinguishable from being handed the simulator's
+        exact answer, with confidence intervals that do not overlap the blind arm.
       </p>
-      <p class="evidence">evidence/vision_workflow_camera_certification.json · vision_workflow_oracle_certification.json</p>
+      <p class="note">
+        The blind arm is the control that makes this worth reporting. "Camera matches oracle" alone
+        proves nothing — it is equally consistent with a task that never needed vision. The 36.8-point
+        gap to blind is what says the perception is load-bearing. That control was missing from the
+        first version of this result and the result was not worth much without it.
+      </p>
+      <p class="evidence">evidence/vision_workflow_blind_certification.json · vision_workflow_camera_certification.json · vision_workflow_oracle_certification.json</p>
     </div>
   </section>
 
@@ -308,6 +320,27 @@
       </p>
       <p class="evidence">evidence/module_pose_head.json · estimate_stability.json · artifacts/calib/</p>
     </div>
+    <div class="col">
+      <h3>The payload envelope is bounded from below, not above</h3>
+      <p>
+        The obvious expectation is that a heavier module is harder. It is the other way round, and the
+        reason is the mechanism above: the pin's taper converts closing force into thrust, and thrust
+        divided by a small mass is a large acceleration. <strong>Light modules get pushed away.</strong>
+      </p>
+    </div>
+    <div class="band three">
+      <div class="cell"><span class="k">2 kg module</span><span class="v bad">53.65<span style="font-size:1rem">%</span></span><span class="n">576 workflows</span></div>
+      <div class="cell"><span class="k">10 kg — nominal</span><span class="v good">80.38<span style="font-size:1rem">%</span></span><span class="n">576 workflows</span></div>
+      <div class="cell"><span class="k">80 kg module</span><span class="v good">79.69<span style="font-size:1rem">%</span></span><span class="n">576 workflows</span></div>
+    </div>
+    <div class="col">
+      <p style="font-size:.9rem;color:var(--ink-soft)">
+        A first pass at 96 episodes a point produced a 36-point non-monotonic scatter; it was discarded
+        and the extremes re-run at the same power as every other number here. A specification would take
+        a <em>minimum</em> serviceable mass from this, which is not the requirement anyone expects to write.
+      </p>
+      <p class="evidence">evidence/vision_workflow_payload_2kg_certification.json · _80kg_certification.json</p>
+    </div>
     <div class="band three">
       <div class="cell"><span class="k">Pose head · seed 90</span><span class="v">1.75<span style="font-size:1rem"> mm</span></span><span class="n">held-out mean</span></div>
       <div class="cell"><span class="k">seed 91</span><span class="v">1.80<span style="font-size:1rem"> mm</span></span><span class="n">held-out mean</span></div>
@@ -319,6 +352,25 @@
         result is not a lucky seed. The reinforcement-learning policies are single-seed, and that is the
         largest remaining caveat on this page.
       </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="col">
+      <p class="eyebrow">Onboard cost</p>
+      <h2>It does not need a GPU</h2>
+      <p>
+        Perception head plus skill policy, batch size one, against the 33.3 ms control period
+        everything here was certified at. Sensor readout, transport and the inverse-kinematics solve
+        are not included and on real hardware usually dominate; this is the compute the learned part costs.
+      </p>
+    </div>
+    <div class="band two">
+      <div class="cell"><span class="k">CPU · full stack</span><span class="v good">0.73<span style="font-size:1rem"> ms</span></span><span class="n">2.2% of the control period</span></div>
+      <div class="cell"><span class="k">GPU · full stack</span><span class="v">0.55<span style="font-size:1rem"> ms</span></span><span class="n">1.6% of the control period</span></div>
+    </div>
+    <div class="col">
+      <p class="evidence">evidence/inference_budget.json</p>
     </div>
   </section>
 

@@ -112,6 +112,25 @@ def _parser() -> argparse.ArgumentParser:
         help="Trained module-pose head. Required by the vision profile unless --oracle is given.",
     )
     parser.add_argument(
+        "--stable_lighting",
+        action="store_true",
+        help=(
+            "Turn the per-episode sun and rack-albedo randomizers off, and the camera's radiation noise "
+            "down, for recording. Randomization is what the pose head is *trained and measured* under; a "
+            "recording that strobes through it every episode shows the randomizer rather than the robot. "
+            "Never use this for a number."
+        ),
+    )
+    parser.add_argument(
+        "--blind",
+        action="store_true",
+        help=(
+            "Run the null control: no image is read and the robot assumes the module is exactly where "
+            "the rack nominally presents it. If this scores as well as the camera arm, the perception "
+            "result is measuring nothing."
+        ),
+    )
+    parser.add_argument(
         "--oracle",
         action="store_true",
         help=(
@@ -813,6 +832,19 @@ def main() -> dict[str, object]:
         if args.module_mass_kg is not None:
             env_cfg.scene.spare_blade.spawn.mass_props.mass = args.module_mass_kg
             print(f"[INFO] Module mass set to {args.module_mass_kg} kg")
+        if args.stable_lighting:
+            # Recording only, and the report says so, so a clip can never be
+            # mistaken for a measurement made under easier conditions.
+            for term in ("rack_albedo", "orbital_sun"):
+                if getattr(env_cfg.events, term, None) is not None:
+                    setattr(env_cfg.events, term, None)
+            for group in ("rgb",):
+                obs = getattr(env_cfg.observations, group, None)
+                if obs is not None and getattr(obs, "rgb", None) is not None:
+                    obs.rgb.params["noise_std_range"] = (0.0, 0.002)
+            print("[INFO] Visual randomization off for recording; this run is not evidence")
+        if args.blind:
+            env_cfg.pose_head_blind = True
         if args.oracle:
             # The control arm: the module pose comes from the simulator but
             # through the identical observation term, so the difference between
@@ -958,6 +990,7 @@ def main() -> dict[str, object]:
         )
         result: dict[str, object] = {
             "task": args.task,
+            "visual_randomization": "off (recording)" if args.stable_lighting else "on",
             "workflow": args.workflow,
             "seed": args.seed,
             "num_envs": task.num_envs,

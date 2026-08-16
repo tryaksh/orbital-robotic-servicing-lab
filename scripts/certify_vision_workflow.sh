@@ -45,6 +45,9 @@ for arm in ${ARMS:-oracle camera}; do
   if [ "$arm" = "oracle" ]; then
     extra=(--oracle)
     title="Vision servicing workflow, ORACLE arm: the module pose read from the simulator"
+  elif [ "$arm" = "blind" ]; then
+    extra=(--blind)
+    title="Vision servicing workflow, BLIND arm: no image; the module is assumed to be where the rack nominally presents it"
   else
     extra=(--pose_head_checkpoint "$HEAD")
     title="${CAMERA_TITLE:-Vision servicing workflow, CAMERA arm: the module pose regressed from 64x64 RGB}"
