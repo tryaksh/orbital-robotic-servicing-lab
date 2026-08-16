@@ -472,7 +472,13 @@ class ZeroGBladeGrapplePinGraspEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
     rewards: GraspRewardsCfg = GraspRewardsCfg()
     terminations: GraspTerminationsCfg = GraspTerminationsCfg()
     curriculum: GraspCurriculumCfg = GraspCurriculumCfg()
-    episode_length_s: float = 6.0
+    # 6 s was tuned when a capture only had to reach 20 mm of grip error.
+    # Aligning the skill with what the chain actually waits for -- 10 mm --
+    # doubles the precision demanded of the same motion, and the chain says the
+    # old budget was already the binding constraint: 77 of its 113 failures were
+    # captures overrunning 6 s while the skill scored 96.10% alone. Both move
+    # together because they are one defect measured two ways.
+    episode_length_s: float = 10.0
 
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)

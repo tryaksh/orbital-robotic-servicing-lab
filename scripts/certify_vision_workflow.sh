@@ -31,7 +31,7 @@ SEEDS="${SEEDS:-4070 5070 6070}"
 OUT=artifacts/vision_cert
 mkdir -p "$OUT" evidence
 
-GRASP_CKPT="$CKPT_ROOT/grapple_grasp_l0_seed70_v5/nn/last_zero_g_blade_insertion_contact_ep_1500_rew__35.348194_.pth"
+GRASP_CKPT="${GRASP_OVERRIDE:-$CKPT_ROOT/grapple_grasp_l0_seed70_v5/nn/last_zero_g_blade_insertion_contact_ep_1500_rew__35.348194_.pth}"
 EXTRACT_CKPT="$CKPT_ROOT/grapple_extract_l0_seed70_v8handoff/nn/last_zero_g_blade_insertion_contact_ep_3500_rew_148.35918.pth"
 INSERT_CKPT="$CKPT_ROOT/grapple_insert_l0_seed70_v6/nn/last_zero_g_blade_insertion_contact_ep_3200_rew__24.907995_.pth"
 

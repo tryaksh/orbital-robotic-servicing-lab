@@ -58,6 +58,14 @@ WORKFLOW_SETTLE_S = 0.70
 #: over inside it. ``capture_established`` keys on the first.
 CAPTURE_ATTITUDE_TOLERANCE_RAD = 0.20
 CAPTURE_POSITION_TOLERANCE_M = 0.020
+#: Grip error the chained workflow requires before it will hand a captured
+#: module to the next skill. The capture skill's own certification tolerance has
+#: to be at least this strict or the two disagree about what "captured" means --
+#: and they did. Certified on 20 mm while the chain waited for 10, capture
+#: overran its 6 s budget in 77 of the chain's 113 failures, 68% of them, while
+#: scoring 96.10% alone. ``run_workflow_demo`` reads this rather than restating
+#: it.
+WORKFLOW_HANDOVER_GRIP_M = 0.010
 
 #: How fast a "removed" module may still be moving, **derived** from the two
 #: numbers above rather than chosen.
@@ -488,10 +496,23 @@ def reset_grapple_progress(env, env_ids: torch.Tensor | None) -> None:
             valid[ids] = False
 
 
-def capture_success_mask(env, hold_time_s: float = 0.30) -> torch.Tensor:
-    """Terminate a grasp episode once a loaded capture has been held."""
+def capture_success_mask(
+    env,
+    hold_time_s: float = 0.30,
+    position_tolerance: float = WORKFLOW_HANDOVER_GRIP_M,
+) -> torch.Tensor:
+    """Terminate a grasp episode once a loaded capture has been held.
 
-    return _hold_counter(env, "_grapple_capture_hold", capture_established(env), hold_time_s)
+    ``position_tolerance`` defaults to what the *chain* demands, not to
+    ``capture_established``'s looser 20 mm. A skill certified more loosely than
+    the workflow it belongs to will pass alone and stall in the chain, which is
+    exactly what happened here. The looser default stays on
+    ``capture_established`` itself because extraction and insertion are
+    certified against it and their numbers must not move underneath them.
+    """
+
+    established = capture_established(env, position_tolerance=position_tolerance)
+    return _hold_counter(env, "_grapple_capture_hold", established, hold_time_s)
 
 
 def capture_success_reward(env, hold_time_s: float = 0.30) -> torch.Tensor:

@@ -62,10 +62,7 @@ TRANSIT_WAYPOINT_STRIDE = 4
 #: before the pull starts. One second, which is what the pull gate needed to
 #: settle and what the extract task's own action term waits out.
 SEAT_STEPS = 30
-#: Grip error the capture must reach before extraction takes over. The seating
-#: feed adds about 3 mm on top, landing near the 12.4 mm the extract task starts
-#: its own episodes from.
-HANDOVER_GRIP_M = 0.010
+
 
 #: Phases, as integers, because the driver runs them per environment in parallel.
 CAPTURE, SEAT, EXTRACT, TRANSIT, INSERT, DONE = range(6)
@@ -230,6 +227,7 @@ from zero_g_blade_swap.evaluation import (
 from zero_g_blade_swap.tasks.blade_swap.mdp.grapple import (
     EXTRACTION_ANGULAR_VELOCITY_LIMIT,
     EXTRACTION_LINEAR_VELOCITY_LIMIT,
+    WORKFLOW_HANDOVER_GRIP_M,
     WORKFLOW_SETTLE_S,
     capture_established,
     extraction_success_mask,
@@ -261,6 +259,10 @@ from zero_g_blade_swap.grapple_geometry import EXTRACTED_BLADE_CENTRE_X
 #: Read from the skill module, because the extraction velocity limits are
 #: *derived* from this window and the two must not be able to disagree.
 SETTLE_STEPS = round(WORKFLOW_SETTLE_S * 30.0)
+#: Grip error the capture must reach before the next skill takes over. Read from
+#: the skill module, which uses the same constant as the capture task's own
+#: success tolerance, so the two cannot disagree about what "captured" means.
+HANDOVER_GRIP_M = WORKFLOW_HANDOVER_GRIP_M
 
 def _certified_episode_length_s(cfg_class: type) -> float:
     """Read a skill's episode length off its own task configuration.
