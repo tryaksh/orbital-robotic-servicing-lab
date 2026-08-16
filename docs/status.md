@@ -1795,11 +1795,14 @@ Re-reading v8's own recorded terminal metrics against the limits now in the code
 
 **Not one of the 6,156 episodes counted as a successful extraction would satisfy
 the linear velocity limit the predicate now enforces**, and the median exceeds it
-fivefold. The chain measured the same thing independently and it was read as a
-different problem at the time: with the derived limits in place, the removal
-chain run `remove_final` had 573 of 576 workflows time out in the extract phase
-with the predicate **never firing at all**, against `remove_scalefix` on the same
-checkpoint under the old limits, where it fired in 191 of 192.
+fivefold.
+
+Every extract and removal figure on this page shares the defect. Checked against
+the 14:58 commit, `grapple_extract_v8_certification.json` (13:21),
+`grapple_extract_v9_certification.json` (14:46), and every removal chain run
+including the 14.06% (`remove_clock`, `remove_scalefix`, `remove_v9`) were
+written before the limits were derived. **The only extraction ever measured
+against the criterion the chain enforces is v10, and it scored 0.00%.**
 
 Two consequences, and the second matters more than the first.
 
@@ -1866,10 +1869,12 @@ Cumulative secured-grasp profiles:
   first interface in this project to form a real grip, but no policy has been
   certified on it: the three skills that were trained on it are deleted, and P2
   is where a policy goes back onto it.
-- **Extraction's 68.36% is stale and must not be quoted.** It was certified an
-  hour before the extraction velocity limits were derived and tightened, and
-  none of its 6,156 counted successes satisfies the linear limit now in the
-  code. See the section above. The current number is unmeasured.
+- **Extraction's 68.36% is stale and must not be quoted, and so is the removal
+  chain's 14.06%.** Both were certified before the extraction velocity limits
+  were derived and tightened on 2026-08-15, and none of v8's 6,156 counted
+  successes satisfies the linear limit now in the code. The only extraction
+  measured against the current criterion is v10, at 0.00%. See the section
+  above; the honest current number is unmeasured.
 - Aligning capture to the chain's 10 mm hand-off removed 38 of 39 capture-phase
   overruns and cost the installation chain 8 points, because insert v6 was
   trained against the hand-off capture v5 produced. The camera arm fell to
