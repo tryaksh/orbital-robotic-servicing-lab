@@ -52,7 +52,7 @@ from .contact_insertion_env_cfg import (
     ZeroGBladeContactInsertionEnvCfg,
 )
 from .env_cfg import ARM_JOINTS
-from .handoff_poses import INSERT_HANDOFF_ARM_POSES
+from .handoff_poses import INSERT_HANDOFF_ARM_POSES, INSERT_HANDOFF_MODULE_POSES
 from .insertion_env_cfg import ARM_CFG, GRIPPER_CFG, WRIST_CFG
 from .robust_insertion_env_cfg import configure_insertion_play_presentation
 from .scene_cfg import ZeroGGrapplePinSceneCfg
@@ -547,6 +547,12 @@ class ExtractEventsCfg(GrapplePinEventsCfg):
             "hold_positions": GRAPPLE_GRIPPER_HOLD,
         },
     )
+    # Declared last so it runs after reset_arm and reset_blade and overwrites
+    # both. It is a separate term rather than a replacement for reset_arm
+    # because the parent's configure_robustness writes
+    # reset_arm.params["noise_by_stage"] and would KeyError on a term that does
+    # not carry it. Left None except where a task opts in.
+    reset_handoff: EventTerm | None = None
     remember_blade_pose = EventTerm(func=mdp.record_blade_reset_pose, mode="reset")
     reset_grapple = EventTerm(func=mdp.reset_grapple_progress, mode="reset")
 
@@ -794,10 +800,30 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         self.events.reset_arm.params["poses_by_stage"] = (GRAPPLE_HEAD_ON_ARM_JOINT_POS[2],)
         self.events.reset_blade.params["poses_by_stage"] = (CONTACT_INSERTION_STAGE_BLADE_POSE[2],)
         self.events.reset_arm.params["noise_by_stage"] = (0.020,)
-        # Train across the states the capture actually produces, by sampling the
-        # measured ones. See INSERT_HANDOFF_ARM_POSES for how they were collected
-        # and why a noise box cannot substitute for them.
-        self.events.reset_arm.params["pose_bank"] = INSERT_HANDOFF_ARM_POSES
+        # NOT enabled, and the measurement is why. Three resets were built to
+        # reproduce the state the chain hands this skill, and a gate was run on
+        # each *before* training: insert v6 unchanged must score near the ~80% it
+        # already achieves in the chain's insert phase.
+        #
+        #   per-joint noise box                       0.00%
+        #   measured arm poses, module left nominal  26.32%
+        #   measured arm AND module poses, paired    47.17%
+        #
+        # Pairing the module with the arm recovered half the gap and did not
+        # close it, so the hand-off is still not reproduced and no amount of PPO
+        # would fix that. Training on the arm-only bank was tried anyway before
+        # this gate existed and cost the chain 8 points.
+        #
+        # What is left is not an initial condition at all: the chained driver
+        # latches the holding closure at hand-over (TwoStageRobotiqAction
+        # .hold_latch) so the grip cannot relax, and no training task sets it, so
+        # the module is also carried under a different gripper controller. That
+        # is why the reset below is the *original* one -- insert v6's 95.57%
+        # describes the task in this file, and it must keep doing so.
+        #
+        # mdp.reset_from_handoff_bank and handoff_poses.py stay implemented and
+        # regenerable, because the measurements are the result. Enabling them
+        # means setting self.events.reset_handoff.
         if level < 2:
             self.events.blade_mass = None
         if level < 3:

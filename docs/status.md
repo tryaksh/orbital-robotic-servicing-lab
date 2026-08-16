@@ -1920,6 +1920,50 @@ installation chain at 84.38%, and it is what `certify_workflow.sh` and
 v7align is promoted, and both stay in the record because the measurements are the
 result.
 
+### The third reset, a gate that worked, and what a hand-off actually contains
+
+The fix named above was built and **gated before any GPU was spent on it**, which
+is the check that should have preceded the other two. `HANDOFF_TRACE_FIELDS` now
+records the module's orientation as well as its position, and
+`mdp.reset_from_handoff_bank` writes the arm pose and the module pose from the
+**same drawn index**, so the pair is one measured state.
+
+The gate: insert v6, unchanged, must score near the ~80% it already achieves in
+the chain's insert phase.
+
+| Reset built to reproduce the hand-off | insert v6, unchanged |
+| --- | ---: |
+| Per-joint noise box | 0.00% |
+| Measured arm poses, module left at nominal | 26.32% |
+| **Measured arm *and* module poses, paired** | **47.17%** |
+| *The real chain's insert phase* | *~80%* |
+
+**Pairing recovered about half the remaining gap and did not close it, so
+nothing was trained on it.** That is the gate doing its job: the same check run
+before the second attempt would have saved an 80-minute run and the 8 points it
+cost the chain.
+
+**What is left is not an initial condition at all, and that is the finding.** The
+chained driver latches the holding closure at hand-over —
+`TwoStageRobotiqAction.hold_latch`, set per environment by
+`run_workflow_demo.py` — so the grip cannot relax for the rest of the workflow.
+**No training task sets it**, deliberately, so that every trained policy sees the
+gripper behaviour its certification was produced under. The module in the chain
+is therefore carried under a *different gripper controller* than the module in
+the insert task, and no reset distribution can express that.
+
+So the hand-off is a trajectory and a controller state, not a pose, and three
+successively better approximations of it as a pose have returned 0.00%, 26.32%
+and 47.17%. The honest conclusion is that **insert has to be trained inside the
+chain** — run the capture, latch the grip, and hand over to the policy being
+trained — rather than against any reconstruction of where the capture ends.
+
+The insert task's reset is therefore **back to the original**, verified: insert
+v6 scores 96.29% on it against its certified 95.57%, so the task in the file is
+the one its certification describes. `reset_from_handoff_bank`,
+`handoff_poses.py` and `build_handoff_pose_bank.py` stay implemented and
+regenerable, because the three measurements are the result.
+
 **What this does not license.** Reverting to capture v5 would buy the chain back
 8 points and restore the vision margin, and it would be the wrong move: v5 leaves
 39 capture overruns and the criterion mismatch that caused them, and a chain

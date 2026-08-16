@@ -343,6 +343,10 @@ HANDOFF_TRACE_FIELDS = (
     "blade_x_m",
     "blade_y_m",
     "blade_z_m",
+    "blade_qw",
+    "blade_qx",
+    "blade_qy",
+    "blade_qz",
     "blade_linear_velocity_mps",
     "blade_angular_velocity_radps",
     "tool_x_m",
@@ -586,7 +590,7 @@ class WorkflowDriver:
 
         task = self.task
         grip_error, grip_attitude = grapple_grip_error_metrics(task)
-        blade_position, _ = attached_blade_pose_world(task)
+        blade_position, blade_orientation = attached_blade_pose_world(task)
         velocity = attached_blade_velocity(task)
         return {
             "grip_error_m": grip_error.to(torch.float64),
@@ -594,6 +598,10 @@ class WorkflowDriver:
             "finger_angle_rad": grip_finger_angle(task).to(torch.float64),
             "drive_torque_nm": grip_drive_torque(task).to(torch.float64),
             "blade_local": (blade_position - task.scene.env_origins).to(torch.float64),
+            # The module's orientation travels with its position or the pair is
+            # not a pose. Sampling an arm pose against a module whose attitude
+            # was defaulted is what made the arm-only bank unfaithful.
+            "blade_quat": blade_orientation.to(torch.float64),
             "blade_linear_velocity_mps": torch.linalg.vector_norm(velocity[:, :3], dim=-1).to(torch.float64),
             "blade_angular_velocity_radps": torch.linalg.vector_norm(velocity[:, 3:], dim=-1).to(torch.float64),
         }
@@ -617,6 +625,7 @@ class WorkflowDriver:
                 state["finger_angle_rad"].unsqueeze(-1),
                 state["drive_torque_nm"].unsqueeze(-1),
                 state["blade_local"],
+                state["blade_quat"],
                 state["blade_linear_velocity_mps"].unsqueeze(-1),
                 state["blade_angular_velocity_radps"].unsqueeze(-1),
                 tool,

@@ -388,6 +388,52 @@ def reset_insertion_joints(
     robot.write_joint_state_to_sim(position, velocity, joint_ids=asset_cfg.joint_ids, env_ids=ids)
 
 
+def reset_from_handoff_bank(
+    env,
+    env_ids: torch.Tensor | None,
+    arm_cfg: SceneEntityCfg,
+    arm_poses: tuple[tuple[float, ...], ...],
+    module_poses: tuple[tuple[float, ...], ...],
+    joint_noise: float = 0.0,
+    blade_cfg: SceneEntityCfg = SceneEntityCfg("spare_blade"),
+) -> None:
+    """Reset the arm and the module to one measured hand-off, **as a pair**.
+
+    The pairing is the whole point, and it is the third attempt at this. Two
+    earlier ones reproduced the chain's hand-off by randomising the arm -- once
+    with per-joint noise, once by sampling measured arm poses -- and both left
+    the module at its nominal pose. That breaks the arm-against-module geometry,
+    which *is* the grip: the chain's hand-off carries a 0.157 rad joint deviation
+    and a 12.5 mm grip error together, because the capture servoed the arm to
+    reach a module that had also moved. Sampling one without the other
+    reproduces neither, and both attempts measured far below what the same
+    unchanged policy achieves in the real chain -- 0.00% and 26.32% against
+    about 80%.
+
+    ``drawn`` is used for both writes. That single shared index is the fix.
+    """
+
+    ids = torch.arange(env.num_envs, device=env.device) if env_ids is None else env_ids
+    if len(arm_poses) != len(module_poses):
+        raise ValueError(
+            f"{len(arm_poses)} arm poses against {len(module_poses)} module poses; "
+            "the two tables are one measurement and must be the same length and order"
+        )
+    robot = env.scene[arm_cfg.name]
+    drawn = torch.randint(len(arm_poses), (len(ids),), device=env.device)
+
+    joints = robot.data.joint_pos.new_tensor(arm_poses)[drawn]
+    if joint_noise > 0.0:
+        joints = joints + (2.0 * torch.rand_like(joints) - 1.0) * joint_noise
+    robot.write_joint_state_to_sim(joints, torch.zeros_like(joints), joint_ids=arm_cfg.joint_ids, env_ids=ids)
+
+    blade = env.scene[blade_cfg.name]
+    pose = blade.data.root_state_w.new_tensor(module_poses)[drawn].clone()
+    pose[:, :3] += env.scene.env_origins[ids]
+    blade.write_root_pose_to_sim(pose, env_ids=ids)
+    blade.write_root_velocity_to_sim(torch.zeros((len(ids), 6), device=env.device), env_ids=ids)
+
+
 def reset_insertion_blade(
     env,
     env_ids: torch.Tensor | None,
@@ -955,6 +1001,7 @@ __all__ = [
     "insertion_success_conditions",
     "insertion_success_reward",
     "insertion_timeout_error_penalty",
+    "reset_from_handoff_bank",
     "reset_insertion_joints",
     "reset_insertion_blade",
     "reset_insertion_progress",

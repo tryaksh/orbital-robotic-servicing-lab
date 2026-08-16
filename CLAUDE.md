@@ -108,23 +108,40 @@ fine-tuning made it *worse* — 24.33%, chain 76.74% → 69.10%, camera 69.97% �
 55.21%. Reward converged and oscillated with no trend, so this is a mis-specified
 task and not a short budget.
 
-**Why fix 2 failed, and the next thing to try.** The reset samples an arm pose
-from the bank and then places the module at its **fixed** nominal pose. In the
-chain the module sits where the capture left it and the arm sits where the
-capture servoed it *to reach that module*. Sampling one without the other
-reproduces neither. So record the module's **orientation** alongside its position
-in `HANDOFF_TRACE_FIELDS`, and reset the arm pose and module pose as a **matched
-pair from the same recorded hand-off**.
+**Refuted fix 3 — pair the module pose with the arm pose.** Built, and **gated
+before any GPU was spent**, which is the check that should have preceded fixes 1
+and 2. `mdp.reset_from_handoff_bank` draws both from one index:
 
-**Gate that on a five-minute check before spending any GPU:** insert v6 unchanged
-on the paired bank must score near the ~80% it already achieves in the chain. If
-it does not, the bank still is not the hand-off, and no amount of PPO will fix
-it. That check would have caught both refuted fixes.
+| Reset built to reproduce the hand-off | insert v6, unchanged |
+| --- | ---: |
+| Per-joint noise box | 0.00% |
+| Measured arm poses, module left at nominal | 26.32% |
+| Measured arm *and* module poses, paired | **47.17%** |
+| *The real chain's insert phase* | *~80%* |
 
-**The deeper option, if the paired bank also misses.** Stop approximating the
-hand-off and train insert *inside the chain* — run capture, then hand over to the
-insert policy being trained. That is a larger change to the training loop and it
-is the honest end state of "train across the states your predecessor produces".
+Pairing recovered half the remaining gap and did not close it, so **nothing was
+trained on it**. Run that gate before any future attempt: it costs five minutes
+and it would have saved the run that cost the chain 8 points.
+
+**Do not build a fourth reset. The hand-off is not a pose.** The chained driver
+latches the holding closure at hand-over — `TwoStageRobotiqAction.hold_latch`,
+set per environment by `run_workflow_demo.py` — so the grip cannot relax for the
+rest of the workflow, and **no training task sets it**, deliberately, so every
+policy sees the gripper behaviour its certification was produced under. The
+module in the chain is carried under a *different gripper controller* than the
+module in the insert task, and no reset distribution can express that. Three
+successively better approximations of the hand-off as a pose returned 0.00%,
+26.32% and 47.17%.
+
+**So the next thing to try is the training loop, not the reset.** Train insert
+*inside the chain*: run the capture, latch the grip, hand over to the policy
+being trained. That is the honest end state of "train across the states your
+predecessor produces", and every cheaper approximation of it is now measured.
+
+The insert task's reset is **back to the original** and verified — insert v6
+scores 96.29% on it against its certified 95.57%, so the task in the file is the
+one its certification describes. The bank machinery stays implemented and
+regenerable; enabling it means setting `self.events.reset_handoff`.
 
 **Capture v6align is not promoted and is not the problem.** Aligning capture to
 the chain's 10 mm hand-off (`capture_success_mask` now reads
