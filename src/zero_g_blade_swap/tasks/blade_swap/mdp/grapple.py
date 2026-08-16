@@ -711,6 +711,49 @@ def extraction_progress_reward(env, target_x: float = EXTRACTED_BLADE_CENTRE_X) 
     return _potential_reward(env, "extract", extraction_error(env, target_x), scale=0.030, clamp=1.0)
 
 
+def extraction_settling_penalty(
+    env,
+    target_x: float = EXTRACTED_BLADE_CENTRE_X,
+    engage_m: float = 0.060,
+    linear_velocity_limit: float = EXTRACTION_LINEAR_VELOCITY_LIMIT,
+    angular_velocity_limit: float = EXTRACTION_ANGULAR_VELOCITY_LIMIT,
+) -> torch.Tensor:
+    """Charge residual module motion over the last stretch of the pull.
+
+    :func:`extraction_success_mask` asks for a module that is clear *and*
+    settled, and until this term existed nothing paid for the second half:
+    velocity entered the objective only through a sparse terminal predicate, so
+    there was no gradient toward it anywhere in the pull.
+
+    The measured consequence is extract v10, which trained to a *higher* reward
+    than its predecessors -- 158.7 against v8's 148.4 -- and certified at 0.00%,
+    with 8,988 of 9,010 episodes ending on grip loss rather than on the clock. A
+    progress term weighted 12 paid for travel, nothing charged for arriving at
+    speed, and the policy barrelled through the line and out of the workspace.
+    That is the policy optimising exactly what it was asked to, again.
+
+    The limits are the ones the success predicate keys on, **read rather than
+    restated**, so a policy cannot be trained to a standard the criterion does
+    not ask for. Below them this term is exactly zero: the goal is to arrive
+    settled, not to crawl.
+
+    The gate ramps over the last ``engage_m`` rather than switching, because the
+    module has to *decelerate into* the line and a step change would only charge
+    it once it were already too late.
+    """
+
+    remaining = extraction_error(env, target_x)
+    gate = (1.0 - remaining / engage_m).clamp(0.0, 1.0)
+    velocity = attached_blade_velocity(env)
+    linear_excess = (
+        torch.linalg.vector_norm(velocity[:, :3], dim=-1) / linear_velocity_limit - 1.0
+    ).clamp_min(0.0)
+    angular_excess = (
+        torch.linalg.vector_norm(velocity[:, 3:], dim=-1) / angular_velocity_limit - 1.0
+    ).clamp_min(0.0)
+    return gate * (linear_excess.square() + angular_excess.square()).clamp(max=9.0)
+
+
 def extraction_success_mask(
     env,
     target_x: float = EXTRACTED_BLADE_CENTRE_X,
@@ -892,6 +935,7 @@ __all__ = [
     "extraction_failure_reward",
     "extraction_progress_reward",
     "extraction_remaining_observation",
+    "extraction_settling_penalty",
     "extraction_success_mask",
     "extraction_success_reward",
     "GrappleLatch",

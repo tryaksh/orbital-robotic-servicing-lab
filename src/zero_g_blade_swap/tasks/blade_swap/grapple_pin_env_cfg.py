@@ -574,6 +574,19 @@ class ExtractRewardsCfg:
         params={"free_rad": 0.04, "orientation_scale": 0.06, "orientation_weight": 1.0},
     )
     time = RewTerm(func=mdp.elapsed_time_penalty, weight=-0.10)
+    # Nothing paid this policy to arrive settled. The success predicate asks for
+    # a module that is clear *and* under the derived velocity limits, and every
+    # dense term here was about travel. Measured: extract v10 trained to a higher
+    # reward than v8 -- 158.7 against 148.4 -- and certified at 0.00%, losing the
+    # grip in 8,988 of 9,010 episodes by pulling through the line at speed.
+    #
+    # Sized against that measurement. At v8's terminal 0.0710 m/s, five times the
+    # 0.0143 limit, this charges 18 per step inside the last 60 mm. Progress is
+    # potential-based, so covering that 60 mm pays the same total however fast it
+    # is crossed and the only thing speed buys is the 0.10 per step of
+    # elapsed_time_penalty saved. Decisive against that, and far below the
+    # one-off success term.
+    settling = RewTerm(func=mdp.extraction_settling_penalty, weight=-2.0)
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.003)
     failure = RewTerm(func=mdp.extraction_failure_reward, weight=-15.0)
 
