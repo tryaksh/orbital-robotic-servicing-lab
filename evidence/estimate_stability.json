@@ -1,0 +1,35 @@
+{
+  "status": "measured",
+  "title": "Pose estimate stability, with the module held still",
+  "evidence_type": "simulation_sensor_characterization",
+  "protocol": {
+    "task": "Isaac-ZeroG-Blade-GrappleVision-Collect-v0",
+    "environments": 32,
+    "episodes": 6,
+    "consecutive_frames_per_episode": 24,
+    "arm": "held still, so all variation between estimates is the estimator",
+    "seed": 7092
+  },
+  "heads": [
+    {
+      "head": "checkpoints\\module_pose_head.pth",
+      "frame_to_frame_jitter_mm_mean": 2.587299346923828,
+      "frame_to_frame_jitter_mm_p95": 9.50960922241211,
+      "time_averaged_bias_mm_mean": 5.877645015716553,
+      "time_averaged_bias_mm_p95": 29.753875732421875,
+      "samples": 4416
+    },
+    {
+      "head": "checkpoints\\module_pose_head_calib.pth",
+      "frame_to_frame_jitter_mm_mean": 3.036134958267212,
+      "frame_to_frame_jitter_mm_p95": 11.932230949401855,
+      "time_averaged_bias_mm_mean": 9.151679039001465,
+      "time_averaged_bias_mm_p95": 40.380760192871094,
+      "samples": 4416
+    }
+  ],
+  "interpretation": "Jitter is what a closed loop feels: the policy servos to the estimate every control step, so frame-to-frame movement is a disturbance at the control rate. Bias is what filtering cannot remove. A head with low bias and high jitter is a filtering problem; one with low jitter and high bias is a training problem.",
+  "gate": {
+    "applies": false
+  }
+}

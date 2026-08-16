@@ -1,0 +1,460 @@
+{
+  "status": "passed",
+  "title": "Module pose regressed from a 64x64 servicing camera",
+  "evidence_type": "simulation_perception_regression",
+  "protocol": {
+    "dataset": "datasets\\grapple_vision.npz",
+    "frames": 60000,
+    "training_frames": 48000,
+    "held_out_frames": 12000,
+    "held_out_split": "contiguous tail of the collection run",
+    "epochs": 60,
+    "batch_size": 256,
+    "learning_rate": 0.001,
+    "randomization": [
+      "orbital sun intensity, angle, pitch, yaw, colour temperature",
+      "rack albedo: steel and gold, metallic and roughness",
+      "camera radiation noise",
+      "unknown per-episode module displacement"
+    ]
+  },
+  "held_out": {
+    "position_error_mm_mean": 1.7971861362457275,
+    "position_error_mm_p95": 4.500278949737549,
+    "orientation_error_rad_mean": 0.0028093992732465267,
+    "final_epoch_position_error_mm_mean": 1.7977033853530884
+  },
+  "context": {
+    "capture_tolerance_mm": 20.0,
+    "insertion_lateral_tolerance_mm": 4.0,
+    "note": "A pose error is only meaningful against the tolerance it has to fit inside. The capture predicate accepts 20 mm of grip error and the insertion needs 4 mm laterally, both from docs/service_interface_spec.md."
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.14008276995023092,
+      "position_error_mm_mean": 4.304810047149658,
+      "position_error_mm_p95": 10.604104042053223,
+      "orientation_error_rad_mean": 0.005186284892261028
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.07574229156970978,
+      "position_error_mm_mean": 4.1375346183776855,
+      "position_error_mm_p95": 9.953203201293945,
+      "orientation_error_rad_mean": 0.0038399656768888235
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.05220917612314224,
+      "position_error_mm_mean": 3.6137259006500244,
+      "position_error_mm_p95": 8.883341789245605,
+      "orientation_error_rad_mean": 0.0033309536520391703
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.04231982660293579,
+      "position_error_mm_mean": 4.282541751861572,
+      "position_error_mm_p95": 9.684605598449707,
+      "orientation_error_rad_mean": 0.003073343774303794
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.03665624857942263,
+      "position_error_mm_mean": 7.689453125,
+      "position_error_mm_p95": 13.758743286132812,
+      "orientation_error_rad_mean": 0.0029925580602139235
+    },
+    {
+      "epoch": 6,
+      "train_loss": 0.034664016574621204,
+      "position_error_mm_mean": 2.4531493186950684,
+      "position_error_mm_p95": 6.068916320800781,
+      "orientation_error_rad_mean": 0.0030437090899795294
+    },
+    {
+      "epoch": 7,
+      "train_loss": 0.031003917197386422,
+      "position_error_mm_mean": 2.430978775024414,
+      "position_error_mm_p95": 6.384288311004639,
+      "orientation_error_rad_mean": 0.0028358888812363148
+    },
+    {
+      "epoch": 8,
+      "train_loss": 0.028885748902956646,
+      "position_error_mm_mean": 2.3014512062072754,
+      "position_error_mm_p95": 5.746781349182129,
+      "orientation_error_rad_mean": 0.002804528223350644
+    },
+    {
+      "epoch": 9,
+      "train_loss": 0.027547035962343216,
+      "position_error_mm_mean": 2.6630167961120605,
+      "position_error_mm_p95": 6.352062702178955,
+      "orientation_error_rad_mean": 0.002834365703165531
+    },
+    {
+      "epoch": 10,
+      "train_loss": 0.026975093324979146,
+      "position_error_mm_mean": 2.157742738723755,
+      "position_error_mm_p95": 5.225893020629883,
+      "orientation_error_rad_mean": 0.0027223052456974983
+    },
+    {
+      "epoch": 11,
+      "train_loss": 0.025230138738950095,
+      "position_error_mm_mean": 2.213660955429077,
+      "position_error_mm_p95": 5.5730671882629395,
+      "orientation_error_rad_mean": 0.0026655609253793955
+    },
+    {
+      "epoch": 12,
+      "train_loss": 0.023825609544912973,
+      "position_error_mm_mean": 2.502156972885132,
+      "position_error_mm_p95": 6.01266622543335,
+      "orientation_error_rad_mean": 0.0026461549568921328
+    },
+    {
+      "epoch": 13,
+      "train_loss": 0.02337990296880404,
+      "position_error_mm_mean": 2.3558011054992676,
+      "position_error_mm_p95": 5.6538190841674805,
+      "orientation_error_rad_mean": 0.002669759327545762
+    },
+    {
+      "epoch": 14,
+      "train_loss": 0.022247988442579907,
+      "position_error_mm_mean": 2.007958173751831,
+      "position_error_mm_p95": 5.090359687805176,
+      "orientation_error_rad_mean": 0.0026922915130853653
+    },
+    {
+      "epoch": 15,
+      "train_loss": 0.021053885072469712,
+      "position_error_mm_mean": 1.9806621074676514,
+      "position_error_mm_p95": 5.023143291473389,
+      "orientation_error_rad_mean": 0.002677252748981118
+    },
+    {
+      "epoch": 16,
+      "train_loss": 0.020647233153382936,
+      "position_error_mm_mean": 2.2387120723724365,
+      "position_error_mm_p95": 5.544785976409912,
+      "orientation_error_rad_mean": 0.0026115737855434418
+    },
+    {
+      "epoch": 17,
+      "train_loss": 0.02000725900133451,
+      "position_error_mm_mean": 2.1239635944366455,
+      "position_error_mm_p95": 5.311320781707764,
+      "orientation_error_rad_mean": 0.0026686012279242277
+    },
+    {
+      "epoch": 18,
+      "train_loss": 0.018924657399455706,
+      "position_error_mm_mean": 2.2086946964263916,
+      "position_error_mm_p95": 5.537623405456543,
+      "orientation_error_rad_mean": 0.0026544020511209965
+    },
+    {
+      "epoch": 19,
+      "train_loss": 0.01821195188164711,
+      "position_error_mm_mean": 1.9479892253875732,
+      "position_error_mm_p95": 4.8268327713012695,
+      "orientation_error_rad_mean": 0.0026147786993533373
+    },
+    {
+      "epoch": 20,
+      "train_loss": 0.017374956826368967,
+      "position_error_mm_mean": 2.7017109394073486,
+      "position_error_mm_p95": 6.572064399719238,
+      "orientation_error_rad_mean": 0.002589611103758216
+    },
+    {
+      "epoch": 21,
+      "train_loss": 0.016757127503554025,
+      "position_error_mm_mean": 2.1295907497406006,
+      "position_error_mm_p95": 5.357149124145508,
+      "orientation_error_rad_mean": 0.0026179736014455557
+    },
+    {
+      "epoch": 22,
+      "train_loss": 0.016379837423563002,
+      "position_error_mm_mean": 2.1617817878723145,
+      "position_error_mm_p95": 5.5901408195495605,
+      "orientation_error_rad_mean": 0.002639926504343748
+    },
+    {
+      "epoch": 23,
+      "train_loss": 0.015672486672798792,
+      "position_error_mm_mean": 1.9974271059036255,
+      "position_error_mm_p95": 4.995543479919434,
+      "orientation_error_rad_mean": 0.002618677681311965
+    },
+    {
+      "epoch": 24,
+      "train_loss": 0.015189339955647786,
+      "position_error_mm_mean": 2.877833843231201,
+      "position_error_mm_p95": 7.0697784423828125,
+      "orientation_error_rad_mean": 0.0026301236357539892
+    },
+    {
+      "epoch": 25,
+      "train_loss": 0.014671457255880038,
+      "position_error_mm_mean": 1.9566490650177002,
+      "position_error_mm_p95": 4.863888740539551,
+      "orientation_error_rad_mean": 0.0026405337266623974
+    },
+    {
+      "epoch": 26,
+      "train_loss": 0.014020901883641879,
+      "position_error_mm_mean": 2.342766523361206,
+      "position_error_mm_p95": 5.694077491760254,
+      "orientation_error_rad_mean": 0.002649238333106041
+    },
+    {
+      "epoch": 27,
+      "train_loss": 0.013536264737447103,
+      "position_error_mm_mean": 1.951886534690857,
+      "position_error_mm_p95": 4.912120819091797,
+      "orientation_error_rad_mean": 0.0026442441157996655
+    },
+    {
+      "epoch": 28,
+      "train_loss": 0.013004721706112226,
+      "position_error_mm_mean": 1.9118701219558716,
+      "position_error_mm_p95": 4.735378742218018,
+      "orientation_error_rad_mean": 0.0026137593667954206
+    },
+    {
+      "epoch": 29,
+      "train_loss": 0.012396700570980707,
+      "position_error_mm_mean": 1.9091988801956177,
+      "position_error_mm_p95": 4.705942153930664,
+      "orientation_error_rad_mean": 0.0026475947815924883
+    },
+    {
+      "epoch": 30,
+      "train_loss": 0.012020817796389261,
+      "position_error_mm_mean": 1.9694793224334717,
+      "position_error_mm_p95": 4.852077484130859,
+      "orientation_error_rad_mean": 0.002657194621860981
+    },
+    {
+      "epoch": 31,
+      "train_loss": 0.011236539547642073,
+      "position_error_mm_mean": 2.1375784873962402,
+      "position_error_mm_p95": 5.2780656814575195,
+      "orientation_error_rad_mean": 0.002666979329660535
+    },
+    {
+      "epoch": 32,
+      "train_loss": 0.011159697795907657,
+      "position_error_mm_mean": 1.888055682182312,
+      "position_error_mm_p95": 4.69461727142334,
+      "orientation_error_rad_mean": 0.002652716590091586
+    },
+    {
+      "epoch": 33,
+      "train_loss": 0.01073493330180645,
+      "position_error_mm_mean": 2.0242056846618652,
+      "position_error_mm_p95": 4.923486709594727,
+      "orientation_error_rad_mean": 0.0026919650845229626
+    },
+    {
+      "epoch": 34,
+      "train_loss": 0.01041756988565127,
+      "position_error_mm_mean": 1.912024736404419,
+      "position_error_mm_p95": 4.843218803405762,
+      "orientation_error_rad_mean": 0.0026810099370777607
+    },
+    {
+      "epoch": 35,
+      "train_loss": 0.00996902225414912,
+      "position_error_mm_mean": 1.8495920896530151,
+      "position_error_mm_p95": 4.623913288116455,
+      "orientation_error_rad_mean": 0.002688975539058447
+    },
+    {
+      "epoch": 36,
+      "train_loss": 0.009623666018247604,
+      "position_error_mm_mean": 2.0210390090942383,
+      "position_error_mm_p95": 4.996813774108887,
+      "orientation_error_rad_mean": 0.0027003560680896044
+    },
+    {
+      "epoch": 37,
+      "train_loss": 0.009219274101157983,
+      "position_error_mm_mean": 1.8401869535446167,
+      "position_error_mm_p95": 4.581821441650391,
+      "orientation_error_rad_mean": 0.0027096429839730263
+    },
+    {
+      "epoch": 38,
+      "train_loss": 0.008987500747044882,
+      "position_error_mm_mean": 1.9878907203674316,
+      "position_error_mm_p95": 4.9166975021362305,
+      "orientation_error_rad_mean": 0.0027425342705100775
+    },
+    {
+      "epoch": 39,
+      "train_loss": 0.008864982612431049,
+      "position_error_mm_mean": 1.9334471225738525,
+      "position_error_mm_p95": 4.804781913757324,
+      "orientation_error_rad_mean": 0.0027170968241989613
+    },
+    {
+      "epoch": 40,
+      "train_loss": 0.008505093346039454,
+      "position_error_mm_mean": 1.9070912599563599,
+      "position_error_mm_p95": 4.815648555755615,
+      "orientation_error_rad_mean": 0.0027437987737357616
+    },
+    {
+      "epoch": 41,
+      "train_loss": 0.008242763785024485,
+      "position_error_mm_mean": 1.8479464054107666,
+      "position_error_mm_p95": 4.625115871429443,
+      "orientation_error_rad_mean": 0.0027364520356059074
+    },
+    {
+      "epoch": 42,
+      "train_loss": 0.008058934134741624,
+      "position_error_mm_mean": 1.8469023704528809,
+      "position_error_mm_p95": 4.603538990020752,
+      "orientation_error_rad_mean": 0.002745354548096657
+    },
+    {
+      "epoch": 43,
+      "train_loss": 0.007709477225939433,
+      "position_error_mm_mean": 1.8479938507080078,
+      "position_error_mm_p95": 4.632577419281006,
+      "orientation_error_rad_mean": 0.0027454900555312634
+    },
+    {
+      "epoch": 44,
+      "train_loss": 0.007560850933194161,
+      "position_error_mm_mean": 1.9007378816604614,
+      "position_error_mm_p95": 4.754605293273926,
+      "orientation_error_rad_mean": 0.002776399487629533
+    },
+    {
+      "epoch": 45,
+      "train_loss": 0.007431302073101203,
+      "position_error_mm_mean": 1.8160992860794067,
+      "position_error_mm_p95": 4.558632850646973,
+      "orientation_error_rad_mean": 0.0027574501000344753
+    },
+    {
+      "epoch": 46,
+      "train_loss": 0.00718181606878837,
+      "position_error_mm_mean": 1.9703584909439087,
+      "position_error_mm_p95": 4.901325702667236,
+      "orientation_error_rad_mean": 0.002792439656332135
+    },
+    {
+      "epoch": 47,
+      "train_loss": 0.007123241536319256,
+      "position_error_mm_mean": 1.8106002807617188,
+      "position_error_mm_p95": 4.54941987991333,
+      "orientation_error_rad_mean": 0.0027734609320759773
+    },
+    {
+      "epoch": 48,
+      "train_loss": 0.006938304158548514,
+      "position_error_mm_mean": 1.8207374811172485,
+      "position_error_mm_p95": 4.528190612792969,
+      "orientation_error_rad_mean": 0.0028070558328181505
+    },
+    {
+      "epoch": 49,
+      "train_loss": 0.0067781356920798615,
+      "position_error_mm_mean": 1.8392343521118164,
+      "position_error_mm_p95": 4.53554105758667,
+      "orientation_error_rad_mean": 0.0027931705117225647
+    },
+    {
+      "epoch": 50,
+      "train_loss": 0.006728499248623848,
+      "position_error_mm_mean": 1.8032200336456299,
+      "position_error_mm_p95": 4.48279333114624,
+      "orientation_error_rad_mean": 0.002788310404866934
+    },
+    {
+      "epoch": 51,
+      "train_loss": 0.006590167365968227,
+      "position_error_mm_mean": 1.8112150430679321,
+      "position_error_mm_p95": 4.509803295135498,
+      "orientation_error_rad_mean": 0.002799442270770669
+    },
+    {
+      "epoch": 52,
+      "train_loss": 0.006493127611776193,
+      "position_error_mm_mean": 1.817057728767395,
+      "position_error_mm_p95": 4.539060592651367,
+      "orientation_error_rad_mean": 0.002803150564432144
+    },
+    {
+      "epoch": 53,
+      "train_loss": 0.00641890415797631,
+      "position_error_mm_mean": 1.80229651927948,
+      "position_error_mm_p95": 4.488101482391357,
+      "orientation_error_rad_mean": 0.0028055740986019373
+    },
+    {
+      "epoch": 54,
+      "train_loss": 0.006363490052521229,
+      "position_error_mm_mean": 1.7995785474777222,
+      "position_error_mm_p95": 4.489108085632324,
+      "orientation_error_rad_mean": 0.0028064283542335033
+    },
+    {
+      "epoch": 55,
+      "train_loss": 0.006296264111995697,
+      "position_error_mm_mean": 1.8025397062301636,
+      "position_error_mm_p95": 4.492423057556152,
+      "orientation_error_rad_mean": 0.00280931917950511
+    },
+    {
+      "epoch": 56,
+      "train_loss": 0.006254487882057826,
+      "position_error_mm_mean": 1.7997865676879883,
+      "position_error_mm_p95": 4.502274990081787,
+      "orientation_error_rad_mean": 0.0028088034596294165
+    },
+    {
+      "epoch": 57,
+      "train_loss": 0.006225139990448951,
+      "position_error_mm_mean": 1.8008157014846802,
+      "position_error_mm_p95": 4.490198612213135,
+      "orientation_error_rad_mean": 0.0028097655158489943
+    },
+    {
+      "epoch": 58,
+      "train_loss": 0.006201297593613465,
+      "position_error_mm_mean": 1.7977138757705688,
+      "position_error_mm_p95": 4.494500160217285,
+      "orientation_error_rad_mean": 0.0028108004480600357
+    },
+    {
+      "epoch": 59,
+      "train_loss": 0.006184136055409908,
+      "position_error_mm_mean": 1.7971861362457275,
+      "position_error_mm_p95": 4.500278949737549,
+      "orientation_error_rad_mean": 0.0028093992732465267
+    },
+    {
+      "epoch": 60,
+      "train_loss": 0.006175341074665388,
+      "position_error_mm_mean": 1.7977033853530884,
+      "position_error_mm_p95": 4.495572566986084,
+      "orientation_error_rad_mean": 0.0028099750634282827
+    }
+  ],
+  "checkpoint": "checkpoints\\module_pose_head_seed91.pth",
+  "scope_and_limitations": [
+    "Simulation only. This is a rendered camera, not a calibrated real one.",
+    "Held-out frames come from the same collection run, so this measures generalisation across lighting, albedo, noise and module pose -- not across a different renderer or a real sensor.",
+    "The number that matters is the workflow success rate with this head in the loop, which is certified separately."
+  ]
+}
