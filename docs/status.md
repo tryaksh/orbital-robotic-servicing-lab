@@ -114,7 +114,7 @@ Level 2 (0.0512 of 0.0524 rad).
 
 ## Static validation
 
-Ruff passes. 80/80 non-Sim tests pass. Sustained environment-only benchmarks
+Ruff passes. 108/108 non-Sim tests pass. Sustained environment-only benchmarks
 passed at 1024 state and 256 camera environments; full PPO memory differs.
 
 `train.py --smoke` was run once per registered task after the 2026-08-10 prune,

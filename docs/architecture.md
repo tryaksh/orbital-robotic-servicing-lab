@@ -81,6 +81,34 @@ is a per-environment flag the driver sets at the hand-off. Nothing in a training
 task sets it, so every trained policy still sees the behaviour its certification
 was produced under.
 
+### Measuring what the chain hands each skill
+
+`--handoff_trace` writes a second `.npz` carrying two tables, and it is off by
+default and free when off:
+
+- **`handoff`**, one row per phase transition per environment: grip error and
+  attitude, finger angle and drive torque, module pose and velocity, tool
+  position, and the six arm joint positions.
+- **`settle`**, one row per environment per step of the settling window, so a
+  module that was settled when its predicate fired and is not settled when it is
+  judged shows up as a curve rather than as two numbers.
+
+`scripts/analyse_handoff.py` pools either table and, given the nominal pose a
+receiving skill resets around, reports the per-joint deviation between what the
+chain delivers and what that skill trains on.
+
+This exists because a per-skill certification cannot see the chain and the chain
+cannot see inside a phase, so the hand-off between them was the one thing nothing
+measured — and "a skill must be trained across the states its predecessor
+produces" is the defect this project has hit four times. The first run of it
+found insert scoring 95.57% on its own reset and about 80% on the states the
+chain hands it, a gap invisible in every certification either side of it.
+
+`scripts/build_handoff_pose_bank.py` turns collected traces into a reset
+distribution. **Collect on training-side seeds**: a reset drawn from the seeds a
+chain is certified on is not a held-out evaluation any more, and the script
+cannot check that for you.
+
 ## What was deleted, and why it is not coming back
 
 An eight-phase full-swap task (approach, grasp, extract, stow, acquire, align,
