@@ -31,12 +31,15 @@ SEEDS="${SEEDS:-4070 5070 6070}"
 OUT="artifacts/workflow_cert"
 mkdir -p "$OUT" evidence
 
+# These defaults must always name the **promoted** set in CLAUDE.md, and they
+# have twice drifted behind it. The rule that keeps them honest: a run that
+# forgets to override a checkpoint variable must still measure the policy this
+# project claims, never a superseded one. Capture v3 and extract v4 sat here
+# after v5 and v13unsat were promoted, so any unattended re-run of this script
+# would have re-measured the old chain and filed it as the current one.
 CKPT_ROOT="logs/rl_games/zero_g_blade_insertion_contact"
-GRASP_CKPT="${GRASP_CKPT:-$CKPT_ROOT/grapple_grasp_l0_seed70_v3/nn/last_zero_g_blade_insertion_contact_ep_700_rew__36.020187_.pth}"
-EXTRACT_CKPT="${EXTRACT_CKPT:-$CKPT_ROOT/grapple_extract_l0_seed70_v4/nn/last_zero_g_blade_insertion_contact_ep_1200_rew__162.91257_.pth}"
-# v6, not v5. The default used to name v5, which certifies at 6.96%, so a run
-# that forgot to override INSERT_CKPT silently measured a superseded policy and
-# reported it as the chain. Keep this pointing at the best *certified* insert.
+GRASP_CKPT="${GRASP_CKPT:-$CKPT_ROOT/grapple_grasp_l0_seed70_v5/nn/last_zero_g_blade_insertion_contact_ep_1500_rew__35.348194_.pth}"
+EXTRACT_CKPT="${EXTRACT_CKPT:-$CKPT_ROOT/grapple_extract_l0_seed70_v13unsat/nn/last_zero_g_blade_insertion_contact_ep_5700_rew__148.17932_.pth}"
 INSERT_CKPT="${INSERT_CKPT:-$CKPT_ROOT/grapple_insert_l0_seed70_v6/nn/last_zero_g_blade_insertion_contact_ep_3200_rew__24.907995_.pth}"
 TAG="${TAG:-}"
 

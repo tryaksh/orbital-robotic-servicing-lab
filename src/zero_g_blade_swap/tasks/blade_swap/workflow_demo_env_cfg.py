@@ -88,6 +88,43 @@ GRASP_ACTION_SCALE = _certified_action_scale(ZeroGBladeGrapplePinGraspEnvCfg)
 EXTRACT_ACTION_SCALE = _certified_action_scale(ZeroGBladeGrapplePinExtractEnvCfg)
 INSERT_ACTION_SCALE = _certified_action_scale(ZeroGBladeGrapplePinInsertEnvCfg)
 
+
+def certified_episode_length_s(cfg_class: type) -> float:
+    """Read a skill's episode length off its own task configuration.
+
+    Through the dataclass field rather than the class attribute, because
+    ``configclass`` rewrites these into fields and the attribute is not there to
+    read. Going through the task class at all is the point: a constant copied
+    elsewhere would be free to drift away from what the skill is certified on,
+    which is the exact failure the phase budgets exist to prevent.
+    """
+
+    for field in dataclasses.fields(cfg_class):
+        if field.name == "episode_length_s":
+            if field.default is not dataclasses.MISSING:
+                return float(field.default)
+            return float(field.default_factory())
+    raise AttributeError(f"{cfg_class.__name__} declares no episode_length_s")
+
+
+#: Seconds each learned phase gets, read from the task each policy was certified
+#: on so the two can never drift apart. Lives here rather than in the driver
+#: because the chained-insert *training* task needs the same two numbers, and a
+#: training task that gives a skill a different clock than its certification is
+#: the defect these were introduced to prevent.
+CAPTURE_BUDGET_S = certified_episode_length_s(ZeroGBladeGrapplePinGraspEnvCfg)
+EXTRACT_BUDGET_S = certified_episode_length_s(ZeroGBladeGrapplePinExtractEnvCfg)
+INSERT_BUDGET_S = certified_episode_length_s(ZeroGBladeGrapplePinInsertEnvCfg)
+
+#: Control steps spent letting the closure drive the pin against its collar
+#: before the next skill starts. One second, which is what the pull gate needed
+#: to settle and what the extract task's own action term waits out.
+SEAT_STEPS = 30
+#: How long a qualifying capture must hold before control is handed over. The
+#: same 0.30 s ``capture_success_mask`` requires, so the chain and the capture
+#: skill cannot disagree about what "captured" means.
+HANDOVER_HOLD_S = 0.30
+
 #: Where the scripted transit hands over to the insert policy: the blade centre
 #: the insert skill was trained to start from.
 TRANSIT_TARGET_BLADE_X = 0.5829
@@ -197,10 +234,16 @@ class ZeroGBladeGrapplePinWorkflowEnvCfg(ZeroGBladeGrapplePinGraspEnvCfg):
 
 
 __all__ = [
+    "CAPTURE_BUDGET_S",
     "EXTRACT_ACTION_SCALE",
+    "EXTRACT_BUDGET_S",
     "GRASP_ACTION_SCALE",
+    "HANDOVER_HOLD_S",
     "INSERT_ACTION_SCALE",
+    "INSERT_BUDGET_S",
+    "SEAT_STEPS",
     "TRANSIT_TARGET_BLADE_X",
+    "certified_episode_length_s",
     "WorkflowExtractObsCfg",
     "WorkflowGraspObsCfg",
     "WorkflowInsertObsCfg",

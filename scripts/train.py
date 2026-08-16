@@ -286,9 +286,44 @@ def main() -> None:
             grip_metrics = grapple_grip_error_metrics if head_on else secured_blade_error_metrics
             if getattr(env_cfg, "contact_grasp", False) or getattr(env_cfg, "rigid_grasp", False):
                 stationary_reward = smoke_rewards.clone()
-                for _ in range(19):
-                    _, reward, _, _, _ = env.step(smoke_actions)
-                    stationary_reward += reward
+                # The chained-insert task opens every episode with a capture
+                # prologue the learning policy does not act in, and that prologue
+                # carries **exactly zero reward** by construction. Twenty steps of
+                # standing still therefore sum to zero rather than to something
+                # negative, and asserting otherwise would be asserting that the
+                # prologue is not there. Run the phase machine to the hand-off
+                # first, then apply the same contract to the phase the policy
+                # actually owns -- which also makes this the check that the
+                # hand-off fires at all.
+                chain_phase = getattr(env.unwrapped, "chain_phase", None)
+                if chain_phase is not None:
+                    from zero_g_blade_swap.tasks.blade_swap.chained_insert_env_cfg import INSERT
+
+                    handover_budget = int(round(float(env.unwrapped.chain_capture_deadline)))
+                    for _ in range(handover_budget):
+                        env.step(smoke_actions)
+                        if bool((chain_phase == INSERT).any()):
+                            break
+                    reached = int((chain_phase == INSERT).sum())
+                    if reached == 0:
+                        raise RuntimeError(
+                            "Chained-insert smoke failed: no environment reached the insert phase within the "
+                            f"capture skill's own {handover_budget}-step budget, so the hand-off never fired."
+                        )
+                    print(
+                        f"[INFO] Chained insert: {reached} of {num_envs} environments reached the hand-off",
+                        flush=True,
+                    )
+                    inserting = chain_phase == INSERT
+                    stationary_reward = torch.zeros_like(smoke_rewards)
+                    for _ in range(20):
+                        _, reward, _, _, _ = env.step(smoke_actions)
+                        stationary_reward += reward
+                    stationary_reward = stationary_reward[inserting]
+                else:
+                    for _ in range(19):
+                        _, reward, _, _, _ = env.step(smoke_actions)
+                        stationary_reward += reward
                 if not bool((stationary_reward < 0.0).all()):
                     raise RuntimeError(
                         "Contact reward contract failed: standing still must have negative cumulative reward, "
@@ -488,6 +523,26 @@ def main() -> None:
             if not args.checkpoint.is_file():
                 raise FileNotFoundError(args.checkpoint)
             run_args["checkpoint"] = str(args.checkpoint.resolve())
+            # rl-games treats ``max_epochs`` as an ABSOLUTE epoch number, not a
+            # count of additional epochs, and a resume that has already passed it
+            # stops before the first update while still writing a checkpoint --
+            # ``..._ep_3201_rew_-inf.pth``, which is indistinguishable from a
+            # trained one until something evaluates it. Measured on the
+            # chained-insert run: resuming insert v6 at epoch 3200 with
+            # ``--max_iterations 1200`` produced exactly that, and the surrounding
+            # script went on to spend a certification on it.
+            #
+            # Fail loudly instead. The epoch comes out of the checkpoint rather
+            # than its filename, so a renamed file cannot defeat the check.
+            resumed_epoch = int(torch.load(args.checkpoint, map_location="cpu", weights_only=False).get("epoch", 0))
+            budget = int(agent_cfg["params"]["config"]["max_epochs"])
+            if resumed_epoch >= budget:
+                raise ValueError(
+                    f"{args.checkpoint.name} is at epoch {resumed_epoch}, but max_epochs is {budget}. "
+                    "rl-games counts epochs absolutely, so this run would stop before its first update and "
+                    f"still write a checkpoint. Pass --max_iterations {resumed_epoch} + the epochs you want."
+                )
+            print(f"[INFO] Resuming at epoch {resumed_epoch}; training to absolute epoch {budget}")
         print(f"[INFO] Training {args.task} with {num_envs} environments; logs: {run_dir}")
         runner.run(run_args)
     finally:

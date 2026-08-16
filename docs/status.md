@@ -2479,6 +2479,134 @@ workflow. The operating rule it implies is general: **any phase that waits must
 either command or retain.** An arm that stops commanding while holding a module
 in zero gravity is not holding still, it is being pushed.
 
+## Insert trained inside the chain: the hand-off is finally reproduced
+
+Four attempts to express the capture-to-insert hand-off as a *reset distribution*
+have been built and refuted on this page — a per-joint noise box at 0.00%,
+measured arm poses at 26.32%, arm and module poses paired at 47.17%, all against
+the ~80% the same policy achieves in the real chain. The conclusion recorded
+there was that a hand-off is a trajectory and a controller state, not a pose, and
+that insert has to be trained **in place**.
+
+`Isaac-ZeroG-Blade-GrapplePin-InsertChain-v0` is that task. Every episode resets
+the capture scene, steps the **frozen** promoted capture policy until the chain's
+own hand-off predicate fires, latches `hold_latch`, holds for the scripted
+`SEAT_STEPS`, and only then hands the arm to the policy being trained. The phase
+machine is lifted from `WorkflowDriver` rather than rewritten, and the seat
+length, hand-off hold, phase budgets and per-phase action scales are now *read*
+from one definition in `workflow_demo_env_cfg.py` that both the driver and the
+task import.
+
+The capture prologue carries **no reward and no insert termination**, because the
+learning policy did not act in it. That is variance, not bias: the prologue is
+zero for every episode, so nothing the policy does is ever credited or charged
+for a capture outcome.
+
+### The gate, run before any GPU was spent on training
+
+Two questions, both answered first, because the last three attempts each cost a
+training run by skipping one of them.
+
+**Does the task hand the policy the state the chain hands it?** Traced at seed
+4070, `--handoff_trace` from the chain against the task's own seat-to-insert
+trace, same two checkpoints:
+
+| At hand-over | Chain p50 | This task p50 | Chain p95 | This task p95 |
+| --- | ---: | ---: | ---: | ---: |
+| Grip error | 12.63 mm | 12.63 mm | 13.64 mm | 13.15 mm |
+| Grip attitude | 0.0843 rad | 0.0863 rad | 0.1411 rad | 0.1492 rad |
+| Finger angle | 0.2314 rad | 0.2316 rad | 0.2363 rad | 0.2364 rad |
+| Drive torque | 10.00 N·m | 10.00 N·m | 10.00 N·m | 10.00 N·m |
+| Module x | 0.6104 m | 0.6127 m | 0.6834 m | 0.7108 m |
+| Worst arm joint | — | within 0.007 rad of the chain at every one of the six | | |
+
+**Does the unchanged successor policy score what it scores in the real chain?**
+Insert v6, untouched, on three held-out seeds, 576 episodes each:
+
+| | Result | Wilson 95% | Per seed |
+| --- | ---: | --- | --- |
+| Insert v6 on this task | **93.06%** | [90.68%, 94.86%] | 95.31 / 90.10 / 93.75 |
+| The real chain, predicate fired | **90.45%** | [87.78%, 92.59%] | 88.54 / 92.19 / 90.62 |
+| The real chain, after the 0.70 s settle | 89.41% | [86.63%, 91.67%] | 85.94 / 91.67 / 90.62 |
+
+Reports: `evidence/insert_chain_handoff_gate.json` and
+`evidence/workflow_install_promoted_certification.json`.
+
+**The intervals overlap and the hand-off matches column by column, so the gate
+passes.** Set against 0.00%, 26.32% and 47.17%, this is the first construction in
+this project that reproduces the hand-off rather than approximating it. The
+residual 2.6 points is smaller than the seed spread of either arm (5.2 and 3.7
+points) and is not attributed: the two runs differ in that the chain evaluates
+its success predicate one control step earlier, spends one step on an align
+rotation command at the seat boundary, and runs three workflows per 45 s episode
+where this task resets per episode. None of those was isolated, and saying so is
+cheaper than a wrong explanation.
+
+### A termination that made the task harsher than the chain
+
+The first version of this task ended the prologue on `capture_failure`, on the
+reasoning that a capture which shoves the module cannot recover and that ending
+it saves compute. The gate refuted it before training:
+
+| Insert v6, unchanged, seed 4070 | Result |
+| --- | ---: |
+| With a capture-failure termination | **69.27%** — 52 of 192 died capturing |
+| Without it | **95.31%** |
+| The real chain, same seed | 88.54% predicate fired |
+
+The chain's own numbers say why: `WorkflowTerminationsCfg` carries no capture
+failure term at all, and over the same 192 episodes the chain overruns its
+capture phase **once**. The median episode this predicate was killing had a
+12.2 mm grip — it was recovering. Adding a predicate the chain does not have made
+the training distribution not the chain's, which is the exact defect the task
+exists to fix. `tests/test_chained_insert_contract.py` now asserts the
+termination set.
+
+## The install chain's 84.38% is stale, and the current number is 89.41%
+
+`evidence/workflow_install_final_certification.json` was generated at
+**2026-08-15T18:42Z**. Its recorded policy-set hash matches no combination of the
+checkpoints now on disk, and the promoted capture and the capture phase's 10 s
+budget both post-date it — the grasp task's episode length was raised from 6 s to
+10 s precisely because chained captures were overrunning it.
+
+Re-measured today on the promoted set (capture v5, insert v6), same three
+held-out seeds, same 64 environments and 192 episodes per seed:
+
+| Installation chain | Result |
+| --- | ---: |
+| Recorded, 2026-08-15 | 84.38% |
+| **Measured, promoted set** | **89.41%**, Wilson 95% [86.63%, 91.67%] |
+| Predicate fired | 90.45% |
+| Instability, non-finite | 0, 0 |
+| **Gate (95%)** | **still short, by 5.6 points** |
+
+Report: `evidence/workflow_install_promoted_certification.json`. The gap to the
+gate is smaller than this project has been quoting, and the direction of the
+error is the one rule 10 exists to catch: a number kept after the thing it
+measured moved. 84.38% must not be quoted again.
+
+**Two stale defaults were fixed alongside it.** `certify_workflow.sh` and
+`certify_demo_policies.sh` still defaulted to capture v3 and extract v4 after v5
+and v13unsat were promoted, so any re-run that forgot to override an environment
+variable would have re-measured the superseded chain and filed it under the
+current name. That is the same defect `check_evidence_currency.py` was written
+for, one level up: the checker compares what a *run* loaded against evidence, and
+nothing was checking what the scripts load by default.
+
+### rl-games counts epochs absolutely, and a resume past the budget looks like a run
+
+Recorded because it cost a launch and would have cost a certification.
+`--max_iterations` writes `max_epochs`, which rl-games treats as an **absolute**
+epoch number. Resuming insert v6 (epoch 3200) with `--max_iterations 1200` does
+not train for 1200 epochs: the runner sees 3200 ≥ 1200, stops before its first
+update, and writes `..._ep_3201_rew_-inf.pth` — a file indistinguishable from a
+trained checkpoint to anything that globs for the newest `.pth`. The surrounding
+script went straight on to certify it.
+
+`train.py` now reads the epoch out of the resume checkpoint and refuses the run
+with the arithmetic spelled out, so this cannot recur on any task.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
@@ -2525,6 +2653,12 @@ Cumulative secured-grasp profiles:
   first interface in this project to form a real grip, but no policy has been
   certified on it: the three skills that were trained on it are deleted, and P2
   is where a policy goes back onto it.
+- **The installation chain's 84.38% is stale and must not be quoted.** Its
+  certification predates the promoted capture and the 10 s capture phase budget,
+  and its recorded policy-set hash matches nothing on disk. Re-measured on the
+  promoted set over the same three held-out seeds it is **89.41%**
+  (`evidence/workflow_install_promoted_certification.json`), still short of the
+  95% gate by 5.6 points.
 - **Extraction's 68.36% is stale and must not be quoted, and so is the removal
   chain's 14.06%.** Both were certified before the extraction velocity limits
   were derived and tightened on 2026-08-15, and none of v8's 6,156 counted

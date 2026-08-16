@@ -236,6 +236,27 @@ for _grapple_id, _grapple_cls in (
         },
     )
 
+# Insert, trained inside the chain. Its own entry point, because the capture
+# phase runs inside the environment: the episode resets the capture scene, steps
+# the frozen capture policy until the chain's hand-off predicate fires, latches
+# the grip, and only then hands the arm to the policy being trained.
+#
+# A separate registration, like every other change to this scene, so the single
+# slot skills and their certifications are untouched.
+for _chain_id, _chain_cls in (
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertChain-v0", "ZeroGBladeGrapplePinInsertChainEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertChain-Play-v0", "ZeroGBladeGrapplePinInsertChainPlayEnvCfg"),
+):
+    gym.register(
+        id=_chain_id,
+        entry_point=f"{__name__}.chained_insert_env_cfg:ChainedInsertEnv",
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{__name__}.chained_insert_env_cfg:{_chain_cls}",
+            "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+        },
+    )
+
 # One episode that runs capture, extraction, a scripted transit, and re-insertion
 # with the three trained checkpoints. Demonstration only: no curriculum, no
 # success termination, nothing to train against.

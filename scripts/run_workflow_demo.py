@@ -43,7 +43,6 @@ predicate fires; see ``_workflow_outcome``.
 from __future__ import annotations
 
 import argparse
-import dataclasses
 import os
 import hashlib
 import json
@@ -59,10 +58,6 @@ TASK = "Isaac-ZeroG-Blade-GrapplePin-Workflow-v0"
 #: Control steps between recorded transit waypoints. Four is about 30 mm of pull
 #: at the extraction scale, close enough that the return follows the same arc.
 TRANSIT_WAYPOINT_STRIDE = 4
-#: Control steps spent letting the closure drive the pin against its collar
-#: before the pull starts. One second, which is what the pull gate needed to
-#: settle and what the extract task's own action term waits out.
-SEAT_STEPS = 30
 #: Control steps the install workflow spends driving the tool back to the pose it
 #: started the episode at, before handing over to the insert policy.
 #:
@@ -265,7 +260,6 @@ simulation_app = app_launcher.app
 import gymnasium as gym
 import numpy as np
 import torch
-from torch import nn
 
 from isaaclab_tasks.utils import parse_env_cfg
 
@@ -298,17 +292,18 @@ from zero_g_blade_swap.tasks.blade_swap.mdp.insertion import (
     insertion_error_metrics,
 )
 from zero_g_blade_swap.tasks.blade_swap.mdp.observations import end_effector_pose_world
-from zero_g_blade_swap.tasks.blade_swap.grapple_pin_env_cfg import (
-    ZeroGBladeGrapplePinExtractEnvCfg,
-    ZeroGBladeGrapplePinGraspEnvCfg,
-    ZeroGBladeGrapplePinInsertEnvCfg,
-)
 from zero_g_blade_swap.tasks.blade_swap.workflow_demo_env_cfg import (
+    CAPTURE_BUDGET_S,
     EXTRACT_ACTION_SCALE,
+    EXTRACT_BUDGET_S,
     GRASP_ACTION_SCALE,
+    HANDOVER_HOLD_S,
     INSERT_ACTION_SCALE,
+    INSERT_BUDGET_S,
+    SEAT_STEPS,
     TRANSIT_TARGET_BLADE_X,
 )
+from zero_g_blade_swap.checkpoint_policy import CheckpointPolicy
 from zero_g_blade_swap.grapple_geometry import EXTRACTED_BLADE_CENTRE_X
 
 #: Held still after the workflow's own predicate fires, before the outcome is
@@ -321,24 +316,6 @@ SETTLE_STEPS = round(WORKFLOW_SETTLE_S * 30.0)
 #: success tolerance, so the two cannot disagree about what "captured" means.
 HANDOVER_GRIP_M = WORKFLOW_HANDOVER_GRIP_M
 
-def _certified_episode_length_s(cfg_class: type) -> float:
-    """Read a skill's episode length off its own task configuration.
-
-    Through the dataclass field rather than the class attribute, because
-    ``configclass`` rewrites these into fields and the attribute is not there to
-    read. Going through the task class at all is the point: a constant copied
-    here would be free to drift away from what the skill is certified on, which
-    is the exact failure this budget exists to prevent.
-    """
-
-    for field in dataclasses.fields(cfg_class):
-        if field.name == "episode_length_s":
-            if field.default is not dataclasses.MISSING:
-                return float(field.default)
-            return float(field.default_factory())
-    raise AttributeError(f"{cfg_class.__name__} declares no episode_length_s")
-
-
 #: Seconds each phase gets, read from the task each policy was certified on so
 #: the two can never drift apart. This is the reconciliation between per-skill
 #: certification and the chain: before it, a skill was certified on a 12 s
@@ -346,12 +323,17 @@ def _certified_episode_length_s(cfg_class: type) -> float:
 #: happened to grant 45 s. Whichever number read better was the one being
 #: quoted. Now the chain gives each skill exactly the clock its own
 #: certification gives it, and a phase that overruns fails the workflow.
+#:
+#: The three budgets, the seat length and the hand-off hold now live in
+#: ``workflow_demo_env_cfg`` because the chained-insert *training* task reads the
+#: same numbers, and two copies of a phase budget is exactly the drift this
+#: whole mechanism exists to prevent.
 PHASE_BUDGET_S = (
-    _certified_episode_length_s(ZeroGBladeGrapplePinGraspEnvCfg),  # capture
+    CAPTURE_BUDGET_S,  # capture
     SEAT_STEPS / 30.0,  # seat, scripted
-    _certified_episode_length_s(ZeroGBladeGrapplePinExtractEnvCfg),  # extract
-    _certified_episode_length_s(ZeroGBladeGrapplePinExtractEnvCfg),  # transit, replays the pull
-    _certified_episode_length_s(ZeroGBladeGrapplePinInsertEnvCfg),  # insert
+    EXTRACT_BUDGET_S,  # extract
+    EXTRACT_BUDGET_S,  # transit, replays the pull
+    INSERT_BUDGET_S,  # insert
     float("inf"),  # done, nothing left to time
 )
 
@@ -418,56 +400,6 @@ SETTLE_TRACE_FIELDS = (
     "blade_linear_velocity_mps",
     "blade_angular_velocity_radps",
 )
-
-
-class CheckpointPolicy:
-    """One RL-Games actor, loaded without RL-Games.
-
-    Reproduces exactly what a deterministic player does: clip the observation to
-    the configured range, apply the running mean/variance normaliser the policy
-    was trained with, run the trunk, and take the mean action.
-    """
-
-    def __init__(self, path: Path, device: str, clip_observations: float = 10.0) -> None:
-        checkpoint = torch.load(path, map_location=device, weights_only=False)
-        weights = checkpoint["model"]
-        self.device = device
-        self.clip_observations = clip_observations
-        self.mean = weights["running_mean_std.running_mean"].to(device).float()
-        self.variance = weights["running_mean_std.running_var"].to(device).float()
-        self.observation_dim = int(self.mean.shape[0])
-
-        layers: list[nn.Module] = []
-        index = 0
-        while f"a2c_network.trunk.{index}.weight" in weights:
-            weight = weights[f"a2c_network.trunk.{index}.weight"]
-            layer = nn.Linear(weight.shape[1], weight.shape[0])
-            layer.weight.data.copy_(weight)
-            layer.bias.data.copy_(weights[f"a2c_network.trunk.{index}.bias"])
-            layers.extend((layer, nn.ELU()))
-            index += 2
-        self.trunk = nn.Sequential(*layers).to(device).eval()
-
-        mu_weight = weights["a2c_network.mu.weight"]
-        self.mu = nn.Linear(mu_weight.shape[1], mu_weight.shape[0]).to(device)
-        self.mu.weight.data.copy_(mu_weight)
-        self.mu.bias.data.copy_(weights["a2c_network.mu.bias"])
-        self.mu.eval()
-        self.action_dim = int(mu_weight.shape[0])
-        self.epoch = int(checkpoint.get("epoch", -1))
-        self.path = path
-        self.sha256 = hashlib.sha256(path.read_bytes()).hexdigest().upper()
-
-    @torch.inference_mode()
-    def act(self, observation: torch.Tensor) -> torch.Tensor:
-        if observation.shape[-1] != self.observation_dim:
-            raise RuntimeError(
-                f"{self.path.name} expects {self.observation_dim} observation values, "
-                f"received {observation.shape[-1]}. The observation group does not match the policy."
-            )
-        clipped = observation.clamp(-self.clip_observations, self.clip_observations)
-        normalized = ((clipped - self.mean) / torch.sqrt(self.variance + 1.0e-5)).clamp(-5.0, 5.0)
-        return self.mu(self.trunk(normalized)).clamp(-1.0, 1.0)
 
 
 def _blade_centre_x(task) -> torch.Tensor:
@@ -582,7 +514,9 @@ class WorkflowDriver:
         self.waypoint_read = torch.zeros(count, dtype=torch.long, device=device)
         self.frozen = torch.zeros((count, len(WORKFLOW_METRIC_FIELDS)), dtype=torch.float64, device=device)
         self.frozen_valid = torch.zeros(count, dtype=torch.bool, device=device)
-        self.required_hold = max(1, int(round(0.30 / float(task.step_dt))))
+        # Read, not restated: the same hold the capture skill's own success
+        # predicate requires, so the chain and the skill cannot disagree.
+        self.required_hold = max(1, int(round(HANDOVER_HOLD_S / float(task.step_dt))))
         self.scales = torch.tensor(
             [
                 GRASP_ACTION_SCALE,

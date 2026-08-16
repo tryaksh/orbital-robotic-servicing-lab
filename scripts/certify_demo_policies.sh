@@ -21,14 +21,18 @@ EVAL_EPISODES="${EVAL_EPISODES:-1000}"
 OUT="artifacts/certify"
 mkdir -p "$OUT" evidence
 
+# Defaults name the **promoted** set in CLAUDE.md and must be moved with it.
+# They previously named capture v3 and extract v4 after v5 and v13unsat were
+# promoted, so an unattended re-run would have written a report labelled with the
+# new version describing the old policy.
 CKPT_ROOT="logs/rl_games/zero_g_blade_insertion_contact"
-GRASP_CKPT="${GRASP_CKPT:-$CKPT_ROOT/grapple_grasp_l0_seed70_v3/nn/last_zero_g_blade_insertion_contact_ep_700_rew__36.020187_.pth}"
-EXTRACT_CKPT="${EXTRACT_CKPT:-$CKPT_ROOT/grapple_extract_l0_seed70_v4/nn/last_zero_g_blade_insertion_contact_ep_1200_rew__162.91257_.pth}"
+GRASP_CKPT="${GRASP_CKPT:-$CKPT_ROOT/grapple_grasp_l0_seed70_v5/nn/last_zero_g_blade_insertion_contact_ep_1500_rew__35.348194_.pth}"
+EXTRACT_CKPT="${EXTRACT_CKPT:-$CKPT_ROOT/grapple_extract_l0_seed70_v13unsat/nn/last_zero_g_blade_insertion_contact_ep_5700_rew__148.17932_.pth}"
 INSERT_CKPT="${INSERT_CKPT:-$CKPT_ROOT/grapple_insert_l0_seed70_v6/nn/last_zero_g_blade_insertion_contact_ep_3200_rew__24.907995_.pth}"
 # The report file is named for the policy version, so a retrain must pass its
-# own. Defaults describe the plain-pin lineage.
-GRASP_VERSION="${GRASP_VERSION:-v3}"
-EXTRACT_VERSION="${EXTRACT_VERSION:-v4}"
+# own. Defaults describe the promoted plain-pin lineage.
+GRASP_VERSION="${GRASP_VERSION:-v5}"
+EXTRACT_VERSION="${EXTRACT_VERSION:-v14reset}"
 INSERT_VERSION="${INSERT_VERSION:-v6}"
 # Which physical interface these policies were trained against, recorded in the
 # report so a yoked and a plain certification can never be read as comparable.
