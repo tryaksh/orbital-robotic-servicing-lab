@@ -36,45 +36,105 @@ demonstration that fails is worse than a smaller one that works.
 Every figure is deterministic evaluation on three held-out seeds, pooled with a
 Wilson interval, terminal state captured before the simulator's auto-reset.
 
+**The promoted configuration is capture v5 + insert v6.** Both certify scripts
+default to it, nothing from 2026-08-16 is promoted, and every number below is
+that configuration unless it says otherwise.
+
 | | Result | Evidence |
 | --- | ---: | --- |
 | Capture | 96.10% | `grapple_grasp_v5_certification.json` |
-| Insert | 95.57% | `grapple_insert_v6_certification.json` |
-| Extract, alone | 68.36% | `grapple_extract_v8_certification.json` |
+| Insert, on its own reset | 95.57% | `grapple_insert_v6_certification.json` |
+| **Insert, on the states the chain hands it** | **~80%** | derived from `workflow_install_final`; see step 1 |
+| ~~Extract, alone~~ | **retracted, see below** | `grapple_extract_v10_certification.json` is 0.00% |
 | **Install chain, state-based** | **84.38%** | `workflow_install_final_certification.json` |
 | **Install chain, camera in the loop** | **80.38%** | `vision_workflow_camera_certification.json` |
 | Install chain, oracle control | 80.38% | `vision_workflow_oracle_certification.json` |
 | Install chain, **blind** control | **43.58%** | `vision_workflow_blind_certification.json` |
-| **Removal chain** | **14.06%** | `workflow_remove_clock_certification.json` |
+| ~~Removal chain~~ | **retracted, see below** | — |
 | Module pose from 64x64 RGB | 1.75 mm mean, 4.35 mm p95 | `module_pose_head.json` |
 | Interface axial hold | 69 N against 66.4 N required | `grapple_pin_axial_pull_gate.json` |
 | Onboard compute, full stack | 0.73 ms on CPU, 2.2% of the period | `inference_budget.json` |
+
+**Every extraction and removal figure this project published is retracted.** They
+were all measured before the settled-enough velocity limits were derived and
+tightened on 2026-08-15 (commit `3851fa0`, 14:58) — extract v8's certification was
+written at 13:21, v9's at 14:46, and every removal chain run including the quoted
+14.06% predates it. Read against the limit now in the code, **0 of extract v8's
+6,156 counted successes qualifies**, and the fastest-settling of them is 3.1×
+over, so there are no borderline cases and this is arithmetic rather than an
+inference needing a re-run. Do not spend GPU re-confirming it. The only
+extraction ever measured under the current criterion is v10, at **0.00%**.
 
 **The vision result is the strong one and the blind arm is why.** Camera matching
 oracle proves nothing alone — it is equally consistent with a task that never
 needed vision. Blind at 43.58% is what makes the 80.38% mean something.
 
+**A caveat on that, found 2026-08-16 and worth carrying.** Under capture v5 the
+camera and oracle arms score 80.38% *each, to the digit*, and two estimators that
+cannot be told apart mean the task is not asking either for much. With the
+criterion-aligned capture v6 the three arms separate into a monotonic ladder —
+oracle 79.17%, camera 69.97%, blind 59.90%, with non-overlapping oracle/camera
+intervals — which is the first non-zero cost of perception this project has
+measured. A sharper capture needs a better pose estimate, so alignment work and
+the vision claim are coupled; expect the margin to move when either changes.
+
 ## Step 1: close the installation chain
 
-**Diagnosed, and a fix was training when this handover was written.** Of 113
-failures over 576 vision-driven installations: **77 were captures overrunning
-their budget**, 24 inserts overrunning theirs, 12 fired then failed the 0.7 s
-settling re-check.
+**The bottleneck is measured and two fixes for it are refuted. Do not repeat
+either.** The chain is still 84.38% and the target is still 95%.
 
-Capture scores 96.10% alone and causes 68% of chain failures because of a
-criterion mismatch — the third of this exact kind found here. The skill was
-certified on **20 mm** of grip error while the workflow refuses to hand over
-until **10 mm**. Twice the precision, same 6 s clock.
+**What the bottleneck is.** Insert scores 95.57% on its own reset and roughly
+**80%** on the states the chain actually hands it. That gap is the whole of the
+chain shortfall, it was invisible in every per-skill certification, and it has
+been there since the chain was first built. `run_workflow_demo.py
+--handoff_trace` measures it and `scripts/analyse_handoff.py` pools it; nothing
+measured it before 2026-08-16, which is how a rule this project has now broken
+four times kept being breakable.
 
-`capture_success_mask` now defaults to `WORKFLOW_HANDOVER_GRIP_M`, read rather
-than restated, and the capture episode went 6 s -> 10 s. The run is
-`grapple_grasp_l0_seed70_v6align`, driven by `scripts/run_capture_alignment.sh`,
-which also re-certifies the state chain and all three vision arms.
+The mechanism: insert's reset drew ±0.020 rad of joint noise around one nominal
+pose, and the chain hands it a pose **0.157 rad** away on its worst axis at the
+median — overwhelmingly `wrist_1`, p95 0.284, max 0.383. Even the fifth-percentile
+hand-off is three times the widest value that reset could draw on any joint.
 
-**First action of the next session: read those results.** Capture's *standalone*
-number is expected to fall — it is being asked for twice the precision — and the
-chain is what it is judged on. If the chain did not improve, the remaining 24
-insert overruns and 12 settling failures are the next targets, in that order.
+**Refuted fix 1 — widen the per-joint reset noise.** Insert v6 under it scores
+**0.00%**, all 534 episodes losing the grip at reset with 65.6 mm of terminal grip
+error. The hand-off has a large joint deviation *and* a 12.5 mm grip error
+together, because the capture **servoed** there; independent noise gives both
+errors at once and the fingers close on nothing.
+
+**Refuted fix 2 — sample measured hand-off arm poses (`handoff_poses.py`).**
+Insert v6 scores 26.32% on it against ~80% in the real chain, and 1,000 epochs of
+fine-tuning made it *worse* — 24.33%, chain 76.74% → 69.10%, camera 69.97% →
+55.21%. Reward converged and oscillated with no trend, so this is a mis-specified
+task and not a short budget.
+
+**Why fix 2 failed, and the next thing to try.** The reset samples an arm pose
+from the bank and then places the module at its **fixed** nominal pose. In the
+chain the module sits where the capture left it and the arm sits where the
+capture servoed it *to reach that module*. Sampling one without the other
+reproduces neither. So record the module's **orientation** alongside its position
+in `HANDOFF_TRACE_FIELDS`, and reset the arm pose and module pose as a **matched
+pair from the same recorded hand-off**.
+
+**Gate that on a five-minute check before spending any GPU:** insert v6 unchanged
+on the paired bank must score near the ~80% it already achieves in the chain. If
+it does not, the bank still is not the hand-off, and no amount of PPO will fix
+it. That check would have caught both refuted fixes.
+
+**The deeper option, if the paired bank also misses.** Stop approximating the
+hand-off and train insert *inside the chain* — run capture, then hand over to the
+insert policy being trained. That is a larger change to the training loop and it
+is the honest end state of "train across the states your predecessor produces".
+
+**Capture v6align is not promoted and is not the problem.** Aligning capture to
+the chain's 10 mm hand-off (`capture_success_mask` now reads
+`WORKFLOW_HANDOVER_GRIP_M`, episode 6 s → 10 s) removed 38 of 39 capture-phase
+overruns exactly as designed. It cost the chain 8 points only because insert
+cannot absorb its hand-off, and it moved the hand-off by 12–20%, not by the
+factor of three the previous handover assumed. The "4.31 mm hand-off" in that
+handover is capture's *standalone* terminal state; in the chain, hand-over fires
+at the 10 mm gate and a one-second seat follows, so v5 and v6 both deliver about
+12.5 mm. **Re-promote it once insert can take it.**
 
 ## Step 2: make removal work — the highest-value work in the project
 
@@ -88,21 +148,31 @@ gap is not mysterious and the next session should not re-derive it.
   an attitude penalty two orders of magnitude below the progress term it
   competed with, and an action space that could rotate the wrist at 0.24 rad/s
   while the module rotated at up to 0.767 rad/s.
-- **The last chain run had 191 of 192 extractions fire their success predicate
-  and none survive the 0.70 s settling re-check.** That is a much narrower
-  problem than "extraction does not work".
-- **I over-corrected that and it is a trap to repeat.** The settling failure is
-  drift: the chain stops commanding at success and coasts, so a module still
-  moving at *v* drifts *v x 0.70 s* before being judged. The old limits allowed
-  0.21 rad against a 0.20 rad tolerance — impossible by construction. I derived
-  tighter limits, retrained, and extraction went to **0.00%**, because the skill
-  cannot yet *arrive* that gently. `EXTRACTION_ANGULAR_VELOCITY_LIMIT` and
-  `EXTRACTION_LINEAR_VELOCITY_LIMIT` in `mdp/grapple.py` are still derived and
-  still correct; what is missing is a policy trained to satisfy them.
-- **The likely fix is a reward, not a threshold.** Nothing pays the policy to
-  arrive settled — it is only punished for arriving unsettled, at the terminal
-  step, once. Add a terminal-velocity term to the extract reward and retrain
-  against the derived limits. That is the first experiment.
+- **Those three fixes are real but the 68.36% they add up to is not.** All three
+  were measured under the loose limits. See the retraction at the top.
+- **The "over-correction" recorded in the previous handover was not one, and
+  believing it is the trap.** That handover said the derived limits were too
+  strict for a working skill, because retraining against them gave 0.00%. The
+  arithmetic says otherwise: extract v8 never satisfied them either — 0 of its
+  6,156 counted successes does, the best by a factor of 3.1 — so v10's 0.00% was
+  the *first honest measurement* and the 68.36% it was compared against was the
+  artefact. `EXTRACTION_ANGULAR_VELOCITY_LIMIT` and
+  `EXTRACTION_LINEAR_VELOCITY_LIMIT` are derived, correct, and **must not be
+  loosened**; the gap they expose is simply larger than the record admitted.
+- **The fix is a reward, and it was applied on 2026-08-16.** Nothing paid the
+  policy to arrive settled: velocity entered the objective only through a sparse
+  terminal predicate, so there was no gradient toward it anywhere in the pull.
+  The proof is v10's own profile — it trained to a *higher* reward than v8 (158.7
+  against 148.4) while losing the grip in 8,988 of 9,010 episodes, because a
+  progress term weighted 12 bought travel and nothing charged for arriving fast.
+  `mdp.extraction_settling_penalty` reads the derived limits, is zero below them,
+  and ramps over the last 60 mm. Driven by `scripts/run_extract_settling.sh`.
+- **The precondition that killed the force-shaping work is satisfied here, and it
+  was checked rather than assumed.** That work failed because a position-
+  controlled policy could not act on a force it could sense. Extraction is not in
+  that position: `blade_velocity` is already in the extract observation, the
+  action space directly commands the motion being regulated, and no dimension
+  changes — which is what makes a fine-tune legitimate rather than a retrain.
 - Two mechanical interface features were built against this and **both are
   measured as net negatives**: the anti-yaw yoke (cost insertion 67 points to buy
   extraction 0.13) and a modelled latch (jams the module in its rails,
@@ -148,6 +218,20 @@ Only after step 2. What this needs, none of which exists:
   carried the insertion task's action scales for four sessions: 0.03 m/s lateral
   against 0.24 axial, correct for a module inside rails and wrong for one that
   ends free. No reward function fixes an authority ceiling.
+- **A reset distribution is a joint distribution, and marginals do not
+  reconstruct it.** Two attempts to reproduce the chain's hand-off failed in
+  opposite directions because each preserved one correlation and broke another:
+  per-joint noise randomised the arm against the module, and the pose bank
+  randomised the arm against a module that did not move with it. A hand-off is a
+  point on a manifold. **Before training on a reconstructed distribution, run the
+  unchanged predecessor's successor on it and check it scores what it scores in
+  the real chain.** Five minutes; it would have caught both.
+- **A retraction is arithmetic when the recorded metrics allow it.** Every
+  extraction figure here was retracted without spending a single GPU-minute, by
+  reading the published runs' own terminal velocities against the criterion now
+  in the code. Check whether the evidence already answers the question before
+  re-running it — and check the *timestamps* of a report against the commits that
+  changed what it measures.
 - **A skill's success criterion must be at least as strict as the chain's.**
   Three separate failures here came from a number defined in two places that were
   free to disagree: the action scales, the settling velocity limits, and the
@@ -176,6 +260,18 @@ Only after step 2. What this needs, none of which exists:
 - Perception may be *characterised* any time — `scripts/check_camera_scale.py` is
   one frame. *Training* a perception policy waits for a certified chain.
 - Do not edit `src/` or `scripts/` while an evaluation sweep is running.
+- **Check for an orphaned `kit` process before starting anything.** One from a
+  crashed run survived five hours on 2026-08-16, held 0.79 GB, and competed with
+  the overnight pipeline the whole time; evaluation runs went from about 7
+  minutes to about 4 once it was killed. `Get-Process kit` and
+  `nvidia-smi --query-compute-apps=pid --format=csv` before every launch.
+- **512 environments costs about 0.9 GB of 12 GB, measured 2026-08-16**, not the
+  near-ceiling this project's notes imply. If a run needs to be faster, 1024 is
+  very likely safe — but verify with `nvidia-smi` in the first minutes, because
+  an OOM that kills an overnight run costs more than the speedup is worth.
+- **`train.py`'s stdout is block-buffered when redirected**, so `train.log` can
+  lag minutes behind. Judge progress from the `summaries/` tfevents file and the
+  `nn/` checkpoint mtime, not from the log.
 - Keep `.deps`, logs, datasets, checkpoints, artifacts and videos out of Git.
 - Do not reintroduce the eight-phase swap task.
 
@@ -193,7 +289,10 @@ Only after step 2. What this needs, none of which exists:
 | Grip metrics, capture/hold, the latch, derived limits | `tasks/blade_swap/mdp/grapple.py` |
 | The camera, the pose head, the blind arm | `tasks/blade_swap/mdp/perception.py`, `vision_grapple_env_cfg.py`, `src/zero_g_blade_swap/pose_head.py` |
 | The chain and how it is judged | `scripts/run_workflow_demo.py`, `certify_workflow.sh`, `certify_vision_workflow.sh` |
-| Auditing a quoted number | `scripts/check_evidence_currency.py` |
+| Auditing a quoted number | `scripts/check_evidence_currency.py`, **and the report's timestamp against `git log -S` on the criterion it uses** |
+| What a chain actually hands each skill | `run_workflow_demo.py --handoff_trace`, `scripts/analyse_handoff.py` |
+| Rebuilding the hand-off pose bank | `scripts/build_handoff_pose_bank.py`, on training-side seeds only |
+| Per-reward-term training diagnosis | the run's `summaries/` tfevents; `Episode/Episode_Reward/<term>` separates which term a policy is actually optimising |
 | Is a pose reachable | `scripts/calibrate_grasp_pose.py --robot_base_x`, converged |
 | Gripper geometry, ever | `evidence/gripper_collision_envelope.json` |
 | Pin and yoke dimensions | `src/zero_g_blade_swap/grapple_geometry.py`, `tests/test_grapple_geometry.py` |
