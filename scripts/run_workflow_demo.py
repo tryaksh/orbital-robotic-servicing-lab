@@ -267,7 +267,6 @@ import numpy as np
 import torch
 from torch import nn
 
-from isaaclab.utils.math import axis_angle_from_quat, quat_inv, quat_mul
 from isaaclab_tasks.utils import parse_env_cfg
 
 import zero_g_blade_swap.tasks.blade_swap  # noqa: F401
