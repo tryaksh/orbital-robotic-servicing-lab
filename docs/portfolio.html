@@ -179,6 +179,17 @@
         gap to blind is what says the perception is load-bearing. That control was missing from the
         first version of this result and the result was not worth much without it.
       </p>
+      <p class="note">
+        <strong>And the other half of that sentence deserves the same scepticism.</strong> Camera and
+        oracle scoring 80.38% <em>each, to the digit</em>, reads as a triumph and is closer to a
+        warning: two estimators that cannot be told apart mean the task was not asking either of them
+        for much. Sharpening the capture skill so it servos to 4 mm instead of 10 separates them —
+        oracle 79.17%, camera 69.97%, blind 59.90%, with oracle and camera intervals that no longer
+        overlap. That 9.2-point gap is the first non-zero cost of perception measured here, and it
+        appears precisely because a tighter capture needs a better estimate of where the module is.
+        The numbers above remain the promoted configuration; this one is not promoted, because the
+        same change costs the chain 8 points until the insertion skill is retrained to absorb it.
+      </p>
       <p class="evidence">evidence/vision_workflow_blind_certification.json · vision_workflow_camera_certification.json · vision_workflow_oracle_certification.json</p>
     </div>
   </section>
