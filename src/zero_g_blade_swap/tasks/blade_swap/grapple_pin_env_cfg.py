@@ -52,6 +52,7 @@ from .contact_insertion_env_cfg import (
     ZeroGBladeContactInsertionEnvCfg,
 )
 from .env_cfg import ARM_JOINTS
+from .handoff_poses import INSERT_HANDOFF_ARM_POSES
 from .insertion_env_cfg import ARM_CFG, GRIPPER_CFG, WRIST_CFG
 from .robust_insertion_env_cfg import configure_insertion_play_presentation
 from .scene_cfg import ZeroGGrapplePinSceneCfg
@@ -780,6 +781,10 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         self.events.reset_arm.params["poses_by_stage"] = (GRAPPLE_HEAD_ON_ARM_JOINT_POS[2],)
         self.events.reset_blade.params["poses_by_stage"] = (CONTACT_INSERTION_STAGE_BLADE_POSE[2],)
         self.events.reset_arm.params["noise_by_stage"] = (0.020,)
+        # Train across the states the capture actually produces, by sampling the
+        # measured ones. See INSERT_HANDOFF_ARM_POSES for how they were collected
+        # and why a noise box cannot substitute for them.
+        self.events.reset_arm.params["pose_bank"] = INSERT_HANDOFF_ARM_POSES
         if level < 2:
             self.events.blade_mass = None
         if level < 3:

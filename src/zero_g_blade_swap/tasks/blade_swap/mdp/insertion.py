@@ -345,8 +345,28 @@ def reset_insertion_joints(
     asset_cfg: SceneEntityCfg,
     noise_by_stage: tuple[float, ...] = (0.001, 0.002, 0.004),
     poses_by_stage: tuple[tuple[float, ...], ...] = INSERTION_STAGE_ARM_JOINT_POS,
+    pose_bank: tuple[tuple[float, ...], ...] | None = None,
 ) -> None:
-    """Reset around the collision-free near-slot pose with curriculum noise."""
+    """Reset around the collision-free near-slot pose with curriculum noise.
+
+    ``pose_bank`` replaces the single nominal pose with a set to sample from, and
+    exists because a chained hand-off cannot be reached by adding noise to a
+    nominal pose. Measured on 192 chained installations with
+    ``run_workflow_demo.py --handoff_trace``, the arm pose the capture leaves for
+    the insert skill sits 0.157 rad from nominal on its worst axis at the median,
+    almost all of it ``wrist_1`` -- and the grip error there is 12.5 mm, well
+    inside tolerance, because the capture *servoed* to it.
+
+    That correlation is the whole point. Widening the per-joint noise to cover
+    0.28 rad on ``wrist_1`` was tried first and is degenerate: it produces a large
+    joint deviation *and* a large grip error, the fingers close on nothing, and
+    534 of 534 episodes lose the grip at reset. A hand-off is a point on a
+    manifold, not a box, so the reset samples measured points instead of
+    inventing them.
+
+    ``None`` keeps the nominal-plus-noise behaviour exactly, so the three
+    promoted insertion certifications describe the reset still in the file.
+    """
 
     ids = torch.arange(env.num_envs, device=env.device) if env_ids is None else env_ids
     robot = env.scene[asset_cfg.name]
@@ -355,8 +375,13 @@ def reset_insertion_joints(
         stages = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
         env._insertion_curriculum_stage = stages
     stage_noise = torch.tensor(noise_by_stage, device=env.device)[stages[ids].clamp_max(len(noise_by_stage) - 1)]
-    nominal_by_stage = robot.data.joint_pos.new_tensor(poses_by_stage)
-    nominal = nominal_by_stage[stages[ids].clamp_max(len(poses_by_stage) - 1)]
+    if pose_bank is None:
+        nominal_by_stage = robot.data.joint_pos.new_tensor(poses_by_stage)
+        nominal = nominal_by_stage[stages[ids].clamp_max(len(poses_by_stage) - 1)]
+    else:
+        bank = robot.data.joint_pos.new_tensor(pose_bank)
+        drawn = torch.randint(bank.shape[0], (len(ids),), device=env.device)
+        nominal = bank[drawn]
     noise = (2.0 * torch.rand_like(nominal) - 1.0) * stage_noise.unsqueeze(-1)
     position = nominal + noise
     velocity = torch.zeros_like(position)

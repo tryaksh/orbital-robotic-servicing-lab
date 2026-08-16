@@ -165,6 +165,17 @@ def _parser() -> argparse.ArgumentParser:
         help="Write one row per completed workflow here (.npz), in the format aggregate_evaluation.py pools.",
     )
     parser.add_argument(
+        "--handoff_trace",
+        type=Path,
+        default=None,
+        help=(
+            "Record the state every phase hands over in, and the state through the settling window, "
+            "to this .npz. A skill has to be trained across the states its predecessor actually "
+            "produces; that rule has now been broken three times here, and until this existed "
+            "nothing measured what those states are. Off by default and free when off."
+        ),
+    )
+    parser.add_argument(
         "--inspection_view",
         choices=("task", "grasp", "side", "top", "workcell"),
         default="side",
@@ -235,8 +246,10 @@ from zero_g_blade_swap.tasks.blade_swap.mdp.grapple import (
     grapple_insertion_conditions,
     grapple_insertion_success_mask,
     grip_drive_torque,
+    grip_finger_angle,
 )
 from zero_g_blade_swap.tasks.blade_swap.mdp.insertion import (
+    attached_blade_pose_world,
     attached_blade_velocity,
     insertion_error_metrics,
 )
@@ -310,6 +323,52 @@ WORKFLOW_METRIC_FIELDS = (
     "grip_attitude_rad",
     "predicate_fired",
     "all_conditions_after_settling",
+)
+
+#: One row every time an environment changes phase, so the distribution a skill
+#: is actually handed can be compared against the distribution its own reset
+#: draws from. The arm joints are here because that is what the reset writes: a
+#: hand-off can sit inside the grip tolerance and still be a joint configuration
+#: the receiving policy has never seen, which is exactly what made the first
+#: chained extract reverse into the rack.
+HANDOFF_TRACE_FIELDS = (
+    "step",
+    "env",
+    "from_phase",
+    "to_phase",
+    "grip_error_m",
+    "grip_attitude_rad",
+    "finger_angle_rad",
+    "drive_torque_nm",
+    "blade_x_m",
+    "blade_y_m",
+    "blade_z_m",
+    "blade_linear_velocity_mps",
+    "blade_angular_velocity_radps",
+    "tool_x_m",
+    "tool_y_m",
+    "tool_z_m",
+    "arm_joint_0",
+    "arm_joint_1",
+    "arm_joint_2",
+    "arm_joint_3",
+    "arm_joint_4",
+    "arm_joint_5",
+)
+#: One row per environment per step of the settling window. A pooled terminal
+#: number cannot distinguish a module that was never settled from one that was
+#: settled and then pushed, and those want opposite fixes.
+SETTLE_TRACE_FIELDS = (
+    "step",
+    "env",
+    "steps_since_done",
+    "grip_error_m",
+    "grip_attitude_rad",
+    "finger_angle_rad",
+    "drive_torque_nm",
+    "blade_x_m",
+    "blade_linear_velocity_mps",
+    "blade_angular_velocity_radps",
 )
 
 
@@ -424,7 +483,9 @@ class WorkflowDriver:
     hand-offs on the same step.
     """
 
-    def __init__(self, task, policies, workflow: str, transit_slowdown: int, max_steps: int) -> None:
+    def __init__(
+        self, task, policies, workflow: str, transit_slowdown: int, max_steps: int, tracing: bool = False
+    ) -> None:
         self.task = task
         self.policies = policies
         self.workflow = workflow
@@ -488,6 +549,14 @@ class WorkflowDriver:
         self.arm = task.action_manager.get_term("arm")
         self.gripper = task.action_manager.get_term("gripper")
         self.actions = torch.zeros((count, task.action_manager.total_action_dim), device=device)
+        self.tracing = tracing
+        self.handoff_rows: list[np.ndarray] = []
+        self.settle_rows: list[np.ndarray] = []
+        self.env_index = torch.arange(count, dtype=torch.float64, device=device)
+        # The action term's own joint ids, so the trace records the joints the
+        # reset writes rather than the first six of whatever order the scene has.
+        arm_joint_ids = getattr(self.arm, "_joint_ids", None)
+        self.arm_joint_ids = list(range(6)) if arm_joint_ids is None else list(arm_joint_ids)
 
     def reset_envs(self, env_ids: torch.Tensor, step: int = 0) -> None:
         """Return the named environments to the start of the workflow."""
@@ -511,6 +580,81 @@ class WorkflowDriver:
 
     def _apply_scales(self) -> None:
         self.arm._scale[:] = self.scales[self.phase]
+
+    def _trace_state(self) -> dict[str, torch.Tensor]:
+        """Every quantity both traces share, read once per step."""
+
+        task = self.task
+        grip_error, grip_attitude = grapple_grip_error_metrics(task)
+        blade_position, _ = attached_blade_pose_world(task)
+        velocity = attached_blade_velocity(task)
+        return {
+            "grip_error_m": grip_error.to(torch.float64),
+            "grip_attitude_rad": grip_attitude.to(torch.float64),
+            "finger_angle_rad": grip_finger_angle(task).to(torch.float64),
+            "drive_torque_nm": grip_drive_torque(task).to(torch.float64),
+            "blade_local": (blade_position - task.scene.env_origins).to(torch.float64),
+            "blade_linear_velocity_mps": torch.linalg.vector_norm(velocity[:, :3], dim=-1).to(torch.float64),
+            "blade_angular_velocity_radps": torch.linalg.vector_norm(velocity[:, 3:], dim=-1).to(torch.float64),
+        }
+
+    def _column(self, value: float) -> torch.Tensor:
+        return torch.full((self.task.num_envs, 1), value, dtype=torch.float64, device=self.task.device)
+
+    def _record_handoff(self, mask: torch.Tensor, step: int, entry_phase: torch.Tensor) -> None:
+        task = self.task
+        state = self._trace_state()
+        tool = (end_effector_pose_world(task)[0] - task.scene.env_origins).to(torch.float64)
+        joints = task.scene["robot"].data.joint_pos[:, self.arm_joint_ids].to(torch.float64)
+        rows = torch.cat(
+            (
+                self._column(float(step)),
+                self.env_index.unsqueeze(-1),
+                entry_phase.to(torch.float64).unsqueeze(-1),
+                self.phase.to(torch.float64).unsqueeze(-1),
+                state["grip_error_m"].unsqueeze(-1),
+                state["grip_attitude_rad"].unsqueeze(-1),
+                state["finger_angle_rad"].unsqueeze(-1),
+                state["drive_torque_nm"].unsqueeze(-1),
+                state["blade_local"],
+                state["blade_linear_velocity_mps"].unsqueeze(-1),
+                state["blade_angular_velocity_radps"].unsqueeze(-1),
+                tool,
+                joints,
+            ),
+            dim=-1,
+        )
+        self.handoff_rows.append(rows[mask].cpu().numpy())
+
+    def _record_settle(self, mask: torch.Tensor, step: int) -> None:
+        state = self._trace_state()
+        rows = torch.cat(
+            (
+                self._column(float(step)),
+                self.env_index.unsqueeze(-1),
+                (step - self.done_at).to(torch.float64).unsqueeze(-1),
+                state["grip_error_m"].unsqueeze(-1),
+                state["grip_attitude_rad"].unsqueeze(-1),
+                state["finger_angle_rad"].unsqueeze(-1),
+                state["drive_torque_nm"].unsqueeze(-1),
+                state["blade_local"][:, :1],
+                state["blade_linear_velocity_mps"].unsqueeze(-1),
+                state["blade_angular_velocity_radps"].unsqueeze(-1),
+            ),
+            dim=-1,
+        )
+        self.settle_rows.append(rows[mask].cpu().numpy())
+
+    def trace_npz(self) -> dict[str, np.ndarray]:
+        def stack(rows: list[np.ndarray], fields: tuple[str, ...]) -> np.ndarray:
+            return np.concatenate(rows) if rows else np.zeros((0, len(fields)), dtype=np.float64)
+
+        return {
+            "handoff": stack(self.handoff_rows, HANDOFF_TRACE_FIELDS),
+            "handoff_fields": np.asarray(HANDOFF_TRACE_FIELDS),
+            "settle": stack(self.settle_rows, SETTLE_TRACE_FIELDS),
+            "settle_fields": np.asarray(SETTLE_TRACE_FIELDS),
+        }
 
     def _finish(self, mask: torch.Tensor, step: int) -> None:
         """Stop the named workflows, recording when they stopped, two ways.
@@ -677,6 +821,19 @@ class WorkflowDriver:
                 self._freeze(ripe, step, grip_error, grip_attitude, blade_x)
 
         torch.maximum(self.furthest, self.phase, out=self.furthest)
+        if self.tracing:
+            # After every transition this step has resolved, so the row records
+            # the state the *next* phase begins from rather than a phase midway
+            # through handing over.
+            changed = self.phase != entry_phase
+            if bool(changed.any()):
+                self._record_handoff(changed, step, entry_phase)
+            # Through the settling window inclusive of both ends, so a module
+            # that was settled when the predicate fired and is not settled when
+            # it is judged shows up as a curve rather than as two numbers.
+            settling = (self.phase == DONE) & (self.done_at >= 0) & ((step - self.done_at) <= SETTLE_STEPS)
+            if bool(settling.any()):
+                self._record_settle(settling, step)
         self.phase_started[self.phase != entry_phase] = step
         self._apply_scales()
 
@@ -916,7 +1073,14 @@ def main() -> dict[str, object]:
         task._insertion_curriculum_stage.fill_(args.curriculum_stage)
 
         episode_steps = int(round(float(task.max_episode_length)))
-        driver = WorkflowDriver(task, policies, args.workflow, args.transit_slowdown, episode_steps)
+        driver = WorkflowDriver(
+            task,
+            policies,
+            args.workflow,
+            args.transit_slowdown,
+            episode_steps,
+            tracing=args.handoff_trace is not None,
+        )
         collecting = args.episodes > 0
         recorder = TerminalEpisodeRecorder(WORKFLOW_METRIC_FIELDS) if collecting else None
         clock = {"step": 0}
@@ -1043,7 +1207,16 @@ def main() -> dict[str, object]:
                     ),
                 )
                 print(f"[INFO] Wrote {args.episode_metrics}", flush=True)
-        else:
+        if args.handoff_trace is not None:
+            args.handoff_trace.parent.mkdir(parents=True, exist_ok=True)
+            trace = driver.trace_npz()
+            np.savez_compressed(args.handoff_trace, **trace)
+            print(
+                f"[INFO] Wrote {args.handoff_trace}: "
+                f"{trace['handoff'].shape[0]} hand-offs, {trace['settle'].shape[0]} settling rows",
+                flush=True,
+            )
+        if not collecting:
             axial, lateral, orientation = insertion_error_metrics(task)
             grip, attitude = grapple_grip_error_metrics(task)
             conditions = grapple_insertion_conditions(task)

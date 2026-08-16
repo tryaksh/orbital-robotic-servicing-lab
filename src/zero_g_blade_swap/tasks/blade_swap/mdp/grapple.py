@@ -317,6 +317,18 @@ def grip_drive_torque(env) -> torch.Tensor:
     return robot.data.applied_torque[:, _finger_joint_ids(env)[0]].abs()
 
 
+def grip_finger_angle(env) -> torch.Tensor:
+    """Return the 2F-85 drive joint angle in radians. Zero is fully open.
+
+    The convention is the measured one -- pad separation falls monotonically with
+    the command over the joint's whole range, 87.08 mm at 0 to 0 mm at 0.8203 --
+    and it is stated here because this project carried it inverted for three
+    sessions. See evidence/gripper_collision_envelope.json.
+    """
+
+    return env.scene["robot"].data.joint_pos[:, _finger_joint_ids(env)[0]]
+
+
 def gripper_state_observation(env) -> torch.Tensor:
     """Return the finger command's reached angle and the drive torque it develops.
 
@@ -893,6 +905,7 @@ __all__ = [
     "grapple_insertion_success_mask",
     "grapple_insertion_success_reward",
     "grip_drive_torque",
+    "grip_finger_angle",
     "grip_retention_penalty",
     "gripper_state_observation",
     "hold_two_stage_grip",

@@ -1733,6 +1733,7 @@ fine-tuned from the v5 checkpoint at 512 environments, seed 70, one change.
 | --- | ---: | ---: | --- |
 | Capture alone | 96.10% | 95.87% | `grapple_grasp_v6_certification.json` |
 | **Install chain, state** | **84.38%** | **76.74%** | `workflow_install_aligned_certification.json` |
+| Install chain, oracle control | 80.38% | 79.17% | `vision_workflow_oracle_aligned_certification.json` |
 | **Install chain, camera** | **80.38%** | **69.97%** | `vision_workflow_camera_aligned_certification.json` |
 | Install chain, **blind** control | 43.58% | **59.90%** | `vision_workflow_blind_aligned_certification.json` |
 
@@ -1766,6 +1767,98 @@ and tighter needs less information about where the module actually is, so
 sharpening capture partially substituted for perception. Nothing was retrained to
 flatter either arm; both run identical checkpoints through an identical
 observation term.
+
+### The three arms finally separate, and that is the one gain here
+
+Under capture v5 the camera arm and the oracle arm scored **80.38% each, to the
+digit**. That reads as a triumph and is closer to a warning: two estimators that
+cannot be told apart mean the task was not asking either of them for much. With
+capture v6 the three arms separate into a monotonic ladder for the first time:
+
+| Arm, capture v6 | Result | Wilson 95% |
+| --- | ---: | --- |
+| Oracle — the simulator's own answer | 79.17% | [75.66, 82.28] |
+| **Camera — 64x64 RGB through the pose head** | **69.97%** | [66.10, 73.57] |
+| Blind — the module assumed to be at its nominal pose | 59.90% | [55.84, 63.82] |
+
+**This is the first non-zero cost of perception this project has measured.** The
+oracle and camera intervals do not overlap, so the 9.2-point gap between them is
+the estimator and cannot be anything else; the 10.1 points below that are what
+having any estimate at all is worth. The mechanism is not mysterious: a capture
+that servos to 4 mm needs to know where the module is more precisely than one
+that stops at 10, so the pose head's 1.75 mm mean error stopped being free.
+
+The honest framing is that this is a better-structured measurement of a worse
+chain. Nothing here recovers the 8 points the chain lost. What it does is retire
+a number — camera equals oracle — that could never have supported the claim it
+was being read as supporting.
+
+### Measuring the hand-off, and finding the diagnosis was aimed one skill early
+
+The reading above — that capture v6 moved the hand-off out of insert's
+distribution — was checked before anything was retrained against it, with a new
+instrument. `run_workflow_demo.py --handoff_trace` records the state every phase
+actually hands over in, and the state through the settling window;
+`scripts/analyse_handoff.py` pools it. Nothing in this repository measured that
+before, which is why a rule it has broken three times could keep being broken.
+
+**The hand-off barely moved.** 192 chained installations per arm, same seed:
+
+| State handed to insert | capture v5 p50 | capture v6 p50 |
+| --- | ---: | ---: |
+| Grip error | 12.64 mm | 12.50 mm |
+| Grip attitude | 0.0823 rad | 0.0925 rad |
+| Finger angle | 0.2316 rad | 0.2306 rad |
+| **Worst-axis arm-joint deviation from nominal** | **0.138 rad** | **0.157 rad** |
+
+The "4.31 mm hand-off" the capture-alignment work was aimed at is capture's
+*standalone* terminal state. In the chain the hand-over fires at the 10 mm gate
+and a one-second seat follows, so both versions deliver about 12.5 mm. Capture v6
+changed the state insert receives by 12 to 20%, not by a factor of three.
+
+**What the instrument found instead is larger and older.** Insert's reset drew
+uniform ±0.020 rad of joint noise around one nominal pose. The chain hands it a
+pose 0.157 rad away on its worst axis at the median, overwhelmingly `wrist_1`,
+with a p95 of 0.284 and a maximum of 0.383. Even the *fifth percentile* hand-off
+is three times the widest value that reset could draw on any single joint. Both
+captures do this. The certified insert skill has never been trained on the states
+its predecessor produces, and the direct measurement of what that costs is:
+
+| Insert v6, unchanged policy | Success |
+| --- | ---: |
+| On its own certified reset | **95.57%** |
+| On 550 measured capture hand-offs | **31.25%** |
+
+That single pair is the chain gap. It is not something capture v6 introduced, it
+was not visible in any per-skill certification, and it explains 95.57%-alone
+against 84.38%-chained without appealing to anything else.
+
+### A hand-off is a manifold, not a box, and that is measurable
+
+The obvious fix — widen the per-joint reset noise to cover 0.28 rad on `wrist_1`
+— was tried first and is **degenerate**. Insert v6 under it scored **0.00%**, and
+all 534 episodes ended the same way: grip lost at reset, terminal grip error
+65.6 mm.
+
+The reason is the correlation the box throws away. The chain's hand-off has a
+large joint deviation *and* a 12.5 mm grip error together, because the capture
+policy **servoed** there — the wrist rolled while the tool stayed on the pin.
+Independent per-joint noise produces a large joint deviation *and* a large grip
+error, so the fingers close on nothing. The states are both "0.28 rad from
+nominal" and nothing else about them is alike.
+
+So the reset samples measured poses instead of inventing them.
+`src/zero_g_blade_swap/tasks/blade_swap/handoff_poses.py` carries 550 hand-off
+arm poses collected on **training-side seeds 70, 170 and 270** — deliberately not
+the 4070/5070/6070 the chain is certified on, because a reset distribution drawn
+from the evaluation seeds is not a held-out evaluation any more. Regenerate it
+with `scripts/build_handoff_pose_bank.py`.
+
+Insert v6 unchanged scores 31.25% on that reset with failures split across
+175 lost grips, 177 timeouts and 160 successes, which is a harder task with a
+gradient in it rather than a collapsed one. That is the control the retrained
+policy is measured against; comparing it with the 95.57% would be comparing two
+different tasks.
 
 **What this does not license.** Reverting to capture v5 would buy the chain back
 8 points and restore the vision margin, and it would be the wrong move: v5 leaves
