@@ -2061,7 +2061,10 @@ linear criterion that *none* satisfied before. Reports:
 | Grip *position* p50 | 16.0 mm | 19.1 mm |
 
 Chained removal is 0.00% as well:
-`evidence/workflow_remove_settle_certification.json`.
+`evidence/workflow_remove_settle_certification.json`. That run carries capture
+`AF579F5A` and insert `7E9A0C33`, which are the same two checkpoints the 14.06%
+`remove_clock` run used, so extraction is the only thing that differs between
+those two numbers — checked against the recorded hashes, not assumed.
 
 **The module rotates in the pads when it is decelerated, and that is a
 mechanical statement rather than a tuning one.** Stopping a 10 kg free body

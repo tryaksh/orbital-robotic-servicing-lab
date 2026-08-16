@@ -52,8 +52,11 @@ EVAL_ENVS=256 EXTRACT_CKPT="$E" EXTRACT_VERSION=v11settle \
   INTERFACE="the plain grapple pin, judged on the derived settling limits" \
   bash scripts/certify_demo_policies.sh Extract
 
-# Capture v5 and insert v6 are the repository defaults and are what the earlier
-# removal chains ran, so extract is the only thing that has changed against them.
+# certify_workflow.sh's defaults are capture v3 and insert v6, which is exactly
+# what the 14.06% remove_clock run used, so extract is the only thing that
+# differs between that number and this one. Verified against the recorded
+# checkpoint hashes rather than assumed: remove_clock and remove_settle both
+# carry capture AF579F5A and insert 7E9A0C33.
 say "removal chain"
 EXTRACT_CKPT="$E" TAG=_settle bash scripts/certify_workflow.sh remove
 say "EXTRACT SETTLING DONE"
