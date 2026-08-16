@@ -122,6 +122,53 @@ def test_prologue_carries_no_reward() -> None:
     assert "torch.where(prologue, torch.zeros_like(reward), reward)" in _source()
 
 
+def test_the_attitude_arm_differs_by_exactly_one_number() -> None:
+    """The two chained runs must be one change apart or neither is attributable.
+
+    ``ChainedInsertAttitudeRewardsCfg`` may move ``orientation_weight`` and
+    nothing else. In particular it must not quietly adopt extraction's
+    ``orientation_scale`` or its raised clamp: those were sized for a failure
+    that runs to 0.35 rad, and this one lives at 0.19.
+    """
+
+    tree = ast.parse(_source())
+    rewards = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ClassDef) and node.name == "ChainedInsertAttitudeRewardsCfg"
+    )
+    call = next(
+        node
+        for node in ast.walk(rewards)
+        if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "RewTerm"
+    )
+    params = next(kw.value for kw in call.keywords if kw.arg == "params")
+    values = {
+        key.value: value.value
+        for key, value in zip(params.keys, params.values, strict=True)
+        if isinstance(value, ast.Constant)
+    }
+    # The insert skill's own defaults, restated here only so the diff is visible.
+    assert values == {
+        "free_m": 0.004,
+        "free_rad": 0.08,
+        "orientation_scale": 0.15,
+        "orientation_weight": 1.0,
+        "max_penalty": 25.0,
+    }, values
+    # A negative literal is a UnaryOp, not a Constant.
+    weight = ast.literal_eval(next(kw.value for kw in call.keywords if kw.arg == "weight"))
+    assert weight == -0.50
+
+    # And the clamp has to stay unreachable, or this becomes extraction's
+    # saturation defect rather than a weight change. Raw cost at the 0.35 rad
+    # extraction-failure limit, with a typical 11.7 mm grip position:
+    position_excess = (0.0117 - values["free_m"]) / 0.010
+    orientation_excess = (0.35 - values["free_rad"]) / values["orientation_scale"]
+    raw = position_excess**2 + values["orientation_weight"] * orientation_excess**2
+    assert raw < values["max_penalty"], raw
+
+
 def test_the_single_slot_insert_task_is_untouched() -> None:
     """The chained task is a separate registration, as every change here is.
 
