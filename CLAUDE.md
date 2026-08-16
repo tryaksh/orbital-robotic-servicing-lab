@@ -36,18 +36,19 @@ the product of their parts, so build it in pieces and certify each.
 Every figure is deterministic evaluation on three held-out seeds, pooled with a
 Wilson interval, terminal state captured before the simulator's auto-reset.
 
-**The promoted configuration is capture v5 + insert v6.** Both certify scripts
-default to it, nothing from 2026-08-16 is promoted, and every number below is
-that configuration unless it says otherwise.
+**Promoted: capture v5, extract v14reset, insert v6.** Three of the four skills
+clear their 95% gate and the removal chain clears it too. The installation chain
+is the one thing still short, and insert-phase overruns are 62 of its 76
+failures.
 
 | | Result | Evidence |
 | --- | ---: | --- |
 | Capture | 96.10% | `grapple_grasp_v5_certification.json` |
 | Insert, on its own reset | 95.57% | `grapple_insert_v6_certification.json` |
 | **Insert, on the states the chain hands it** | **~80%** | derived from `workflow_install_final`; see step 1 |
-| Extract, alone | 68.62% | `grapple_extract_v13unsat_certification.json` — see the caveat in step 2 |
+| **Extract** | **99.02%** | `grapple_extract_v14reset_certification.json` — **gate passed** |
 | **Removal chain** | **98.78%** | `workflow_remove_retain_certification.json` — **gate passed** |
-| **Install chain, state-based** | **84.38%** | `workflow_install_final_certification.json` |
+| **Install chain, state-based** | **86.81%** | `workflow_install_align_certification.json` |
 | **Install chain, camera in the loop** | **80.38%** | `vision_workflow_camera_certification.json` |
 | Install chain, oracle control | 80.38% | `vision_workflow_oracle_certification.json` |
 | Install chain, **blind** control | **43.58%** | `vision_workflow_blind_certification.json` |
