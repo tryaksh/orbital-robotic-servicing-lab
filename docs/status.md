@@ -2621,6 +2621,15 @@ at the attitude that ends the episode.** Over a whole episode the attitude part
 of the retention term comes to about 0.95 of reward against 8.2 for progress and
 30 for success, read off `summaries/`.
 
+**Before reweighting it, check the policy can actually control it.** A penalty on
+a quantity the receiving skill inherits rather than causes is the mistake that
+produced two interface features and a retraction on this page. The two traces
+answer it directly: grip attitude at the hand-off is 0.0863 rad at the median and
+0.1492 at p95, and by the end of the insert phase it is 0.1927 for successes and
+0.2496 for failures. It roughly doubles *during* the insertion, so it is
+accumulated under the insert policy's own actions rather than handed to it — the
+same decomposition that showed the wrist, not the module, is what rotates.
+
 Two things follow, and the second is the one that keeps the next experiment
 honest. First, unlike extraction this is **not** a saturation defect: with a
 typical grip position the raw cost reaches the 25.0 clamp only near 1.56 rad,
