@@ -2612,11 +2612,14 @@ project has been caught by it five times.** With the insert task's parameters �
 weighted 0.25, clamped at 25.0, term weight −0.50 — a grip attitude sitting
 exactly on the 0.20 rad failure boundary costs
 
-    0.25 * ((0.20 - 0.08) / 0.15)^2 * 0.50 = 0.08 per step
+    0.25 * ((0.20 - 0.08) / 0.15)^2 * 0.50 = 0.08
 
-against `elapsed_time_penalty` at **0.10 per step**. The policy is charged more
-for taking one extra control step than for sitting at the attitude that ends the
-episode.
+against `elapsed_time_penalty`'s **0.10**, in the same weighted units — both
+terms scale identically with the control period, so the ratio is what matters.
+**The policy is charged more for taking one extra control step than for sitting
+at the attitude that ends the episode.** Over a whole episode the attitude part
+of the retention term comes to about 0.95 of reward against 8.2 for progress and
+30 for success, read off `summaries/`.
 
 Two things follow, and the second is the one that keeps the next experiment
 honest. First, unlike extraction this is **not** a saturation defect: with a

@@ -62,6 +62,7 @@ from pathlib import Path
 import gymnasium as gym
 import torch
 from isaaclab.managers import ObservationGroupCfg as ObsGroup  # noqa: F401  (documented group base)
+from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.utils import configclass
 
@@ -292,7 +293,79 @@ class ZeroGBladeGrapplePinInsertChainEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
 
 
 @configclass
+class ChainedInsertAttitudeRewardsCfg(InsertRewardsCfg):
+    """The insert objective with one number changed: the attitude weighting.
+
+    Measured on the pre-training gate, 6 of 7 insert-phase overruns end outside
+    `grasp_orientation` and 6 of 7 outside `axial_depth`, together, while
+    lateral, orientation and both velocity conditions never fail. Successful
+    insertions terminate at 0.1927 rad of grip attitude against a 0.20 rad
+    tolerance -- the skill lives on that limit.
+
+    What the objective charges for it, in weighted units, at exactly the 0.20 rad
+    boundary::
+
+        0.25 * ((0.20 - 0.08) / 0.15)^2 * 0.50 = 0.08
+
+    against `elapsed_time_penalty`'s 0.10. The policy is charged more for taking
+    one more control step than for sitting at the attitude that ends the episode.
+
+    **Only ``orientation_weight`` moves, 0.25 -> 1.0.** Everything else is the
+    insert task's default, deliberately:
+
+    * ``free_rad`` stays 0.08, because the aim is not to charge for attitudes
+      that already succeed;
+    * ``orientation_scale`` stays 0.15 rather than taking extraction's 0.06,
+      because extraction's parameters were sized for a failure that runs to
+      0.35 rad and this one lives at 0.19;
+    * ``max_penalty`` stays 25.0, and that is checked rather than assumed -- at
+      the 0.35 rad extraction-failure limit the raw cost reaches about 3.2, so
+      nothing an episode can visit is saturated. Unlike extraction, the defect
+      here is a weight and not a clamp.
+
+    Sized against the measurement rather than guessed: this makes the attitude
+    term about four times its current size, roughly 3.8 of episode reward against
+    8.2 for progress and 30 for success. Extract v7 is the reason it is not
+    larger -- an over-weighted attitude term made standing still cheaper than
+    working and cost the removal chain 11 points.
+    """
+
+    retention = RewTerm(
+        func=mdp.grip_retention_penalty,
+        weight=-0.50,
+        params={
+            "free_m": 0.004,
+            "free_rad": 0.08,
+            "orientation_scale": 0.15,
+            "orientation_weight": 1.0,
+            "max_penalty": 25.0,
+        },
+    )
+
+
+@configclass
+class ZeroGBladeGrapplePinInsertChainAttitudeEnvCfg(ZeroGBladeGrapplePinInsertChainEnvCfg):
+    """The chained-insert task with the attitude term reweighted.
+
+    A separate registration so the run trained against the unchanged objective
+    stays reproducible and the two remain one change apart. The single-slot
+    insert task keeps its own defaults either way, so insert v6's certification
+    still describes the task in the file.
+    """
+
+    rewards: ChainedInsertAttitudeRewardsCfg = ChainedInsertAttitudeRewardsCfg()
+
+
+@configclass
 class ZeroGBladeGrapplePinInsertChainPlayEnvCfg(ZeroGBladeGrapplePinInsertChainEnvCfg):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.scene.num_envs = 1
+        configure_insertion_play_presentation(self)
+
+
+@configclass
+class ZeroGBladeGrapplePinInsertChainAttitudePlayEnvCfg(ZeroGBladeGrapplePinInsertChainAttitudeEnvCfg):
     def __post_init__(self) -> None:
         super().__post_init__()
         self.scene.num_envs = 1
@@ -501,9 +574,12 @@ __all__ = [
     "INSERT",
     "INSTALL_STAGE",
     "SEAT",
+    "ChainedInsertAttitudeRewardsCfg",
     "ChainedInsertEnv",
     "ChainedInsertObservationsCfg",
     "ChainedInsertTerminationsCfg",
+    "ZeroGBladeGrapplePinInsertChainAttitudeEnvCfg",
+    "ZeroGBladeGrapplePinInsertChainAttitudePlayEnvCfg",
     "ZeroGBladeGrapplePinInsertChainEnvCfg",
     "ZeroGBladeGrapplePinInsertChainPlayEnvCfg",
 ]

@@ -246,6 +246,13 @@ for _grapple_id, _grapple_cls in (
 for _chain_id, _chain_cls in (
     ("Isaac-ZeroG-Blade-GrapplePin-InsertChain-v0", "ZeroGBladeGrapplePinInsertChainEnvCfg"),
     ("Isaac-ZeroG-Blade-GrapplePin-InsertChain-Play-v0", "ZeroGBladeGrapplePinInsertChainPlayEnvCfg"),
+    # The same task with the attitude term reweighted, registered separately so
+    # the two runs stay exactly one change apart and both stay reproducible.
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertChainAttitude-v0", "ZeroGBladeGrapplePinInsertChainAttitudeEnvCfg"),
+    (
+        "Isaac-ZeroG-Blade-GrapplePin-InsertChainAttitude-Play-v0",
+        "ZeroGBladeGrapplePinInsertChainAttitudePlayEnvCfg",
+    ),
 ):
     gym.register(
         id=_chain_id,

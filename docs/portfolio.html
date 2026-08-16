@@ -286,20 +286,9 @@
     </div>
     <div class="col">
       <p class="note">
-        Extraction was the hard one, and for a physical reason: it moves the module 495 mm <em>out</em> of
-        all constraint, ending held only by a line contact on a taper. Insertion moves 167 mm <em>into</em>
-        rails whose lead-in flares do the alignment mechanically. Extraction went from 0% to 99% over
-        the four fixes below, and the last of them was not a policy change at all — a quarter of its
-        episodes were being scored from a reset that started with the grip already lost, so the number
-        was describing the reset rather than the skill.
-      </p>
-      <p class="note">
-        <strong>Installation is now the open one, at 89.41%</strong> against a 95% bar. The gap is the
-        insert phase, and it is a distribution problem rather than a control one: the skill scores
-        95.57% starting from its own reset and about 93% on the states a real capture hands it. Four
-        attempts to reproduce that hand-off as a set of starting poses scored 0%, 26% and 47%, because
-        a hand-off turns out to be a trajectory and a gripper-controller state, not a pose. It is
-        being trained inside the chain instead.
+        Extraction is the physically hard one: it moves the module 495 mm <em>out</em> of all
+        constraint, ending held only by a line contact on a taper, where insertion moves 167 mm
+        <em>into</em> rails whose lead-in flares do the alignment mechanically.
       </p>
       <p class="note">
         <strong>Removal took three fixes and none of them was mechanical.</strong> Nothing in the reward
@@ -314,22 +303,24 @@
         <em>capture gently, hold hard to pull, retain gently once the part is free.</em>
       </p>
       <p class="note">
-        <strong>Removal works, as of 2026-08-16, and the number above replaced a wrong one.</strong>
-        This table previously reported extraction at 68.36% and removal at 14.06%. Both were measured
-        before the criterion was tightened: a “removed” module must be settled to 0.0143 m/s, derived
-        from the 0.70 s the chain waits before re-checking, rather than the 0.10 m/s picked by hand.
-        Against the real criterion those policies score <strong>zero</strong> — not one of 6,156
-        counted successes qualifies. The figures above are the rebuilt ones, and the chained removal
-        now clears its 95% promotion gate with zero instability across three held-out seeds.
+        <strong>Installation is the open one, at 89.41% against a 95% bar</strong>, and the interesting
+        part is where the gap is not. The obvious theory was that the insert policy is thrown by the
+        states a real capture hands it. Measured on the same checkpoint: 95.57% from its own reset,
+        93.06% on the real hand-off, 90.45% inside the chain — so the hand-off costs about two and a
+        half points, not the fifteen the project had been assuming. What is left is the objective, not
+        the starting state: six of every seven failures run out of clock still shallow and rotated in
+        the pads, and the reward charges less for that rotation than for taking one more step.
       </p>
       <p class="note">
-        <strong>The install figure was replaced on 2026-08-16 for the same class of reason, and it is
-        worth being explicit about how often this happens.</strong> The table previously said 84.38%.
-        That report describes the identical two policies — the checkpoint hashes match — but it was
-        written 8.5 hours before the capture phase's time budget went from 6 s to 10 s, and captures
-        running out of clock were most of what it was measuring. Re-run against the code as it stands,
-        the same three held-out seeds give 89.41%. Nothing here is safe from this except checking a
-        report's timestamp against the history of the criterion it uses, every time.
+        <strong>Two of the numbers above replaced wrong ones, both on 2026-08-16, and the mechanism was
+        the same twice.</strong> Extraction and removal previously read 68.36% and 14.06%; they had been
+        certified before the criterion tightened, and against the real one — a removed module settled to
+        0.0143 m/s, derived from the 0.7 s the chain waits — not one of 6,156 counted successes
+        qualifies. Installation previously read 84.38%; that report describes the identical policies,
+        by checkpoint hash, but predates a change to the capture phase's time budget by 8.5 hours.
+        Neither was a bad measurement. Both were good measurements of a system that had since moved,
+        and the only defence is checking a report's timestamp against the history of the criterion it
+        uses, every time.
       </p>
     </div>
   </section>
@@ -438,8 +429,9 @@
     <div class="ledger">
       <div class="row">
         <span class="what">An anti-yaw yoke on the pin</span><span class="verdict">refuted</span>
-        <span class="why">Cost insertion 67 points to buy extraction 0.13. Then the rotation was finally
-          decomposed: it is split evenly across two axes and the walls opposed only one.</span>
+        <span class="why">Cost insertion 67 points to buy extraction 0.13. Re-tested later against a
+          policy whose rotation had concentrated onto the exact axis the walls oppose, it moved that
+          axis by 0.0015 rad — the compliance is the pads camming open, not the gap between walls.</span>
       </div>
       <div class="row">
         <span class="what">A modelled capture latch</span><span class="verdict">refuted</span>
@@ -485,8 +477,9 @@
         <li><strong>Each phase of the chain is given the clock its own skill was certified on</strong>,
           derived from the task rather than restated, so "it works in the chain" and "it scores X alone"
           cannot be different claims.</li>
-        <li><strong>Negative and retracted results stay in the record</strong>, including two published
-          claims that were withdrawn after re-measurement.</li>
+        <li><strong>Negative and retracted results stay in the record</strong>, including three published
+          success rates withdrawn after re-measurement — each of them a good measurement of a system
+          that had since changed underneath it.</li>
       </ul>
     </div>
   </section>
