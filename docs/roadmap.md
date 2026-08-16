@@ -1,5 +1,36 @@
 # Roadmap and research basis
 
+## The goal, decided 2026-08-15: one module, two slots
+
+**The eventual capability is a relocation:**
+
+    GRASP -> REMOVAL -> RELOCATION -> INSERT
+
+A module is captured in slot 1, pulled clear of the rack, carried to an empty
+slot 2 beside it, and seated there. That is the operation ISS performs as ORU
+changeout, and it is the first thing this project would build that is *servicing*
+rather than assembly. Everything demonstrated so far is half of it.
+
+**It is gated, deliberately, on removal.** A relocation is the product of four
+stages, and chained numbers here have consistently come in *below* the product of
+their parts. At today's rates the relocation would complete well under half the
+time, and a flagship demonstration that fails more often than it succeeds is
+worse than a smaller one that works. So the order is fixed:
+
+1. **Close the installation chain.** Capture + insert, camera in the loop, sits
+   at 80.38%. Diagnosed: 77 of its 113 failures are captures overrunning their
+   budget, caused by the skill certifying on 20 mm of grip error while the chain
+   waits for 10 mm. Being retrained against the aligned criterion now.
+2. **Make removal work in the chain.** Extract certifies at 68.36% alone and the
+   chained removal at 14.06%. This is the single highest-value piece of work in
+   the project and it is the gate on everything below.
+3. **Only then, two slots.** Second slot geometry, a real lateral transit, and
+   insertion retrained for a second goal pose.
+
+**Do not start step 3 before step 2 certifies.** Building the scene first
+produces a demonstration that fails three times in four and invites exactly the
+reading the evidence does not deserve.
+
 ## The current line of work, decided 2026-08-10
 
 Items 1 to 13 below are the pre-pivot roadmap and are kept for provenance. The
