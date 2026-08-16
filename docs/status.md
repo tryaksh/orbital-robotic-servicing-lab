@@ -1860,6 +1860,66 @@ gradient in it rather than a collapsed one. That is the control the retrained
 policy is measured against; comparing it with the 95.57% would be comparing two
 different tasks.
 
+### Retraining insert on the pose bank made it worse, and the numbers say why
+
+The fix was applied and it failed. 1,000 PPO epochs fine-tuned from insert v6 at
+512 environments, seed 70, the reset sampling the 550 measured hand-off poses and
+nothing else changed. Resuming was legitimate: a reset distribution is an event
+change and alters neither the observation nor the action dimension.
+
+| | control, insert v6 | insert v7align |
+| --- | ---: | ---: |
+| **On the hand-off reset** | **26.32%** | **24.33%** |
+| Install chain, state | 76.74% | **69.10%** |
+| Install chain, oracle | 79.17% | **70.66%** |
+| Install chain, camera | 69.97% | **55.21%** |
+| Install chain, blind | 59.90% | **54.17%** |
+
+Reports: `evidence/grapple_insert_v6onhandoff_certification.json`,
+`grapple_insert_v7align_certification.json`,
+`workflow_install_insertalign_certification.json`, and the three
+`vision_workflow_*_insertalign_certification.json`.
+
+**Training on a distribution made the policy worse on that distribution**, which
+is the shape of a mis-specified task rather than an insufficient budget. The
+reward trajectory agrees: it fell from +24.91 on the old reset to −1.93 on the
+first recorded epoch of the new one and then oscillated between −0.74 and −4.66
+for 900 epochs without trend. This is not the capture-fine-tune situation, where
+reward was still climbing steeply when the budget ran out. It had converged.
+
+**And the control is what identifies the fault.** Insert v6 succeeds in roughly
+80% of the chain's insert phases — 442 of 576 workflows complete, and 184 of 192
+reach insert. The *same policy* on the pose bank scores 26.32%. Those are
+supposed to be the same states. They are not, and the bank is the thing that is
+wrong:
+
+> The reset samples an arm pose from the bank and then places the module at its
+> **fixed** nominal pose. In the chain the module sits where the capture left it,
+> and the arm sits where the capture servoed it *to reach that module*. Sampling
+> one without the other reproduces neither.
+
+So the pose bank fixed one broken correlation and introduced another. The
+per-joint noise box broke arm-against-module by randomising the arm; the pose
+bank breaks it by randomising the arm against a module that did not move with it.
+Both produce grip geometries the chain never generates, which is why one scored
+0.00% and the other 26.32% where the real hand-off gets 80%.
+
+**The fix is named and it is small.** `HANDOFF_TRACE_FIELDS` already records the
+module's position; it needs its orientation as well, and the reset needs to write
+the arm pose and the module pose **as a matched pair drawn from the same recorded
+hand-off**, rather than sampling one and defaulting the other. That is a change
+to `run_workflow_demo.py`, `build_handoff_pose_bank.py` and one event term, and
+it should be measured the same way: insert v6 unchanged on the paired bank should
+score near the 80% it achieves in the chain *before* anything is retrained. **If
+it does not, the bank is still not the hand-off and no amount of PPO will fix
+it.** That check costs five minutes and would have caught this one.
+
+**What is promoted: nothing.** Capture v5 with insert v6 remains the best measured
+installation chain at 84.38%, and it is what `certify_workflow.sh` and
+`certify_vision_workflow.sh` still default to. Neither capture v6align nor insert
+v7align is promoted, and both stay in the record because the measurements are the
+result.
+
 **What this does not license.** Reverting to capture v5 would buy the chain back
 8 points and restore the vision margin, and it would be the wrong move: v5 leaves
 39 capture overruns and the criterion mismatch that caused them, and a chain
