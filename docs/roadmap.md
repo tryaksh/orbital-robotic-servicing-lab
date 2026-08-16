@@ -21,9 +21,24 @@ worse than a smaller one that works. So the order is fixed:
    at 80.38%. Diagnosed: 77 of its 113 failures are captures overrunning their
    budget, caused by the skill certifying on 20 mm of grip error while the chain
    waits for 10 mm. Being retrained against the aligned criterion now.
-2. **Make removal work in the chain.** Extract certifies at 68.36% alone and the
-   chained removal at 14.06%. This is the single highest-value piece of work in
+2. **Make removal work in the chain.** Extraction under the criterion the chain
+   actually enforces is **0.00%**, and the 68.36% this line used to quote is
+   retracted: it was certified an hour before the settled-enough velocity limits
+   were derived, and zero of its 6,156 counted successes satisfy the limit now in
+   the code, the best of them by a factor of 3.1. The chained removal's 14.06%
+   inherits the same defect. This is the single highest-value piece of work in
    the project and it is the gate on everything below.
+
+   **The experiment is named and its precondition is checked.** Nothing in the
+   extract objective pays the policy to arrive settled — velocity enters only
+   through a sparse terminal predicate — which is why extract v10 trained to a
+   *higher* reward than its predecessors and certified at 0.00%, losing the grip
+   in 8,988 of 9,010 episodes by pulling through the line at speed. Add a dense
+   terminal-velocity term reading the derived limits, and fine-tune. Unlike the
+   force-shaping work this repository already recorded as a failure, the policy
+   **can** perceive what it is being asked to regulate: `blade_velocity` is
+   already in the extract observation, so no dimension changes and a checkpoint
+   can be resumed.
 3. **Only then, two slots.** Second slot geometry, a real lateral transit, and
    insertion retrained for a second goal pose.
 
