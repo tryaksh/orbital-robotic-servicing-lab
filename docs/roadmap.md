@@ -18,9 +18,26 @@ time, and a flagship demonstration that fails more often than it succeeds is
 worse than a smaller one that works. So the order is fixed:
 
 1. **Close the installation chain.** Capture + insert, camera in the loop, sits
-   at 80.38%. Diagnosed: 77 of its 113 failures are captures overrunning their
-   budget, caused by the skill certifying on 20 mm of grip error while the chain
-   waits for 10 mm. Being retrained against the aligned criterion now.
+   at 80.38% and the state-based chain at 84.38%. **The bottleneck is now
+   measured and three fixes for it are refuted — read `docs/status.md` before
+   attempting a fourth.**
+
+   Insert scores 95.57% on its own reset and about **80%** on the states the
+   chain actually hands it. That gap is the whole chain shortfall, it was
+   invisible in every per-skill certification, and it predates every change made
+   to capture. `run_workflow_demo.py --handoff_trace` measures it.
+
+   Three resets were built to reproduce the hand-off, each gated by running
+   insert v6 *unchanged* on it: a per-joint noise box (0.00%), measured arm poses
+   with the module left nominal (26.32%), and measured arm **and** module poses
+   paired (47.17%). None reaches ~80%, so **a hand-off is not a pose.** The
+   chained driver also latches the holding closure at hand-over
+   (`TwoStageRobotiqAction.hold_latch`) and no training task sets it, so the
+   module is carried under a different gripper controller as well.
+
+   **Next: change the training loop, not the reset.** Train insert inside the
+   chain — run the capture, latch the grip, hand over to the policy being
+   trained. Every cheaper approximation is now measured and refuted.
 2. **Make removal work in the chain.** Extraction under the criterion the chain
    actually enforces is **0.00%**, and the 68.36% this line used to quote is
    retracted: it was certified an hour before the settled-enough velocity limits
@@ -29,16 +46,29 @@ worse than a smaller one that works. So the order is fixed:
    inherits the same defect. This is the single highest-value piece of work in
    the project and it is the gate on everything below.
 
-   **The experiment is named and its precondition is checked.** Nothing in the
-   extract objective pays the policy to arrive settled — velocity enters only
-   through a sparse terminal predicate — which is why extract v10 trained to a
-   *higher* reward than its predecessors and certified at 0.00%, losing the grip
-   in 8,988 of 9,010 episodes by pulling through the line at speed. Add a dense
-   terminal-velocity term reading the derived limits, and fine-tune. Unlike the
-   force-shaping work this repository already recorded as a failure, the policy
-   **can** perceive what it is being asked to regulate: `blade_velocity` is
-   already in the extract observation, so no dimension changes and a checkpoint
-   can be resumed.
+   **That experiment was run on 2026-08-16 and it is the most informative result
+   of the session.** `mdp.extraction_settling_penalty` charges residual module
+   velocity over the last 60 mm, reading the derived limits. It moved its target
+   hard — terminal linear velocity 0.0685 → **0.0202 m/s**, and 31.2% of
+   extractions now satisfy a limit that **none** satisfied before — and it
+   certifies at 0.00%, because grip attitude went 0.108 → **0.354 rad** and 70.6%
+   of episodes now sit at the 0.350 rad failure limit against 1.8% before.
+
+   **Decelerating the module rotates it in the pads.** Stopping a 10 kg free body
+   needs a force, that force passes through a single-point wedge contact offset
+   from the centre of mass, and an offset force is a moment the pads cannot
+   oppose — their contact normals lie along the closing axis. Buying settled
+   velocity spends grip attitude. Cycle time was unchanged (7.27 → 7.47 s), so
+   this is not speed traded for anything else.
+
+   **This also explains why no passive feature could have worked.** The anti-yaw
+   yoke and the modelled latch both add geometry against a moment the load path
+   itself generates. **Do not build a third.**
+
+   The next step is roadmap item 7 — an action space that can command compliance.
+   This repository has now measured three times that a position-controlled action
+   space cannot convert a sensed quantity into the mechanical behaviour it
+   implies: once on contact force, once on attitude, and now on deceleration.
 3. **Only then, two slots.** Second slot geometry, a real lateral transit, and
    insertion retrained for a second goal pose.
 
