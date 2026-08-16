@@ -38,50 +38,34 @@ worse than a smaller one that works. So the order is fixed:
    **Next: change the training loop, not the reset.** Train insert inside the
    chain — run the capture, latch the grip, hand over to the policy being
    trained. Every cheaper approximation is now measured and refuted.
-2. **Make removal work in the chain.** Extraction under the criterion the chain
-   actually enforces is **0.00%**, and the 68.36% this line used to quote is
-   retracted: it was certified an hour before the settled-enough velocity limits
-   were derived, and zero of its 6,156 counted successes satisfy the limit now in
-   the code, the best of them by a factor of 3.1. The chained removal's 14.06%
-   inherits the same defect. This is the single highest-value piece of work in
-   the project and it is the gate on everything below.
+2. ~~**Make removal work in the chain.**~~ **DONE 2026-08-16 — 98.78%, gate
+   passed**, 569 of 576 on three held-out seeds, zero instability.
+   `evidence/workflow_remove_retain_certification.json`.
 
-   **That experiment was run on 2026-08-16 and it is the most informative result
-   of the session.** `mdp.extraction_settling_penalty` charges residual module
-   velocity over the last 60 mm, reading the derived limits. It moved its target
-   hard — terminal linear velocity 0.0685 → **0.0202 m/s**, and 31.2% of
-   extractions now satisfy a limit that **none** satisfied before — and it
-   certifies at 0.00%, because grip attitude went 0.108 → **0.354 rad** and 70.6%
-   of episodes now sit at the 0.350 rad failure limit against 1.8% before.
+   Three fixes, in order, none sufficient alone and none mechanical: a dense
+   reward for arriving settled; raising `grip_retention_penalty`'s clamp, which
+   had been saturating at 0.325 rad while the policy parked at 0.3538 so attitude
+   cost nothing past the knee; and a third gripper command. The last is the one
+   that took the chain from 0.00% to 98.78% — the pads rest at 0.223 rad on the
+   wedge, both the capture and hold commands overdrive it, the drive saturates at
+   10 N·m, and a wedge turns closing force into thrust along the pull axis. Rails
+   absorb that; a module pulled free does not. **Capture gently, hold hard to
+   pull, retain gently once the part is free.**
 
-   **The wrist rotates, not the module, and the distinction is the result.** The
-   module ends up *straighter* (0.4521 → 0.3696 rad against its goal) and slower
-   (0.1398 → 0.1038 rad/s); the whole cost lands on the tool-relative-to-module
-   attitude. So the tempting reading — the interface cannot carry the moment that
-   stopping the payload requires — is **not supported**, because the payload is
-   fine. Cycle time was unchanged (7.27 → 7.47 s), so this is not speed traded
-   for anything else.
+   Extraction alone certifies at 68.62%, which understates it: 25% of its
+   episodes die on the first control step because the task resets the arm with up
+   to 0.040 rad of noise and places the module at a fixed pose, so the scripted
+   capture closes on nothing. Excluding those it is 92.21%, and the chain does not
+   inherit the defect. Fixing it is the next small job on this skill.
 
-   Whether the wrist *must* re-orient to brake through the wedge, or merely
-   learned to because nothing distinguishes the two, is unresolved. Decompose the
-   terminal wrist pose with `play.py --grip_axis_metrics` and the arm's joint
-   angles before training anything else against it — that is CPU-cheap and no
-   retrain can separate those readings.
-
-   **Still do not build a third interface feature.** The module the pin holds
-   comes out straighter under this reward, so the payload's attitude is not what
-   is failing.
-
-   The next step is roadmap item 7 — an action space that can command compliance.
-   This repository has now measured three times that a position-controlled action
-   space cannot convert a sensed quantity into the mechanical behaviour it
-   implies: once on contact force, once on attitude, and now on deceleration.
-3. **Only then, two slots.** Second slot geometry, a real lateral transit, and
+3. **Two slots — now the live work.** Second slot geometry, a real lateral transit, and
    insertion retrained for a second goal pose.
 
-**Do not start step 3 before step 2 certifies.** Building the scene first
-produces a demonstration that fails three times in four and invites exactly the
-reading the evidence does not deserve.
+Step 2 certified on 2026-08-16, so step 3 is open. The caution it replaces still
+applies to *how* to build it: a relocation is a product of four stages and chained
+numbers here have consistently landed below the product of their parts, so build
+and certify it in pieces rather than assembling the whole scene and measuring
+once.
 
 ## The current line of work, decided 2026-08-10
 
