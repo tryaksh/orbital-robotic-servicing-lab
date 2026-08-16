@@ -573,10 +573,30 @@ class ExtractRewardsCfg:
     # Free below 0.04 rad, normalised over 0.06, weighted 1.0: about 3.6 per
     # step at the success limit and 9.4 at 0.30, which is the same order as
     # progress rather than two orders below it.
+    # The clamp is raised because the default was switching this term off exactly
+    # where it was needed. Measured on extract v11settle: grip attitude sits at
+    # 0.3538 rad at the median, and with these parameters the penalty saturates
+    # at its 25.0 ceiling from about 0.325 rad. Above that there is **no
+    # gradient** -- 0.35 rad and 0.50 rad cost the same -- so the policy was free
+    # to give attitude away once past the knee, and it parked just beyond it.
+    #
+    # 60 keeps the term growing across the whole range an episode can reach: the
+    # extraction-failure limit is 0.35 rad, where the raw cost is 29.0, so
+    # nothing an episode can visit is saturated any more. It is not larger than
+    # that, because extract v7 showed an over-weighted attitude term makes
+    # standing still cheaper than pulling and cost the removal chain 11 points.
+    #
+    # Insertion keeps the 25.0 default along with the rest of its defaults,
+    # because insert v6's certification was produced under them.
     retention = RewTerm(
         func=mdp.grip_retention_penalty,
         weight=-0.50,
-        params={"free_rad": 0.04, "orientation_scale": 0.06, "orientation_weight": 1.0},
+        params={
+            "free_rad": 0.04,
+            "orientation_scale": 0.06,
+            "orientation_weight": 1.0,
+            "max_penalty": 60.0,
+        },
     )
     time = RewTerm(func=mdp.elapsed_time_penalty, weight=-0.10)
     # Nothing paid this policy to arrive settled. The success predicate asks for

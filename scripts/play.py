@@ -76,6 +76,17 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--anti_yaw_yoke",
+        action="store_true",
+        help=(
+            "Turn the anti-yaw walls on for this run. They are off by default because they were measured as a "
+            "net negative on 2026-08-15 -- but that was against a policy whose grip-attitude failure was split "
+            "evenly between the closing and transverse axes, and the yoke opposes only the closing one. A "
+            "policy whose failure has moved onto that axis is a different question, so the feature stays "
+            "testable rather than deleted."
+        ),
+    )
+    parser.add_argument(
         "--grip_axis_metrics",
         action="store_true",
         help=(
@@ -450,6 +461,11 @@ def main() -> dict[str, object]:
             ):
                 raise ValueError("--robustness_level is valid only for a robust or contact insertion task")
             env_cfg.configure_robustness(args.robustness_level)
+        if args.anti_yaw_yoke:
+            if not hasattr(env_cfg, "anti_yaw_yoke"):
+                raise ValueError("--anti_yaw_yoke is valid only for a grapple-pin task")
+            env_cfg.anti_yaw_yoke = True
+            env_cfg.scene.spare_blade.spawn.anti_yaw_yoke = True
             print(f"[INFO] Insertion robustness level: {args.robustness_level}")
         # Stress knobs must be applied after configure_robustness, which rebuilds
         # the event configuration and would otherwise discard them.

@@ -817,6 +817,7 @@ def grip_retention_penalty(
     free_rad: float = 0.08,
     orientation_scale: float = 0.15,
     orientation_weight: float = 0.25,
+    max_penalty: float = 25.0,
 ) -> torch.Tensor:
     """Penalize the grip drifting, without paying a policy to stand still.
 
@@ -834,7 +835,7 @@ def grip_retention_penalty(
     position, orientation = grapple_grip_error_metrics(env)
     position_excess = ((position - free_m) / 0.010).clamp_min(0.0)
     orientation_excess = ((orientation - free_rad) / orientation_scale).clamp_min(0.0)
-    return (position_excess.square() + orientation_weight * orientation_excess.square()).clamp(max=25.0)
+    return (position_excess.square() + orientation_weight * orientation_excess.square()).clamp(max=max_penalty)
 
 
 def reset_grapple_blade_pose(

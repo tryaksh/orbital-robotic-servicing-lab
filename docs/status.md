@@ -2146,6 +2146,78 @@ latch are both measured net negatives, and this result is a further argument
 against a third: the module the pin holds ends up *straighter* under the settling
 reward, so the payload's attitude is not what is failing.
 
+## The yoke re-refuted, and an objective that switched itself off
+
+Two follow-ups to the settling result, both cheap, and the second is the more
+useful thing found in this line of work.
+
+### The rotation is now on one axis, and the yoke still does nothing
+
+`play.py --grip_axis_metrics` on extract v11settle, stage 2, seed 1070:
+
+| Grip attitude component | p50 | p95 |
+| --- | ---: | ---: |
+| **Closing axis** | 0.0674 rad | **0.3575 rad** |
+| Transverse axis | 0.0443 rad | 0.1000 rad |
+| Approach axis | 0.0340 rad | 0.0777 rad |
+
+Under extract v6 and v7 this was split almost evenly — 0.198 closing against
+0.199 transverse — and that split is exactly why the anti-yaw yoke was recorded
+as aimed at half the problem. **It is no longer split.** The settling reward has
+concentrated the failure onto the closing axis, which is the one the yoke's walls
+oppose, so the measurement that retired the yoke was made under a premise that no
+longer holds and had to be redone.
+
+Redone, zero-shot, the same policy with the walls on (`play.py --anti_yaw_yoke`,
+added for this):
+
+| | No yoke | Yoke on |
+| --- | ---: | ---: |
+| Closing-axis attitude p95 | 0.3575 rad | **0.3590 rad** |
+| Transverse p95 | 0.1000 rad | 0.0934 rad |
+| Success | 0.00% | 0.00% |
+
+**The yoke moves the axis it was designed for by 0.0015 rad, which is nothing.**
+This is a stronger refutation than the original one, because it removes the only
+excuse the original left: the feature is now being tested against a failure that
+sits squarely on its axis and it still does not bite. The reason is already on
+this page — geometry predicts 0.125 rad of free yaw from the wall clearance and
+the interface delivers 0.28 to 0.36, so the compliance is the pads camming open
+under load, not the gap between the walls. **No passive geometry addresses a
+compliance that lives in the drive.**
+
+### The attitude penalty saturates exactly where the policy sits
+
+`grip_retention_penalty` clamps its output at 25.0. With the parameters
+extraction uses — free below 0.04 rad, normalised over 0.06, orientation
+weighted 1.0 — that ceiling is reached at about **0.325 rad**:
+
+| Grip attitude | Raw cost | Charged |
+| ---: | ---: | ---: |
+| 0.200 rad | 9.39 | 9.39 |
+| 0.300 rad | 21.06 | 21.06 |
+| 0.325 rad | 24.84 | 24.84 |
+| **0.354 rad** | 29.63 | **25.00 — saturated** |
+| 0.500 rad | 61.06 | **25.00 — saturated** |
+
+**Extract v11settle sits at 0.3538 rad, just past the knee.** Above 0.325 the
+term has no gradient at all: 0.35 rad and 0.50 rad cost the policy exactly the
+same, so once past that point attitude is free and the only thing still charging
+is the settling term it was trying to satisfy. The policy did not fail to control
+attitude; it was optimising an objective that stopped asking.
+
+That is the same class of defect as every other one found in this task — the 15 s
+episode, the attitude weight two orders of magnitude below progress, the 20 mm
+capture tolerance against a 10 mm hand-off. A number, chosen once for a different
+purpose, quietly deciding what the policy is allowed to learn.
+
+The clamp is now a parameter, default 25.0 so **insertion is untouched and insert
+v6's certification still describes its task**, and extraction sets 60.0 — enough
+that nothing an episode can reach is saturated, since the raw cost at the 0.350
+rad failure limit is 29.0. It is deliberately not larger: extract v7 showed an
+over-weighted attitude term makes standing still cheaper than pulling and cost
+the removal chain 11 points.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
