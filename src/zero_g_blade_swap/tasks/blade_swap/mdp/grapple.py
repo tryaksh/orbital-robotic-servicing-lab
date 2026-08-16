@@ -395,6 +395,25 @@ class TwoStageRobotiqAction(RobotiqBinaryAction):
         #: is exactly one. Nothing in a training task sets this, so every trained
         #: policy still sees the behaviour its certification was produced under.
         self.hold_latch = torch.zeros((self.num_envs, 1), dtype=torch.bool, device=self.device)
+        #: Per environment: "the job is done, stop squeezing".
+        #:
+        #: Holding and *retaining* are as different as capturing and holding, and
+        #: for the same reason. Both the capture and hold commands drive far past
+        #: the 0.223 rad the pads come to rest at on the wedge, so the drive
+        #: saturates at its 10 N-m limit either way, and a wedge converts that
+        #: into thrust along the pull axis. On a railed module that is harmless
+        #: because the rails absorb it. On a module that has just been pulled
+        #: free it is a continuous push with nothing in zero gravity to oppose
+        #: it: traced through the chain's settling window, an extraction that
+        #: fires its predicate at 0.008 m/s accelerates monotonically to
+        #: 0.103 m/s over 0.70 s at a constant 10 N-m, with the grip never
+        #: slipping. That is why every chained removal this project has run has
+        #: fired its predicate and failed the re-check.
+        #:
+        #: ``retain_position`` sits just above the seated angle, so the pads stay
+        #: on the wedge and the drive is barely loaded. It takes priority over
+        #: the hold latch, and nothing in a training task sets it.
+        self.retain_latch = torch.zeros((self.num_envs, 1), dtype=torch.bool, device=self.device)
 
     def process_actions(self, actions: torch.Tensor) -> None:
         if actions.shape != self._raw_actions.shape:
@@ -405,20 +424,30 @@ class TwoStageRobotiqAction(RobotiqBinaryAction):
         closing = actions > self.cfg.threshold if self.cfg.close_on_positive else actions < self.cfg.threshold
         established = capture_established(self._env).unsqueeze(-1) | self.hold_latch
         target = torch.where(
-            closing & established,
-            torch.full_like(actions, self.cfg.hold_position),
+            closing & self.retain_latch,
+            torch.full_like(actions, self.cfg.retain_position),
             torch.where(
-                closing,
-                torch.full_like(actions, self.cfg.closed_position),
-                torch.full_like(actions, self.cfg.open_position),
+                closing & established,
+                torch.full_like(actions, self.cfg.hold_position),
+                torch.where(
+                    closing,
+                    torch.full_like(actions, self.cfg.closed_position),
+                    torch.full_like(actions, self.cfg.open_position),
+                ),
             ),
         )
         self._processed_actions.copy_(robotiq_2f85_coupled_targets(target))
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
         super().reset(env_ids)
-        # A new episode has not taken anything yet.
-        self.hold_latch[env_ids if env_ids is not None else slice(None)] = False
+        # A new episode has not taken anything yet, and has certainly not
+        # finished with it. Both latches must clear: leaving ``retain_latch`` set
+        # carries a finished episode's gentle closure into the next episode's
+        # capture, which measured as exactly half the workflows failing, because
+        # each environment's second episode began already relaxed.
+        ids = env_ids if env_ids is not None else slice(None)
+        self.hold_latch[ids] = False
+        self.retain_latch[ids] = False
 
 
 @configclass
@@ -429,6 +458,15 @@ class TwoStageRobotiqActionCfg(RobotiqBinaryActionCfg):
     #: Commanded once the grip is loaded. ``closed_position`` is the capture
     #: command, which is deliberately gentler.
     hold_position: float = 0.68
+    #: Commanded once a driver latches ``retain_latch``: enough to keep the pads
+    #: on the wedge, not enough to drive against it. The pads come to rest at
+    #: 0.223 rad on the wedge (``GRAPPLE_FINGER_SEATED_RAD``), so 0.25 leaves
+    #: 0.027 rad of overdrive against the 0.457 rad that ``hold_position``
+    #: applies, and the drive stops saturating.
+    #:
+    #: Defaults to ``hold_position``'s value so that a task which never sets
+    #: ``retain_latch`` -- which is every training task -- is bit-identical.
+    retain_position: float = 0.25
 
 
 def _hold_counter(env, name: str, active: torch.Tensor, hold_time_s: float) -> torch.Tensor:

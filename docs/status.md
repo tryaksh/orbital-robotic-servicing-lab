@@ -2256,6 +2256,108 @@ to learn: the 15 s episode, the attitude weight two orders below progress, the
 0.24 rad/s wrist against a 0.767 rad/s module, the 20 mm capture tolerance
 against a 10 mm hand-off, and now this.
 
+## The removal chain works: 98.78%, and the gripper was the problem all along
+
+**569 of 576 chained removals on three held-out seeds, Wilson 95% [97.51%,
+99.41%], consistent at 98.44% / 99.48% / 98.44%, zero instability and zero
+non-finite terminations. The promotion gate passes.** Report:
+`evidence/workflow_remove_retain_certification.json`, verified with
+`check_evidence_currency.py`.
+
+This is the first working removal in the project's history. Every previous
+attempt scored 0.00%, 3.30% or the retracted 14.06%.
+
+### The chain never failed at extraction
+
+The last diagnosis before this one had 570 of 576 removals **firing their success
+predicate** — clear of the rack, gripped, and settled under the derived velocity
+limits for 0.30 s — and **none** surviving the 0.70 s re-check. `--handoff_trace`
+records that window, and nothing in this project had ever looked inside it:
+
+| Time since the predicate fired | Linear velocity | Drive torque | Grip error |
+| ---: | ---: | ---: | ---: |
+| 0.000 s | **0.0081 m/s** | 10.0 N·m | 14.8 mm |
+| 0.133 s | 0.0466 m/s | 10.0 N·m | 14.6 mm |
+| 0.300 s | 0.0789 m/s | 10.0 N·m | 14.4 mm |
+| 0.700 s | **0.1026 m/s** | 10.0 N·m | 14.0 mm |
+
+The module is genuinely settled when the extraction succeeds and accelerates
+monotonically to seven times the limit afterwards, while the drive sits at its
+full 10 N·m limit and the grip never slips — grip error is flat and even
+tightens. Nothing was wrong with the extraction. **The gripper was pushing the
+module away after it had been taken.**
+
+### Holding and retaining are two different commands
+
+The mechanism was already on this page, measured statically and never connected
+to the chain: *a wedge converts closing force into thrust along the pull axis*,
+which is why capture is commanded at 0.48 rad and not 0.68, and why raising the
+drive to its rated 24.96 N·m **lowered** axial capacity. The pads come to rest at
+0.223 rad on the wedge, so both the capture and hold commands overdrive it — 0.26
+and 0.46 rad past the stop — and the drive saturates either way. While the module
+is in its rails they absorb the thrust. Once it is pulled free, nothing in zero
+gravity does.
+
+So `TwoStageRobotiqAction` gains a third state. `retain_latch` commands
+`retain_position`, 0.25 rad, which leaves 0.027 rad of overdrive instead of
+0.457: enough to keep the pads on the wedge, not enough to drive against it. The
+driver latches it the moment a removal completes. Traced again:
+
+| | Hold latched (before) | **Retain latched** |
+| --- | ---: | ---: |
+| Drive torque through the window | 10.0 N·m | **1.53 N·m** |
+| Velocity when the predicate fires | 0.008 m/s | 0.008 m/s |
+| Velocity 0.70 s later | **0.103 m/s** | **0.008 m/s** |
+| Grip error 0.70 s later | 14.0 mm | 14.4 mm |
+| Survived the re-check | **0 of 570** | **569 of 576** |
+
+The grip error is unchanged, so the gentler closure does not risk the module: it
+stops pushing it without letting go. This is the same lesson the pull gate taught
+when capture and hold were split, extended by one state. **Capture gently, hold
+hard to pull, retain gently once the part is free.**
+
+One bug found on the way and worth recording, because it produced a plausible
+wrong answer: the first version did not clear `retain_latch` on reset, so each
+environment's *second* episode began already relaxed and the chain measured
+49.22% — almost exactly half, which is what two episodes per environment
+predicts. A latch that survives a reset is the same defect class as a reward
+potential that survives one.
+
+### What this took, in order, and why none of it works alone
+
+| Change | Extract alone | Removal chain |
+| --- | ---: | ---: |
+| Baseline, judged on the derived limits | 0.00% | 0.00% |
+| \+ settling reward (`extraction_settling_penalty`) | 0.00% | 0.00% |
+| \+ unsaturated attitude penalty (clamp 25 → 60) | **68.62%** | 0.00% |
+| \+ retain state after the pull | 68.62% | **98.78%** |
+
+The settling reward taught the policy to brake and cost it the grip attitude; the
+clamp let it keep the brake and recover the attitude; the retain state stopped
+the gripper undoing the result. Each was necessary and none was sufficient, and
+all three were objective or controller defects rather than anything mechanical.
+**No interface geometry was added.** The anti-yaw yoke and the modelled latch
+remain measured net negatives and are still off.
+
+### The standalone extract number understates the skill, and that is a task defect
+
+Extract v13unsat certifies at **68.62%** alone, which does not pass the 95% skill
+gate, while the chain that uses it reaches 98.78%. The reason is measured: **25%
+of extract episodes die on the first control step with the grip already lost**,
+identically across every policy version — 25.0% for v8, 25.3% for v11settle,
+25.1% for v13unsat — and stage-dependent at 2.2% / 24.2% / 49.0%.
+
+The extract task resets the arm with up to 0.040 rad of joint noise and then
+places the module at a **fixed** pose, so at the wider end the scripted capture
+closes on nothing. Excluding those, extraction succeeds **92.21%** of the time.
+The chain does not inherit the defect because its capture is a trained policy
+that servos onto the module and hands over only once grip error is inside 10 mm.
+
+Fixing it is the same pairing insight the insert hand-off work produced: place
+the module relative to the tool frame the reset actually achieved, rather than at
+a fixed pose. That would make the standalone number describe the skill instead of
+the reset.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300

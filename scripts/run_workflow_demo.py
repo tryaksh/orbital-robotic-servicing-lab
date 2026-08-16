@@ -773,6 +773,17 @@ class WorkflowDriver:
             if self.workflow == "remove":
                 self._finish(cleared, step)
                 self.predicate_fired[cleared] = True
+                # Stop squeezing the moment the module is out. Both the capture
+                # and hold commands drive far past the 0.223 rad the pads rest
+                # at on the wedge, so the drive saturates at 10 N-m and the
+                # wedge turns that into thrust along the pull axis. The rails
+                # absorb it while the module is railed; once it is free there is
+                # nothing in zero gravity to oppose it. Traced through the
+                # settling window, an extraction firing at 0.008 m/s reaches
+                # 0.103 m/s in 0.70 s at a constant 10 N-m with the grip never
+                # slipping -- which is why every chained removal here has fired
+                # its predicate and failed the re-check.
+                self.gripper.retain_latch[cleared] = True
             else:
                 self.phase[cleared] = TRANSIT
                 self.waypoint_read[cleared] = (self.waypoint_write[cleared] - 1).clamp_min(0)
