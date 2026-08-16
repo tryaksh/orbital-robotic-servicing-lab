@@ -785,6 +785,13 @@ class WorkflowDriver:
                 # its predicate and failed the re-check.
                 self.gripper.retain_latch[cleared] = True
             else:
+                # Same thrust, same reason, and this is the documented cause of
+                # the full round trip's failure: the grip degrades from 15 mm to
+                # 35 mm during the return "whatever speed it is flown at", which
+                # is the signature of a constant push rather than of inertia.
+                # The module is unconstrained for the whole transit, so retain
+                # through it and firm up again before it meets the rails.
+                self.gripper.retain_latch[cleared] = True
                 self.phase[cleared] = TRANSIT
                 self.waypoint_read[cleared] = (self.waypoint_write[cleared] - 1).clamp_min(0)
                 self.transit_started[cleared] = step
@@ -809,6 +816,10 @@ class WorkflowDriver:
             self.actions[ids, :3] = ((target - tool[ids]) / scale).clamp(-1.0, 1.0)
             self.actions[ids, 3:6] = 0.0
             arrived = transiting & (self.waypoint_read <= 0) & (blade_x >= TRANSIT_TARGET_BLADE_X - 0.005)
+            # Insertion drives the module back into its rails, so the grip has to
+            # carry contact again. Retaining through that is the failure the
+            # capture/hold split exists to prevent.
+            self.gripper.retain_latch[arrived] = False
             self.phase[arrived] = INSERT
 
         # --- insert -> seated --------------------------------------------------

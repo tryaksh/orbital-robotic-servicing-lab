@@ -21,15 +21,15 @@ changeout, and it is the first thing this project would build that is
 **The order is fixed and it is not the order it is tempting to build in:**
 
 1. **Close the installation chain.** Capture + insert, camera in the loop, sits
-   at 80.38%.
-2. **Make removal work in the chain.** This is the single highest-value piece of
-   work in the project and it gates everything after it.
-3. **Only then, two slots.**
+   at 80.38%. Still open; the bottleneck is measured and three fixes are refuted.
+2. ~~Make removal work in the chain.~~ **DONE, 2026-08-16: 98.78%, gate passed**
+   (`workflow_remove_retain_certification.json`). Step 3 is unblocked.
+3. **Two slots.** Now the live piece of work.
 
-**Do not start 3 before 2 certifies.** A relocation is a product of four stages
-and chained numbers here have consistently landed *below* the product of their
-parts. Built today it would fail more often than it succeeds, and a flagship
-demonstration that fails is worse than a smaller one that works.
+The gate on step 3 was the removal chain at 80% or better on three held-out
+seeds; it came in at 98.78% with zero instability. A relocation is still a
+product of four stages and chained numbers here have consistently landed *below*
+the product of their parts, so build it in pieces and certify each.
 
 ## Where things stand, in numbers
 
@@ -45,25 +45,28 @@ that configuration unless it says otherwise.
 | Capture | 96.10% | `grapple_grasp_v5_certification.json` |
 | Insert, on its own reset | 95.57% | `grapple_insert_v6_certification.json` |
 | **Insert, on the states the chain hands it** | **~80%** | derived from `workflow_install_final`; see step 1 |
-| ~~Extract, alone~~ | **retracted, see below** | `grapple_extract_v10_certification.json` is 0.00% |
+| Extract, alone | 68.62% | `grapple_extract_v13unsat_certification.json` — see the caveat in step 2 |
+| **Removal chain** | **98.78%** | `workflow_remove_retain_certification.json` — **gate passed** |
 | **Install chain, state-based** | **84.38%** | `workflow_install_final_certification.json` |
 | **Install chain, camera in the loop** | **80.38%** | `vision_workflow_camera_certification.json` |
 | Install chain, oracle control | 80.38% | `vision_workflow_oracle_certification.json` |
 | Install chain, **blind** control | **43.58%** | `vision_workflow_blind_certification.json` |
-| ~~Removal chain~~ | **retracted, see below** | — |
 | Module pose from 64x64 RGB | 1.75 mm mean, 4.35 mm p95 | `module_pose_head.json` |
 | Interface axial hold | 69 N against 66.4 N required | `grapple_pin_axial_pull_gate.json` |
 | Onboard compute, full stack | 0.73 ms on CPU, 2.2% of the period | `inference_budget.json` |
 
-**Every extraction and removal figure this project published is retracted.** They
+**Removal now works and the gate passes. The extraction and removal figures
+published *before 2026-08-16* are retracted.** They
 were all measured before the settled-enough velocity limits were derived and
 tightened on 2026-08-15 (commit `3851fa0`, 14:58) — extract v8's certification was
 written at 13:21, v9's at 14:46, and every removal chain run including the quoted
 14.06% predates it. Read against the limit now in the code, **0 of extract v8's
 6,156 counted successes qualifies**, and the fastest-settling of them is 3.1×
 over, so there are no borderline cases and this is arithmetic rather than an
-inference needing a re-run. Do not spend GPU re-confirming it. The only
-extraction ever measured under the current criterion is v10, at **0.00%**.
+inference needing a re-run — and it was subsequently confirmed by re-running the
+identical v8 checkpoint under current code, which scores **0.00%**
+(`grapple_extract_v8recert_certification.json`). Use that as the historical
+baseline; extract v13unsat at 68.62% is the current skill.
 
 **The vision result is the strong one and the blind arm is why.** Camera matching
 oracle proves nothing alone — it is equally consistent with a task that never
@@ -153,94 +156,68 @@ handover is capture's *standalone* terminal state; in the chain, hand-over fires
 at the 10 mm gate and a one-second seat follows, so v5 and v6 both deliver about
 12.5 mm. **Re-promote it once insert can take it.**
 
-## Step 2: make removal work — the highest-value work in the project
+## Step 2: removal — DONE, and how
 
-Extract certifies at **68.36% alone** and the chained removal at **14.06%**. The
-gap is not mysterious and the next session should not re-derive it.
+**98.78%**, 569 of 576 on three held-out seeds, Wilson 95% [97.51%, 99.41%], zero
+instability, gate passed. `evidence/workflow_remove_retain_certification.json`.
 
-**What is already known, so it is not re-litigated:**
+Three changes, in this order, none of them sufficient alone and none of them
+mechanical:
 
-- Extraction went 0.00% -> 10.09% -> 28.48% -> 68.36% through three fixes, none
-  of them mechanical: an episode shorter than the median success (15 s -> 25 s),
-  an attitude penalty two orders of magnitude below the progress term it
-  competed with, and an action space that could rotate the wrist at 0.24 rad/s
-  while the module rotated at up to 0.767 rad/s.
-- **Those three fixes are real but the 68.36% they add up to is not.** All three
-  were measured under the loose limits. See the retraction at the top.
-- **The "over-correction" recorded in the previous handover was not one, and
-  believing it is the trap.** That handover said the derived limits were too
-  strict for a working skill, because retraining against them gave 0.00%. The
-  arithmetic says otherwise: extract v8 never satisfied them either — 0 of its
-  6,156 counted successes does, the best by a factor of 3.1 — so v10's 0.00% was
-  the *first honest measurement* and the 68.36% it was compared against was the
-  artefact. `EXTRACTION_ANGULAR_VELOCITY_LIMIT` and
-  `EXTRACTION_LINEAR_VELOCITY_LIMIT` are derived, correct, and **must not be
-  loosened**; the gap they expose is simply larger than the record admitted.
-- **The retraction is now confirmed by measurement, not just arithmetic.** The
-  identical v8 checkpoint re-evaluated under current code scores **0.00%**
-  (`grapple_extract_v8recert_certification.json`), 8,990 of 9,005 ending on
-  `extraction_failed`. Use *that* as the extract baseline; v8's stored terminal
-  metrics are not a valid control for anything, because its successes terminated
-  the instant they satisfied the old v ≤ 0.10 limit while later runs go to
-  failure, so the two sample different moments.
-- **The fix is a reward, it was applied on 2026-08-16, and it is the most
-  informative result of that session.** `mdp.extraction_settling_penalty` reads
-  the derived limits, is zero below them, and ramps over the last 60 mm. Trained
-  at two weights, both ~9,000 held-out episodes under identical code:
+| Change | Extract alone | Removal chain |
+| --- | ---: | ---: |
+| Baseline, judged on the derived limits | 0.00% | 0.00% |
+| \+ `extraction_settling_penalty` | 0.00% | 0.00% |
+| \+ attitude penalty clamp 25 → 60 | **68.62%** | 0.00% |
+| \+ `retain_latch` after the pull | 68.62% | **98.78%** |
 
-  | settling weight | 0 | −0.5 | **−2.0** |
-  | --- | ---: | ---: | ---: |
-  | terminal linear velocity | 0.0961 | 0.2244 | **0.0202** m/s |
-  | **module** orientation error | 1.1728 | 1.5163 | **0.3696** rad |
-  | cycle time | 12.23 | 11.17 | **7.47** s |
-  | **grip** attitude | 0.0613 | 0.0861 | **0.3538** rad |
-  | success | 0.00% | 0.00% | 0.00% |
+- **Nothing paid the policy to arrive settled.** Velocity entered the objective
+  only through a sparse terminal predicate. The settling penalty reads the
+  derived limits, is zero below them, and ramps over the last 60 mm.
+- **The attitude penalty switched itself off.** `grip_retention_penalty` clamped
+  at 25.0, which with extraction's parameters saturates at ~0.325 rad — and the
+  policy parked at 0.3538, immediately past the knee, where 0.35 and 0.50 rad
+  cost the same. The clamp is now a parameter; insertion keeps 25.0.
+- **The gripper was pushing the module away after taking it.** 570 of 576
+  removals fired their predicate and none survived the 0.70 s re-check. Traced
+  through that window: velocity climbs 0.008 → 0.103 m/s at a constant 10 N·m
+  with the grip never slipping. The pads rest at 0.223 rad on the wedge, so both
+  the capture (0.48) and hold (0.68) commands overdrive it, the drive saturates,
+  and a wedge turns closing force into thrust along the pull axis. Rails absorb
+  that; a module pulled free does not.
 
-  **At −2.0 the extraction is better on everything about the payload and fails
-  only on the gripper** — 4.8× slower arrival, 3.2× straighter module, 1.6×
-  faster — and 70.6% of episodes end at the 0.350 rad grip-attitude limit.
-  **The wrist rotates, not the module. Do not read this as the pin failing**, and
-  do not build a third interface feature: the module the pin holds comes out
-  straighter under this reward.
+**Capture gently, hold hard to pull, retain gently once the part is free.**
+`retain_position` is 0.25 rad — 0.027 rad of overdrive instead of 0.457 — and
+drops the drive to 1.53 N·m. Grip error is unchanged at 14.4 mm, so it stops
+pushing without letting go.
 
-  **The response is not proportional** — −0.5 is worse than no penalty at all —
-  so the weight selects between qualitatively different policies rather than
-  tuning a trade. Do not expect intermediate weights to give intermediate results.
-- **The precondition that killed the force-shaping work is satisfied here, and it
-  was checked rather than assumed.** That work failed because a position-
-  controlled policy could not act on a force it could sense. Extraction is not in
-  that position: `blade_velocity` is already in the extract observation, the
-  action space directly commands the motion being regulated, and no dimension
-  changes — which is what makes a fine-tune legitimate rather than a retrain.
-- Two mechanical interface features were built against this and **both are
-  measured as net negatives**: the anti-yaw yoke (cost insertion 67 points to buy
-  extraction 0.13) and a modelled latch (jams the module in its rails,
-  collapsing travel from 458 mm to 25 mm). **Do not build a third.**
+**Two things to know before touching this:**
 
-**Do these three before training extraction again, in this order. The first two
-are CPU-cheap and both can invalidate the third.**
+- **`retain_latch` must clear on reset.** The first version did not, so each
+  environment's second episode began already relaxed and the chain measured
+  49.22% — almost exactly the half that two episodes per environment predicts.
+- **Extract's standalone 68.62% understates the skill and it is a task defect.**
+  25% of extract episodes die on the first control step with the grip already
+  lost, identically across every policy version (25.0 / 25.3 / 25.1%) and
+  stage-dependent (2.2 / 24.2 / 49.0%). The task resets the arm with up to 0.040
+  rad of joint noise and then places the module at a **fixed** pose, so at the
+  wider end the scripted capture closes on nothing. Excluding those, extraction
+  succeeds **92.21%**. The chain does not inherit it, because its capture is a
+  trained policy that servos onto the module. Fixing it means placing the module
+  relative to the tool frame the reset actually achieved — the same pairing
+  insight the insert hand-off work produced.
 
-1. **Sweep the axial hold against grip attitude** in `grasp_diagnostics.py`. The
-   69 N gate was only ever measured *at* the head-on attitude. Every extraction
-   above is failed at 0.35 rad of grip attitude while the module is straight,
-   still gripped at 19.1 of 30 mm, and arriving at a fifth of the speed — so
-   whether that criterion protects anything is unmeasured. **Do not move the
-   threshold; measure whether it is load-bearing.** If the hold survives 0.354
-   rad, the criterion is the thing to revisit and extraction may already be much
-   closer than 0.00% suggests.
-2. **Decompose the terminal wrist pose** with `play.py --grip_axis_metrics` and
-   the arm's joint angles at the end of the pull. This says whether the wrist
-   *must* re-orient to brake through the wedge or merely learned to. No training
-   run can separate those two.
-3. Only then retrain. The next lever is roadmap item 7, an action space that can
-   command compliance — measured three times now as the missing capability.
+**Do not build an interface feature.** The anti-yaw yoke was re-tested on
+2026-08-16 against a policy whose grip-attitude failure sits squarely on the
+closing axis it opposes (p95 0.3575 closing against 0.100 transverse) and it
+moved that axis by 0.0015 rad. Both it and the modelled latch remain measured net
+negatives and stay off. Removal was fixed entirely in the objective and the
+gripper command schedule.
 
-**Gate before moving on: the removal chain at 80% or better, three held-out
-seeds, `scripts/certify_workflow.sh remove`.**
+## Step 3: two slots, one module — UNBLOCKED, this is the live work
 
-## Step 3: two slots, one module
-
-Only after step 2. What this needs, none of which exists:
+Step 2 certified at 98.78% on 2026-08-16, so this is now the front of the queue.
+What it needs, none of which exists:
 
 - **A second slot.** New geometry, colliders, and a second insertion goal. The
   existing slot is defined in `assets.py`; a second one placed laterally beside
@@ -331,6 +308,10 @@ Only after step 2. What this needs, none of which exists:
   `nn/` checkpoint mtime, not from the log.
 - Keep `.deps`, logs, datasets, checkpoints, artifacts and videos out of Git.
 - Do not reintroduce the eight-phase swap task.
+- **The `full` round-trip workflow is broken and has never been certified.**
+  Probed 2026-08-16: all 128 episodes go non-finite by control step 10. This is
+  separate from the removal work, which is certified and healthy. Diagnose before
+  quoting anything from `--workflow full`.
 
 ## Where to read, by task
 
