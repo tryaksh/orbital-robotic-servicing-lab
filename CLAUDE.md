@@ -176,14 +176,36 @@ gap is not mysterious and the next session should not re-derive it.
   artefact. `EXTRACTION_ANGULAR_VELOCITY_LIMIT` and
   `EXTRACTION_LINEAR_VELOCITY_LIMIT` are derived, correct, and **must not be
   loosened**; the gap they expose is simply larger than the record admitted.
-- **The fix is a reward, and it was applied on 2026-08-16.** Nothing paid the
-  policy to arrive settled: velocity entered the objective only through a sparse
-  terminal predicate, so there was no gradient toward it anywhere in the pull.
-  The proof is v10's own profile — it trained to a *higher* reward than v8 (158.7
-  against 148.4) while losing the grip in 8,988 of 9,010 episodes, because a
-  progress term weighted 12 bought travel and nothing charged for arriving fast.
-  `mdp.extraction_settling_penalty` reads the derived limits, is zero below them,
-  and ramps over the last 60 mm. Driven by `scripts/run_extract_settling.sh`.
+- **The retraction is now confirmed by measurement, not just arithmetic.** The
+  identical v8 checkpoint re-evaluated under current code scores **0.00%**
+  (`grapple_extract_v8recert_certification.json`), 8,990 of 9,005 ending on
+  `extraction_failed`. Use *that* as the extract baseline; v8's stored terminal
+  metrics are not a valid control for anything, because its successes terminated
+  the instant they satisfied the old v ≤ 0.10 limit while later runs go to
+  failure, so the two sample different moments.
+- **The fix is a reward, it was applied on 2026-08-16, and it is the most
+  informative result of that session.** `mdp.extraction_settling_penalty` reads
+  the derived limits, is zero below them, and ramps over the last 60 mm. Trained
+  at two weights, both ~9,000 held-out episodes under identical code:
+
+  | settling weight | 0 | −0.5 | **−2.0** |
+  | --- | ---: | ---: | ---: |
+  | terminal linear velocity | 0.0961 | 0.2244 | **0.0202** m/s |
+  | **module** orientation error | 1.1728 | 1.5163 | **0.3696** rad |
+  | cycle time | 12.23 | 11.17 | **7.47** s |
+  | **grip** attitude | 0.0613 | 0.0861 | **0.3538** rad |
+  | success | 0.00% | 0.00% | 0.00% |
+
+  **At −2.0 the extraction is better on everything about the payload and fails
+  only on the gripper** — 4.8× slower arrival, 3.2× straighter module, 1.6×
+  faster — and 70.6% of episodes end at the 0.350 rad grip-attitude limit.
+  **The wrist rotates, not the module. Do not read this as the pin failing**, and
+  do not build a third interface feature: the module the pin holds comes out
+  straighter under this reward.
+
+  **The response is not proportional** — −0.5 is worse than no penalty at all —
+  so the weight selects between qualitatively different policies rather than
+  tuning a trade. Do not expect intermediate weights to give intermediate results.
 - **The precondition that killed the force-shaping work is satisfied here, and it
   was checked rather than assumed.** That work failed because a position-
   controlled policy could not act on a force it could sense. Extraction is not in
@@ -194,6 +216,24 @@ gap is not mysterious and the next session should not re-derive it.
   measured as net negatives**: the anti-yaw yoke (cost insertion 67 points to buy
   extraction 0.13) and a modelled latch (jams the module in its rails,
   collapsing travel from 458 mm to 25 mm). **Do not build a third.**
+
+**Do these three before training extraction again, in this order. The first two
+are CPU-cheap and both can invalidate the third.**
+
+1. **Sweep the axial hold against grip attitude** in `grasp_diagnostics.py`. The
+   69 N gate was only ever measured *at* the head-on attitude. Every extraction
+   above is failed at 0.35 rad of grip attitude while the module is straight,
+   still gripped at 19.1 of 30 mm, and arriving at a fifth of the speed — so
+   whether that criterion protects anything is unmeasured. **Do not move the
+   threshold; measure whether it is load-bearing.** If the hold survives 0.354
+   rad, the criterion is the thing to revisit and extraction may already be much
+   closer than 0.00% suggests.
+2. **Decompose the terminal wrist pose** with `play.py --grip_axis_metrics` and
+   the arm's joint angles at the end of the pull. This says whether the wrist
+   *must* re-orient to brake through the wedge or merely learned to. No training
+   run can separate those two.
+3. Only then retrain. The next lever is roadmap item 7, an action space that can
+   command compliance — measured three times now as the missing capability.
 
 **Gate before moving on: the removal chain at 80% or better, three held-out
 seeds, `scripts/certify_workflow.sh remove`.**
