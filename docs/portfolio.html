@@ -278,9 +278,9 @@
         <tbody>
           <tr><td>Capture the module</td><td class="num">9,026</td><td class="num">96.10%</td><td class="num">95.7 – 96.5</td></tr>
           <tr><td>Insert into the rack</td><td class="num">3,000</td><td class="num">95.57%</td><td class="num">94.8 – 96.2</td></tr>
-          <tr><td>Extract from the rack <em>(retracted — see below)</em></td><td class="num">9,010</td><td class="num">0.00%</td><td class="num">—</td></tr>
+          <tr><td>Extract from the rack</td><td class="num">9,011</td><td class="num">68.62%</td><td class="num">67.6 – 69.6</td></tr>
           <tr class="hi"><td>Install, chained end-to-end</td><td class="num">576</td><td class="num">84.38%</td><td class="num">81.2 – 87.1</td></tr>
-          <tr><td>Removal, chained end-to-end <em>(retracted — see below)</em></td><td class="num">576</td><td class="num">0.00%</td><td class="num">—</td></tr>
+          <tr class="hi"><td>Removal, chained end-to-end</td><td class="num">576</td><td class="num">98.78%</td><td class="num">97.5 – 99.4</td></tr>
         </tbody>
       </table>
     </div>
@@ -288,18 +288,28 @@
       <p class="note">
         Extraction is the hard one, and for a physical reason: it moves the module 495 mm <em>out</em> of
         all constraint, ending held only by a line contact on a taper. Insertion moves 167 mm <em>into</em>
-        rails whose lead-in flares do the alignment mechanically. Removal does not yet compose reliably
-        and that is stated rather than hidden.
+        rails whose lead-in flares do the alignment mechanically.
       </p>
       <p class="note">
-        <strong>Retraction, 2026-08-16.</strong> This table previously reported extraction at 68.36%.
-        That certification was written an hour before the criterion it is judged against was tightened:
-        a “removed” module must now be settled to 0.0143 m/s, derived from the 0.70 s the chain waits
-        before re-checking, rather than the 0.10 m/s that had been picked by hand. Re-read against the
-        limit now in force, <strong>zero</strong> of that run’s 6,156 counted successes qualify, and the
-        best of them is 3.1× over. The only extraction measured under the current criterion scores
-        0.00%. The removal chain figure below inherits the same defect. Both are left visible, because
-        a number that was wrong is part of the record.
+        <strong>Removal took three fixes and none of them was mechanical.</strong> Nothing in the reward
+        paid the arm to <em>stop</em>, only to travel. The penalty meant to protect the grip angle
+        saturated at exactly the angle the policy then parked at, so past that point it cost nothing.
+        And the gripper kept squeezing after the module was out: the pads rest at 0.223 rad on the
+        taper, both the capture and holding commands drive well past that, and a taper turns squeeze
+        into thrust along the pull axis. While the module is in its rails they absorb it; once it is
+        free, nothing in freefall does. Traced through the 0.7 s the system waits before re-checking,
+        a module that came out perfectly still accelerated to seven times the allowed drift — at full
+        motor torque, with the grip never slipping. So the schedule gained a third command:
+        <em>capture gently, hold hard to pull, retain gently once the part is free.</em>
+      </p>
+      <p class="note">
+        <strong>Removal works, as of 2026-08-16, and the number above replaced a wrong one.</strong>
+        This table previously reported extraction at 68.36% and removal at 14.06%. Both were measured
+        before the criterion was tightened: a “removed” module must be settled to 0.0143 m/s, derived
+        from the 0.70 s the chain waits before re-checking, rather than the 0.10 m/s picked by hand.
+        Against the real criterion those policies score <strong>zero</strong> — not one of 6,156
+        counted successes qualifies. The figures above are the rebuilt ones, and the chained removal
+        now clears its 95% promotion gate with zero instability across three held-out seeds.
       </p>
     </div>
   </section>
