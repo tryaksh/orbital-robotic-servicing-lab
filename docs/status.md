@@ -1717,6 +1717,109 @@ two axes and which the module itself does not share — the module stays straigh
 to 0.0043 rad. Fixing it is a workcell or a controller question, and the two
 interface features built against it are both measured as harmful.
 
+## Aligning capture worked, moved the bottleneck, and cost the chain 8 points
+
+The diagnosis was right, the fix did exactly what it was designed to do, and the
+chain got worse. All three parts of that sentence are measured.
+
+Capture certified at 96.10% alone while causing 68% of the installation chain's
+failures, because its success tolerance was 20 mm of grip error and the workflow
+refuses to hand over until 10 mm. `capture_success_mask` now defaults to
+`WORKFLOW_HANDOVER_GRIP_M` — read, not restated — and the episode went 6 s to
+10 s because reaching 10 mm takes longer than reaching 20. 800 PPO epochs
+fine-tuned from the v5 checkpoint at 512 environments, seed 70, one change.
+
+| | capture v5 | capture v6, aligned | Evidence |
+| --- | ---: | ---: | --- |
+| Capture alone | 96.10% | 95.87% | `grapple_grasp_v6_certification.json` |
+| **Install chain, state** | **84.38%** | **76.74%** | `workflow_install_aligned_certification.json` |
+| **Install chain, camera** | **80.38%** | **69.97%** | `vision_workflow_camera_aligned_certification.json` |
+| Install chain, **blind** control | 43.58% | **59.90%** | `vision_workflow_blind_aligned_certification.json` |
+
+**The intervention hit its target precisely.** Capture-phase overruns fell from
+39 of 576 chained installations to **1**. Nothing else in the chain was touched.
+
+**And the failures moved wholesale onto the next skill.** Insert-phase overruns
+rose from 43 to **129**, and they are now 129 of the chain's 134 failures:
+
+| Chain failures, of 576 | capture v5 | capture v6 |
+| --- | ---: | ---: |
+| Capture overran its budget | 39 | **1** |
+| Insert overran its budget | 43 | **129** |
+| Fired, then failed the 0.70 s re-check | 8 | 4 |
+| Total | 90 | 134 |
+
+This is the most repeated defect in this project, for the third time: **a skill
+trained across states its predecessor no longer produces.** Capture v6 hands over
+a 4.31 mm grip in 1.33 s; insert v6 was trained against the hand-off v5 produced
+and certified at 95.57% on it. Making the hand-off *better* moved it out of
+distribution, which is the same failure as the 0.0005 rad reset noise that made
+the first chained extract reverse into the rack, and the same failure the
+capture/insert tolerance mismatch was.
+
+**The blind arm moving is the second result and it is the more uncomfortable
+one.** The null control — no image, the module assumed to be exactly where the
+rack nominally presents it — improved from 43.58% to 59.90%. The margin that
+makes the vision claim mean anything therefore collapsed from **36.8 points to
+10.1**, and it collapsed from both ends at once. A capture that converges faster
+and tighter needs less information about where the module actually is, so
+sharpening capture partially substituted for perception. Nothing was retrained to
+flatter either arm; both run identical checkpoints through an identical
+observation term.
+
+**What this does not license.** Reverting to capture v5 would buy the chain back
+8 points and restore the vision margin, and it would be the wrong move: v5 leaves
+39 capture overruns and the criterion mismatch that caused them, and a chain
+propped up by a predecessor's sloppiness is not a chain. The stated fix is to
+retrain insert against the hand-off capture v6 actually produces, which is the
+same fix that has now worked twice.
+
+## The extract number this project has been quoting is stale
+
+`docs/status.md`, `docs/roadmap.md`, and `CLAUDE.md` all record extraction at
+**68.36%**. That figure was produced under a success criterion the code no longer
+contains, and under the current one it is not close to true.
+
+`grapple_extract_v8_certification.json` was written at 13:54 on 2026-08-15
+(commit `fde6947`). The extraction velocity limits were derived and tightened at
+14:58 the same day (commit `3851fa0`), from a chosen 0.30 rad/s and 0.10 m/s to a
+derived 0.1429 rad/s and 0.0143 m/s. The certification predates the change by an
+hour.
+
+Re-reading v8's own recorded terminal metrics against the limits now in the code:
+
+| Extract v8, 9,005 held-out episodes | p50 | p95 | Within the current limit |
+| --- | ---: | ---: | ---: |
+| Terminal linear velocity, successes | 0.0710 m/s | 0.0842 m/s | **0 of 6,156** |
+| Terminal angular velocity, successes | 0.1517 rad/s | 0.2025 rad/s | 36.3% |
+
+**Not one of the 6,156 episodes counted as a successful extraction would satisfy
+the linear velocity limit the predicate now enforces**, and the median exceeds it
+fivefold. The chain measured the same thing independently and it was read as a
+different problem at the time: with the derived limits in place, the removal
+chain run `remove_final` had 573 of 576 workflows time out in the extract phase
+with the predicate **never firing at all**, against `remove_scalefix` on the same
+checkpoint under the old limits, where it fired in 191 of 192.
+
+Two consequences, and the second matters more than the first.
+
+- **68.36% must not be quoted again without a re-run.** The honest current number
+  for extract under the criterion the chain enforces is unmeasured and the
+  evidence points at close to zero. Re-certifying v8 unchanged against the
+  present limits is the measurement, and it costs half an hour.
+- **The "over-correction" recorded in the handover was not one.** Extract v10 was
+  retrained against the derived limits and scored 0.00%, which was read as the
+  limits being too strict for a skill that had been working. Against this
+  arithmetic, v10 was the first honest measurement of a skill that had never
+  satisfied the chain's criterion, and the 68.36% it was compared against was the
+  artefact. The derived limits stay — they are what the settling window can
+  actually confirm — and the gap they expose is larger than the handover records.
+
+The experiment this points at is unchanged and now better motivated: **nothing in
+the extract reward pays the policy to arrive settled.** Velocity enters only
+through a sparse terminal predicate, so there is no gradient toward it at any
+point in the pull.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
@@ -1763,6 +1866,16 @@ Cumulative secured-grasp profiles:
   first interface in this project to form a real grip, but no policy has been
   certified on it: the three skills that were trained on it are deleted, and P2
   is where a policy goes back onto it.
+- **Extraction's 68.36% is stale and must not be quoted.** It was certified an
+  hour before the extraction velocity limits were derived and tightened, and
+  none of its 6,156 counted successes satisfies the linear limit now in the
+  code. See the section above. The current number is unmeasured.
+- Aligning capture to the chain's 10 mm hand-off removed 38 of 39 capture-phase
+  overruns and cost the installation chain 8 points, because insert v6 was
+  trained against the hand-off capture v5 produced. The camera arm fell to
+  69.97% and the blind control rose to 59.90%, so the vision margin fell from
+  36.8 points to 10.1. Insert has not yet been retrained against the new
+  hand-off.
 - The rotation that fails the grip-attitude tolerance is **not** yaw about the
   closing axis alone, and calling it that for three sessions cost two interface
   designs. Decomposed on 2026-08-15 it is 0.198 rad about the closing axis,
