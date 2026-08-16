@@ -2218,6 +2218,44 @@ rad failure limit is 29.0. It is deliberately not larger: extract v7 showed an
 over-weighted attitude term makes standing still cheaper than pulling and cost
 the removal chain 11 points.
 
+## Extraction works: the saturated penalty was the whole of it
+
+Extract v13unsat, 1,000 PPO epochs fine-tuned from v11settle at 512
+environments, seed 70, with one change — `grip_retention_penalty`'s clamp raised
+from 25.0 to 60.0 for the extract task, so the attitude term keeps a gradient
+across the whole range an episode can reach. Resumed from v11settle deliberately,
+so the braking behaviour that policy had already learned was kept and only the
+attitude gradient was added. Reward change, no dimension change.
+
+| Extract, judged on the derived settling limits | v8 | v11settle | **v13unsat** |
+| --- | ---: | ---: | ---: |
+| **Success** | **0.00%** | **0.00%** | **76.02%** |
+| Grip attitude p50 | 0.0613 rad | 0.3538 rad | **0.1253 rad** |
+| Terminal linear velocity p50 | 0.0961 m/s | 0.0202 m/s | **0.0090 m/s** |
+| Module orientation error p50 | 1.1728 rad | 0.3696 rad | 0.2939 rad |
+
+**This is the first extraction this project has ever certified against the
+criterion the chain enforces.** Both failure modes are satisfied at once for the
+first time: the module arrives at 0.0090 m/s against a 0.0143 limit *and* the
+grip holds at 0.125 rad against a 0.20 limit. Every earlier policy satisfied one
+and gave away the other — v8 held attitude and could not stop, v11settle stopped
+and gave away attitude.
+
+**The sequence matters, because no single change would have produced this.** The
+settling reward taught the policy to brake and cost it the grip; raising the
+clamp let it keep the brake and recover the grip. Neither works alone: v11settle
+with the old clamp is 0.00%, and the clamp change on a policy that had never
+learned to brake would have had nothing to preserve.
+
+**And the defect was a number, again.** The clamp was chosen once, for the
+insertion task, and it silently decided that a grip attitude of 0.35 rad and one
+of 0.50 rad were equally bad. The policy parked at 0.3538 — immediately past the
+point where the objective stopped charging it. That is the fifth time in this
+task that a constant chosen for one purpose has decided what a policy was allowed
+to learn: the 15 s episode, the attitude weight two orders below progress, the
+0.24 rad/s wrist against a 0.767 rad/s module, the 20 mm capture tolerance
+against a 10 mm hand-off, and now this.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
