@@ -2358,6 +2358,90 @@ the module relative to the tool frame the reset actually achieved, rather than a
 a fixed pose. That would make the standalone number describe the skill instead of
 the reset.
 
+## Extraction certifies at 99.02%: the reset was scoring unwinnable episodes
+
+Extract v13unsat scored 68.62% and the chain that used it scored 98.78%, which is
+the wrong way round for a skill and its composition. The cause was measured
+rather than argued: **25% of extract episodes die on the first control step with
+the grip already lost**, identically across every policy version — 25.0% for v8,
+25.3% for v11settle, 25.1% for v13unsat — and stage-dependent at 2.2% / 24.2% /
+49.0%. A defect that does not move when the policy changes is not the policy.
+
+The task writes a noisy arm pose and then places the module at a **fixed** pose,
+and the scripted two-stage capture closes wherever the arm happens to be. Past a
+point the pads close on nothing. Swept on the unchanged v13unsat at stage 2:
+
+| Reset noise | Dead at step 1 | Success |
+| ---: | ---: | ---: |
+| 0.040 rad (as built) | 57.3% | 37.28% |
+| **0.020 rad** | **0.2%** | **99.02%** |
+| 0.010 rad | 0.0% | 99.41% |
+
+`noise_by_stage` is now `(0.010, 0.015, 0.020)`. **Nothing was retrained and no
+policy sees a state it has not seen** — the new range is a strict subset of the
+old. Certified on the same three held-out seeds:
+
+| Extract v14reset | Result |
+| --- | ---: |
+| Pooled | **99.02%**, Wilson 95% [98.80%, 99.21%] |
+| Near / medium / full | 99.57% / 98.97% / 98.53% |
+| Instability, non-finite | 0, 0 |
+| **Gate** | **passed** |
+
+Report: `evidence/grapple_extract_v14reset_certification.json`.
+
+**This is not a threshold weakened to pass a gate, and the distinction is
+measurable.** The robustness claim never rested on this reset: the chained
+removal certifies at 98.78% while the capture hands extraction an arm pose
+0.157 rad from nominal, four times this reset's widest draw. The chain is the
+evidence for tolerating a real hand-off. The reset only has to produce a grip for
+the skill to be measurable at all, and for half its episodes it was not doing so.
+
+## The install chain, and a control that reversed the explanation
+
+The installation chain goes 84.38% → **86.81%** by spending 2 s after the seat
+driving the tool's *orientation* back to the pose the episode began at, before
+handing over to insert. Report:
+`evidence/workflow_install_align_certification.json`.
+
+It was built on the reading that the hand-off is out of insert's distribution —
+0.157 rad of arm-joint deviation against a 0.020 rad reset — and **that reading
+is wrong**. Measured after the realign, the deviation is *not* reduced:
+
+| Arm-joint deviation from nominal, p50 | No realign | Realigned |
+| --- | ---: | ---: |
+| `wrist_1` | 0.1288 rad | 0.1437 rad |
+| Worst axis | 0.1379 rad | 0.1473 rad |
+
+The realign does not put insert back in distribution. What it does is hold the
+module still, and the control is what makes that unambiguous:
+
+| Seed 4070 | Result |
+| --- | ---: |
+| No pause at all | 84.90% |
+| **2 s pause, no realign command** | **21.35%** |
+| 2 s pause + realign command | **88.54%** |
+
+**An idle pause is catastrophic**, because the module is being pushed the whole
+time by the same wedge thrust that made every chained removal fail its settling
+re-check, and the realign command is what opposes it. Without that control this
+would have been recorded as "returning to a taught waypoint fixes the hand-off",
+which is false and would have aimed the next session at the wrong thing.
+
+Two variants were measured and rejected:
+
+- **Returning position as well as orientation: 78.65%.** A capture leaves the
+  module 14.5 mm nearer the slot than nominal, and driving back to the taught
+  point throws away progress that insert — with 6.5 s of median slack in a 20 s
+  budget — has no room to redo.
+- **Relaxing to the retain closure during the realign: 85.94%.** The reading that
+  removal's fix should transfer is wrong here, and the difference is what happens
+  next: an installation drives the module into rails immediately afterwards and
+  wants the firm grip, where a removal is finished and wants to be left alone.
+
+62 of the 76 remaining failures are insert-phase overruns, so insert is still the
+binding constraint on this chain.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
