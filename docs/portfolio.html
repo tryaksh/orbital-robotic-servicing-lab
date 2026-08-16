@@ -278,17 +278,28 @@
         <tbody>
           <tr><td>Capture the module</td><td class="num">9,026</td><td class="num">96.10%</td><td class="num">95.7 – 96.5</td></tr>
           <tr><td>Insert into the rack</td><td class="num">3,000</td><td class="num">95.57%</td><td class="num">94.8 – 96.2</td></tr>
-          <tr><td>Extract from the rack</td><td class="num">9,011</td><td class="num">68.62%</td><td class="num">67.6 – 69.6</td></tr>
-          <tr class="hi"><td>Install, chained end-to-end</td><td class="num">576</td><td class="num">84.38%</td><td class="num">81.2 – 87.1</td></tr>
+          <tr><td>Extract from the rack</td><td class="num">9,005</td><td class="num">99.02%</td><td class="num">98.8 – 99.2</td></tr>
+          <tr class="hi"><td>Install, chained end-to-end</td><td class="num">576</td><td class="num">89.41%</td><td class="num">86.6 – 91.7</td></tr>
           <tr class="hi"><td>Removal, chained end-to-end</td><td class="num">576</td><td class="num">98.78%</td><td class="num">97.5 – 99.4</td></tr>
         </tbody>
       </table>
     </div>
     <div class="col">
       <p class="note">
-        Extraction is the hard one, and for a physical reason: it moves the module 495 mm <em>out</em> of
+        Extraction was the hard one, and for a physical reason: it moves the module 495 mm <em>out</em> of
         all constraint, ending held only by a line contact on a taper. Insertion moves 167 mm <em>into</em>
-        rails whose lead-in flares do the alignment mechanically.
+        rails whose lead-in flares do the alignment mechanically. Extraction went from 0% to 99% over
+        the four fixes below, and the last of them was not a policy change at all — a quarter of its
+        episodes were being scored from a reset that started with the grip already lost, so the number
+        was describing the reset rather than the skill.
+      </p>
+      <p class="note">
+        <strong>Installation is now the open one, at 89.41%</strong> against a 95% bar. The gap is the
+        insert phase, and it is a distribution problem rather than a control one: the skill scores
+        95.57% starting from its own reset and about 93% on the states a real capture hands it. Four
+        attempts to reproduce that hand-off as a set of starting poses scored 0%, 26% and 47%, because
+        a hand-off turns out to be a trajectory and a gripper-controller state, not a pose. It is
+        being trained inside the chain instead.
       </p>
       <p class="note">
         <strong>Removal took three fixes and none of them was mechanical.</strong> Nothing in the reward
@@ -310,6 +321,15 @@
         Against the real criterion those policies score <strong>zero</strong> — not one of 6,156
         counted successes qualifies. The figures above are the rebuilt ones, and the chained removal
         now clears its 95% promotion gate with zero instability across three held-out seeds.
+      </p>
+      <p class="note">
+        <strong>The install figure was replaced on 2026-08-16 for the same class of reason, and it is
+        worth being explicit about how often this happens.</strong> The table previously said 84.38%.
+        That report describes the identical two policies — the checkpoint hashes match — but it was
+        written 8.5 hours before the capture phase's time budget went from 6 s to 10 s, and captures
+        running out of clock were most of what it was measuring. Re-run against the code as it stands,
+        the same three held-out seeds give 89.41%. Nothing here is safe from this except checking a
+        report's timestamp against the history of the criterion it uses, every time.
       </p>
     </div>
   </section>

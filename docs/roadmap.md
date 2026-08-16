@@ -20,9 +20,14 @@ worse than a smaller one that works. So the order is fixed:
 **The plan is in `CLAUDE.md` and that is the authority.** Six items, each with a
 gate, in order:
 
-1. **Insert trained inside the chain.** Closes the install chain, 84.38% -> 95%.
-   The only remaining gap, and the only hard research item. Four attempts to
-   reproduce the hand-off as a reset distribution have failed, so train in place.
+1. **Insert trained inside the chain.** Closes the install chain, **89.41% ->
+   95%** (`workflow_install_promoted_certification.json`; the 84.38% this line
+   used to quote was certified 8.5 hours before the capture phase budget moved
+   from 6 s to 10 s and must not be reused). The only remaining gap, and the only
+   hard research item. Four attempts to reproduce the hand-off as a reset
+   distribution have failed, so train in place on
+   `Isaac-ZeroG-Blade-GrapplePin-InsertChain-v0`, whose hand-off is measured to
+   match the chain's column by column.
 2. **Second slot geometry** at y = -0.22 m. Reachability already verified.
 3. **Insert retrained for slot 2.**
 4. **Lateral transit**, waypoint-followed, with `retain_latch` set while the

@@ -2562,6 +2562,32 @@ the training distribution not the chain's, which is the exact defect the task
 exists to fix. `tests/test_chained_insert_contract.py` now asserts the
 termination set.
 
+### The premise of this work item was wrong by 10 points, and that changes what to do
+
+`CLAUDE.md` records the insert phase running at "~80%" inside the chain against
+95.57% alone, and calls that 15-point gap the one remaining problem. Both halves
+of that comparison are now measured directly rather than derived, and the gap is
+much smaller:
+
+| Insert, same checkpoint | Result |
+| --- | ---: |
+| On its own reset, certified | 95.57% |
+| On the reproduced hand-off, 576 episodes | 93.06% |
+| **In the real chain's insert phase, 576 episodes** | **90.45%** |
+| Derived figure this project has been quoting | ~80% |
+
+So the hand-off costs the skill about **2.5 points**, not 15, and the chain costs
+it about 5. **Training in the chain therefore has far less headroom than the plan
+assumed**, and the first 140 epochs say so: the per-episode success fraction in
+`summaries/` sits at 0.90–0.93 from the first tenth of the run and is flat, as
+are `retention`, `progress` and the total reward. A policy that already scores
+93% on a distribution does not have 5 points to gain from seeing more of it.
+
+That does not make the task wasted — it is the instrument that measured the
+premise, and the relocation chain in items 3 to 5 needs it. But it relocates the
+remaining gap from *where the skill starts* to *what the objective asks for*, and
+the failure breakdown below is what that looks like.
+
 ### What the remaining insert failures actually miss
 
 From the gate run's own condition breakdown, of the seven insert-phase overruns
