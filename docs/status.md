@@ -2038,27 +2038,44 @@ seed 70, one change. The precondition that killed the force-shaping work was
 checked first rather than assumed: `blade_velocity` is already in the extract
 observation, so the policy can perceive what it is asked to regulate.
 
-**It worked, on precisely what it targeted.**
+**A matched baseline had to be built first, and the first version of this section
+did not have one.** Extract v8's stored terminal metrics were recorded under the
+*old* predicate, so its successful episodes ended the instant they satisfied
+v ≤ 0.10 m/s while every v11settle episode runs to failure. Comparing the two
+compares sampling points as much as policies. The same checkpoint was therefore
+re-evaluated under the current code — `grapple_extract_v8recert_certification.json`
+— which also **confirms the retraction by measurement rather than arithmetic:
+extract v8, unchanged, scores 0.00%** against the 68.36% its own earlier report
+claims, with 8,990 of 9,005 episodes ending on `extraction_failed`.
 
-| Extract, 9,000+ held-out episodes | v8 | v11settle |
-| --- | ---: | ---: |
-| Terminal linear velocity p50 | 0.0685 m/s | **0.0202 m/s** |
-| Terminal angular velocity p50 | 0.1398 rad/s | 0.1038 rad/s |
-| Within the derived linear limit | **0.0%** | **31.2%** |
-| Within the derived angular limit | 36.3% | 68.6% |
-| Cycle time p50 | 7.27 s | 7.47 s |
+A weight of −0.5 was then trained identically, so the response could be measured
+rather than assumed. All three below are ~9,000 held-out episodes judged under
+identical code.
 
-A 3.4-fold reduction in arrival speed, and a third of extractions now satisfy a
-linear criterion that *none* satisfied before. Reports:
-`evidence/grapple_extract_v11settle_certification.json`.
+| Extract, settling weight | 0 (v8) | −0.5 | **−2.0** |
+| --- | ---: | ---: | ---: |
+| Terminal linear velocity p50 | 0.0961 m/s | 0.2244 | **0.0202** |
+| Terminal angular velocity p50 | 0.2212 rad/s | 0.3604 | **0.1038** |
+| **Module** orientation error p50 | 1.1728 rad | 1.5163 | **0.3696** |
+| Cycle time p50 | 12.23 s | 11.17 | **7.47** |
+| Within the derived linear limit | 18.5% | 18.4% | **31.2%** |
+| **Grip** attitude p50 | 0.0613 rad | 0.0861 | **0.3538** |
+| At or over the 0.350 rad attitude limit | 2.3% | 18.7% | **70.6%** |
+| Success | 0.00% | 0.00% | 0.00% |
 
-**And it certifies at 0.00%, because the failure moved.**
+**The response is not proportional, and that refutes the simple reading.** A
+quarter of the weight is not a quarter of the effect: it is *worse than no
+penalty at all* on velocity, module attitude and within-limit fraction. The
+weight is not tuning a trade along one axis, it is selecting between
+qualitatively different policies, and only one of the three settings found the
+fast, straight, slow-arriving one.
 
-| | v8 | v11settle |
-| --- | ---: | ---: |
-| Grip attitude p50 | 0.1077 rad | **0.3538 rad** |
-| Episodes at or over the 0.350 rad attitude limit | **1.8%** | **70.6%** |
-| Grip *position* p50 | 16.0 mm | 19.1 mm |
+**At −2.0 the extraction is better on everything about the payload and fails on
+the gripper.** Against no penalty: arrival speed 4.8× lower, module orientation
+error 3.2× lower, cycle time 1.6× shorter, and the fraction of episodes arriving
+inside the derived linear limit up from 18.5% to 31.2%. The single quantity that
+got worse is the tool's attitude *relative to the module*, and it is what ends
+9,010 of 9,011 episodes.
 
 Chained removal is 0.00% as well:
 `evidence/workflow_remove_settle_certification.json`. That run carries capture
@@ -2069,36 +2086,35 @@ those two numbers — checked against the recorded hashes, not assumed.
 **The wrist rotates, not the module — and getting that the right way round
 matters, because this project has already paid twice for naming a rotation
 before decomposing it.** The first draft of this section said the module rotates
-in the pads under deceleration. The measurement says the opposite:
+in the pads under deceleration, and reasoned from there that the interface cannot
+carry the moment stopping the payload requires. That is wrong. The module comes
+out *straighter* under the settling reward, by a factor of three, and slower.
+Every bit of the deterioration is in the **relative** pose between tool and
+module: the wrist ends 0.354 rad off the head-on attitude it is scored against.
 
-| | v8 | v11settle |
-| --- | ---: | ---: |
-| **Module** orientation error against its goal | 0.4521 rad | **0.3696 rad** |
-| **Grip** attitude, tool against module | 0.1077 rad | **0.3538 rad** |
-| Module terminal angular velocity | 0.1398 rad/s | **0.1038 rad/s** |
+That is the same decomposition this page already reaches from another direction —
+a straight module with a large grip attitude is the wrist rotating relative to it
+— and it means **the pin is not what is failing.**
 
-The module ends up **straighter and slower**. Every bit of the deterioration is
-in the *relative* pose between tool and module, which is the wrist ending 0.354
-rad off the head-on attitude it is scored against. That is the same decomposition
-this page already records from a different direction — a straight module with a
-large grip attitude is the wrist rotating relative to it — and it means the
-tempting explanation is wrong: **this is not the interface failing to carry a
-moment, because the payload it would have to carry the moment on is fine.**
+What is **not** established is why the wrist ends there. Two readings fit and
+this measurement does not separate them: the arm may have to re-orient to brake
+through the wedge without slipping, or it may simply have learned to, because
+nothing in the objective distinguishes braking from re-orienting. Deciding that
+needs the terminal wrist pose decomposed against the arm's own kinematics —
+`play.py --grip_axis_metrics` and the joint angles at the end of the pull — which
+is CPU-cheap and which no further training run can substitute for.
 
-What is established is narrower and still useful: paying for a settled arrival
-buys module velocity and costs wrist-to-module attitude, and the exchange is
-large in both directions. The evidence it is an exchange rather than a worse
-policy is that the two moved in opposite directions with everything else held
-still — same lineage, one reward term added, same episode length, grip
-*position* nearly unchanged, and cycle time 7.27 against 7.47 s, so it is not
-speed traded for anything.
-
-What is **not** established is why. Two readings fit and this measurement does
-not separate them: the arm may have to re-orient the wrist to apply a
-decelerating force through the wedge without slipping, or it may simply have
-learned to brake by rotating because nothing in the objective distinguishes the
-two. Deciding that needs the terminal wrist pose decomposed against the arm's own
-kinematics, not another training run.
+**And it raises a question about the criterion that must not be answered by
+moving it.** `extraction_failure` fails an episode at 0.35 rad of grip attitude.
+Under the settling reward the module is straight to 0.37 rad against its goal,
+still gripped at 19.1 mm of the 30 mm limit, and arriving at a fifth of the speed
+— and it is failed on the gripper's own orientation. Whether that is the right
+thing to fail on is a real question, because the 69 N axial hold this whole
+interface depends on was measured *at* the head-on attitude and there is no
+evidence it survives 0.354 rad of it. **The threshold stays where it is until
+that is measured on the pull gate.** Weakening a criterion to make a gate pass is
+exactly what this repository forbids, and the measurement that would settle it
+is a `grasp_diagnostics.py` sweep, not a judgement call.
 
 **What this makes of the removal problem.** Extraction has now been through an
 episode length, an attitude weighting, an action scale, two mechanical interface
@@ -2111,10 +2127,10 @@ pointed, and it is **not** an argument for another interface feature: the pin
 holds a module that stays straight. Two candidates, in order of what the evidence
 supports:
 
-- **A dose-response on the settling weight.** If the exchange is real it is
-  monotonic: a quarter of the weight should buy less velocity reduction and cost
-  proportionally less attitude. That converts "the two moved in opposite
-  directions" into a curve, and it is one training run.
+- **Measure the axial hold at 0.354 rad of grip attitude.** This decides whether
+  the criterion that fails every one of these extractions is protecting anything.
+  `grasp_diagnostics.py` already sweeps the pull gate; it needs the attitude as
+  an axis. Cheapest of the three and it gates the interpretation of the other two.
 - **Decompose the terminal wrist pose.** `play.py --grip_axis_metrics` already
   splits grip attitude into the gripper's own axes, and the arm's joint angles at
   the end of the pull say whether the wrist is re-orienting into a kinematically

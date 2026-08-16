@@ -592,7 +592,7 @@ class ExtractRewardsCfg:
     # is crossed and the only thing speed buys is the 0.10 per step of
     # elapsed_time_penalty saved. Decisive against that, and far below the
     # one-off success term.
-    settling = RewTerm(func=mdp.extraction_settling_penalty, weight=-0.5)
+    settling = RewTerm(func=mdp.extraction_settling_penalty, weight=-2.0)
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.003)
     failure = RewTerm(func=mdp.extraction_failure_reward, weight=-15.0)
 
