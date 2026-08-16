@@ -119,6 +119,16 @@ def _parser() -> argparse.ArgumentParser:
             "identical code path, so the difference between the arms is the estimator and nothing else."
         ),
     )
+    parser.add_argument(
+        "--module_mass_kg",
+        type=float,
+        default=None,
+        help=(
+            "Override the module's mass. The interface specification has to state a payload range, and "
+            "the earlier mass sweep was run on the fixed-joint task where mass is nearly vacuous. Held "
+            "by contact it is not: inertia levers the grip."
+        ),
+    )
     parser.add_argument("--steps", type=int, default=1200)
     parser.add_argument(
         "--num_envs",
@@ -800,6 +810,9 @@ def main() -> dict[str, object]:
             if not args.pose_head_checkpoint.is_file():
                 raise FileNotFoundError(args.pose_head_checkpoint)
             env_cfg.pose_head_checkpoint = str(args.pose_head_checkpoint.resolve())
+        if args.module_mass_kg is not None:
+            env_cfg.scene.spare_blade.spawn.mass_props.mass = args.module_mass_kg
+            print(f"[INFO] Module mass set to {args.module_mass_kg} kg")
         if args.oracle:
             # The control arm: the module pose comes from the simulator but
             # through the identical observation term, so the difference between

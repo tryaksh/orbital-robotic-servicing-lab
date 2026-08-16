@@ -1,0 +1,71 @@
+{
+  "status": "measured",
+  "title": "Onboard compute budget of the learned components",
+  "evidence_type": "simulation_compute_characterization",
+  "protocol": {
+    "control_period_ms": 33.333333333333336,
+    "control_rate_hz": 30,
+    "batch_size": 1,
+    "repeats": 500,
+    "parameters": {
+      "pose_head": 768454,
+      "skill_policy": 56455
+    },
+    "host": {
+      "platform": "Windows-10-10.0.26200-SP0",
+      "processor": "Intel64 Family 6 Model 198 Stepping 2, GenuineIntel"
+    },
+    "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+    "torch": "2.7.0+cu128"
+  },
+  "by_device": {
+    "cpu": {
+      "pose_head": {
+        "mean_ms": 0.6588447991525754,
+        "p50_ms": 0.6437000120058656,
+        "p99_ms": 0.8542999858036637,
+        "max_ms": 0.9925000194925815
+      },
+      "skill_policy": {
+        "mean_ms": 0.07047819986473769,
+        "p50_ms": 0.06940000457689166,
+        "p99_ms": 0.09630000567995012,
+        "max_ms": 0.22750001517124474
+      },
+      "combined": {
+        "mean_ms": 0.7293229990173131,
+        "p99_ms": 0.9505999914836138,
+        "fraction_of_control_period_mean": 0.02187968997051939,
+        "fraction_of_control_period_p99": 0.028517999744508412,
+        "closes_the_loop": true
+      }
+    },
+    "cuda:0": {
+      "pose_head": {
+        "mean_ms": 0.4630209996830672,
+        "p50_ms": 0.30169999809004366,
+        "p99_ms": 0.8538999827578664,
+        "max_ms": 0.9204999951180071
+      },
+      "skill_policy": {
+        "mean_ms": 0.08539379987632856,
+        "p50_ms": 0.08379999781027436,
+        "p99_ms": 0.11039999662898481,
+        "max_ms": 0.13210001634433866
+      },
+      "combined": {
+        "mean_ms": 0.5484147995593958,
+        "p99_ms": 0.9642999793868512,
+        "fraction_of_control_period_mean": 0.016452443986781872,
+        "fraction_of_control_period_p99": 0.028928999381605532,
+        "closes_the_loop": true
+      }
+    }
+  },
+  "interpretation": "Batch size one, because a flight system runs one arm. The CPU figure is the one that matters for a vehicle: a stack that needs a discrete GPU to close a 30 Hz loop is a different proposition from one that does not.",
+  "scope_and_limitations": [
+    "Learned components only. Sensor readout, image transport, the IK solve and actuator command are not included and on real hardware usually dominate.",
+    "Desktop hardware under a desktop OS, not a flight processor and not a real-time kernel.",
+    "Inference only. No memory-bandwidth contention from anything else running onboard."
+  ]
+}
