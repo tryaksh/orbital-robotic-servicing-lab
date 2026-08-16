@@ -54,16 +54,23 @@ worse than a smaller one that works. So the order is fixed:
    certifies at 0.00%, because grip attitude went 0.108 → **0.354 rad** and 70.6%
    of episodes now sit at the 0.350 rad failure limit against 1.8% before.
 
-   **Decelerating the module rotates it in the pads.** Stopping a 10 kg free body
-   needs a force, that force passes through a single-point wedge contact offset
-   from the centre of mass, and an offset force is a moment the pads cannot
-   oppose — their contact normals lie along the closing axis. Buying settled
-   velocity spends grip attitude. Cycle time was unchanged (7.27 → 7.47 s), so
-   this is not speed traded for anything else.
+   **The wrist rotates, not the module, and the distinction is the result.** The
+   module ends up *straighter* (0.4521 → 0.3696 rad against its goal) and slower
+   (0.1398 → 0.1038 rad/s); the whole cost lands on the tool-relative-to-module
+   attitude. So the tempting reading — the interface cannot carry the moment that
+   stopping the payload requires — is **not supported**, because the payload is
+   fine. Cycle time was unchanged (7.27 → 7.47 s), so this is not speed traded
+   for anything else.
 
-   **This also explains why no passive feature could have worked.** The anti-yaw
-   yoke and the modelled latch both add geometry against a moment the load path
-   itself generates. **Do not build a third.**
+   Whether the wrist *must* re-orient to brake through the wedge, or merely
+   learned to because nothing distinguishes the two, is unresolved. Decompose the
+   terminal wrist pose with `play.py --grip_axis_metrics` and the arm's joint
+   angles before training anything else against it — that is CPU-cheap and no
+   retrain can separate those readings.
+
+   **Still do not build a third interface feature.** The module the pin holds
+   comes out straighter under this reward, so the payload's attitude is not what
+   is failing.
 
    The next step is roadmap item 7 — an action space that can command compliance.
    This repository has now measured three times that a position-controlled action

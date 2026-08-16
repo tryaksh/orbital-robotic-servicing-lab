@@ -2066,47 +2066,69 @@ Chained removal is 0.00% as well:
 `remove_clock` run used, so extraction is the only thing that differs between
 those two numbers — checked against the recorded hashes, not assumed.
 
-**The module rotates in the pads when it is decelerated, and that is a
-mechanical statement rather than a tuning one.** Stopping a 10 kg free body
-requires a decelerating force, that force is transmitted through a single-point
-wedge contact offset from the module's centre of mass, and an offset force is a
-moment. This page already records why that moment cannot be resisted: the pads'
-contact normals lie along the closing axis, and a normal force cannot oppose a
-moment about its own direction.
+**The wrist rotates, not the module — and getting that the right way round
+matters, because this project has already paid twice for naming a rotation
+before decomposing it.** The first draft of this section said the module rotates
+in the pads under deceleration. The measurement says the opposite:
 
-The evidence that this is a trade and not simply a worse policy is that the two
-quantities moved in opposite directions by similar factors while everything else
-held still — same lineage, one reward term added, same episode length, grip
-*position* nearly unchanged, and cycle time unchanged at 7.27 against 7.47 s, so
-it is not speed traded for anything.
+| | v8 | v11settle |
+| --- | ---: | ---: |
+| **Module** orientation error against its goal | 0.4521 rad | **0.3696 rad** |
+| **Grip** attitude, tool against module | 0.1077 rad | **0.3538 rad** |
+| Module terminal angular velocity | 0.1398 rad/s | **0.1038 rad/s** |
+
+The module ends up **straighter and slower**. Every bit of the deterioration is
+in the *relative* pose between tool and module, which is the wrist ending 0.354
+rad off the head-on attitude it is scored against. That is the same decomposition
+this page already records from a different direction — a straight module with a
+large grip attitude is the wrist rotating relative to it — and it means the
+tempting explanation is wrong: **this is not the interface failing to carry a
+moment, because the payload it would have to carry the moment on is fine.**
+
+What is established is narrower and still useful: paying for a settled arrival
+buys module velocity and costs wrist-to-module attitude, and the exchange is
+large in both directions. The evidence it is an exchange rather than a worse
+policy is that the two moved in opposite directions with everything else held
+still — same lineage, one reward term added, same episode length, grip
+*position* nearly unchanged, and cycle time 7.27 against 7.47 s, so it is not
+speed traded for anything.
+
+What is **not** established is why. Two readings fit and this measurement does
+not separate them: the arm may have to re-orient the wrist to apply a
+decelerating force through the wedge without slipping, or it may simply have
+learned to brake by rotating because nothing in the objective distinguishes the
+two. Deciding that needs the terminal wrist pose decomposed against the arm's own
+kinematics, not another training run.
 
 **What this makes of the removal problem.** Extraction has now been through an
 episode length, an attitude weighting, an action scale, two mechanical interface
 features, and a settling reward. The settling reward is the first of those to
-move the quantity it aimed at by a large factor. What it exposes is that the
-module's residual *velocity* and its grip *attitude* are coupled through an
-interface that can carry force along one axis and no moment about another, so
-buying one spends the other. That is the same conclusion the yoke, the latch, and
-the grip-attitude decomposition each reached from a different direction, and it
-is now reached from the dynamics rather than from statics.
+move the quantity it aimed at by a large factor, and the cost landed on the
+wrist's attitude rather than on the payload.
 
-The honest reading is that **a single-point passive pin may not admit a settled
-extraction at all**, and the next experiment should test that rather than tune
-against it. Two candidates, in order of what the evidence supports:
+That points where this page's own "the wrist, not the module" section already
+pointed, and it is **not** an argument for another interface feature: the pin
+holds a module that stays straight. Two candidates, in order of what the evidence
+supports:
 
-- **A dose-response on the settling weight.** If the trade is real it is
-  monotonic: half the weight should buy half the velocity reduction and cost
+- **A dose-response on the settling weight.** If the exchange is real it is
+  monotonic: a quarter of the weight should buy less velocity reduction and cost
   proportionally less attitude. That converts "the two moved in opposite
   directions" into a curve, and it is one training run.
+- **Decompose the terminal wrist pose.** `play.py --grip_axis_metrics` already
+  splits grip attitude into the gripper's own axes, and the arm's joint angles at
+  the end of the pull say whether the wrist is re-orienting into a kinematically
+  awkward corner or braking deliberately. That is a CPU-cheap measurement and it
+  separates the two readings above, which no amount of retraining will.
 - **An action space that can command compliance.** This repository has now
   measured three times that a position-controlled action space cannot convert a
   sensed quantity into the mechanical behaviour that quantity implies — once on
   contact force, once on attitude, and now on deceleration. Roadmap item 7.
 
 **Do not build a third interface feature.** The anti-yaw yoke and the modelled
-latch are both measured net negatives, and this result explains why neither could
-have worked: both add passive geometry against a moment, and the moment is
-generated by the load path itself.
+latch are both measured net negatives, and this result is a further argument
+against a third: the module the pin holds ends up *straighter* under the settling
+reward, so the payload's attitude is not what is failing.
 
 ## Demonstration assets
 
