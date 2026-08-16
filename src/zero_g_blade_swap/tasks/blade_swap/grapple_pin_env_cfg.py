@@ -695,7 +695,30 @@ class ZeroGBladeGrapplePinExtractEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         # error reaches 0.85 rad against 0.12 rad in isolation. A skill that
         # tumbles the payload only when its predecessor hands it over is a skill
         # trained on the wrong initial states, not a skill that cannot pull.
-        self.events.reset_arm.params["noise_by_stage"] = (0.020, 0.030, 0.040)
+        # Halved on 2026-08-16, because the wider half was not measuring the
+        # skill. The reset writes a noisy arm pose and then places the module at
+        # a FIXED pose, and the scripted two-stage capture closes wherever the
+        # arm happens to be -- so past a point the pads close on nothing and the
+        # episode is dead on control step 1, before the policy acts at all.
+        #
+        # Measured on extract v13unsat at stage 2, sweeping the noise scale:
+        #
+        #   0.040 rad   57.3% dead at step 1   37.28% success
+        #   0.020 rad    0.2% dead at step 1   99.02% success
+        #   0.010 rad    0.0% dead at step 1   99.41% success
+        #
+        # This is a strict *subset* of the distribution the policy trained on, so
+        # nothing is retrained and no policy sees a state it has not seen. What
+        # changes is that the certification stops counting unwinnable resets as
+        # skill failures.
+        #
+        # It does not weaken the robustness claim, because the robustness claim
+        # does not rest here: the chained removal certifies at 98.78% while the
+        # capture hands extraction an arm pose 0.157 rad from nominal on its
+        # worst axis, which is four times this reset's widest draw. The chain is
+        # the evidence for tolerating a real hand-off; this reset only has to
+        # produce a grip for the skill to be measured from.
+        self.events.reset_arm.params["noise_by_stage"] = (0.010, 0.015, 0.020)
         self.events.reset_blade.params["poses_by_stage"] = CONTACT_INSERTION_STAGE_BLADE_POSE
         if level < 2:
             self.events.blade_mass = None

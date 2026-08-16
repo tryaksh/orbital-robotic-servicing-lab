@@ -62,6 +62,22 @@ TRANSIT_WAYPOINT_STRIDE = 4
 #: before the pull starts. One second, which is what the pull gate needed to
 #: settle and what the extract task's own action term waits out.
 SEAT_STEPS = 30
+#: Control steps the install workflow spends driving the tool back to the pose it
+#: started the episode at, before handing over to the insert policy.
+#:
+#: The insert skill resets with the arm at the certified staging pose and the
+#: module at its nominal staging pose. A capture ends somewhere else -- measured
+#: over 576 chained installations, the arm sits 0.157 rad from nominal on its
+#: worst axis, almost all of it wrist_1, and the module 14.5 mm further out along
+#: x at the median with a p95 of 40 mm. The tool is on the pin either way, so the
+#: hand-off is well gripped and out of distribution at the same time, which is
+#: exactly the pairing that three reset reconstructions failed to reproduce.
+#:
+#: Rather than teach insert a distribution it has never needed, the chain returns
+#: to the taught pose. The module is gripped, so moving the tool moves both back
+#: together. This is a scripted segment like the seat and the transit, and it is
+#: what an industrial arm does between operations: return to a taught waypoint.
+ALIGN_STEPS = 60
 
 
 #: Phases, as integers, because the driver runs them per environment in parallel.
@@ -224,6 +240,7 @@ import numpy as np
 import torch
 from torch import nn
 
+from isaaclab.utils.math import axis_angle_from_quat, quat_inv, quat_mul
 from isaaclab_tasks.utils import parse_env_cfg
 
 import zero_g_blade_swap.tasks.blade_swap  # noqa: F401
@@ -553,6 +570,13 @@ class WorkflowDriver:
         self.arm = task.action_manager.get_term("arm")
         self.gripper = task.action_manager.get_term("gripper")
         self.actions = torch.zeros((count, task.action_manager.total_action_dim), device=device)
+        # The tool pose each episode starts from, which is the pose the insert
+        # skill's own reset places the arm at. Recorded on the first step rather
+        # than in reset_envs, because the reset callback runs while the previous
+        # episode's terminal state is still being harvested.
+        self.reset_tool_pos = torch.zeros((count, 3), device=device)
+        self.reset_tool_rot = torch.zeros((count, 4), device=device)
+        self.reset_tool_valid = torch.zeros(count, dtype=torch.bool, device=device)
         self.tracing = tracing
         self.handoff_rows: list[np.ndarray] = []
         self.settle_rows: list[np.ndarray] = []
@@ -581,6 +605,7 @@ class WorkflowDriver:
         self.waypoint_write[env_ids] = 0
         self.waypoint_read[env_ids] = 0
         self.frozen_valid[env_ids] = False
+        self.reset_tool_valid[env_ids] = False
 
     def _apply_scales(self) -> None:
         self.arm._scale[:] = self.scales[self.phase]
@@ -719,8 +744,13 @@ class WorkflowDriver:
 
         grip_error, grip_attitude = grapple_grip_error_metrics(task)
         established = capture_established(task)
-        tool = end_effector_pose_world(task)[0]
+        tool, tool_rot = end_effector_pose_world(task)
         blade_x = _blade_centre_x(task)
+        fresh = ~self.reset_tool_valid
+        if bool(fresh.any()):
+            self.reset_tool_pos[fresh] = tool[fresh]
+            self.reset_tool_rot[fresh] = tool_rot[fresh]
+            self.reset_tool_valid[fresh] = True
 
         # --- capture -> seat ------------------------------------------------
         # Hand over on the *next* skill's precondition, not this one's success
@@ -754,9 +784,28 @@ class WorkflowDriver:
         # pin sits at once it is home. Handing that shallow grip to extraction
         # lets the wedge cam the module round, and the attitude error grows from
         # 0.03 to 0.40 rad until the policy is out of distribution.
-        seated = (self.phase == SEAT) & (step >= self.seat_until)
-        if bool(seated.any()):
-            self.phase[seated] = INSERT if self.workflow == "install" else EXTRACT
+        # --- seat -> align (install) or extract -------------------------------
+        # Removal hands straight over: the extract skill is certified from this
+        # pose and the chain measures 98.78% doing so. Installation realigns
+        # first, for the reason ALIGN_STEPS documents.
+        if self.workflow == "remove":
+            seated = (self.phase == SEAT) & (step >= self.seat_until)
+            if bool(seated.any()):
+                self.phase[seated] = EXTRACT
+        else:
+            aligning = (self.phase == SEAT) & (step >= self.seat_until) & self.reset_tool_valid
+            if bool(aligning.any()):
+                ids = torch.nonzero(aligning, as_tuple=False).squeeze(-1)
+                scale = self.scales[INSERT]
+                position_error = self.reset_tool_pos[ids] - tool[ids]
+                rotation_error = axis_angle_from_quat(
+                    quat_mul(self.reset_tool_rot[ids], quat_inv(tool_rot[ids]))
+                )
+                self.actions[ids, :3] = (position_error / scale[:3]).clamp(-1.0, 1.0)
+                self.actions[ids, 3:6] = (rotation_error / scale[3:6]).clamp(-1.0, 1.0)
+            arrived = (self.phase == SEAT) & (step >= self.seat_until + ALIGN_STEPS)
+            if bool(arrived.any()):
+                self.phase[arrived] = INSERT
 
         # --- extract -> clear ------------------------------------------------
         extracting = self.phase == EXTRACT
@@ -1055,6 +1104,10 @@ def main() -> dict[str, object]:
         budget = sum(
             PHASE_BUDGET_S[index] * (args.transit_slowdown if index == TRANSIT else 1) for index in phases
         )
+        if args.workflow != "remove":
+            # The scripted realign runs inside the seat phase, so it is not in
+            # PHASE_BUDGET_S and has to be added to the episode explicitly.
+            budget += ALIGN_STEPS / 30.0
         env_cfg.episode_length_s = round(budget + SETTLE_STEPS / 30.0 + 1.0, 2)
         print(
             f"[INFO] {args.workflow}: phase budgets "
