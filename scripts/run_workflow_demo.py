@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import os
 import hashlib
 import json
 import traceback
@@ -78,6 +79,18 @@ SEAT_STEPS = 30
 #: together. This is a scripted segment like the seat and the transit, and it is
 #: what an industrial arm does between operations: return to a taught waypoint.
 ALIGN_STEPS = 60
+#: Control: spend the same steps holding still instead of realigning, so the
+#: gain can be attributed. An extra pause and an extra command are different
+#: interventions and this repository has been caught conflating them before.
+ALIGN_HOLD_ONLY = bool(int(os.environ.get("ALIGN_HOLD_ONLY", "0")))
+#: Relax to the retain closure while realigning. **Off, and measured**: the
+#: obvious reading of the removal result says the wedge should not be thrusting
+#: during a segment whose purpose is to stop the module moving, but on the same
+#: seed it scores 85.94% against 88.54% with the holding closure kept. The
+#: difference from removal is what happens next -- an installation drives the
+#: module back into rails immediately afterwards and wants the firm grip, where
+#: a removal is finished and wants to be left alone.
+ALIGN_RETAIN = bool(int(os.environ.get("ALIGN_RETAIN", "0")))
 
 
 #: Phases, as integers, because the driver runs them per environment in parallel.
@@ -796,15 +809,30 @@ class WorkflowDriver:
             aligning = (self.phase == SEAT) & (step >= self.seat_until) & self.reset_tool_valid
             if bool(aligning.any()):
                 ids = torch.nonzero(aligning, as_tuple=False).squeeze(-1)
+                # The pin is seated by now, so the holding closure is no longer
+                # buying anything and is actively pushing: the same wedge thrust
+                # that made every chained removal fail its settling re-check.
+                # Measured here as an idle 2 s pause costing 84.90% -> 21.35%.
+                if ALIGN_RETAIN:
+                    self.gripper.retain_latch[aligning] = True
                 scale = self.scales[INSERT]
-                position_error = self.reset_tool_pos[ids] - tool[ids]
-                rotation_error = axis_angle_from_quat(
-                    quat_mul(self.reset_tool_rot[ids], quat_inv(tool_rot[ids]))
-                )
-                self.actions[ids, :3] = (position_error / scale[:3]).clamp(-1.0, 1.0)
-                self.actions[ids, 3:6] = (rotation_error / scale[3:6]).clamp(-1.0, 1.0)
+                # Orientation only. Returning the *position* as well measured
+                # 78.65% against an 84.90% baseline on the same seed, because a
+                # capture leaves the module 14.5 mm nearer the slot than nominal
+                # and driving back to the taught point throws that progress away
+                # -- which insert, with 6.5 s of median slack in a 20 s budget,
+                # cannot afford to redo. The rotation is the part that is out of
+                # distribution: 0.157 rad at the median, almost all wrist_1.
+                if not ALIGN_HOLD_ONLY:
+                    rotation_error = axis_angle_from_quat(
+                        quat_mul(self.reset_tool_rot[ids], quat_inv(tool_rot[ids]))
+                    )
+                    self.actions[ids, 3:6] = (rotation_error / scale[3:6]).clamp(-1.0, 1.0)
             arrived = (self.phase == SEAT) & (step >= self.seat_until + ALIGN_STEPS)
             if bool(arrived.any()):
+                # Insertion drives the module into rails, so the grip has to
+                # carry contact again.
+                self.gripper.retain_latch[arrived] = False
                 self.phase[arrived] = INSERT
 
         # --- extract -> clear ------------------------------------------------
