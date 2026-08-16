@@ -2442,6 +2442,43 @@ Two variants were measured and rejected:
 62 of the 76 remaining failures are insert-phase overruns, so insert is still the
 binding constraint on this chain.
 
+### It is measured, and it is **not promoted**, because it trades the wrong way
+
+Re-certifying all three vision arms against it settles the question:
+
+| Arm | No realign | With realign |
+| --- | ---: | ---: |
+| Oracle | 80.38% | **86.63%** |
+| **Camera** | **80.38%** | **72.92%** |
+| Blind | 43.58% | 44.10% |
+
+The realign helps exactly where the module's pose is known and hurts where it is
+estimated. It drives the tool toward the orientation the *episode* started at,
+which assumes the module is where it nominally sits — true for the state chain,
+false for the vision profile, where the module is displaced by an amount only the
+camera reveals. Making it module-relative instead removes the harm and also
+removes the benefit: 84.90% on the state chain, which is the no-realign number to
+the digit, because the correction it then commands is small.
+
+So the benefit was never the alignment. `ALIGN_STEPS` defaults to **0**.
+
+**What is worth keeping is the 2 × 2 underneath it**, which is a property of the
+interface rather than of this intervention:
+
+| Seed 4070 | Holding closure | Retain closure |
+| --- | ---: | ---: |
+| **Idle 2 s pause** | **21.35%** | **68.75%** |
+| Align command | 88.54% | 85.94% |
+
+*(no pause at all: 84.90%)*
+
+**Idling while gripping is catastrophic, and the retain closure recovers most of
+it.** That is the same wedge thrust that made every chained removal fail its
+settling re-check, measured here from the opposite direction and on a different
+workflow. The operating rule it implies is general: **any phase that waits must
+either command or retain.** An arm that stops commanding while holding a module
+in zero gravity is not holding still, it is being pushed.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300

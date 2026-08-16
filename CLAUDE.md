@@ -48,7 +48,7 @@ failures.
 | **Insert, on the states the chain hands it** | **~80%** | derived from `workflow_install_final`; see step 1 |
 | **Extract** | **99.02%** | `grapple_extract_v14reset_certification.json` — **gate passed** |
 | **Removal chain** | **98.78%** | `workflow_remove_retain_certification.json` — **gate passed** |
-| **Install chain, state-based** | **86.81%** | `workflow_install_align_certification.json` |
+| **Install chain, state-based** | **84.38%** | `workflow_install_final_certification.json` |
 | **Install chain, camera in the loop** | **80.38%** | `vision_workflow_camera_certification.json` |
 | Install chain, oracle control | 80.38% | `vision_workflow_oracle_certification.json` |
 | Install chain, **blind** control | **43.58%** | `vision_workflow_blind_certification.json` |
@@ -253,6 +253,13 @@ What it needs, none of which exists:
   carried the insertion task's action scales for four sessions: 0.03 m/s lateral
   against 0.24 axial, correct for a module inside rails and wrong for one that
   ends free. No reward function fixes an authority ceiling.
+- **Any phase that waits must either command or retain.** An arm that stops
+  commanding while gripping a module in zero gravity is not holding still, it is
+  being pushed: the wedge turns closing force into thrust along the pull axis.
+  Measured twice, on two workflows, from opposite directions — every chained
+  removal fired its predicate and failed the 0.70 s re-check until the retain
+  closure was added (0/570 -> 569/576), and a 2 s idle pause in the install chain
+  costs 84.90% -> 21.35%, recovered to 68.75% by retaining.
 - **A reset distribution is a joint distribution, and marginals do not
   reconstruct it.** Two attempts to reproduce the chain's hand-off failed in
   opposite directions because each preserved one correlation and broke another:

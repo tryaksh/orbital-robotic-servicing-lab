@@ -78,7 +78,21 @@ SEAT_STEPS = 30
 #: to the taught pose. The module is gripped, so moving the tool moves both back
 #: together. This is a scripted segment like the seat and the transit, and it is
 #: what an industrial arm does between operations: return to a taught waypoint.
-ALIGN_STEPS = 60
+#: **Zero, and measured.** Turning this on trades the wrong way: +2.4 points on
+#: the state chain (84.38% -> 86.81%) against -7.5 on the camera arm (80.38% ->
+#: 72.92%), and the camera arm is the claim that matters. Kept because the 2x2
+#: below is the useful physics, and because a longer free-flight transit may want
+#: it. Set ALIGN_STEPS to re-enable.
+#:
+#:                       hold closure   retain closure
+#:      idle pause          21.35%          68.75%
+#:      align command       88.54%          85.94%
+#:      (no pause at all: 84.90%)
+#:
+#: Read the top row first: **idling while gripping is catastrophic**, because the
+#: wedge thrusts the module the whole time, and the retain closure recovers most
+#: of it. Any phase that waits must either command or retain.
+ALIGN_STEPS = int(os.environ.get("ALIGN_STEPS", "0"))
 #: Control: spend the same steps holding still instead of realigning, so the
 #: gain can be attributed. An extra pause and an extra command are different
 #: interventions and this repository has been caught conflating them before.
@@ -272,6 +286,7 @@ from zero_g_blade_swap.tasks.blade_swap.mdp.grapple import (
     WORKFLOW_SETTLE_S,
     capture_established,
     extraction_success_mask,
+    grapple_grip_attitude_error_world,
     grapple_grip_error_metrics,
     grapple_insertion_conditions,
     grapple_insertion_success_mask,
@@ -824,9 +839,19 @@ class WorkflowDriver:
                 # cannot afford to redo. The rotation is the part that is out of
                 # distribution: 0.157 rad at the median, almost all wrist_1.
                 if not ALIGN_HOLD_ONLY:
-                    rotation_error = axis_angle_from_quat(
-                        quat_mul(self.reset_tool_rot[ids], quat_inv(tool_rot[ids]))
-                    )
+                    # Module-relative, not episode-relative. Driving toward the
+                    # orientation the episode *started* at assumes the module is
+                    # where it nominally sits, which is true for the state chain
+                    # and false for the vision profile, where the module is
+                    # displaced by an amount only the camera reveals. Measured:
+                    # that version took the oracle arm 80.38% -> 86.63% and the
+                    # camera arm 80.38% -> 72.92%, which is the signature of a
+                    # correction that fights the displacement it cannot see.
+                    #
+                    # grapple_grip_attitude_error_world is the rotation between
+                    # the tool and the head-on capture attitude *of the module as
+                    # it actually is*, so it is right wherever the module is.
+                    rotation_error = grapple_grip_attitude_error_world(task)[ids]
                     self.actions[ids, 3:6] = (rotation_error / scale[3:6]).clamp(-1.0, 1.0)
             arrived = (self.phase == SEAT) & (step >= self.seat_until + ALIGN_STEPS)
             if bool(arrived.any()):
