@@ -52,7 +52,6 @@ from .contact_insertion_env_cfg import (
     ZeroGBladeContactInsertionEnvCfg,
 )
 from .env_cfg import ARM_JOINTS
-from .handoff_poses import INSERT_HANDOFF_ARM_POSES, INSERT_HANDOFF_MODULE_POSES
 from .insertion_env_cfg import ARM_CFG, GRIPPER_CFG, WRIST_CFG
 from .robust_insertion_env_cfg import configure_insertion_play_presentation
 from .scene_cfg import ZeroGGrapplePinSceneCfg
@@ -823,7 +822,9 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         #
         # mdp.reset_from_handoff_bank and handoff_poses.py stay implemented and
         # regenerable, because the measurements are the result. Enabling them
-        # means setting self.events.reset_handoff.
+        # means importing INSERT_HANDOFF_ARM_POSES and INSERT_HANDOFF_MODULE_POSES
+        # from .handoff_poses and setting self.events.reset_handoff to a
+        # reset_from_handoff_bank term carrying both.
         if level < 2:
             self.events.blade_mass = None
         if level < 3:
