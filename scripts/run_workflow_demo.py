@@ -146,7 +146,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--workflow",
-        choices=("remove", "install", "full"),
+        choices=("remove", "install", "full", "relocate"),
         default="install",
         help=(
             "remove: capture a fully installed module and pull it clear of the rack, both learned. "
@@ -328,7 +328,11 @@ from zero_g_blade_swap.tasks.blade_swap.workflow_demo_env_cfg import (
     TRANSIT_TARGET_BLADE_X,
 )
 from zero_g_blade_swap.checkpoint_policy import CheckpointPolicy
-from zero_g_blade_swap.grapple_geometry import EXTRACTED_BLADE_CENTRE_X
+from zero_g_blade_swap.grapple_geometry import (
+    EXTRACTED_BLADE_CENTRE_X,
+    TRANSIT_CLEAR_BLADE_CENTRE_X,
+)
+from zero_g_blade_swap.tasks.blade_swap.assets import SECOND_SLOT_CENTER_Y
 
 #: Held still after the workflow's own predicate fires, before the outcome is
 #: judged. A success that evaporates in two thirds of a second was not one.
@@ -773,7 +777,10 @@ class WorkflowDriver:
         # Removal hands straight over: the extract skill is certified from this
         # pose and the chain measures 98.78% doing so. Installation realigns
         # first, for the reason ALIGN_STEPS documents.
-        if self.workflow == "remove":
+        # Every workflow that begins by taking a module *out* hands the seat
+        # straight to extraction; only a pure installation starts with the module
+        # already at the mouth and goes to the insert phase.
+        if self.workflow in ("remove", "full", "relocate"):
             seated = (self.phase == SEAT) & (step >= self.seat_until)
             if bool(seated.any()):
                 self.phase[seated] = EXTRACT
@@ -852,8 +859,11 @@ class WorkflowDriver:
                 # through it and firm up again before it meets the rails.
                 self.gripper.retain_latch[cleared] = True
                 self.phase[cleared] = TRANSIT
-                self.waypoint_read[cleared] = (self.waypoint_write[cleared] - 1).clamp_min(0)
                 self.transit_started[cleared] = step
+                if self.workflow == "relocate":
+                    self._plan_lateral_transit(cleared, tool, blade_x)
+                else:
+                    self.waypoint_read[cleared] = (self.waypoint_write[cleared] - 1).clamp_min(0)
 
         # --- transit ---------------------------------------------------------
         # Scripted, and the only segment no policy drives: fly the tool back
@@ -935,6 +945,55 @@ class WorkflowDriver:
                 self._record_settle(settling, step)
         self.phase_started[self.phase != entry_phase] = step
         self._apply_scales()
+
+    def _plan_lateral_transit(self, mask: torch.Tensor, tool: torch.Tensor, blade_x: torch.Tensor) -> None:
+        """Lay out the path from the first bay to the second, three waypoints.
+
+        The removal transit replays the pull backwards, which is feasible by
+        construction because the arm has just flown it. A relocation has no such
+        path: nothing has ever been to the second bay. So it is planned, and the
+        only two numbers in it are derived rather than chosen.
+
+        *Retreat first.* Extraction stops the instant the module's rear face
+        clears the mouth, which is the right definition of "removed" and the
+        wrong place to turn: the lead-in flares stand proud of the mouth, so a
+        module that travels sideways from there drags its nose across the
+        neighbouring bay's flare. ``TRANSIT_RETREAT_M`` is how much further back
+        the module has to come for its front face to clear the flare plane, and
+        it comes out of the flare geometry at about 78 mm.
+
+        *Then across, then back in.* The final waypoint puts the module where the
+        insert skill expects to start, and the tool-to-module offset is *measured*
+        at this instant rather than assumed --- the module sits wherever the
+        capture and the pull have left it in the pads, and this whole project's
+        recurring defect is a constant restated instead of read.
+
+        Every leg is followed closed-loop on position, like the removal transit,
+        so a waypoint that is slightly off does not accumulate; and the module is
+        retained, not held, for all of it, because it is unconstrained the whole
+        way and a wedge under load is a thruster.
+        """
+
+        ids = torch.nonzero(mask, as_tuple=False).squeeze(-1)
+        if ids.numel() == 0:
+            return
+        # Measured now: where the tool sits relative to the module it is holding.
+        tool_to_blade_x = tool[ids, 0] - blade_x[ids]
+        retreat_x = TRANSIT_CLEAR_BLADE_CENTRE_X + tool_to_blade_x
+        staging_x = TRANSIT_TARGET_BLADE_X + tool_to_blade_x
+
+        back = tool[ids].clone()
+        back[:, 0] = retreat_x
+        across = back.clone()
+        across[:, 1] = back[:, 1] + SECOND_SLOT_CENTER_Y
+        approach = across.clone()
+        approach[:, 0] = staging_x
+
+        # Written in reverse, because the follower walks the buffer downwards.
+        self.waypoints[2, ids] = back
+        self.waypoints[1, ids] = across
+        self.waypoints[0, ids] = approach
+        self.waypoint_read[ids] = 2
 
     def _freeze(
         self,

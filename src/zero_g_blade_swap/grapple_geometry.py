@@ -80,6 +80,35 @@ SLOT_FLOOR_TOP_Z = 0.7025
 SLOT_LIP_BOTTOM_Z = 0.7385
 
 # ---------------------------------------------------------------------------
+# Moving a module sideways from one bay to the next.
+#
+# Extraction stops the instant the module's rear face clears the mouth, which is
+# the right definition of "removed" and the wrong place to turn. The lead-in
+# flares stand *proud* of the mouth: each is an 80 mm plate rotated 12 degrees
+# about z, centred at x = 0.41275, so it reaches to about x = 0.372. A module
+# whose front face is still past that will drag its nose across the neighbouring
+# bay's flare on the way across.
+#
+# So the module has to retreat past the flares before it can travel sideways,
+# and the distance is derived rather than chosen.
+FLARE_CENTER_X = 0.41275
+FLARE_PLATE_LENGTH_M = 0.080
+FLARE_PLATE_THICKNESS_M = 0.018
+#: Half-extent of a flare along x, including the 12-degree rotation.
+FLARE_HALF_EXTENT_X = 0.5 * (
+    FLARE_PLATE_LENGTH_M * 0.9781476  # cos(12 deg)
+    + FLARE_PLATE_THICKNESS_M * 0.2079117  # sin(12 deg)
+)
+#: Leading face of the flares: the plane a module must be fully behind before it
+#: can be moved to another bay.
+FLARE_LEADING_X = FLARE_CENTER_X - FLARE_HALF_EXTENT_X
+#: Module centre at which its front face sits on that plane.
+TRANSIT_CLEAR_BLADE_CENTRE_X = FLARE_LEADING_X - 0.5 * BLADE_LENGTH_M
+#: How much further back than the extraction target the module has to come
+#: before a lateral move is free of the rack. Positive, and about 80 mm.
+TRANSIT_RETREAT_M = EXTRACTED_BLADE_CENTRE_X - TRANSIT_CLEAR_BLADE_CENTRE_X
+
+# ---------------------------------------------------------------------------
 # The head-on grapple pin, in blade-local coordinates measured from the blade
 # centre. Sections run from the free end toward the blade and must be
 # contiguous; ``tests/test_grapple_geometry.py`` enforces that.

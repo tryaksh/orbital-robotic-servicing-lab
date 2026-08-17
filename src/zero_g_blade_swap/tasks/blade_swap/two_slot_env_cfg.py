@@ -41,6 +41,7 @@ from .assets import (
 from .grapple_pin_env_cfg import ExtractEventsCfg, ZeroGBladeGrapplePinInsertEnvCfg
 from .robust_insertion_env_cfg import configure_insertion_play_presentation
 from .scene_cfg import ZeroGTwoSlotGrapplePinSceneCfg
+from .workflow_demo_env_cfg import ZeroGBladeGrapplePinWorkflowEnvCfg
 
 #: The arm pose that stages a head-on insertion into the **second** bay.
 #:
@@ -53,7 +54,24 @@ from .scene_cfg import ZeroGTwoSlotGrapplePinSceneCfg
 #: which is `calibrate_grasp_pose.py` on the **Capture** task at 3,000 steps with
 #: `--target_offset 0 -0.22 0`. The report it writes is kept at
 #: `artifacts/relocation/slot_two_pose.json`.
-SECOND_SLOT_STAGING_ARM_JOINT_POS: tuple[float, ...] = ()
+#:
+#: Measured 2026-08-16: every stage converged, the full-distance one below to
+#: **0.0060 mm and 0.000011 rad**, holding the head-on capture attitude. The
+#: second bay is reachable with room to spare, which is what item 2's gate asked.
+#:
+#: One detail worth keeping, because it is the difference between "unreachable"
+#: and "seeded badly": the middle stage did not converge from the zero wrist seed
+#: and converged to 0.0070 mm from the -90 degree one. The calibrator sweeps four
+#: wrist seeds for exactly this reason, and a single-seed run would have reported
+#: a reachability failure that is not there.
+SECOND_SLOT_STAGING_ARM_JOINT_POS: tuple[float, ...] = (
+    -0.820182,
+    -1.560585,
+    2.204724,
+    2.497455,
+    -0.750621,
+    -1.570789,
+)
 
 #: Where the module is presented for an insertion into the second bay: the
 #: certified staging pose, displaced with the slot so the approach distance is
@@ -156,11 +174,57 @@ class ZeroGBladeGrapplePinInsertTwoSlotPlayEnvCfg(ZeroGBladeGrapplePinInsertTwoS
         configure_insertion_play_presentation(self)
 
 
+@configclass
+class RelocationCommandsCfg:
+    """The goal is the second bay, always.
+
+    Not a per-stage goal like the two-slot insert task: a relocation *starts* in
+    bay one and *finishes* in bay two, so the reset stage and the goal are about
+    different bays by definition and keying both off one index would be wrong.
+    """
+
+    insertion_goal = mdp.InsertionGoalCommandCfg(goal_pos=SECOND_SLOT_INSERTED_POS)
+
+
+@configclass
+class ZeroGBladeGrapplePinTwoSlotWorkflowEnvCfg(ZeroGBladeGrapplePinWorkflowEnvCfg):
+    """Capture, extract, cross to the next bay, and seat, in one episode.
+
+    The relocation: the deliverable this whole roadmap is for. Physics, robot,
+    pin and contacts are the workflow profile's; what changes is that the rack
+    has a second bay and the seated goal is in it.
+    """
+
+    scene: ZeroGTwoSlotGrapplePinSceneCfg = ZeroGTwoSlotGrapplePinSceneCfg(
+        num_envs=1,
+        env_spacing=2.6,
+        replicate_physics=True,
+        clone_in_fabric=True,
+    )
+    commands: RelocationCommandsCfg = RelocationCommandsCfg()
+    # Capture, the pull, a three-leg transit and the insertion, each on its own
+    # certified clock, plus the seating pause. Generous rather than tight: a
+    # demonstration that runs out of time mid-insertion is worse than one that
+    # idles at the end, and the per-phase budgets are what actually bound it.
+    episode_length_s: float = 90.0
+
+
+@configclass
+class ZeroGBladeGrapplePinTwoSlotWorkflowPlayEnvCfg(ZeroGBladeGrapplePinTwoSlotWorkflowEnvCfg):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.scene.num_envs = 1
+        configure_insertion_play_presentation(self)
+
+
 __all__ = [
+    "RelocationCommandsCfg",
     "SECOND_SLOT_STAGE_BLADE_POSE",
     "SECOND_SLOT_STAGING_ARM_JOINT_POS",
     "TwoSlotCommandsCfg",
     "TwoSlotCurriculumCfg",
     "ZeroGBladeGrapplePinInsertTwoSlotEnvCfg",
     "ZeroGBladeGrapplePinInsertTwoSlotPlayEnvCfg",
+    "ZeroGBladeGrapplePinTwoSlotWorkflowEnvCfg",
+    "ZeroGBladeGrapplePinTwoSlotWorkflowPlayEnvCfg",
 ]

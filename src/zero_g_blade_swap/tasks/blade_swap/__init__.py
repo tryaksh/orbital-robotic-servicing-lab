@@ -264,6 +264,28 @@ for _chain_id, _chain_cls in (
         },
     )
 
+# The second rack bay, and the relocation it makes possible. Separate
+# registrations, so the single-slot tasks and their certifications describe
+# unchanged scenes.
+for _two_slot_id, _two_slot_cls in (
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertTwoSlot-v0", "ZeroGBladeGrapplePinInsertTwoSlotEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertTwoSlot-Play-v0", "ZeroGBladeGrapplePinInsertTwoSlotPlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0", "ZeroGBladeGrapplePinTwoSlotWorkflowEnvCfg"),
+    (
+        "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-Play-v0",
+        "ZeroGBladeGrapplePinTwoSlotWorkflowPlayEnvCfg",
+    ),
+):
+    gym.register(
+        id=_two_slot_id,
+        entry_point=INSERTION_ENTRY_POINT,
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{__name__}.two_slot_env_cfg:{_two_slot_cls}",
+            "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+        },
+    )
+
 # One episode that runs capture, extraction, a scripted transit, and re-insertion
 # with the three trained checkpoints. Demonstration only: no curriculum, no
 # success termination, nothing to train against.
