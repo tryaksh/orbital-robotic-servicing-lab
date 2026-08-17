@@ -325,6 +325,27 @@ and returns the same answer.
   death rate before touching it.
 - **The eight-phase swap task.** Deleted; `tests/test_configuration_contract.py`
   fails if it returns.
+- **Rate-limiting the relocation transit's final leg.** Slowed to a third of
+  command, the way the replayed transit is slowed: module x went −0.003 → −0.158
+  and crossings fell 46 → 19, because the tool then lagged its own waypoint. The
+  module was never being driven too fast.
+- **Commanding the transit's attitude at full authority.** It holds the module
+  beautifully and starves translation — a 0.1–0.3 rad grip attitude error against a
+  0.020 rad rotation scale saturates the command permanently, and the tool sat at
+  the retreat waypoint 1,450 steps later. Bounded to a quarter
+  (`TRANSIT_ATTITUDE_AUTHORITY`) it works; unbounded it deadlocks.
+- **Reading the relocation transit's arrival in 3-D.** Each planned leg moves along
+  one axis and holding the module's attitude moves the tool off the other two: the
+  tool sat 1 mm from its waypoint in x and 53 mm away in 3-D, and the follower never
+  advanced. Per-axis is not a shortcut, it is the correct test.
+- **A relative lateral cross.** `back_y + SECOND_SLOT_CENTER_Y` carries the ~93 mm
+  of lateral drift capture and extraction leave into the second bay, whose channel
+  half-width is 72.5 mm. Target the bay in the rack's frame; the same applies to the
+  arrival test, which passed while the module sat outside the channel.
+- **Trusting a single-seed vision sweep.** The two-bay arms at seed 4070 alone read
+  camera 84.90% against oracle 90.63% and would have been published as a gate pass.
+  Three seeds give camera 65.10% against 88.72%, because one seed collapses to
+  25.00%.
 
 ## Known broken
 
