@@ -47,16 +47,6 @@ all, and a 30 mm key cannot catch a placement that a 0.020 rad reset draw puts
 it.** Evidence kept on main: `grapple_pin_yaw_gate_keyed.json`,
 `grapple_pin_axial_pull_gate_keyed.json`.
 
-The measurements below are the tapered interface's:
-
-| | Tapered pin | Keyed pin |
-| --- | ---: | ---: |
-| Seated grip offset | 0.0194 m | **0.0007 m** |
-| Seated grip attitude | 0.0637 rad | **0.0013 rad** |
-| Lateral load held, no slip | — | **120 N at 0.34 m arm, 40 N·m** |
-| Axial pull gate | 69.0 N | **19–52 N — FAILS the 66.36 N requirement** |
-| Extraction, unchanged policy | 99.02% | **0.00%** |
-
 ## Where things stand
 
 Deterministic evaluation, three held-out seeds, Wilson interval, terminal state
