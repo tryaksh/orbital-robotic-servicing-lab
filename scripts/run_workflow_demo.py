@@ -153,7 +153,10 @@ def _parser() -> argparse.ArgumentParser:
             "install: capture a module at the rack mouth and seat it, both learned. "
             "full: remove, fly back, and re-install. The return leg is blocked by the pin's yaw limitation, "
             "not by the controller: a single-point pin does not constrain rotation once the rails release the "
-            "module, and the grip degrades from 15 mm to 35 mm during the return whatever speed it is flown at."
+            "module, and the grip degrades from 15 mm to 35 mm during the return whatever speed it is flown at. "
+            "relocate: capture a module installed in the first bay, pull it clear, fly the three planned legs "
+            "to the second bay, and seat it there. Needs a two-bay profile and the insert policy trained on "
+            "both bays; it is the ORU changeout this roadmap is for."
         ),
     )
     parser.add_argument(
