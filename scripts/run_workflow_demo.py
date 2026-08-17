@@ -1025,6 +1025,30 @@ class WorkflowDriver:
         self.waypoints[0, ids] = approach
         self.waypoint_read[ids] = 2
 
+    def transit_progress(self) -> str:
+        """One line describing where the transit follower actually is.
+
+        Empty unless something is transiting, so it costs nothing on the
+        workflows that do not fly anywhere. Reports the leg each environment is
+        on and how far it still is from that leg's waypoint, because a follower
+        that has stalled and one that is merely slow produce identical phase
+        counts -- and the first relocation run spent eleven minutes not saying
+        which it was.
+        """
+
+        transiting = self.phase == TRANSIT
+        if not bool(transiting.any()):
+            return ""
+        ids = torch.nonzero(transiting, as_tuple=False).squeeze(-1)
+        tool = end_effector_pose_world(self.task)[0][ids]
+        target = self.waypoints[self.waypoint_read[ids], ids]
+        distance = torch.linalg.vector_norm(target - tool, dim=-1)
+        legs = torch.bincount(self.waypoint_read[ids], minlength=3).tolist()
+        return (
+            f"  transit: legs_remaining={legs[:3]} "
+            f"to_waypoint_m p50={float(distance.median()):.4f} max={float(distance.max()):.4f}"
+        )
+
     def _freeze(
         self,
         mask: torch.Tensor,
@@ -1351,8 +1375,14 @@ def main() -> dict[str, object]:
             step += 1
             if collecting and step % progress_every == 0:
                 counts = {PHASE_NAMES[index]: int((driver.phase == index).sum()) for index in range(len(PHASE_NAMES))}
+                # A stalled scripted phase looks exactly like a slow one in the
+                # counts alone, and the relocation's first run spent eleven
+                # minutes not saying which it was. The follower's own state is
+                # what distinguishes them: which leg it is on and how far it
+                # still is from that leg's waypoint.
                 print(
-                    f"[CHAIN] step {step:5d}  episodes={len(recorder):4d}/{args.episodes}  {counts}",
+                    f"[CHAIN] step {step:5d}  episodes={len(recorder):4d}/{args.episodes}  {counts}"
+                    f"{driver.transit_progress()}",
                     flush=True,
                 )
             if single:
@@ -1362,6 +1392,22 @@ def main() -> dict[str, object]:
                 if bool(terminated[0] or truncated[0]):
                     note(f"episode ended during {PHASE_NAMES[int(driver.phase[0])]}", step)
                     break
+
+        # Written before anything that formats a report, because it is the
+        # expensive half of this run and it must not be hostage to the cheap
+        # half. The relocation's first trace cost eleven minutes of simulation
+        # and produced no file at all, because a dict literal below was missing
+        # a workflow key -- and a diagnostic that is thrown away when something
+        # else goes wrong is a diagnostic that is missing when it is needed.
+        if args.handoff_trace is not None:
+            args.handoff_trace.parent.mkdir(parents=True, exist_ok=True)
+            trace = driver.trace_npz()
+            np.savez_compressed(args.handoff_trace, **trace)
+            print(
+                f"[INFO] Wrote {args.handoff_trace}: "
+                f"{trace['handoff'].shape[0]} hand-offs, {trace['settle'].shape[0]} settling rows",
+                flush=True,
+            )
 
         combined = (
             hashlib.sha256("".join(policies[name].sha256 for name in ("capture", "extract", "insert")).encode())
@@ -1382,8 +1428,10 @@ def main() -> dict[str, object]:
                 "remove": ["capture", "extract"],
                 "install": ["capture", "insert"],
                 "full": ["capture", "extract", "insert"],
+                "relocate": ["capture", "extract", "insert"],
             }[args.workflow],
-            "scripted_phases": ["seat"] + (["transit"] if args.workflow == "full" else []),
+            "scripted_phases": ["seat"]
+            + (["transit"] if args.workflow in ("full", "relocate") else []),
             "success_definition": (
                 "the workflow's own condition re-checked after a "
                 f"{SETTLE_STEPS / 30.0:.2f} s settling window, not the instant a predicate fired"
@@ -1421,15 +1469,6 @@ def main() -> dict[str, object]:
                     ),
                 )
                 print(f"[INFO] Wrote {args.episode_metrics}", flush=True)
-        if args.handoff_trace is not None:
-            args.handoff_trace.parent.mkdir(parents=True, exist_ok=True)
-            trace = driver.trace_npz()
-            np.savez_compressed(args.handoff_trace, **trace)
-            print(
-                f"[INFO] Wrote {args.handoff_trace}: "
-                f"{trace['handoff'].shape[0]} hand-offs, {trace['settle'].shape[0]} settling rows",
-                flush=True,
-            )
         if not collecting:
             axial, lateral, orientation = insertion_error_metrics(task)
             grip, attitude = grapple_grip_error_metrics(task)
