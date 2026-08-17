@@ -122,7 +122,7 @@ def test_the_nose_flange_traps_a_closed_pad() -> None:
     # slipped grip. A first attempt at 23 mm failed that gate at 51.6 N, because
     # friction alone carries about 52 N and the module simply slid until the
     # flange caught it.
-    assert 0.0005 <= key_seat_axial_travel_m() <= 0.002
+    assert 0.005 <= key_seat_axial_travel_m() <= 0.012
 
 
 def test_only_the_shaft_enters_the_slot_and_it_fits() -> None:

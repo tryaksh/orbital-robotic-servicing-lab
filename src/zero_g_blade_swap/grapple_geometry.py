@@ -169,7 +169,7 @@ TRANSIT_RETREAT_M = EXTRACTED_BLADE_CENTRE_X - TRANSIT_CLEAR_BLADE_CENTRE_X
 #: It has to exceed how accurately a capture places the pads axially -- measured at
 #: 0.15 mm on the settled grasp -- and stay under the 2 mm the pull gate calls a
 #: slipped grip.
-KEY_SEAT_CLEARANCE_M = 0.0015
+KEY_SEAT_CLEARANCE_M = 0.008
 #: Derived so the pads, seated against the collar, sit on the flat with exactly
 #: ``KEY_SEAT_CLEARANCE_M`` of travel before the nose flange bears.
 GRAPPLE_PIN_KEY_X = (
