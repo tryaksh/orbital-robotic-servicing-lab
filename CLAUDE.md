@@ -17,13 +17,37 @@ toward it. The demonstration has to be industrially credible and paper-worthy:
 every skill certified, the full chain certified, every number naming its evidence
 file.
 
-## READ FIRST: the interface was redesigned on 2026-08-17 and is not yet certified
+## READ FIRST: the interface redesign is on branch `keyed-interface`, not on main
 
-**Every number in the table below, and every report in `evidence/`, describes the
-TAPERED grapple pin. The tree now contains the KEYED pin. Nothing has been
-re-certified against it.** Do not quote any rate as current until it has been.
+Main carries the **tapered** pin that every report in `evidence/` describes, and it
+is verified — extraction runs 98.44% on seed 1070 stage 2 against the 99.02%
+certified pooled. Every number below is current for main.
 
-The redesign and its measurements, in one place:
+A keyed-flats redesign was built and measured on 2026-08-17 and **reverted from
+main** because it took extraction to 0.00% and the axial half was unfinished. It
+lives on `keyed-interface` with three corrections already in it. **It solves the
+rotational failure that has blocked the relocation for three sessions**, and it is
+the most promising open lead in the project:
+
+| | Tapered (main) | Keyed (branch) |
+| --- | ---: | ---: |
+| Seated grip offset | 0.0194 m | **0.0007 m** |
+| Seated grip attitude | 0.0637 rad | **0.0013 rad** |
+| Rotation in extraction failures | 0.30+ rad | **0.10 rad** |
+| Lateral load held, no slip | — | **120 N at 0.34 m, 40 N·m** |
+| Axial pull gate | **69.0 N, passes** | 19–52 N, fails 66.36 N |
+| Extraction | **99.02%** | 0.00% |
+
+**What it needs, and it is named by the research rather than guessed.** Space
+grippers use finger V-grooves and flight grapple fixtures use cone-shaped aligning
+bodies or three lead-in ramps *to guide a part into place*. The taper was doing
+double duty — funnel and clamp. Keyed flats are a better clamp and no funnel at
+all, and a 30 mm key cannot catch a placement that a 0.020 rad reset draw puts
+36 mm out. **The next attempt is a lead-in on the keyed pocket, not more tuning of
+it.** Evidence kept on main: `grapple_pin_yaw_gate_keyed.json`,
+`grapple_pin_axial_pull_gate_keyed.json`.
+
+The measurements below are the tapered interface's:
 
 | | Tapered pin | Keyed pin |
 | --- | ---: | ---: |
@@ -32,37 +56,6 @@ The redesign and its measurements, in one place:
 | Lateral load held, no slip | — | **120 N at 0.34 m arm, 40 N·m** |
 | Axial pull gate | 69.0 N | **19–52 N — FAILS the 66.36 N requirement** |
 | Extraction, unchanged policy | 99.02% | **0.00%** |
-
-**What it fixed.** Rotation, decisively. Flat pads on a smooth taper make line
-contact and cannot oppose a moment about the closing axis; flat pads on a flat key
-make plane contact and can. The seated grip is 28x tighter in position and 49x in
-attitude, and grip *orientation* error in extraction failures is now 0.11 rad
-against the 0.35 rad limit the old design ran away to in 99% of its failures.
-
-**What it broke, and why.** Axial retention. The taper was self-energising; a flat
-key is not. The nose flange was meant to be the positive stop, and it is not one:
-a passive shoulder only works while the jaws stay closed, and under extraction drag
-the drive yields, the pads splay toward their 87 mm aperture, and the 60 mm flange
-passes through. The module escapes 32–55 mm axially.
-
-**The missing half.** Form-fit blocks rotation; it does not block translation
-against a gripper that can open. Every flight interface pairs form-fit with a
-*positive lock* — ISS ORUs are bolted by the OTCM after capture, SIROM latches at
-three points 120° apart, HOTDOCK is form-fit plus a lock. I built the form-fit and
-left the lock out.
-
-**This also reframes the refuted latch.** `GrappleLatch` was the right instinct
-tested in the wrong place: engaged while the module was still in the rails it
-jammed and collapsed travel from 458 mm to 25 mm. Engaged on a module the rails
-have *released*, it is exactly the axial lock the keyed pin needs. That is the next
-experiment, and it is a gate before any training:
-
-```bash
-scripts/grasp_diagnostics.py --load_axis axial --plain_pin   # keyed + latch on release
-```
-
-**Do not start a retrain until the axial gate passes ≥ 66.36 N.** Extraction is
-0.00% on the current tree; six hours of PPO against a 0% interface buys nothing.
 
 ## Where things stand
 
