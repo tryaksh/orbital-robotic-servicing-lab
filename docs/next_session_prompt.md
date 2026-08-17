@@ -29,18 +29,29 @@ chain certified, every number naming its evidence file.
 
 ## Where the last session left it
 
-Items 1, 2 and 4 of the roadmap are done or closed. Item 3 was training when the
-session ended. **Pick up at item 3's gate, then 5, then 6.**
+**Item 1 is closed: the installation chain passes at 96.35%**
+(`workflow_install_clock30retain_certification.json`), so both chains are now
+through their gates — removal 98.78%, installation 96.35%. Item 2 is built and
+its two substantive halves pass. Item 4 is implemented but unmeasured.
 
-1. Check the runs that were in flight:
-   - `artifacts/relocation/queue2.log` — the two-slot smoke and the insert
-     training on both bays.
-   - `evidence/grapple_insert_two_slot_certification.json` if `certify2` got to
-     run. Gate: **≥ 95% on the worse bay, not the pool.**
-   - `evidence/workflow_install_clock30retain_certification.json` — the install
-     chain under the corrected clock and the retain rule. This is item 1's
-     number; if it is ≥ 95% the install chain is finally closed.
-2. If item 3's gate passes, run item 5:
+**Start here — one blocker, and it is small.**
+
+`Isaac-ZeroG-Blade-GrapplePin-InsertTwoSlot-v0` cannot be trained because
+`train.py --smoke` fails its contact reward contract, *standing still must have
+negative cumulative reward*. **This is pre-existing and not the new task's
+fault**: the promoted `GrapplePin-Insert-v0` fails it with a bit-identical
+tensor, at both the old 20 s episode length and the new 30 s one. Standing still
+is not still on these tasks — the scripted two-stage capture closes during the
+1.0 s action-settling window and moves the module, so `insertion_progress_reward`
+pays. Scope the contract to the family it was written for, exactly as the
+scripted axial feasibility probe was scoped, rather than deleting or weakening
+it. Then:
+
+1. `bash scripts/run_relocation.sh smoke` — item 2's remaining gate.
+2. `EPOCHS=1200 bash scripts/run_relocation.sh insert2` — about an hour.
+3. `bash scripts/run_relocation.sh certify2` — item 3's gate, **≥ 95% on the
+   worse bay, not the pool**.
+4. Then item 5:
    ```bash
    bash scripts/run_relocation.sh relocate
    ```

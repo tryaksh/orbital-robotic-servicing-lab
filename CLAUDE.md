@@ -83,10 +83,18 @@ Slot 2 at **y = -0.22 m**, built as a displacement of the certified slot part fo
 part, in `ZeroGTwoSlotGrapplePinSceneCfg`. Converged IK reaches its staging pose
 to **0.0060 mm** at every stage (`artifacts/relocation/slot_two_pose.json`).
 
-### 3. Insert retrained for both bays — in progress
+### 3. Insert retrained for both bays — blocked on a pre-existing smoke defect
 
-`Isaac-ZeroG-Blade-GrapplePin-InsertTwoSlot-v0` trains on both bays at once, 50/50,
+`Isaac-ZeroG-Blade-GrapplePin-InsertTwoSlot-v0` is built: it trains on both bays,
 with the arm pose, module pose and insertion goal all read from one stage index.
+It cannot be trained yet because `train.py --smoke` fails its contact reward
+contract — **and so does the promoted single-slot insert task, with a
+bit-identical tensor, at both 20 s and 30 s**. Standing still is not still on
+these tasks: the scripted capture closes during the 1.0 s settling window and
+moves the module, so the progress term pays.
+
+**Scope that contract to the family it was written for**, as the scripted axial
+feasibility probe already was. Then train, then:
 
 - Gate: **insert >= 95% on both slots**, the *worse* bay, not the pool:
   `scripts/run_relocation.sh certify2`.
