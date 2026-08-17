@@ -75,6 +75,10 @@ class InsertionGoalCommand(CommandTerm):
         self._command = torch.zeros((self.num_envs, 7), device=self.device)
         self._command[:, :3] = torch.tensor(cfg.goal_pos, device=self.device)
         self._command[:, 3:7] = torch.tensor(cfg.goal_rot, device=self.device)
+        #: The seated pose each environment is aiming at this episode. One bay
+        #: for every single-slot task; resolved from the curriculum stage at
+        #: reset for a rack with more than one.
+        self._stage_goal = self._command[:, :3].clone()
         self.metrics["blade_position_error"] = torch.zeros(self.num_envs, device=self.device)
 
     @property
@@ -84,8 +88,30 @@ class InsertionGoalCommand(CommandTerm):
     def _resample_command(self, env_ids: Sequence[int]) -> None:
         if len(env_ids) == 0:
             return
-        self._command[env_ids, :3] = self._command.new_tensor(self.cfg.goal_pos)
+        self._stage_goal[env_ids] = self._resolve_stage_goal(env_ids)
+        self._command[env_ids, :3] = self._stage_goal[env_ids]
         self._command[env_ids, 3:7] = self._command.new_tensor(self.cfg.goal_rot)
+
+    def _resolve_stage_goal(self, env_ids: Sequence[int]) -> torch.Tensor:
+        """Which bay these environments are aiming at, decided once per episode.
+
+        At reset, not every step. The curriculum has already written the stage by
+        the time a command resamples, and resolving it here means the goal is a
+        constant for the whole episode -- which the potential-based progress
+        reward requires. Resolving it per step instead let the goal move under
+        the potential on the first control step of an episode, and the reward
+        paid out the whole jump: the smoke contract caught it as environments
+        earning *positive* reward while standing still.
+        """
+
+        base = self._command.new_tensor(self.cfg.goal_pos).expand(len(env_ids), 3)
+        if self.cfg.goal_pos_by_stage is None:
+            return base
+        stage = getattr(self._env, "_insertion_curriculum_stage", None)
+        if stage is None:
+            return base
+        goals = self._command.new_tensor(self.cfg.goal_pos_by_stage)
+        return goals[stage[env_ids].clamp(max=goals.shape[0] - 1)]
 
     def _update_command(self) -> None:
         # The goal follows the slot. Tasks that displace the rails per episode
@@ -94,17 +120,10 @@ class InsertionGoalCommand(CommandTerm):
         # not there. Recomputed every step rather than at resample so it cannot
         # depend on whether events or commands reset first.
         offset = getattr(self._env, "_slot_offset_m", None)
-        base = self._command.new_tensor(self.cfg.goal_pos)
-        if self.cfg.goal_pos_by_stage is not None:
-            # A rack with more than one bay: which slot an episode is aiming at
-            # is the curriculum stage, the same index the arm and module reset
-            # poses already come from, so the three cannot disagree about which
-            # bay this episode is about. ``None`` keeps every existing task
-            # bit-identical -- they carry one goal and never touch this path.
-            stage = getattr(self._env, "_insertion_curriculum_stage", None)
-            goals = self._command.new_tensor(self.cfg.goal_pos_by_stage)
-            if stage is not None:
-                base = goals[stage.clamp(max=goals.shape[0] - 1)]
+        # ``_stage_goal`` is the bay this episode is aiming at, fixed at reset.
+        # For every single-slot task it is the one configured goal, so those
+        # tasks are bit-identical to before this existed.
+        base = self._stage_goal
         self._command[:, :3] = base if offset is None else base + offset
 
     def _update_metrics(self) -> None:

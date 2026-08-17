@@ -879,11 +879,17 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         # is why the reset below is the *original* one -- insert v6's 95.57%
         # describes the task in this file, and it must keep doing so.
         #
-        # mdp.reset_from_handoff_bank and handoff_poses.py stay implemented and
-        # regenerable, because the measurements are the result. Enabling them
-        # means importing INSERT_HANDOFF_ARM_POSES and INSERT_HANDOFF_MODULE_POSES
-        # from .handoff_poses and setting self.events.reset_handoff to a
-        # reset_from_handoff_bank term carrying both.
+        # This line of work is **closed**, and the thing that closed it is
+        # `Isaac-ZeroG-Blade-GrapplePin-InsertChain-v0`, which runs the real
+        # capture inside the environment and reproduces the hand-off at 93.06%
+        # against the best bank's 47.17%. Do not build a fifth reset.
+        #
+        # `mdp.reset_from_handoff_bank` stays implemented, and
+        # `scripts/build_handoff_pose_bank.py` regenerates the bank itself; the
+        # generated 84 kB of poses was deleted because nothing imported it and
+        # keeping refuted data in the tree is how a future session spends a
+        # night rediscovering that it does not work. The measurements are in
+        # docs/status.md, which is where the result actually lives.
         if level < 2:
             self.events.blade_mass = None
         if level < 3:

@@ -2700,6 +2700,48 @@ script went straight on to certify it.
 `train.py` now reads the epoch out of the resume checkpoint and refuses the run
 with the arithmetic spelled out, so this cannot recur on any task.
 
+## The installation chain passes its gate: 96.35%
+
+**555 of 576 chained installations on three held-out seeds, Wilson 95% [94.49%,
+97.60%], zero instability and zero non-finite terminations. The promotion gate
+passes.** Report: `evidence/workflow_install_clock30retain_certification.json`.
+
+This closes the last open skill chain. Removal has passed since 2026-08-16 at
+98.78%; installation now joins it, and the two together are the round trip the
+relocation demonstration is built from.
+
+**Nothing was retrained to get here**, and that is the result. The chain ran at
+89.41% with the promoted policies. Two changes moved it, neither of them a
+policy:
+
+| Installation chain, three held-out seeds | Result |
+| --- | ---: |
+| Promoted set, as it stood | 89.41% |
+| Insert fine-tuned 300 epochs inside the chain | 88.37% |
+| **Insert phase given 30 s, and the settling window retained** | **96.35%** |
+| Insert with the attitude term reweighted (4x) | 75.69% |
+
+The skill alone moved with it: insert v6, unchanged, re-certified under the
+longer clock scores **98.27%** over 3,000 held-out episodes
+(`grapple_insert_v6clock30_certification.json`) against the 95.57% its 20 s
+certification recorded.
+
+### The attitude reweighting is refuted, and it is the third time
+
+The failure breakdown said 6 of 7 insert overruns end outside `grasp_orientation`,
+and the arithmetic said the objective charges less for sitting at that limit than
+for taking one more control step. Both are true, and the conclusion drawn from
+them was still wrong: multiplying the attitude weight by four cost the chain
+**twenty points**, 96.35% → 75.69%.
+
+That is the same failure extract v7 produced and this page already recorded —
+*an over-weighted attitude term makes standing still cheaper than working* — and
+it has now happened on both skills. **A term being under-weighted relative to
+what fails is not evidence that raising it helps.** The measurement that would
+have predicted this was already on the page; the experiment was still worth
+running, because it was one number changed with the arm it is compared against
+measured under identical code.
+
 ## Two probes moved the install chain further than 300 epochs of training did
 
 Both are evaluation-only, both were run on the pre-training gate's own seed, and
@@ -2751,6 +2793,41 @@ it could buy at most the one point lost between the predicate and the re-check:
 the module is pushed for the whole window, so what it buys is bounded by how far
 a pushed module drifts, not by the current gap. `SEATED_RETAIN` is now the
 default.
+
+## The insert task fails `train.py --smoke`, and it always has
+
+Found while gating the two-slot task, and worth recording precisely because it
+looked at first like a defect in the new task and is not.
+
+`Isaac-ZeroG-Blade-GrapplePin-InsertTwoSlot-v0` fails the smoke's contact reward
+contract — *standing still must have negative cumulative reward*. So does
+`Isaac-ZeroG-Blade-GrapplePin-Insert-v0`, the promoted single-slot task, **with a
+bit-identical reward tensor**, and it does so at both the old 20 s episode length
+and the new 30 s one. The clock change is not the cause and neither is the second
+bay; the two-slot scene builds, resets and steps.
+
+The mechanism is that "standing still" is not still on this task. The insert
+episode opens with a 1.0 s action-settling window during which the scripted
+two-stage capture closes on the pin, and that transient moves the module.
+`insertion_progress_reward` pays for module motion toward the goal, so some
+environments earn net-positive reward across the twenty steps the contract sums
+while commanding nothing. The contract was written for a task where commanding
+nothing means nothing moves.
+
+**This is the same class as the scripted axial feasibility probe recorded above**
+— a smoke assertion applied outside the family it was written for — and it should
+be *scoped*, not deleted, in the same way. It is deliberately left alone here
+rather than changed at the end of a session: it blocks a gate, not a training
+run, and a weakened contract written in a hurry is worse than a known one.
+
+Two consequences to carry forward:
+
+- item 2's gate is met on its two substantive halves — the scene builds and
+  converged IK reaches the second bay to 0.0060 mm — and blocked only on a smoke
+  contract that the already-promoted task fails identically;
+- the recorded smoke table under *Static validation* lists the Capture task but
+  never Insert or Extract, so this was never observed rather than having
+  regressed.
 
 ## The second bay is reachable, and the transit to it is derived
 

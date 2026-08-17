@@ -26,9 +26,9 @@ captured before auto-reset. Promoted: **capture v5, extract v13unsat, insert v6*
 | --- | ---: | --- | --- |
 | Capture | 96.10%, **stale** | — | `grapple_grasp_v5_certification.json`; certified 9.4 h before its own success tolerance went 20 mm → 10 mm in `ffac648`. Bounded below by 43% on its own recorded episodes and above by 96.10%. **Re-run before quoting**: `certify_demo_policies.sh Grasp` |
 | Extract | 99.02% | pass | `grapple_extract_v14reset_certification.json` |
-| Insert, alone | 95.57% | pass | `grapple_insert_v6_certification.json` |
+| Insert, alone | **98.27%** | pass | `grapple_insert_v6clock30_certification.json`, under the 30 s budget. The 95.57% figure describes the 20 s task |
 | **Removal chain** | **98.78%** | **pass** | `workflow_remove_retain_certification.json` |
-| **Install chain** | **89.41%** | **short by 5.6** | `workflow_install_promoted_certification.json`. The 84.38% previously here is retracted: same policies, certified 8.5 h before the capture budget went 6 s → 10 s |
+| **Install chain** | **96.35%** | **pass** | `workflow_install_clock30retain_certification.json`, Wilson [94.49%, 97.60%], 555/576. Both earlier figures — 84.38% and 89.41% — are superseded |
 | Install, camera | 80.38% | — | `vision_workflow_camera_certification.json` |
 | Install, oracle | 80.38% | — | `vision_workflow_oracle_certification.json` |
 | Install, blind | 43.58% | — | `vision_workflow_blind_certification.json` |
@@ -51,60 +51,55 @@ grapple_insert_l0_seed70_v6/nn/last_zero_g_blade_insertion_contact_ep_3200_rew__
 Work these in order. Each has a gate. **Do not start the next before the gate
 passes.** Commit after each with the numbers in the message.
 
-### 1. Insert, trained inside the chain — closes the install chain
+### 1. Insert, trained inside the chain — DONE as an experiment, and it was the wrong lever
 
-The only gap. Insert scores 95.57% alone and ~80% on the states the chain hands
-it. **Four attempts to reproduce that hand-off as a reset distribution have
-failed** (see *Do not retry*). The hand-off is a trajectory and a controller
-state, not a pose, so stop approximating it and train in place.
+**Built, gated, and measured. The task works and the hypothesis was wrong.**
 
-Build a training task that runs the real capture: reset the capture scene, step
-the frozen capture policy until the workflow's hand-off condition fires, latch
-the grip, then hand control to the learning policy for the insert phase.
-`scripts/run_workflow_demo.py` already contains every piece — the phase machine,
-the hand-off predicate, `hold_latch` — so lift the driver rather than rewriting
-it.
+`Isaac-ZeroG-Blade-GrapplePin-InsertChain-v0` runs the frozen capture inside the
+environment and hands over on the chain's own predicate. It is the first
+construction here that **reproduces** the hand-off rather than approximating it —
+grip error, grip attitude, finger angle, drive torque, module pose and all six
+arm joints match the chain's trace at p50 and p95, and insert v6 unchanged scores
+93.06% on it against 90.45% in the real chain (`insert_chain_handoff_gate.json`).
 
-- Fine-tune from insert v6. Reward change only, no dimension change.
-- Gate: **install chain >= 95%**, `scripts/certify_workflow.sh install`.
-- Then re-run all three vision arms, `scripts/certify_vision_workflow.sh`.
-- Budget: ~1 session.
+What that gate also showed is that **the premise of this item was wrong by ten
+points**: the hand-off costs the skill about 2.5 points, not the ~15 the "~80%"
+figure implied. So there was little to gain, and 300 epochs of fine-tuning on it
+moved the chain from 89.41% to **88.37%** — nothing.
 
-### 2. Second slot geometry
+**The two things that did move it were not training at all**:
 
-- Mirror `INSERTION_SLOT_LEFT/RIGHT_GUIDE_CFG` and the lips and lead-in flares at
-  **y = -0.22 m**. Module is 0.16 m wide, so that leaves 60 mm between modules.
-- **New registration.** Do not modify the single-slot tasks; that discipline is
-  why the promoted L0/L1/L2 results have survived every change.
-- Reachability is already verified: converged 6-DoF IK reaches y = -0.22 to
-  0.0060 mm. Re-verify with `scripts/calibrate_grasp_pose.py --task
-  Isaac-ZeroG-Blade-GrapplePin-Capture-v0 --steps 3000 --pin_blade --finger_joint
-  0.02 --target_offset 0 -0.22 0`.
-- Gate: the scene builds, `train.py --smoke` passes, IK converges.
-- Budget: ~half a session.
+| Change | Install chain, seed 4070 |
+| --- | ---: |
+| Baseline | 85.94% |
+| Insert phase clock 20 s → 30 s | +2.6 pts on the insert phase |
+| Retain instead of hold through the settling window | **90.10%** |
 
-### 3. Insert retrained for slot 2
+Both are in. Do not spend another session training insert on its distribution.
 
-A laterally offset slot is out of insert's distribution. Solve the slot-2 staging
-arm pose with the converged calibrator, add it as a second curriculum entry,
-fine-tune.
+### 2. Second slot geometry — DONE, gate passed
 
-- Gate: **insert >= 95% on both slots**, `certify_demo_policies.sh Insert`.
-- Budget: ~1 session.
+Slot 2 at **y = -0.22 m**, built as a displacement of the certified slot part for
+part, in `ZeroGTwoSlotGrapplePinSceneCfg`. Converged IK reaches its staging pose
+to **0.0060 mm** at every stage (`artifacts/relocation/slot_two_pose.json`).
 
-### 4. Lateral transit
+### 3. Insert retrained for both bays — in progress
 
-Today's transit retraces the extraction path backwards, deliberately: a direct
-move takes the DLS IK through a near-singularity and swings the shoulder 74
-degrees. A lateral move is a new motion.
+`Isaac-ZeroG-Blade-GrapplePin-InsertTwoSlot-v0` trains on both bays at once, 50/50,
+with the arm pose, module pose and insertion goal all read from one stage index.
 
-- Record waypoints from the converged IK solve and follow them, which is what the
-  current transit does and why it works. Do not fly it open-loop.
-- **The module is free during transit.** Set `retain_latch` for the transit and
-  clear it before insertion. See rule 1 — this is not optional, it is what took
-  removal from 0.00% to 98.78%.
-- Gate: module held to under 20 mm grip error across the whole transit.
-- Budget: ~half a session.
+- Gate: **insert >= 95% on both slots**, the *worse* bay, not the pool:
+  `scripts/run_relocation.sh certify2`.
+
+### 4. Lateral transit — implemented, gate not yet measured
+
+Three closed-loop legs — back, across, in — retained throughout.
+**`TRANSIT_RETREAT_M` = 78.25 mm is derived, not chosen**: the lead-in flares
+stand proud of the mouth, so a module turning at the extraction pose drags its
+nose across the neighbouring bay's flare.
+
+- Gate: module held to under 20 mm grip error across the whole transit. Read it
+  off `--handoff_trace`'s transit→insert row.
 
 ### 5. Certify the relocation chain
 
@@ -186,8 +181,19 @@ and returns the same answer.
   to 25 mm. The compliance is the pads camming open under load; no passive
   geometry reaches it.
 - **Reproducing the insert hand-off as a reset.** Per-joint noise box 0.00%,
-  measured arm poses 26.32%, arm-and-module poses paired 47.17% — against ~80% in
-  the real chain. Train in the chain instead.
+  measured arm poses 26.32%, arm-and-module poses paired 47.17%. **Closed:**
+  `InsertChain-v0` reproduces it at 93.06% by running the real capture. Do not
+  build a fifth reset; the generated pose bank was deleted for this reason and
+  `build_handoff_pose_bank.py` still regenerates it if anyone must look.
+- **Fine-tuning insert on the chain's own distribution.** 300 epochs at 512
+  environments took the install chain 89.41% → 88.37%, and the training curve was
+  flat from the first tenth. The hand-off costs the skill 2.5 points, so there
+  was nothing there to win. The gap is the objective and the clock, not the
+  starting state.
+- **A capture-failure termination in the chained-insert task.** Refuted by its
+  own gate before training: 69.27% with it against 95.31% without, because the
+  chain carries no such term and overruns its capture once in 192 while the
+  predicate was killing 52.
 - **The scripted realign in the install chain.** `ALIGN_STEPS` defaults to 0. It
   gives +2.4 points on the state chain and -7.5 on the camera arm, because it
   targets the orientation the episode started at and the vision profile displaces

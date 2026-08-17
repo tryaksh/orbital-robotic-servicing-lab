@@ -277,9 +277,9 @@
         <thead><tr><th>Skill</th><th class="num">Episodes</th><th class="num">Success</th><th class="num">95% CI</th></tr></thead>
         <tbody>
           <tr><td>Capture the module</td><td class="num">9,026</td><td class="num">96.10%</td><td class="num">95.7 – 96.5</td></tr>
-          <tr><td>Insert into the rack</td><td class="num">3,000</td><td class="num">95.57%</td><td class="num">94.8 – 96.2</td></tr>
+          <tr><td>Insert into the rack</td><td class="num">3,000</td><td class="num">98.27%</td><td class="num">97.8 – 98.7</td></tr>
           <tr><td>Extract from the rack</td><td class="num">9,005</td><td class="num">99.02%</td><td class="num">98.8 – 99.2</td></tr>
-          <tr class="hi"><td>Install, chained end-to-end</td><td class="num">576</td><td class="num">89.41%</td><td class="num">86.6 – 91.7</td></tr>
+          <tr class="hi"><td>Install, chained end-to-end</td><td class="num">576</td><td class="num">96.35%</td><td class="num">94.5 – 97.6</td></tr>
           <tr class="hi"><td>Removal, chained end-to-end</td><td class="num">576</td><td class="num">98.78%</td><td class="num">97.5 – 99.4</td></tr>
         </tbody>
       </table>
@@ -303,13 +303,16 @@
         <em>capture gently, hold hard to pull, retain gently once the part is free.</em>
       </p>
       <p class="note">
-        <strong>Installation is the open one, at 89.41% against a 95% bar</strong>, and the interesting
-        part is where the gap is not. The obvious theory was that the insert policy is thrown by the
-        states a real capture hands it. Measured on the same checkpoint: 95.57% from its own reset,
-        93.06% on the real hand-off, 90.45% inside the chain — so the hand-off costs about two and a
-        half points, not the fifteen the project had been assuming. What is left is the objective, not
-        the starting state: six of every seven failures run out of clock still shallow and rotated in
-        the pads, and the reward charges less for that rotation than for taking one more step.
+        <strong>Installation passed its gate without retraining anything</strong>, and how it got there
+        is the more useful story. The obvious theory was that the insert policy is thrown by the states
+        a real capture hands it. Measured on the same checkpoint: 95.57% from its own reset, 93.06% on
+        the real hand-off, 90.45% inside the chain — the hand-off costs two and a half points, not the
+        fifteen assumed. Fine-tuning on that distribution for 300 epochs moved the chain from 89.41%
+        to 88.37%: nothing. What actually moved it was a clock that had been cutting successful
+        insertions off at p95, and a settling window that kept squeezing a module already seated in its
+        bay — a violation of the project's own rule that <em>any phase which waits must either command
+        or retain</em>. Together: <strong>96.35%</strong>. Raising the reward term that six of seven
+        failures trip, which was the tempting fix, cost twenty points.
       </p>
       <p class="note">
         <strong>Two of the numbers above replaced wrong ones, both on 2026-08-16, and the mechanism was

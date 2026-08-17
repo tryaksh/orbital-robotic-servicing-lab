@@ -97,12 +97,17 @@ class TwoSlotCommandsCfg:
 class TwoSlotCurriculumCfg:
     """Both bays from the first step, in equal measure.
 
-    Not a ramp. The policy being fine-tuned already solves the first bay, and a
-    curriculum that starts there would spend its budget re-learning what it
-    knows; a curriculum that starts on the *second* bay alone would let it forget
-    the first, which is the failure the two-bay gate exists to catch. Equal
-    mixture at every level leaves the stage machinery in place --- the evaluator
-    and the reset events index it --- without letting it change the distribution.
+    Barely a ramp. The policy being fine-tuned already solves the first bay, so
+    level 0 is a formality it clears almost immediately; level 1 then draws the
+    two bays evenly and stays there. Training the second bay *alone* is what the
+    two-bay gate exists to catch — a policy that learns the new bay by forgetting
+    the old one has not done the job.
+
+    Level 0 draws only stage 0 rather than the even mixture this first carried:
+    ``InsertionCurriculumMixtures`` refuses a level that samples a stage it has
+    not unlocked, and it is right to. A level that can draw a locked stage is not
+    a curriculum, and the validator caught it in the smoke before any GPU time
+    went into it.
     """
 
     pose_noise = CurrTerm(
@@ -113,7 +118,7 @@ class TwoSlotCurriculumCfg:
             "window_size": 2_000,
             "max_stage": 1,
             "minimum_level_steps": 1_600,
-            "stage_mixtures": ((0.5, 0.5), (0.5, 0.5)),
+            "stage_mixtures": ((1.0, 0.0), (0.5, 0.5)),
         },
     )
 

@@ -1,0 +1,375 @@
+{
+  "title": "Chained servicing workflow: install",
+  "generated_utc": "2026-08-17T02:11:10+00:00",
+  "evidence_type": "simulation_only",
+  "out_of_distribution": false,
+  "policy": {
+    "algorithm": "PPO (RL-Games), deterministic evaluation",
+    "checkpoint_sha256": "40A0D7CC8C3DC3565B2FD3220DD0537EC509A63343380140C7B3922DECDA4DE6",
+    "checkpoint": "chained install: capture+extract+insert",
+    "grasp_model": "physx_fixed_joint_already_secured_abstraction"
+  },
+  "protocol": {
+    "tasks": [
+      "Isaac-ZeroG-Blade-GrapplePin-Workflow-v0"
+    ],
+    "robustness_levels": [
+      0
+    ],
+    "held_out_evaluation_seeds": [
+      4070,
+      5070,
+      6070
+    ],
+    "curriculum_stages": [
+      "full_stage_2"
+    ],
+    "runs": 3,
+    "gravity": "zero",
+    "policy_rate_hz": 30,
+    "physics_rate_hz": 120,
+    "metric_capture": "per-episode terminal state recorded before Isaac Lab's automatic reset",
+    "environments_per_run": [
+      64
+    ],
+    "belief_bias_mm": null,
+    "trained_belief_bias_ceiling_mm": null,
+    "contact_force_limit_n": null,
+    "success_definition": "zero_g_blade_swap.tasks.blade_swap.mdp.insertion:insertion_success_conditions via contact_insertion_success_mask"
+  },
+  "overall": {
+    "episodes": 576,
+    "successes": 436,
+    "success_rate": 0.756944,
+    "success_rate_wilson_95": {
+      "low": 0.720288,
+      "high": 0.790196
+    },
+    "termination_reasons": {
+      "insertion_success": 436,
+      "time_out": 140
+    },
+    "instability_terminations": 0,
+    "safety_abort_terminations": 0,
+    "non_finite_metric_episodes": 129,
+    "terminal_metrics": {
+      "axial_error_m": {
+        "count": 576,
+        "non_finite": 31,
+        "mean": 0.037401,
+        "p50": 0.010808,
+        "p95": 0.1671,
+        "max": 0.183404,
+        "min": 2.2e-05
+      },
+      "lateral_error_m": {
+        "count": 576,
+        "non_finite": 31,
+        "mean": 0.000567,
+        "p50": 0.000617,
+        "p95": 0.000846,
+        "max": 0.001168,
+        "min": 0.0
+      },
+      "orientation_error_rad": {
+        "count": 576,
+        "non_finite": 31,
+        "mean": 0.003665,
+        "p50": 0.004241,
+        "p95": 0.004325,
+        "max": 0.006684,
+        "min": 0.0
+      },
+      "blade_linear_velocity_mps": {
+        "count": 576,
+        "non_finite": 31,
+        "mean": 0.002808,
+        "p50": 0.000101,
+        "p95": 0.002604,
+        "max": 0.247426,
+        "min": 0.0
+      },
+      "blade_angular_velocity_radps": {
+        "count": 576,
+        "non_finite": 31,
+        "mean": 0.002183,
+        "p50": 0.000969,
+        "p95": 0.008116,
+        "max": 0.054648,
+        "min": 0.0
+      },
+      "tool_to_handle_error_m": {
+        "count": 576,
+        "non_finite": 129,
+        "mean": 0.011881,
+        "p50": 0.011604,
+        "p95": 0.014715,
+        "max": 0.054488,
+        "min": 0.007873
+      },
+      "tool_to_handle_orientation_rad": {
+        "count": 576,
+        "non_finite": 129,
+        "mean": 0.189364,
+        "p50": 0.192329,
+        "p95": 0.198614,
+        "max": 0.507073,
+        "min": 0.045525
+      },
+      "control_steps": {
+        "count": 576,
+        "non_finite": 0,
+        "mean": 418.121528,
+        "p50": 458.0,
+        "p95": 800.5,
+        "max": 1185.0,
+        "min": 10.0
+      },
+      "cycle_time_s": {
+        "count": 576,
+        "non_finite": 0,
+        "mean": 13.937384,
+        "p50": 15.266667,
+        "p95": 26.683333,
+        "max": 39.5,
+        "min": 0.333333
+      }
+    },
+    "successful_episode_metrics": {
+      "axial_error_m": {
+        "count": 436,
+        "non_finite": 0,
+        "mean": 0.009411,
+        "p50": 0.010202,
+        "p95": 0.011937,
+        "max": 0.011999,
+        "min": 2.2e-05
+      },
+      "lateral_error_m": {
+        "count": 436,
+        "non_finite": 0,
+        "mean": 0.000627,
+        "p50": 0.000618,
+        "p95": 0.000703,
+        "max": 0.000958,
+        "min": 0.000504
+      },
+      "orientation_error_rad": {
+        "count": 436,
+        "non_finite": 0,
+        "mean": 0.004116,
+        "p50": 0.004295,
+        "p95": 0.004324,
+        "max": 0.006684,
+        "min": 0.002631
+      },
+      "blade_linear_velocity_mps": {
+        "count": 436,
+        "non_finite": 0,
+        "mean": 0.000161,
+        "p50": 0.000104,
+        "p95": 0.000333,
+        "max": 0.006448,
+        "min": 1e-05
+      },
+      "blade_angular_velocity_radps": {
+        "count": 436,
+        "non_finite": 0,
+        "mean": 0.001494,
+        "p50": 0.001034,
+        "p95": 0.003314,
+        "max": 0.026128,
+        "min": 3e-05
+      },
+      "tool_to_handle_error_m": {
+        "count": 436,
+        "non_finite": 0,
+        "mean": 0.011806,
+        "p50": 0.01162,
+        "p95": 0.014708,
+        "max": 0.017391,
+        "min": 0.007873
+      },
+      "tool_to_handle_orientation_rad": {
+        "count": 436,
+        "non_finite": 0,
+        "mean": 0.187381,
+        "p50": 0.192298,
+        "p95": 0.197126,
+        "max": 0.204725,
+        "min": 0.045525
+      },
+      "control_steps": {
+        "count": 436,
+        "non_finite": 0,
+        "mean": 525.190367,
+        "p50": 497.5,
+        "p95": 786.0,
+        "max": 990.0,
+        "min": 169.0
+      },
+      "cycle_time_s": {
+        "count": 436,
+        "non_finite": 0,
+        "mean": 17.506346,
+        "p50": 16.583334,
+        "p95": 26.2,
+        "max": 33.0,
+        "min": 5.633333
+      }
+    }
+  },
+  "by_curriculum_stage": {
+    "full_stage_2": {
+      "episodes": 576,
+      "successes": 436,
+      "success_rate": 0.756944,
+      "success_rate_wilson_95": {
+        "low": 0.720288,
+        "high": 0.790196
+      },
+      "termination_reasons": {
+        "insertion_success": 436,
+        "time_out": 140
+      },
+      "instability_terminations": 0,
+      "terminal_metrics": {
+        "axial_error_m": {
+          "count": 576,
+          "non_finite": 31,
+          "mean": 0.037401,
+          "p50": 0.010808,
+          "p95": 0.1671,
+          "max": 0.183404,
+          "min": 2.2e-05
+        },
+        "lateral_error_m": {
+          "count": 576,
+          "non_finite": 31,
+          "mean": 0.000567,
+          "p50": 0.000617,
+          "p95": 0.000846,
+          "max": 0.001168,
+          "min": 0.0
+        },
+        "orientation_error_rad": {
+          "count": 576,
+          "non_finite": 31,
+          "mean": 0.003665,
+          "p50": 0.004241,
+          "p95": 0.004325,
+          "max": 0.006684,
+          "min": 0.0
+        },
+        "blade_linear_velocity_mps": {
+          "count": 576,
+          "non_finite": 31,
+          "mean": 0.002808,
+          "p50": 0.000101,
+          "p95": 0.002604,
+          "max": 0.247426,
+          "min": 0.0
+        },
+        "blade_angular_velocity_radps": {
+          "count": 576,
+          "non_finite": 31,
+          "mean": 0.002183,
+          "p50": 0.000969,
+          "p95": 0.008116,
+          "max": 0.054648,
+          "min": 0.0
+        },
+        "cycle_time_s": {
+          "count": 576,
+          "non_finite": 0,
+          "mean": 13.937384,
+          "p50": 15.266667,
+          "p95": 26.683333,
+          "max": 39.5,
+          "min": 0.333333
+        }
+      }
+    }
+  },
+  "by_evaluation_seed": {
+    "4070": {
+      "episodes": 192,
+      "successes": 62,
+      "success_rate": 0.322917,
+      "success_rate_wilson_95": {
+        "low": 0.26081,
+        "high": 0.39197
+      }
+    },
+    "5070": {
+      "episodes": 192,
+      "successes": 187,
+      "success_rate": 0.973958,
+      "success_rate_wilson_95": {
+        "low": 0.940497,
+        "high": 0.988826
+      }
+    },
+    "6070": {
+      "episodes": 192,
+      "successes": 187,
+      "success_rate": 0.973958,
+      "success_rate_wilson_95": {
+        "low": 0.940497,
+        "high": 0.988826
+      }
+    }
+  },
+  "by_stage_and_seed": [
+    {
+      "stage": "full_stage_2",
+      "seed": 4070,
+      "episodes": 192,
+      "successes": 62,
+      "success_rate": 0.322917,
+      "success_rate_wilson_95": {
+        "low": 0.26081,
+        "high": 0.39197
+      }
+    },
+    {
+      "stage": "full_stage_2",
+      "seed": 5070,
+      "episodes": 192,
+      "successes": 187,
+      "success_rate": 0.973958,
+      "success_rate_wilson_95": {
+        "low": 0.940497,
+        "high": 0.988826
+      }
+    },
+    {
+      "stage": "full_stage_2",
+      "seed": 6070,
+      "episodes": 192,
+      "successes": 187,
+      "success_rate": 0.973958,
+      "success_rate_wilson_95": {
+        "low": 0.940497,
+        "high": 0.988826
+      }
+    }
+  ],
+  "gate": {
+    "minimum_stage_success_rate": 0.95,
+    "worst_stage_success_rate": 0.756944,
+    "pooled_success_rate": 0.756944,
+    "every_stage_meets_minimum": false,
+    "pooled_meets_minimum": false,
+    "zero_instability_terminations": true,
+    "zero_non_finite_metric_episodes": false,
+    "passed": false
+  },
+  "scope_and_limitations": [
+    "Simulation only. No result here was produced on real hardware.",
+    "The module is held by physical pad-against-pin contact throughout. No fixed joint, no software fixture.",
+    "Capture and the skill that follows it are trained policies. The one-second seating pause between them is scripted, and the transit in the full round trip is scripted; both are labelled in the report.",
+    "Success is the workflow's own condition re-checked after a 0.70 s settling window, not the instant a predicate fired.",
+    "One PPO training seed per skill. The evaluation seeds are held out, but training repeatability is untested."
+  ]
+}
