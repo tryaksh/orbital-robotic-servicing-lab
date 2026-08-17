@@ -42,6 +42,28 @@ of four stages and chained numbers here have consistently landed below the produ
 of their parts, so build and certify in pieces rather than assembling the whole
 scene and measuring once.
 
+### Status, 2026-08-17
+
+Steps 1, 2 and 3 are closed, step 6's perception half is measured, and **step 4 is
+where this stops.** Insert seats a module in either bay at 98.34% in the worse one
+(`evidence/grapple_insert_two_slot_certification.json`), and the camera reports
+which bay holds it at 100% against a 66.6% baseline
+(`evidence/module_pose_head_two_slot.json`).
+
+The relocation chain does not complete, and the reason is not a rate. **The retreat
+depth the transit needs is not reachable while holding the head-on capture
+attitude**: the converged solver keeps the attitude to 0.0001 rad and gives up
+174 mm of position. The arm was only ever getting there by rotating the wrist into a
+configuration a single-point pin cannot hold the module in, which is why the module
+swings end-for-end mid-flight.
+
+That makes step 4 a **workcell** question rather than a controller one, and it is
+the first direct measurement behind the "layout, not the interface" hypothesis
+`docs/status.md` has carried as its leading suspect since 2026-08-15. The cheap
+untried fix is to cross laterally *before* retreating fully, using the first bay's
+rails to constrain the module's attitude during the lateral move; the expensive one
+is bay pitch, base position or reach. Step 5 stays blocked until one of them lands.
+
 ## The current line of work, decided 2026-08-10
 
 Items 1 to 13 below are the pre-pivot roadmap and are kept for provenance. The
