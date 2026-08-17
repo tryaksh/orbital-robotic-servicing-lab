@@ -1202,12 +1202,34 @@ def main() -> dict[str, object]:
         phases = [CAPTURE, SEAT]
         if args.workflow != "install":
             phases.append(EXTRACT)
-        if args.workflow == "full":
+        # Every workflow that flies the module anywhere needs the transit in its
+        # episode, and the relocation was missing from this list -- so its
+        # episode was derived as capture + seat + extract + insert and the three
+        # planned legs had no room at all. That is precisely the defect this
+        # derivation exists to prevent, and it would have shown up as a
+        # relocation chain that lands below the product of its parts with the
+        # cause invisible.
+        #
+        # The relocation's transit is *not* multiplied by `--transit_slowdown`,
+        # and that is not an omission. The slowdown exists because a full-speed
+        # replay of the pull rotates the module in the pads, and it is applied to
+        # a follower that advances on a fixed cadence. The relocation's follower
+        # advances on arrival, so a slowdown factor would change nothing about
+        # how it flies and would only inflate the episode.
+        #
+        # `PHASE_BUDGET_S[TRANSIT]` is the extract skill's certified 25 s, which
+        # is ample rather than tight: the three legs are 78.2 mm and 436.1 mm
+        # along the pull axis at 0.24 m/s and 220 mm across it at 0.12 m/s, so
+        # the planned path is 734 mm and about 4.0 s of pure travel. The margin
+        # is for closed-loop tracking, not for the distance.
+        if args.workflow in ("full", "relocate"):
             phases.append(TRANSIT)
         if args.workflow != "remove":
             phases.append(INSERT)
         budget = sum(
-            PHASE_BUDGET_S[index] * (args.transit_slowdown if index == TRANSIT else 1) for index in phases
+            PHASE_BUDGET_S[index]
+            * (args.transit_slowdown if index == TRANSIT and args.workflow != "relocate" else 1)
+            for index in phases
         )
         if args.workflow != "remove":
             # The scripted realign runs inside the seat phase, so it is not in
