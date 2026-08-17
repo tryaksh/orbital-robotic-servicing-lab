@@ -286,6 +286,30 @@ for _two_slot_id, _two_slot_cls in (
         },
     )
 
+# The two-bay rack with a camera on it. A single bay can only ask the camera
+# where the module is; two can ask which bay holds it, which is the question a
+# servicer asks first and the one worth demonstrating. Registered separately so
+# the single-bay vision certifications keep describing the scene they ran on.
+for _vision_two_slot_id, _vision_two_slot_cls in (
+    (
+        "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Collect-v0",
+        "ZeroGBladeGrappleVisionTwoSlotCollectEnvCfg",
+    ),
+    (
+        "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+        "ZeroGBladeGrappleVisionTwoSlotWorkflowEnvCfg",
+    ),
+):
+    gym.register(
+        id=_vision_two_slot_id,
+        entry_point=INSERTION_ENTRY_POINT,
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{__name__}.vision_two_slot_env_cfg:{_vision_two_slot_cls}",
+            "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+        },
+    )
+
 # One episode that runs capture, extraction, a scripted transit, and re-insertion
 # with the three trained checkpoints. Demonstration only: no curriculum, no
 # success termination, nothing to train against.

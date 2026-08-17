@@ -120,6 +120,11 @@ def main() -> None:
 
         images: list[np.ndarray] = []
         labels: list[np.ndarray] = []
+        # Recorded only where the task offers it, so the single-bay collector is
+        # unchanged and the dataset it writes keeps loading. On a two-bay rack
+        # this is the supervision for the occupancy branch: which bay, if either,
+        # currently holds the module.
+        occupancies: list[np.ndarray] = []
         zero = torch.zeros((task.num_envs, task.action_manager.total_action_dim), device=task.device)
         collected = 0
         rounds = 0
@@ -136,6 +141,9 @@ def main() -> None:
             label = observations["pose_label"]
             images.append((frame.clamp(0.0, 1.0) * 255.0).to(torch.uint8).cpu().numpy())
             labels.append(label.to(torch.float32).cpu().numpy())
+            occupancy = observations.get("occupancy_label")
+            if occupancy is not None:
+                occupancies.append(occupancy.to(torch.float32).cpu().numpy())
             collected += int(frame.shape[0])
             rounds += 1
             if rounds % 25 == 0:
@@ -143,11 +151,24 @@ def main() -> None:
 
         image_array = np.concatenate(images, axis=0)[: args.samples]
         label_array = np.concatenate(labels, axis=0)[: args.samples]
+        arrays = {"images": image_array, "labels": label_array}
+        if occupancies:
+            arrays["occupancy"] = np.concatenate(occupancies, axis=0)[: args.samples]
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        np.savez_compressed(args.output, images=image_array, labels=label_array)
+        np.savez_compressed(args.output, **arrays)
         spread = label_array.max(axis=0) - label_array.min(axis=0)
         print(f"[INFO] wrote {args.output}: images {image_array.shape}, labels {label_array.shape}")
         print(f"[INFO] label spread per channel (m, m, m, rad, rad, rad): {np.round(spread, 5).tolist()}")
+        if occupancies:
+            occupied = arrays["occupancy"]
+            # Printed because a classification dataset that turns out to be 99%
+            # one class trains a head that looks accurate and has learned the
+            # prior. Better to see it here than in a suspiciously good number.
+            print(
+                f"[INFO] occupancy label: per-bay positive fraction "
+                f"{np.round(occupied.mean(axis=0), 4).tolist()}, "
+                f"neither bay in {float((occupied.sum(axis=1) == 0).mean()):.4f} of frames"
+            )
     finally:
         if env is not None:
             env.close()
