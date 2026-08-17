@@ -106,7 +106,22 @@ case "$stage" in
     ;;
 
   relocate)
+    # The relocation seats the module in the SECOND bay, so it must be driven by
+    # the two-bay insert policy item 3 produced -- not by the promoted
+    # single-slot v6, which has never seen that bay and whose goal command was a
+    # constant when it was trained. Defaulting INSERT_CKPT to v6 here would run
+    # the chain with a policy certified for the wrong slot and report the result
+    # as a relocation, so the two-slot run is the default and v6 has to be asked
+    # for by name.
+    RUN="${RUN:-grapple_insert_l0_seed70_v10twoslot}"
+    INSERT_CKPT="${RELOCATE_INSERT_CKPT:-$(ls "logs/rl_games"/*/"$RUN"/nn/*_ep_*.pth 2>/dev/null |
+      sed -n 's/.*_ep_\([0-9]\+\)_.*/\1 &/p' | sort -k1,1n | tail -1 | cut -d' ' -f2-)}"
+    if [ -z "$INSERT_CKPT" ]; then
+      echo "NO TWO-SLOT INSERT CHECKPOINT for $RUN -- run 'insert2' and pass its gate first"
+      exit 1
+    fi
     echo "[$(date +%H:%M:%S)] CERTIFY the relocation chain"
+    echo "[$(date +%H:%M:%S)]   insert policy: $INSERT_CKPT"
     rows=()
     for seed in 4070 5070 6070; do
       out="$OUT/relocate_seed${seed}"
