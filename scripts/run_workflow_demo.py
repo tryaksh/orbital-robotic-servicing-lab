@@ -896,6 +896,23 @@ class WorkflowDriver:
                 reached = torch.zeros_like(self.waypoint_read, dtype=torch.bool)
                 reached[ids] = torch.linalg.vector_norm(target - tool[ids], dim=-1) <= 0.005
                 due = transiting & reached
+                # The last leg is not a transit. It drives the module 436 mm
+                # along the pull axis into the second bay's channel, past that
+                # bay's lead-in flares and between its rails -- which is an
+                # insertion by every physical measure, and this project's
+                # operating rule says a module meeting rails has to be *held*,
+                # not retained.
+                #
+                # Measured, with the retain left on through it: the tool flew the
+                # whole leg and stopped 0.4 mm from its waypoint while the module
+                # travelled about 95 mm of the 436 and sat at x = 0.176 against
+                # the 0.578 the arrival test needs. Every one of 64 environments
+                # then timed out inside the transit, because the arrival test is
+                # also what releases the retain -- the module could not be driven
+                # in while retained, and the retain was not released until it was
+                # driven in. Releasing it one leg earlier breaks that deadlock at
+                # the physically correct moment.
+                self.gripper.retain_latch[due & (self.waypoint_read <= 1)] = False
             else:
                 # Never on the step the transit begins: that would consume the
                 # first waypoint before the tool had been commanded toward it.
@@ -909,12 +926,29 @@ class WorkflowDriver:
             scale = self.scales[TRANSIT][:3]
             self.actions[ids, :3] = ((target - tool[ids]) / scale).clamp(-1.0, 1.0)
             self.actions[ids, 3:6] = 0.0
+            # Rate-limiting the last leg to a third of the command, the way the
+            # replayed transit is slowed, was tried here and measured *worse*:
+            # the module ended at x = -0.158 against -0.003 at full command, and
+            # the count that had crossed fell from 46 to 19 because the tool
+            # itself lagged its waypoint. It is not in, and the reason it did not
+            # help is that the module was not being driven too fast, it was being
+            # driven at the wrong bay -- see `_plan_lateral_transit`.
             arrived = transiting & (self.waypoint_read <= 0) & (blade_x >= TRANSIT_TARGET_BLADE_X - 0.005)
             if self.workflow == "relocate":
                 # And it has to have crossed, not merely come back out to the
                 # right depth in the bay it started in.
-                lateral = (tool[:, 1] - self.reset_tool_pos[:, 1]) <= (0.5 * SECOND_SLOT_CENTER_Y)
-                arrived = arrived & lateral
+                #
+                # Asked of the *module*, in the rack's own frame, rather than of
+                # the tool relative to where this episode happened to start. The
+                # tool-relative form passed while the module sat 93 mm outside the
+                # channel, because it measured a displacement rather than an
+                # arrival -- the same error that put the cross leg in the wrong
+                # place. Half the bay pitch is the midpoint between the two bays,
+                # so this asks which bay the module is now in front of.
+                blade_y = (
+                    self.task.scene["spare_blade"].data.root_pos_w[:, 1] - self.task.scene.env_origins[:, 1]
+                )
+                arrived = arrived & (blade_y <= 0.5 * SECOND_SLOT_CENTER_Y)
             # Insertion drives the module back into its rails, so the grip has to
             # carry contact again. Retaining through that is the failure the
             # capture/hold split exists to prevent.
@@ -998,24 +1032,46 @@ class WorkflowDriver:
         capture and the pull have left it in the pads, and this whole project's
         recurring defect is a constant restated instead of read.
 
+        **Every leg targets the bay, not a displacement, and the lateral one had
+        to be corrected to do so.** It was written as ``back_y + SECOND_SLOT_CENTER_Y``
+        --- cross 220 mm from wherever the tool is --- while the two axial legs
+        were already written as absolute positions with the measured offset added.
+        A relative cross carries whatever lateral error capture and extraction
+        left into the second bay, and measured over 64 relocations that error is
+        about 93 mm at the median. The bay's channel half-width is 72.5 mm, so the
+        module arrived outside the channel it was being pushed into, jammed its
+        nose on the lead-in flare, and every episode timed out in the transit.
+        The symptom was a tool sitting 0.4 mm from its final waypoint with the
+        module 580 mm behind it.
+
         Every leg is followed closed-loop on position, like the removal transit,
         so a waypoint that is slightly off does not accumulate; and the module is
-        retained, not held, for all of it, because it is unconstrained the whole
-        way and a wedge under load is a thruster.
+        retained while it flies through free space, then held again for the last
+        leg, which drives it between the second bay's rails and is an insertion in
+        everything but name.
         """
 
         ids = torch.nonzero(mask, as_tuple=False).squeeze(-1)
         if ids.numel() == 0:
             return
-        # Measured now: where the tool sits relative to the module it is holding.
+        # Measured now: where the tool sits relative to the module it is holding,
+        # on both axes the transit moves along. `blade_x` and `blade_y` are
+        # environment-local and `tool` is world, so each offset carries this
+        # environment's origin -- which is exactly right, because the waypoints
+        # these build are world too and the origin cancels on arrival.
+        blade_y = (
+            self.task.scene["spare_blade"].data.root_pos_w[:, 1] - self.task.scene.env_origins[:, 1]
+        )
         tool_to_blade_x = tool[ids, 0] - blade_x[ids]
+        tool_to_blade_y = tool[ids, 1] - blade_y[ids]
         retreat_x = TRANSIT_CLEAR_BLADE_CENTRE_X + tool_to_blade_x
         staging_x = TRANSIT_TARGET_BLADE_X + tool_to_blade_x
+        staging_y = SECOND_SLOT_CENTER_Y + tool_to_blade_y
 
         back = tool[ids].clone()
         back[:, 0] = retreat_x
         across = back.clone()
-        across[:, 1] = back[:, 1] + SECOND_SLOT_CENTER_Y
+        across[:, 1] = staging_y
         approach = across.clone()
         approach[:, 0] = staging_x
 
@@ -1044,9 +1100,30 @@ class WorkflowDriver:
         target = self.waypoints[self.waypoint_read[ids], ids]
         distance = torch.linalg.vector_norm(target - tool, dim=-1)
         legs = torch.bincount(self.waypoint_read[ids], minlength=3).tolist()
+        # Each conjunct of `arrived` separately, because the first relocation run
+        # showed the tool sitting 0.4 mm from its last waypoint and not arriving,
+        # and a single boolean cannot say which clause is the one refusing.
+        blade_x = _blade_centre_x(self.task)[ids]
+        lateral = (
+            self.task.scene["spare_blade"].data.root_pos_w[:, 1] - self.task.scene.env_origins[:, 1]
+        )[ids]
+        # Is the module still on the tool at all? A tool that flies its whole
+        # path while the module does not follow has either lost the grip or is
+        # dragging the module against something, and grip error tells the two
+        # apart: a lost module's error grows without bound, a snagged one's does
+        # not. Reported here because the hand-off trace only samples phase
+        # boundaries, and this failure lives in the middle of a phase.
+        grip_error, _ = grapple_grip_error_metrics(self.task)
+        grip_error = grip_error[ids]
         return (
             f"  transit: legs_remaining={legs[:3]} "
-            f"to_waypoint_m p50={float(distance.median()):.4f} max={float(distance.max()):.4f}"
+            f"to_waypoint_m p50={float(distance.median()):.4f} max={float(distance.max()):.4f} "
+            f"| last_leg={int((self.waypoint_read[ids] <= 0).sum())} "
+            f"blade_x_ok={int((blade_x >= TRANSIT_TARGET_BLADE_X - 0.005).sum())} "
+            f"(p50={float(blade_x.median()):.4f} need>={TRANSIT_TARGET_BLADE_X - 0.005:.4f}) "
+            f"crossed={int((lateral <= 0.5 * SECOND_SLOT_CENTER_Y).sum())} "
+            f"(p50={float(lateral.median()):.4f} need<={0.5 * SECOND_SLOT_CENTER_Y:.4f}) "
+            f"| grip_error_m p50={float(grip_error.median()):.4f} max={float(grip_error.max()):.4f}"
         )
 
     def _freeze(
