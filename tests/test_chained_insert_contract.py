@@ -19,6 +19,8 @@ project or would have invalidated the run:
 from __future__ import annotations
 
 import ast
+import io
+import tokenize
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[1] / "src"
@@ -29,6 +31,20 @@ DRIVER = Path(__file__).resolve().parents[1] / "scripts" / "run_workflow_demo.py
 
 def _source() -> str:
     return MODULE.read_text(encoding="utf-8")
+
+
+def _code_only(source: str) -> str:
+    """The source with comments and string literals removed.
+
+    Docstrings are string literals, so this drops those too, which is what is
+    wanted: an assertion about what a module *depends on* should read the code
+    and not the prose explaining it.
+    """
+
+    tokens = tokenize.generate_tokens(io.StringIO(source).readline)
+    return "".join(
+        token.string for token in tokens if token.type not in (tokenize.COMMENT, tokenize.STRING)
+    )
 
 
 def test_policy_group_is_the_chain_s_insert_group() -> None:
@@ -184,8 +200,18 @@ def test_the_single_slot_insert_task_is_untouched() -> None:
     # configuration; the skill must never learn about the chained task, or a
     # change made for the chain could move the ground under insert v6's
     # certification.
-    assert "chained_insert_env_cfg" not in grapple
-    assert "InsertChain" not in grapple
+    #
+    # Asserted against the *code*, with comments and docstrings removed, because
+    # a comment cannot create a dependency and this file's comments are where
+    # the project records why a line of work is closed. Written as a whole-string
+    # search it forbade the prose too, and it duly failed the moment a comment
+    # pointed a reader at the task that reproduced the hand-off at 93.06% --
+    # which is a citation, not an import. Stripping the prose keeps every case
+    # the check was written to catch: an import, a class reference, a
+    # registration string.
+    code = _code_only(grapple)
+    assert "chained_insert_env_cfg" not in code
+    assert "InsertChain" not in code
 
     registry = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "__init__.py").read_text(encoding="utf-8")
     assert "Isaac-ZeroG-Blade-GrapplePin-InsertChain-v0" in registry
