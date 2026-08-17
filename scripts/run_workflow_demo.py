@@ -100,6 +100,24 @@ ALIGN_HOLD_ONLY = bool(int(os.environ.get("ALIGN_HOLD_ONLY", "0")))
 #: module back into rails immediately afterwards and wants the firm grip, where
 #: a removal is finished and wants to be left alone.
 ALIGN_RETAIN = bool(int(os.environ.get("ALIGN_RETAIN", "0")))
+#: Relax to the retain closure once an installation has seated the module, for
+#: the settling window the outcome is re-checked over.
+#:
+#: **Off by default and unmeasured**, which is why it is a switch rather than a
+#: change. The argument for it is this file's own operating rule: any phase that
+#: waits must either command or retain, and the DONE phase below waits 0.70 s
+#: with the holding closure still commanded. Removal already retains the instant
+#: the module is free -- that single change took the removal chain from 0/570
+#: surviving its re-check to 569/576 -- and installation simply never had the
+#: same question asked of it.
+#:
+#: The argument against it is that a seated module is back in its rails, and the
+#: rails absorb the wedge thrust exactly as they do during the seating pause. If
+#: that is right this changes nothing, and measuring it is how the difference
+#: between the two arguments stops being a matter of opinion. Installation loses
+#: about one point between its predicate firing and the re-check, so that is the
+#: most it can buy.
+SEATED_RETAIN = bool(int(os.environ.get("SEATED_RETAIN", "0")))
 
 
 #: Phases, as integers, because the driver runs them per environment in parallel.
@@ -865,6 +883,15 @@ class WorkflowDriver:
             fired = inserting & grapple_insertion_success_mask(task)
             self._finish(fired, step)
             self.predicate_fired[fired] = True
+            # A seated module is a finished job, and the DONE phase below waits
+            # 0.70 s while still commanding the holding closure -- which is the
+            # one thing rule "any phase that waits must either command or
+            # retain" forbids. Removal already retains the moment the module is
+            # free; installation does not, and the asymmetry was never measured
+            # rather than reasoned. Off by default so the certified number is
+            # untouched until it is.
+            if SEATED_RETAIN:
+                self.gripper.retain_latch[fired] = True
 
         # --- done: hold still, then judge --------------------------------------
         finished = self.phase == DONE
