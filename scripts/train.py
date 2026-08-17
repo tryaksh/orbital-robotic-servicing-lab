@@ -131,8 +131,8 @@ def _validate_robust_smoke_contract(env, robustness_level: int) -> None:
         # are supposed to grip must actually be a live collider at runtime,
         # because this project has twice shipped a grasp task whose gripper
         # touched nothing.
-        pin_parts = ("GrapplePin/Shaft", "GrapplePin/Collar", "GrapplePin/Wedge")
-        parts = pin_parts if hasattr(spawn, "wedge_x") else ("Handle",)
+        pin_parts = ("GrapplePin/Shaft", "GrapplePin/Collar", "GrapplePin/Key", "GrapplePin/Nose")
+        parts = pin_parts if hasattr(spawn, "key_x") else ("Handle",)
         if parts == ("Handle",) and not spawn.handle_collision_enabled:
             raise RuntimeError("Contact insertion handle collision is disabled")
         stage = get_current_stage()

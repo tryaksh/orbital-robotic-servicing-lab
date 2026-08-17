@@ -24,7 +24,7 @@ import pytest
 
 from zero_g_blade_swap import grapple_geometry
 from zero_g_blade_swap.grapple_geometry import (
-    GRAPPLE_PIN_WEDGE_X,
+    GRAPPLE_PIN_KEY_X,
     GRAPPLE_YOKE_HALF_GAP_M,
     GRAPPLE_YOKE_MOUTH_HALF_GAP_M,
     GRAPPLE_YOKE_PARALLEL_X,
@@ -124,7 +124,7 @@ def test_the_parallel_section_is_what_spans_the_pads() -> None:
     assert parallel_length == pytest.approx(0.024)
     mouth_length = GRAPPLE_YOKE_PARALLEL_X[0] - GRAPPLE_YOKE_X[0]
     assert mouth_length == pytest.approx(0.010)
-    assert GRAPPLE_YOKE_X[0] > GRAPPLE_PIN_WEDGE_X[0], "the yoke must not reach past the wedge's free end"
+    assert GRAPPLE_YOKE_X[0] > GRAPPLE_PIN_KEY_X[0], "the yoke must not reach past the key's free end"
 
 
 def test_clearance_and_catch_trace_to_the_measured_finger_half_width(monkeypatch) -> None:

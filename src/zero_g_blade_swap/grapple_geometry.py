@@ -113,13 +113,58 @@ TRANSIT_RETREAT_M = EXTRACTED_BLADE_CENTRE_X - TRANSIT_CLEAR_BLADE_CENTRE_X
 # centre. Sections run from the free end toward the blade and must be
 # contiguous; ``tests/test_grapple_geometry.py`` enforces that.
 
-GRAPPLE_PIN_WEDGE_X = (-0.371, -0.311)
+# ---------------------------------------------------------------------------
+# 2026-08-17: the tapered wedge is replaced by a KEYED FLAT SECTION between two
+# axial stops. This is a design change, not a tuning change, and it is the one
+# this project should have made three sessions ago.
+#
+# **Why the wedge was wrong.** Flat pads closing on a smooth taper hold a module
+# by friction alone, and the geometry gives friction almost nothing to work with:
+# the clamping normals lie along the closing axis, and a normal force cannot
+# oppose a moment about its own direction. Measured four independent ways here,
+# and it culminated in a module swinging *end-for-end* about the grip during the
+# relocation transit -- the tool-to-module offset changed sign, -0.335 m to
+# +0.305 m, while grip error read a mild 24 mm because the pads were still on the
+# pin. Two features were bolted on to fix it, an anti-yaw yoke and a modelled
+# latch, and both were net negatives; you cannot patch keying onto a grip that
+# has none.
+#
+# **Why this shape.** It is what flight hardware does. ISS ORUs are handled by
+# Dextre's OTCM gripping a *micro-square* -- a square boss, so rotation is
+# blocked by form -- and then bolted. SSRMS grapple fixtures use snares plus
+# three alignment ramps. SIROM uses three latches at 120 degrees; HOTDOCK uses
+# external form-fit geometry. Not one of them makes friction load-bearing.
+#
+# **What each section now does**, free end first:
+#
+#   nose flange  20 mm, 60 mm tall   front axial stop: the pads cannot pull off
+#   key          80 mm, 30 mm tall   FLAT faces: plane contact blocks every
+#                                    rotation by form rather than by friction
+#   collar        6 mm, 90 mm tall   rear axial stop and absolute depth stop
+#   shaft        80 mm, 30 mm tall   the only section that passes the slot mouth
+#
+# The pads are 57 mm long and seat against the collar, so they lie wholly on the
+# key with 23 mm of key left toward the nose. That 23 mm is the axial travel a
+# pull gets before the nose flange stops it, which is the positive capture the
+# taper used to approximate by wedging -- and because there is no taper left,
+# closing no longer thrusts the payload along the pin, which is the separate
+# defect that made raising grip force *reduce* holding capacity.
+#
+# The grip offset, the slot, and every calibrated arm pose are deliberately
+# unchanged, so the existing checkpoints remain a valid starting point.
+GRAPPLE_PIN_NOSE_X = (-0.411, -0.391)
+GRAPPLE_PIN_KEY_X = (-0.391, -0.311)
 GRAPPLE_PIN_COLLAR_X = (-0.311, -0.305)
 GRAPPLE_PIN_SHAFT_X = (-0.305, -0.225)
 GRAPPLE_PIN_HALF_WIDTH_Y = 0.015
-#: Free end then blade end. Thicker at the free end is what makes pulling wedge
-#: the pin into the pads instead of pulling it out from between them.
-GRAPPLE_PIN_WEDGE_HALF_HEIGHT = (0.035, 0.008)
+#: Constant, because the whole point is that the pads meet a flat. A plane
+#: contact resists moments about every axis in the plane; a line contact on a
+#: taper resists none of them.
+GRAPPLE_PIN_KEY_HALF_HEIGHT = 0.015
+#: Front axial stop. Shorter than the pads can open, so an approaching gripper
+#: still passes over it, and taller than the key so a closed pad cannot ride off
+#: the end.
+GRAPPLE_PIN_NOSE_HALF_HEIGHT = 0.030
 #: Taller than the pads can ever open, so it is an absolute depth stop rather
 #: than something a wide-open gripper slides past.
 GRAPPLE_PIN_COLLAR_HALF_HEIGHT = 0.045
@@ -130,7 +175,7 @@ GRAPPLE_PIN_SHAFT_HALF_HEIGHT = 0.015
 #: steers is the frame the pads grip with.
 GRAPPLE_TOOL_OFFSET_POS = (0.0, 0.0, 0.5 * (PAD_SPAN_FROM_FLANGE_M[0] + PAD_SPAN_FROM_FLANGE_M[1]))
 #: The matching point on the blade, so a zero tool-to-grip error means the pads
-#: straddle the wedge with their leading faces on the collar.
+#: straddle the key with their leading faces on the collar.
 GRAPPLE_PIN_GRIP_OFFSET = (
     GRAPPLE_PIN_COLLAR_X[0] - 0.5 * (PAD_SPAN_FROM_FLANGE_M[1] - PAD_SPAN_FROM_FLANGE_M[0]),
     0.0,
@@ -217,29 +262,27 @@ def yoke_free_yaw_rad() -> float:
     return 2.0 * clearance / length
 
 
-def wedge_half_height_at(blade_local_x: float) -> float:
-    """Return the wedge's half-height at a point along the pin."""
+def key_seat_axial_travel_m() -> float:
+    """Axial travel a pull gets before the nose flange stops the pads.
 
-    distal_x, proximal_x = GRAPPLE_PIN_WEDGE_X
-    distal_half, proximal_half = GRAPPLE_PIN_WEDGE_HALF_HEIGHT
-    fraction = (blade_local_x - distal_x) / (proximal_x - distal_x)
-    return distal_half + (proximal_half - distal_half) * min(max(fraction, 0.0), 1.0)
+    The positive axial capture the taper used to approximate by wedging, and now
+    a hard number instead of a friction coefficient: the pads seat against the
+    collar, so what is left is the key's length less the pad span.
+    """
 
-
-def wedge_taper_deg() -> float:
-    """Return the wedge's half-angle from its axis, in degrees."""
-
-    import math
-
-    distal_x, proximal_x = GRAPPLE_PIN_WEDGE_X
-    distal_half, proximal_half = GRAPPLE_PIN_WEDGE_HALF_HEIGHT
-    return math.degrees(math.atan2(distal_half - proximal_half, proximal_x - distal_x))
+    key_length = GRAPPLE_PIN_KEY_X[1] - GRAPPLE_PIN_KEY_X[0]
+    pad_span = PAD_SPAN_FROM_FLANGE_M[1] - PAD_SPAN_FROM_FLANGE_M[0]
+    return key_length - pad_span
 
 
 def approach_clearance_per_side_m() -> float:
-    """Room either side of the wedge's free end when the pads are fully open."""
+    """Room either side of the nose flange when the pads are fully open.
 
-    return 0.5 * (MAX_CLEAR_OPENING_M - 2.0 * GRAPPLE_PIN_WEDGE_HALF_HEIGHT[0])
+    The nose flange is the widest thing an approaching gripper has to pass over,
+    so it is what sets the approach clearance.
+    """
+
+    return 0.5 * (MAX_CLEAR_OPENING_M - 2.0 * GRAPPLE_PIN_NOSE_HALF_HEIGHT)
 
 
 __all__ = [
@@ -266,8 +309,10 @@ __all__ = [
     "GRAPPLE_PIN_HALF_WIDTH_Y",
     "GRAPPLE_PIN_SHAFT_HALF_HEIGHT",
     "GRAPPLE_PIN_SHAFT_X",
-    "GRAPPLE_PIN_WEDGE_HALF_HEIGHT",
-    "GRAPPLE_PIN_WEDGE_X",
+    "GRAPPLE_PIN_KEY_HALF_HEIGHT",
+    "GRAPPLE_PIN_KEY_X",
+    "GRAPPLE_PIN_NOSE_HALF_HEIGHT",
+    "GRAPPLE_PIN_NOSE_X",
     "GRAPPLE_TOOL_OFFSET_POS",
     "MAX_CLEAR_OPENING_M",
     "PAD_HALF_WIDTH_M",
@@ -280,6 +325,5 @@ __all__ = [
     "approach_clearance_per_side_m",
     "clear_opening_m",
     "drive_torque_for_grip_force_nm",
-    "wedge_half_height_at",
-    "wedge_taper_deg",
+    "key_seat_axial_travel_m",
 ]
