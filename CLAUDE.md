@@ -24,15 +24,16 @@ captured before auto-reset. Promoted: **capture v5, extract v13unsat, insert v6*
 
 | | Result | Gate 95% | Evidence |
 | --- | ---: | --- | --- |
-| Capture | 96.10% | pass | `grapple_grasp_v5_certification.json` |
+| Capture | 96.10%, **stale** | — | `grapple_grasp_v5_certification.json`; certified 9.4 h before its own success tolerance went 20 mm → 10 mm in `ffac648`. Bounded below by 43% on its own recorded episodes and above by 96.10%. **Re-run before quoting**: `certify_demo_policies.sh Grasp` |
 | Extract | 99.02% | pass | `grapple_extract_v14reset_certification.json` |
 | Insert, alone | 95.57% | pass | `grapple_insert_v6_certification.json` |
 | **Removal chain** | **98.78%** | **pass** | `workflow_remove_retain_certification.json` |
-| **Install chain** | **84.38%** | **short** | `workflow_install_final_certification.json` |
+| **Install chain** | **89.41%** | **short by 5.6** | `workflow_install_promoted_certification.json`. The 84.38% previously here is retracted: same policies, certified 8.5 h before the capture budget went 6 s → 10 s |
 | Install, camera | 80.38% | — | `vision_workflow_camera_certification.json` |
 | Install, oracle | 80.38% | — | `vision_workflow_oracle_certification.json` |
 | Install, blind | 43.58% | — | `vision_workflow_blind_certification.json` |
-| Insert **inside the chain** | ~80% | — | derived; this is the one gap |
+| Insert **inside the chain** | **90.45%** | — | measured, not derived: `workflow_install_promoted_certification.json` predicate-fired column |
+| Insert on the **reproduced** hand-off | **93.06%** | — | `insert_chain_handoff_gate.json` |
 | Interface axial hold | 69 N vs 66.4 N required | pass | `grapple_pin_axial_pull_gate.json` |
 | Module pose from 64x64 RGB | 1.75 mm mean | — | `module_pose_head.json` |
 | Onboard compute | 0.73 ms CPU, 2.2% of period | — | `inference_budget.json` |

@@ -1259,6 +1259,68 @@ SLOT_ENTRY_LEFT_FLARE_CFG = _slot_entry_flare_cfg("BladeSlotEntryLeftFlare", _FL
 SLOT_ENTRY_RIGHT_FLARE_CFG = _slot_entry_flare_cfg("BladeSlotEntryRightFlare", -_FLARE_CENTER_Y, _FLARE_QUAT_RIGHT)
 
 
+# ---------------------------------------------------------------------------
+# The second slot, which is what makes a relocation a relocation.
+#
+# A rack with one slot can only demonstrate remove-and-replace. Moving a module
+# from one bay to the neighbouring one is the ORU changeout a servicer actually
+# performs, and it needs the rack to have somewhere else to put it.
+#
+# Placed at y = -0.22 m. The module is 0.16 m wide, so two modules sitting in
+# adjacent slots leave 60 mm between them -- enough that the gripper's 75 mm
+# closing envelope is not trying to occupy the same space as the neighbour.
+#
+# Every part is *derived* from the slot that is already certified rather than
+# re-authored: same rails, same clearance, same lips, same lead-in flares, same
+# materials, displaced along y. Re-authoring would let the two slots drift apart
+# and would make any difference between them unattributable.
+SECOND_SLOT_CENTER_Y = -0.22
+
+
+def offset_slot_asset(source: RigidObjectCfg, name: str, delta_y: float) -> RigidObjectCfg:
+    """Copy one slot part to a new prim, displaced along y.
+
+    ``configclass`` copies deeply, so the spawn, collision properties and
+    physics material of the result are independent of the original and of every
+    other copy -- which matters because several tasks mutate those in place.
+    """
+
+    moved = source.copy()
+    moved.prim_path = f"{{ENV_REGEX_NS}}/{name}"
+    position = moved.init_state.pos
+    moved.init_state.pos = (position[0], position[1] + delta_y, position[2])
+    return moved
+
+
+SECOND_SLOT_CFG = offset_slot_asset(ROBUST_INSERTION_SLOT_CFG, "BladeSlotTwo", SECOND_SLOT_CENTER_Y)
+SECOND_SLOT_LEFT_GUIDE_CFG = offset_slot_asset(
+    ROBUST_INSERTION_SLOT_LEFT_GUIDE_CFG, "BladeSlotTwoLeftGuide", SECOND_SLOT_CENTER_Y
+)
+SECOND_SLOT_RIGHT_GUIDE_CFG = offset_slot_asset(
+    ROBUST_INSERTION_SLOT_RIGHT_GUIDE_CFG, "BladeSlotTwoRightGuide", SECOND_SLOT_CENTER_Y
+)
+SECOND_SLOT_UPPER_LEFT_LIP_CFG = offset_slot_asset(
+    SLOT_UPPER_LEFT_LIP_CFG, "BladeSlotTwoUpperLeftLip", SECOND_SLOT_CENTER_Y
+)
+SECOND_SLOT_UPPER_RIGHT_LIP_CFG = offset_slot_asset(
+    SLOT_UPPER_RIGHT_LIP_CFG, "BladeSlotTwoUpperRightLip", SECOND_SLOT_CENTER_Y
+)
+SECOND_SLOT_ENTRY_LEFT_FLARE_CFG = offset_slot_asset(
+    SLOT_ENTRY_LEFT_FLARE_CFG, "BladeSlotTwoEntryLeftFlare", SECOND_SLOT_CENTER_Y
+)
+SECOND_SLOT_ENTRY_RIGHT_FLARE_CFG = offset_slot_asset(
+    SLOT_ENTRY_RIGHT_FLARE_CFG, "BladeSlotTwoEntryRightFlare", SECOND_SLOT_CENTER_Y
+)
+
+#: Where a module sits when it is seated in the second slot. Derived from the
+#: first slot's seated pose, so the two can never disagree about depth.
+SECOND_SLOT_INSERTED_POS = (
+    BLADE_INSERTED_POS[0],
+    BLADE_INSERTED_POS[1] + SECOND_SLOT_CENTER_Y,
+    BLADE_INSERTED_POS[2],
+)
+
+
 def _caddy_shelf_cfg(name: str, center: tuple[float, float, float]) -> RigidObjectCfg:
     return RigidObjectCfg(
         prim_path=f"{{ENV_REGEX_NS}}/{name}",
@@ -1372,9 +1434,19 @@ __all__ = [
     "ROBOTIQ_2F85_CLOSING_RATE_M_PER_RAD",
     "ROBOTIQ_2F85_RATED_DRIVE_TORQUE_NM",
     "ROBOTIQ_2F85_RATED_GRIP_N",
+    "SECOND_SLOT_CENTER_Y",
+    "SECOND_SLOT_CFG",
+    "SECOND_SLOT_ENTRY_LEFT_FLARE_CFG",
+    "SECOND_SLOT_ENTRY_RIGHT_FLARE_CFG",
+    "SECOND_SLOT_INSERTED_POS",
+    "SECOND_SLOT_LEFT_GUIDE_CFG",
+    "SECOND_SLOT_RIGHT_GUIDE_CFG",
+    "SECOND_SLOT_UPPER_LEFT_LIP_CFG",
+    "SECOND_SLOT_UPPER_RIGHT_LIP_CFG",
     "SLOT_ENTRY_FLARE_DEG",
     "SLOT_ENTRY_LEFT_FLARE_CFG",
     "SLOT_ENTRY_RIGHT_FLARE_CFG",
+    "offset_slot_asset",
     "SLOT_UPPER_LEFT_LIP_CFG",
     "SLOT_UPPER_RIGHT_LIP_CFG",
     "GRIPPER_GRASP_ROT",

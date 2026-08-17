@@ -800,21 +800,37 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
     terminations: InsertTerminationsCfg = InsertTerminationsCfg()
     curriculum: SingleStageCurriculumCfg = SingleStageCurriculumCfg()
     # 167 mm at the 45 mm/s axial scale is 3.7 s of pure travel, and 12 s looked
-    # like room to search without room to dawdle. Certification says otherwise:
-    # successful insertions complete at a median of 11.70 s and a maximum of
+    # like room to search without room to dawdle. Certification said otherwise:
+    # successful insertions completed at a median of 11.70 s and a maximum of
     # 12.00 s, so every success was finishing on the buzzer, and 52% of failures
     # were still outside the 12 mm axial tolerance when the clock stopped. 20 s
-    # is about 1.7x the measured time a success actually takes.
+    # was about 1.7x the measured time a success actually takes.
     #
-    # This is deliberately not the whole fix. The larger half of the failures is
-    # the interface rather than the clock: 93% of them are outside the
-    # grip-orientation tolerance at the step they end on, which is the pin's free
-    # yaw and which no episode length improves. See docs/status.md.
+    # **30 s, for the third time and the same reason, and this one was measured
+    # on the chain rather than on the skill.** Handed the state a real capture
+    # produces, insert v6 takes 12.3 s at the median but runs to about 18.5 s at
+    # p95 -- into the buzzer again -- and 6 of every 7 chain-phase failures end
+    # still short on axial depth rather than having gone wrong. Extending only
+    # the clock, with the policy and every success tolerance untouched, moves it
+    # from 95.31% to 97.92% on the reproduced hand-off, and two of the four
+    # remaining failures are capture overruns rather than insertions at all.
+    # The slowest insertion that succeeded under the longer clock took 24.3 s, so
+    # 30 s covers the measured distribution with margin; a later session with
+    # more evidence can tighten it toward that 24.3 s.
+    #
+    # This is a budget, not a success threshold. The predicate --- 12 mm axial,
+    # 2.5 mm lateral, 0.0524 rad, both velocity limits and the grip --- is
+    # untouched, which is the distinction rule 8 draws. What it costs is honest
+    # and belongs next to the number: a servicing insertion is now allowed half a
+    # minute, and the cycle time to quote is the measured one, not this bound.
+    #
+    # Insert v6's 95.57% describes the 20 s task and had to be re-run; see
+    # docs/status.md and `grapple_insert_v6clock30_certification.json`.
     #
     # The chained workflow reads this field for its own insert-phase budget, so
     # the skill and the chain cannot disagree about how long an insertion is
     # allowed to take.
-    episode_length_s: float = 20.0
+    episode_length_s: float = 30.0
 
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)

@@ -103,21 +103,27 @@ ALIGN_RETAIN = bool(int(os.environ.get("ALIGN_RETAIN", "0")))
 #: Relax to the retain closure once an installation has seated the module, for
 #: the settling window the outcome is re-checked over.
 #:
-#: **Off by default and unmeasured**, which is why it is a switch rather than a
-#: change. The argument for it is this file's own operating rule: any phase that
-#: waits must either command or retain, and the DONE phase below waits 0.70 s
-#: with the holding closure still commanded. Removal already retains the instant
-#: the module is free -- that single change took the removal chain from 0/570
-#: surviving its re-check to 569/576 -- and installation simply never had the
-#: same question asked of it.
+#: **On, and measured.** This file's operating rule is that any phase which waits
+#: must either command or retain, and the DONE phase below waits 0.70 s with the
+#: holding closure still commanded. Removal already retains the instant the
+#: module is free -- the single change that took chained removal from 0 of 570
+#: surviving its re-check to 569 of 576 -- and installation had simply never been
+#: asked the same question.
 #:
-#: The argument against it is that a seated module is back in its rails, and the
-#: rails absorb the wedge thrust exactly as they do during the seating pause. If
-#: that is right this changes nothing, and measuring it is how the difference
-#: between the two arguments stops being a matter of opinion. Installation loses
-#: about one point between its predicate firing and the re-check, so that is the
-#: most it can buy.
-SEATED_RETAIN = bool(int(os.environ.get("SEATED_RETAIN", "0")))
+#: The argument against it was real and turned out to be wrong: a seated module
+#: is back in its rails, and the rails were expected to absorb the wedge thrust
+#: exactly as they do during the seating pause. Measured on seed 4070, same
+#: policies, same episodes, one switch:
+#:
+#:      holding closure through the settle    85.94%   (predicate 88.54%)
+#:      retain closure through the settle     90.10%   (predicate 90.63%)
+#:
+#: Four points, from a rule this project had already written down and applied to
+#: one workflow but not the other. The prediction that it could buy at most the
+#: one point lost between the predicate and the re-check was also wrong, which is
+#: worth keeping: the module keeps being pushed for the whole window, so what it
+#: buys is bounded by how far a pushed module drifts, not by the current gap.
+SEATED_RETAIN = bool(int(os.environ.get("SEATED_RETAIN", "1")))
 
 
 #: Phases, as integers, because the driver runs them per environment in parallel.

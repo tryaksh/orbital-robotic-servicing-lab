@@ -95,6 +95,16 @@ class InsertionGoalCommand(CommandTerm):
         # depend on whether events or commands reset first.
         offset = getattr(self._env, "_slot_offset_m", None)
         base = self._command.new_tensor(self.cfg.goal_pos)
+        if self.cfg.goal_pos_by_stage is not None:
+            # A rack with more than one bay: which slot an episode is aiming at
+            # is the curriculum stage, the same index the arm and module reset
+            # poses already come from, so the three cannot disagree about which
+            # bay this episode is about. ``None`` keeps every existing task
+            # bit-identical -- they carry one goal and never touch this path.
+            stage = getattr(self._env, "_insertion_curriculum_stage", None)
+            goals = self._command.new_tensor(self.cfg.goal_pos_by_stage)
+            if stage is not None:
+                base = goals[stage.clamp(max=goals.shape[0] - 1)]
         self._command[:, :3] = base if offset is None else base + offset
 
     def _update_metrics(self) -> None:
@@ -111,6 +121,10 @@ class InsertionGoalCommandCfg(CommandTermCfg):
     resampling_time_range: tuple[float, float] = (12.0, 12.0)
     goal_pos: tuple[float, float, float] = BLADE_INSERTED_POS
     goal_rot: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
+    #: One seated pose per curriculum stage, for a rack with more than one bay.
+    #: ``None`` means "one goal for every episode", which is what every
+    #: single-slot task uses and what every existing certification describes.
+    goal_pos_by_stage: tuple[tuple[float, float, float], ...] | None = None
 
 
 def _goal(env, command_name: str = "insertion_goal") -> torch.Tensor:

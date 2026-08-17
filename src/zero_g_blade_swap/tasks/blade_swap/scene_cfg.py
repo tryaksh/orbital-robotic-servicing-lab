@@ -25,6 +25,13 @@ from .assets import (
     ROBUST_INSERTION_SLOT_CFG,
     ROBUST_INSERTION_SLOT_LEFT_GUIDE_CFG,
     ROBUST_INSERTION_SLOT_RIGHT_GUIDE_CFG,
+    SECOND_SLOT_CFG,
+    SECOND_SLOT_ENTRY_LEFT_FLARE_CFG,
+    SECOND_SLOT_ENTRY_RIGHT_FLARE_CFG,
+    SECOND_SLOT_LEFT_GUIDE_CFG,
+    SECOND_SLOT_RIGHT_GUIDE_CFG,
+    SECOND_SLOT_UPPER_LEFT_LIP_CFG,
+    SECOND_SLOT_UPPER_RIGHT_LIP_CFG,
     SLOT_ENTRY_LEFT_FLARE_CFG,
     SLOT_ENTRY_RIGHT_FLARE_CFG,
     SLOT_UPPER_LEFT_LIP_CFG,
@@ -134,6 +141,27 @@ class ZeroGGrapplePinSceneCfg(ZeroGContactInsertionSceneCfg):
     blade_slot_entry_right_flare = SLOT_ENTRY_RIGHT_FLARE_CFG
 
 
+@configclass
+class ZeroGTwoSlotGrapplePinSceneCfg(ZeroGGrapplePinSceneCfg):
+    """The head-on capture scene with a second bay beside the first.
+
+    A rack with one slot can only demonstrate remove-and-replace; a relocation
+    needs somewhere else to put the module. The second slot is the certified one
+    displaced to y = -0.22 m, part for part, so the two bays cannot drift apart.
+
+    A separate scene, like every geometry change in this project, so the
+    single-slot tasks and their certifications describe unchanged scenes.
+    """
+
+    blade_slot_two = SECOND_SLOT_CFG
+    blade_slot_two_left_guide = SECOND_SLOT_LEFT_GUIDE_CFG
+    blade_slot_two_right_guide = SECOND_SLOT_RIGHT_GUIDE_CFG
+    blade_slot_two_upper_left_lip = SECOND_SLOT_UPPER_LEFT_LIP_CFG
+    blade_slot_two_upper_right_lip = SECOND_SLOT_UPPER_RIGHT_LIP_CFG
+    blade_slot_two_entry_left_flare = SECOND_SLOT_ENTRY_LEFT_FLARE_CFG
+    blade_slot_two_entry_right_flare = SECOND_SLOT_ENTRY_RIGHT_FLARE_CFG
+
+
 def make_tiled_camera_cfg() -> TiledCameraCfg:
     """Create the 64x64, 15 Hz camera used by vision and data collection."""
 
@@ -175,6 +203,7 @@ __all__ = [
     "ZeroGRobustInsertionSceneCfg",
     "ZeroGContactInsertionSceneCfg",
     "ZeroGGrapplePinSceneCfg",
+    "ZeroGTwoSlotGrapplePinSceneCfg",
     "ZeroGGuidedSlotSceneCfg",
     "make_tiled_camera_cfg",
 ]
