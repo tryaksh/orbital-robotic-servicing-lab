@@ -125,6 +125,25 @@ ALIGN_RETAIN = bool(int(os.environ.get("ALIGN_RETAIN", "0")))
 #: buys is bounded by how far a pushed module drifts, not by the current gap.
 SEATED_RETAIN = bool(int(os.environ.get("SEATED_RETAIN", "1")))
 
+#: Hold the module through the relocation transit instead of retaining it.
+#:
+#: A probe, default off, for the one reading of the transit failure that has not
+#: been tested. The operating rule is *capture gently, hold hard to move, retain
+#: once free*, and the relocation transit is the first phase in this project that
+#: **moves** a module through free space -- the removal chain retains at the end
+#: of the job, with the module free and stationary, which is a different state.
+#:
+#: What points at it is where the slip starts. The retreat leg is 78.25 mm long,
+#: and the module trails the tool by 65 mm by the end of it: nearly the whole leg,
+#: in the first two seconds, not a degradation accumulated over the 734 mm flight.
+#: The retain engages at exactly that moment, and it engages by *reducing* the
+#: closure on a module that extraction had been holding firmly.
+#:
+#: So the retain may be buying the wrong thing here. It exists because a wedge
+#: under load is a thruster; the cost is that a wedge under less load is a slide.
+#: Which dominates is a measurement, and this switch is how to take it.
+RELOCATE_TRANSIT_HOLD = bool(int(os.environ.get("RELOCATE_TRANSIT_HOLD", "0")))
+
 
 #: Phases, as integers, because the driver runs them per environment in parallel.
 CAPTURE, SEAT, EXTRACT, TRANSIT, INSERT, DONE = range(6)
@@ -864,6 +883,12 @@ class WorkflowDriver:
                 self.phase[cleared] = TRANSIT
                 self.transit_started[cleared] = step
                 if self.workflow == "relocate":
+                    # See RELOCATE_TRANSIT_HOLD: the relocation is the first
+                    # phase here that moves a module through free space rather
+                    # than releasing one at the end of a job, and the rule for
+                    # moving is to hold.
+                    if RELOCATE_TRANSIT_HOLD:
+                        self.gripper.retain_latch[cleared] = False
                     self._plan_lateral_transit(cleared, tool, blade_x)
                 else:
                     self.waypoint_read[cleared] = (self.waypoint_write[cleared] - 1).clamp_min(0)
