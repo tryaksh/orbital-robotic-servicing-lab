@@ -23,7 +23,19 @@ set -u
 
 PYTHON="C:/isaac-sim/python.bat"
 CKPT_ROOT="logs/rl_games/zero_g_blade_insertion_contact"
-TASK=Isaac-ZeroG-Blade-GrappleVision-Workflow-v0
+# Overridable as a set, because the profile, the workflow and the starting stage
+# are one choice and not three. The two-bay arms run
+#   TASK=Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0 WORKFLOW=relocate STAGE=0
+# and a mismatched pair -- a relocation on the single-bay scene, or an install
+# starting from a fully-installed module -- is a run that completes and means
+# nothing, so they are named together here rather than passed separately at three
+# call sites.
+TASK="${TASK:-Isaac-ZeroG-Blade-GrappleVision-Workflow-v0}"
+WORKFLOW="${WORKFLOW:-install}"
+# Where the module starts: stage 2 presents it at the mouth for an installation,
+# stage 0 has it fully seated in the first bay, which is where a relocation and a
+# removal begin. The same rule certify_workflow.sh states.
+STAGE="${STAGE:-2}"
 HEAD="${HEAD:-checkpoints/module_pose_head.pth}"
 ENVS="${ENVS:-32}"
 EPISODES="${EPISODES:-192}"
@@ -65,7 +77,7 @@ for arm in ${ARMS:-oracle camera}; do
     out="$OUT/${arm}${TAG:-}_seed${seed}"
     say "$arm seed=$seed"
     "$PYTHON" scripts/run_workflow_demo.py --headless \
-        --task "$TASK" --workflow install --curriculum_stage 2 \
+        --task "$TASK" --workflow "$WORKFLOW" --curriculum_stage "$STAGE" \
         --grasp_checkpoint "$GRASP_CKPT" \
         --extract_checkpoint "$EXTRACT_CKPT" \
         --insert_checkpoint "$INSERT_CKPT" \
