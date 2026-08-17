@@ -28,10 +28,8 @@ from zero_g_blade_swap.grapple_geometry import (
     GRAPPLE_PIN_HALF_WIDTH_Y,
     GRAPPLE_PIN_SHAFT_HALF_HEIGHT,
     GRAPPLE_PIN_SHAFT_X,
-    GRAPPLE_PIN_KEY_HALF_HEIGHT,
-    GRAPPLE_PIN_KEY_X,
-    GRAPPLE_PIN_NOSE_HALF_HEIGHT,
-    GRAPPLE_PIN_NOSE_X,
+    GRAPPLE_PIN_WEDGE_HALF_HEIGHT,
+    GRAPPLE_PIN_WEDGE_X,
     GRAPPLE_TOOL_OFFSET_POS,
     GRAPPLE_YOKE_HALF_GAP_M,
     GRAPPLE_YOKE_HALF_HEIGHT,
@@ -41,7 +39,7 @@ from zero_g_blade_swap.grapple_geometry import (
     GRAPPLE_YOKE_X,
     RATED_GRIP_FORCE_N,
     drive_torque_for_grip_force_nm,
-    key_seat_axial_travel_m,
+    wedge_taper_deg,
 )
 
 ROBOT_ROOT_POS = (-0.45, 0.0, 0.15)
@@ -106,30 +104,25 @@ GRIPPER_GRASP_ROT = (0.0, 0.7071068, 0.7071068, 0.0)
 # closure the head would have to be wider than the pad gap to catch the pads and
 # narrower than the knuckles to fit, and no closure satisfies both.
 #
-# What does work is a KEYED FLAT SECTION clamped inside the pad aperture, with a
-# hard stop at each end of it. Replaced the tapered wedge on 2026-08-17, and the
-# reasoning is recorded in full in zero_g_blade_swap.grapple_geometry: a taper
-# holds by friction, friction on a taper cannot resist a moment about the closing
-# axis, and the module was measured swinging end-for-end about the grip during the
-# relocation transit. Flight hardware does not do this either -- ISS ORUs are
-# gripped on a micro-square and then bolted, SIROM latches at three points,
-# HOTDOCK is form-fit -- and none of them makes friction load-bearing.
-#
-# So: flat 30 mm faces for the pads to bear on, which blocks every rotation by
-# form; a 90 mm collar behind them as the depth stop and the face the insert
-# direction pushes on; and a 60 mm nose flange in front, which the open 87.08 mm
-# aperture passes over on approach and which a closed pad cannot ride off. Axial
-# capture is then a dimension rather than a friction coefficient: 23 mm of travel
-# before the nose flange bears, from key_seat_axial_travel_m().
-#
-# Losing the taper also removes the defect that made raising the drive torque
-# *lower* holding capacity -- there is no longer an inclined face for the closing
-# force to thrust the payload along.
+# What does work is a wedge clamped inside the pad aperture, which is the
+# tapered-pin principle Canadarm2 captures on. The pin is thicker at its free
+# end, so pulling the blade out drags thicker material into the pads and forces
+# them apart against the drive, and the reaction on the pin acts along the pull
+# axis. Capacity is 2 N sin(alpha) from geometry alone before any friction:
+# at the 10 N-m drive limit that is 77 N against the 66.4 N gate, so the
+# interface clears it without relying on a friction coefficient at all.
+# Dimensions live in zero_g_blade_swap.grapple_geometry, which imports nothing
+# from Isaac Lab so the test suite can defend them without a simulator. The
+# reasoning behind each one is recorded there.
 #
 # In short: the blade's front face is at -0.225 and the rack mouth sits 75 mm in
 # front of it at full insertion, which is what sets the 80 mm shaft, because the
-# pads are 57 mm long and have to stay outside the mouth.
-GRAPPLE_PIN_KEY_SEAT_TRAVEL_M = key_seat_axial_travel_m()
+# pads are 57 mm long and have to stay outside the mouth. The collar is taller
+# than the pads can open, so it is a depth stop rather than something a
+# wide-open gripper slides past, and it gives the insert direction a face to
+# push on. The wedge is 70 mm across at its free end, inside the 87.08 mm
+# aperture with 8.5 mm of approach clearance a side.
+GRAPPLE_PIN_TAPER_DEG = wedge_taper_deg()
 
 # Solved by scripts/calibrate_grasp_pose.py against this task's own differential
 # IK, one environment per curriculum stage, fingers held open at the approach
@@ -681,6 +674,50 @@ def _define_box(
     sim_utils.bind_physics_material(path, material_path, stage=stage)
 
 
+def _define_wedge(stage: Usd.Stage, path: str, cfg: GrapplePinBladeCfg, material_path: str) -> None:
+    """Author the tapered capture wedge as an explicit eight-vertex frustum.
+
+    There is no primitive for a truncated wedge, and approximating it with a
+    cone would give the flat pads point contact on a circular section instead of
+    line contact across the full pin width.  The taper is in the closing axis
+    only, so the pin keeps a constant width and both pads bear evenly.
+    """
+
+    distal_x, proximal_x = cfg.wedge_x
+    distal_half, proximal_half = cfg.wedge_half_height
+    half_width = cfg.half_width_y
+    points = [
+        (distal_x, -half_width, -distal_half),
+        (distal_x, half_width, -distal_half),
+        (distal_x, half_width, distal_half),
+        (distal_x, -half_width, distal_half),
+        (proximal_x, -half_width, -proximal_half),
+        (proximal_x, half_width, -proximal_half),
+        (proximal_x, half_width, proximal_half),
+        (proximal_x, -half_width, proximal_half),
+    ]
+    mesh = UsdGeom.Mesh.Define(stage, path)
+    mesh.CreatePointsAttr([Gf.Vec3f(*point) for point in points])
+    mesh.CreateFaceVertexCountsAttr([4] * 6)
+    mesh.CreateFaceVertexIndicesAttr(
+        # Free end, blade end, then the two flanks and the two tapered faces,
+        # each wound counter-clockwise seen from outside.
+        [0, 3, 2, 1] + [4, 5, 6, 7] + [0, 4, 7, 3] + [1, 2, 6, 5] + [3, 7, 6, 2] + [0, 1, 5, 4]
+    )
+    mesh.CreateExtentAttr(
+        [
+            Gf.Vec3f(distal_x, -half_width, -distal_half),
+            Gf.Vec3f(proximal_x, half_width, distal_half),
+        ]
+    )
+    sim_utils.standardize_xform_ops(mesh.GetPrim())
+    sim_utils.define_collision_properties(path, cfg.collision_props, stage=stage)
+    # Without this PhysX defaults a mesh collider to a triangle mesh, which
+    # cannot be part of a dynamic body.
+    UsdPhysics.MeshCollisionAPI.Apply(mesh.GetPrim()).CreateApproximationAttr().Set(UsdPhysics.Tokens.convexHull)
+    sim_utils.bind_physics_material(path, material_path, stage=stage)
+
+
 def _define_yoke_flare(
     stage: Usd.Stage, path: str, cfg: GrapplePinBladeCfg, material_path: str, sign: float
 ) -> None:
@@ -769,8 +806,8 @@ def spawn_blade_with_grapple_pin(
     """Spawn the blade chassis with a head-on grapple pin on its ``-x`` face.
 
     Three colliders share the blade's rigid body: a shaft thin enough to pass
-    through the slot, a collar the pads seat against, the flat key they bear on,
-    and a nose flange that stops them riding off it.
+    through the slot, a collar the pads seat against, and the tapered wedge that
+    carries the axial load.
     """
 
     root = sim_utils.spawn_cuboid(prim_path, cfg, translation=translation, orientation=orientation, **kwargs)
@@ -801,31 +838,8 @@ def spawn_blade_with_grapple_pin(
             cfg,
             material_path,
         )
-        key_low, key_high = cfg.key_x
-        nose_low, nose_high = cfg.nose_x
-        # A box, not a frustum. The flats are the whole design: plane contact
-        # resists moments about every axis in the plane, which is what the taper
-        # could not do and what the module swinging end-for-end during the
-        # relocation transit finally proved.
-        _define_box(
-            stage,
-            f"{pin_path}/Key",
-            (0.5 * (key_low + key_high), 0.0, 0.0),
-            (key_high - key_low, 2.0 * cfg.half_width_y, 2.0 * cfg.key_half_height),
-            cfg,
-            material_path,
-        )
-        # Front axial stop. Short enough that an open gripper passes over it,
-        # tall enough that a closed pad cannot ride off the end of the key.
-        _define_box(
-            stage,
-            f"{pin_path}/Nose",
-            (0.5 * (nose_low + nose_high), 0.0, 0.0),
-            (nose_high - nose_low, 2.0 * cfg.half_width_y, 2.0 * cfg.nose_half_height),
-            cfg,
-            material_path,
-        )
-        names = ["Shaft", "Collar", "Key", "Nose"]
+        _define_wedge(stage, f"{pin_path}/Wedge", cfg, material_path)
+        names = ["Shaft", "Collar", "Wedge"]
         if cfg.anti_yaw_yoke:
             names.extend(_define_yoke(stage, pin_path, cfg, material_path))
 
@@ -850,13 +864,11 @@ class GrapplePinBladeCfg(sim_utils.CuboidCfg):
     handle_offset: tuple[float, float, float] = GRAPPLE_PIN_GRIP_OFFSET
     shaft_x: tuple[float, float] = GRAPPLE_PIN_SHAFT_X
     collar_x: tuple[float, float] = GRAPPLE_PIN_COLLAR_X
-    key_x: tuple[float, float] = GRAPPLE_PIN_KEY_X
-    nose_x: tuple[float, float] = GRAPPLE_PIN_NOSE_X
+    wedge_x: tuple[float, float] = GRAPPLE_PIN_WEDGE_X
     half_width_y: float = GRAPPLE_PIN_HALF_WIDTH_Y
     shaft_half_height: float = GRAPPLE_PIN_SHAFT_HALF_HEIGHT
     collar_half_height: float = GRAPPLE_PIN_COLLAR_HALF_HEIGHT
-    key_half_height: float = GRAPPLE_PIN_KEY_HALF_HEIGHT
-    nose_half_height: float = GRAPPLE_PIN_NOSE_HALF_HEIGHT
+    wedge_half_height: tuple[float, float] = GRAPPLE_PIN_WEDGE_HALF_HEIGHT
     # The second-generation anti-yaw walls, off by default. Turning them on
     # changes the contact every trained policy was produced against, so they are
     # measured on the physics gates first and only then trained against. That
@@ -1418,11 +1430,9 @@ __all__ = [
     "GRAPPLE_PIN_HALF_WIDTH_Y",
     "GRAPPLE_PIN_SHAFT_HALF_HEIGHT",
     "GRAPPLE_PIN_SHAFT_X",
-    "GRAPPLE_PIN_KEY_SEAT_TRAVEL_M",
-    "GRAPPLE_PIN_KEY_HALF_HEIGHT",
-    "GRAPPLE_PIN_KEY_X",
-    "GRAPPLE_PIN_NOSE_HALF_HEIGHT",
-    "GRAPPLE_PIN_NOSE_X",
+    "GRAPPLE_PIN_TAPER_DEG",
+    "GRAPPLE_PIN_WEDGE_HALF_HEIGHT",
+    "GRAPPLE_PIN_WEDGE_X",
     "GRAPPLE_POST_OFFSET",
     "GRAPPLE_POST_SIZE",
     "GRAPPLE_TOOL_OFFSET_POS",

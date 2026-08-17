@@ -36,11 +36,6 @@ from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.utils import configclass
 
-from zero_g_blade_swap.grapple_geometry import (
-    CLOSING_RATE_M_PER_RAD,
-    GRAPPLE_PIN_KEY_HALF_HEIGHT,
-    MAX_CLEAR_OPENING_M,
-)
 from zero_g_blade_swap.math_utils import INSERTION_CURRICULUM_MIXTURES
 
 from . import mdp
@@ -66,53 +61,25 @@ from .scene_cfg import ZeroGGrapplePinSceneCfg
 # *zero is fully open*. The names in this file mean what they say only because
 # that was measured; the previous constants in this project were inverted.
 #
-# **Derived from the gripped section's height, not restated.** 2026-08-17.
+# Approach at 84.9 mm, which clears the wedge's 70 mm free end by 7.5 mm a side.
 #
-# These were 0.02 / 0.48 / 0.68, tuned against the tapered wedge whose free end
-# was 70 mm tall. The keyed section is a constant 30 mm, and at 0.48 rad the pads
-# come to rest 36.1 mm apart -- 3 mm clear of the key on each side, closing on
-# nothing. Every extract episode then died on control step 1 with the module
-# ungripped, which is the exact signature this project already records for a reset
-# that produces unwinnable states, and it read as "extraction is 0.00%" for three
-# runs before the step count was looked at.
+# Capture and hold are two different commands, and that is what makes the pull
+# gate pass. The wedge converts closing force into thrust along the pull axis,
+# so a firm capture drives the payload away before it has been taken; holding,
+# once the pin is seated, wants everything the drive can produce. Measured on
+# the same grid: one command throughout holds 59 N, capturing at 0.48 and
+# firming to 0.68 holds 69 N, against a 66.4 N gate.
 #
-# So they are now computed from the key height and a stated interference, which is
-# the rule this project keeps relearning: read the constant, never restate it.
-#
-# Capture and hold remain two commands, but the reason has changed and the old
-# reason is worth recording as gone. On the taper, closing hard converted force
-# into thrust along the pull axis, so a firm capture drove the payload away before
-# it was taken -- 0.56 rad collapsed holding capacity to 26 N. A flat key has no
-# inclined face, so over-closing simply raises the normal force. The split now buys
-# a gentle capture that does not disturb an unconstrained module, and a firm hold
-# once it is seated between the two stops.
-_KEY_HEIGHT_M = 2.0 * GRAPPLE_PIN_KEY_HALF_HEIGHT
-#: Pad interference at capture: light, enough to close on the key without driving
-#: an unconstrained module.
-_CAPTURE_INTERFERENCE_M = 0.002
-#: Pad interference when holding, once the pin is seated in the pocket.
-_HOLD_INTERFERENCE_M = 0.005
-
-
-def _finger_command_for_gap(gap_m: float) -> tuple[float, ...]:
-    """The six coupled 2F-85 joint targets that close the pads to ``gap_m``."""
-
-    angle = (MAX_CLEAR_OPENING_M - gap_m) / CLOSING_RATE_M_PER_RAD
-    return tuple(angle * sign for sign in (1.0, 1.0, -1.0, 1.0, -1.0, -1.0))
-
-
-#: Fully open, which clears the 30 mm key by 28.5 mm a side.
+# The window is narrow and asymmetric. 0.44 gives 63 N and 0.52 gives 68 N, but
+# 0.56 collapses to 26 N, so the capture command is biased low.
+# See evidence/grapple_pin_capture_plateau.json.
 GRAPPLE_GRIPPER_APPROACH = (0.02, 0.02, -0.02, 0.02, -0.02, -0.02)
-GRAPPLE_GRIPPER_CAPTURE = _finger_command_for_gap(_KEY_HEIGHT_M - _CAPTURE_INTERFERENCE_M)
-GRAPPLE_GRIPPER_HOLD = _finger_command_for_gap(_KEY_HEIGHT_M - _HOLD_INTERFERENCE_M)
-# Where the fingers come to rest on the key. Extract and insert start already
-# captured and write this directly, so it avoids replaying a closing transient.
-#
-# Was 0.223 rad, measured on the taper, which is a 63.4 mm gap. Around a 30 mm key
-# that leaves the pads 16 mm clear on each side, so both skills began every episode
-# holding nothing -- the second half of the same step-1 death the capture command
-# caused. Derived from the hold command now, for the same reason.
-GRAPPLE_FINGER_SEATED_RAD = abs(GRAPPLE_GRIPPER_HOLD[0])
+GRAPPLE_GRIPPER_CAPTURE = (0.48, 0.48, -0.48, 0.48, -0.48, -0.48)
+GRAPPLE_GRIPPER_HOLD = (0.68, 0.68, -0.68, 0.68, -0.68, -0.68)
+# Where the fingers actually come to rest on the wedge, measured. Extract and
+# insert start already captured, so writing this avoids replaying a closing
+# transient at full holding force, which is the case that measured 26 N.
+GRAPPLE_FINGER_SEATED_RAD = 0.223
 
 # The tool points along +x with the closing axis vertical, and each stage places
 # the pads around the wedge with their leading faces one closing stroke short of
@@ -751,7 +718,7 @@ class ZeroGBladeGrapplePinExtractEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         # worst axis, which is four times this reset's widest draw. The chain is
         # the evidence for tolerating a real hand-off; this reset only has to
         # produce a grip for the skill to be measured from.
-        self.events.reset_arm.params["noise_by_stage"] = (0.002, 0.003, 0.005)
+        self.events.reset_arm.params["noise_by_stage"] = (0.010, 0.015, 0.020)
         self.events.reset_blade.params["poses_by_stage"] = CONTACT_INSERTION_STAGE_BLADE_POSE
         if level < 2:
             self.events.blade_mass = None
@@ -880,7 +847,7 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         # the joint configuration being out of distribution rather than the grip.
         # A skill that is going to be chained has to be trained across the states
         # its predecessor actually produces.
-        self.events.reset_arm.params["noise_by_stage"] = (0.002, 0.003, 0.005)
+        self.events.reset_arm.params["noise_by_stage"] = (0.010, 0.015, 0.020)
         # Full distance only. Measured on the v4 checkpoint: the stage curriculum
         # never promoted past its first level, so the policy solved the 31 mm
         # near reset perfectly (500/500) and the 167 mm full reset barely at all

@@ -28,10 +28,8 @@ from zero_g_blade_swap.grapple_geometry import (
     GRAPPLE_PIN_HALF_WIDTH_Y,
     GRAPPLE_PIN_SHAFT_HALF_HEIGHT,
     GRAPPLE_PIN_SHAFT_X,
-    GRAPPLE_PIN_KEY_HALF_HEIGHT,
-    GRAPPLE_PIN_KEY_X,
-    GRAPPLE_PIN_NOSE_HALF_HEIGHT,
-    GRAPPLE_PIN_NOSE_X,
+    GRAPPLE_PIN_WEDGE_HALF_HEIGHT,
+    GRAPPLE_PIN_WEDGE_X,
     GRAPPLE_TOOL_OFFSET_POS,
     GRAPPLE_YOKE_HALF_GAP_M,
     GRAPPLE_YOKE_HALF_HEIGHT,
@@ -48,7 +46,8 @@ from zero_g_blade_swap.grapple_geometry import (
     approach_clearance_per_side_m,
     clear_opening_m,
     drive_torque_for_grip_force_nm,
-    key_seat_axial_travel_m,
+    wedge_half_height_at,
+    wedge_taper_deg,
     yoke_flare_deg,
     yoke_free_yaw_rad,
     yoke_lead_in_catch_m,
@@ -69,40 +68,23 @@ def test_zero_is_fully_open() -> None:
 
 
 def test_pin_sections_are_contiguous_and_run_free_end_to_blade() -> None:
-    assert GRAPPLE_PIN_NOSE_X[1] == GRAPPLE_PIN_KEY_X[0]
-    assert GRAPPLE_PIN_KEY_X[1] == GRAPPLE_PIN_COLLAR_X[0]
+    assert GRAPPLE_PIN_WEDGE_X[1] == GRAPPLE_PIN_COLLAR_X[0]
     assert GRAPPLE_PIN_COLLAR_X[1] == GRAPPLE_PIN_SHAFT_X[0]
     assert GRAPPLE_PIN_SHAFT_X[1] == pytest.approx(-0.5 * BLADE_LENGTH_M)
-    assert (
-        GRAPPLE_PIN_NOSE_X[0]
-        < GRAPPLE_PIN_KEY_X[0]
-        < GRAPPLE_PIN_COLLAR_X[0]
-        < GRAPPLE_PIN_SHAFT_X[0]
-    )
+    assert GRAPPLE_PIN_WEDGE_X[0] < GRAPPLE_PIN_COLLAR_X[0] < GRAPPLE_PIN_SHAFT_X[0]
 
 
-def test_the_gripped_section_is_flat() -> None:
-    """The whole design. A taper gives the pads a line contact, which resists no
-    moment about the closing axis; a flat gives them a plane, which resists every
-    moment in that plane. The module swinging end-for-end during the relocation
-    transit is what a line contact costs, so a scalar half-height here is the
-    contract, not an implementation detail."""
+def test_wedge_thickens_toward_its_free_end() -> None:
+    """Backwards, and pulling would squeeze the pin out instead of jamming it."""
 
-    assert isinstance(GRAPPLE_PIN_KEY_HALF_HEIGHT, float)
-    assert GRAPPLE_PIN_KEY_HALF_HEIGHT == pytest.approx(GRAPPLE_PIN_SHAFT_HALF_HEIGHT)
+    distal, proximal = GRAPPLE_PIN_WEDGE_HALF_HEIGHT
+    assert distal > proximal
+    assert wedge_half_height_at(GRAPPLE_PIN_WEDGE_X[0]) == pytest.approx(distal)
+    assert wedge_half_height_at(GRAPPLE_PIN_WEDGE_X[1]) == pytest.approx(proximal)
 
 
-def test_both_axial_stops_are_taller_than_the_aperture_can_open() -> None:
-    """The whole point of the pocket, and the correction of a measured failure.
-
-    A shoulder shorter than the aperture stops nothing: at 60 mm the module escaped
-    32-55 mm axially and extraction scored 0.00%, because the drive yields under
-    drag and the pads splay toward their 87 mm opening. Both walls now exceed it, so
-    the pads are trapped whatever the jaws do.
-    """
-
-    assert 2.0 * GRAPPLE_PIN_NOSE_HALF_HEIGHT > MAX_CLEAR_OPENING_M
-    assert 2.0 * GRAPPLE_PIN_COLLAR_HALF_HEIGHT > MAX_CLEAR_OPENING_M
+def test_the_pads_can_open_around_the_wedge() -> None:
+    assert 2.0 * GRAPPLE_PIN_WEDGE_HALF_HEIGHT[0] < MAX_CLEAR_OPENING_M
     # Anything under a few millimetres a side makes the head-on approach a
     # coin toss for a learned policy.
     assert approach_clearance_per_side_m() >= 0.007
@@ -114,22 +96,10 @@ def test_the_pads_can_never_open_around_the_collar() -> None:
     assert 2.0 * GRAPPLE_PIN_COLLAR_HALF_HEIGHT > MAX_CLEAR_OPENING_M
 
 
-def test_the_nose_flange_traps_a_closed_pad() -> None:
-    """Axial capture is now a dimension, not a friction coefficient.
+def test_the_wedge_is_steep_enough_to_be_worth_having() -> None:
+    """Axial capacity goes as the sine of this angle."""
 
-    The flange has to be taller than the key so a pad closed onto the key cannot
-    ride off the free end, and the travel it allows has to be real but bounded --
-    enough that a capture landing anywhere inside the skill's 10 mm grip
-    tolerance still seats on the flat, and not so much that the module can wander.
-    """
-
-    assert GRAPPLE_PIN_NOSE_HALF_HEIGHT > GRAPPLE_PIN_KEY_HALF_HEIGHT
-    # Bounded below by how accurately a capture places the pads axially, measured
-    # at 0.15 mm on the settled grasp, and above by the 2 mm the pull gate calls a
-    # slipped grip. A first attempt at 23 mm failed that gate at 51.6 N, because
-    # friction alone carries about 52 N and the module simply slid until the
-    # flange caught it.
-    assert 0.005 <= key_seat_axial_travel_m() <= 0.012
+    assert 15.0 <= wedge_taper_deg() <= 35.0
 
 
 def test_only_the_shaft_enters_the_slot_and_it_fits() -> None:
@@ -156,14 +126,16 @@ def test_tool_frame_and_grip_point_agree_with_the_measured_pad_span() -> None:
     assert GRAPPLE_PIN_GRIP_OFFSET[1:] == (0.0, 0.0)
 
 
-def test_seated_pads_sit_entirely_on_the_flat_key() -> None:
-    """A pad half on the key and half on a stop is a vertex contact, which is the
-    line-contact problem again in a different place."""
+def test_seated_pads_sit_entirely_on_the_wedge() -> None:
+    """Their trailing edge must be on a sloped face, not off the free end.
+
+    A pad face bearing on the wedge's rim is a vertex contact, whose normal has
+    no axial component, so the wedge would carry no load at all.
+    """
 
     pad_length = PAD_SPAN_FROM_FLANGE_M[1] - PAD_SPAN_FROM_FLANGE_M[0]
     trailing_edge = GRAPPLE_PIN_COLLAR_X[0] - pad_length
-    assert trailing_edge > GRAPPLE_PIN_KEY_X[0], "the pads overhang the key's free end"
-    assert key_seat_axial_travel_m() == pytest.approx(trailing_edge - GRAPPLE_PIN_KEY_X[0])
+    assert trailing_edge > GRAPPLE_PIN_WEDGE_X[0], "the pads overhang the wedge's free end"
 
 
 def test_extraction_target_actually_clears_the_blade() -> None:
@@ -215,16 +187,10 @@ def test_yoke_sits_on_the_wedge_flanks_without_widening_the_pin() -> None:
     assert pytest.approx(GRAPPLE_PIN_HALF_WIDTH_Y) == GRAPPLE_YOKE_HALF_GAP_M
 
 
-def test_yoke_lies_on_the_gripped_section_and_ends_at_the_collar() -> None:
-    """The yoke is refuted and off by default, and the keyed section supersedes
-    what it was built to do -- it blocks rotation by form, which is what the walls
-    were trying to approximate. Its dimensional contract is kept because the code
-    is still present and inert, and an inert feature with an unchecked contract is
-    how a later session turns it on and gets a silently wrong scene."""
-
+def test_yoke_lies_on_the_wedge_and_ends_at_the_collar() -> None:
     mouth_x, collar_x = GRAPPLE_YOKE_X
     assert collar_x == pytest.approx(GRAPPLE_PIN_COLLAR_X[0])
-    assert mouth_x > GRAPPLE_PIN_KEY_X[0], "the yoke must not overhang the key's free end"
+    assert mouth_x > GRAPPLE_PIN_WEDGE_X[0], "the yoke must not overhang the wedge's free end"
     parallel_low, parallel_high = GRAPPLE_YOKE_PARALLEL_X
     assert mouth_x < parallel_low < parallel_high
     assert parallel_high == pytest.approx(collar_x)

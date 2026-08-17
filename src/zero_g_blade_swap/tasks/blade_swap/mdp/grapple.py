@@ -111,33 +111,6 @@ def grapple_grip_error_metrics(env) -> tuple[torch.Tensor, torch.Tensor]:
     return torch.linalg.vector_norm(vector, dim=-1), angle
 
 
-def grapple_grip_slip_metrics(env) -> tuple[torch.Tensor, torch.Tensor]:
-    """Return axial and lateral grip slip, in the tool's own frame.
-
-    ``grapple_grip_error_metrics`` collapses the tool-to-grip vector to a single
-    magnitude, and on this interface that magnitude is dominated by rotation
-    rather than by slip: the grip point is defined 0.3395 m out along the pin, so
-    a module rotating 0.10 rad in the pads swings it 35 mm without the pads having
-    moved along the pin at all. Measured on the keyed pin, extraction ran at 0.068
-    to 0.104 rad of attitude error -- comfortably inside the 0.35 rad limit -- and
-    the magnitude read 38 to 41 mm against a 30 mm bound, so a held module was
-    scored as a dropped one.
-
-    Splitting the vector in the tool frame separates the two. The tool's approach
-    axis is its own +z, so that component is travel *along* the pin -- real slip,
-    bounded by the pocket between the collar and the nose flange -- and the other
-    two are the pin sitting off the pad centre. Rotation is already measured, and
-    measured separately, by the attitude term.
-    """
-
-    vector, _ = grapple_grip_pose_error(env)
-    _, tool_orientation = end_effector_pose_world(env)
-    local = quat_apply(quat_inv(tool_orientation), vector)
-    axial = local[:, 2].abs()
-    lateral = torch.linalg.vector_norm(local[:, :2], dim=-1)
-    return axial, lateral
-
-
 def grapple_grip_attitude_error_world(env) -> torch.Tensor:
     """Signed world-frame rotation vector between the tool and the capture attitude.
 
@@ -849,8 +822,7 @@ def extraction_success_reward(env) -> torch.Tensor:
 
 def extraction_failure(
     env,
-    grip_axial_slip_limit: float = 0.030,
-    grip_lateral_limit: float = 0.030,
+    grip_position_limit: float = 0.030,
     grip_orientation_limit: float = 0.35,
 ) -> torch.Tensor:
     """End an extraction that has dropped the blade or left the workspace.
@@ -858,32 +830,13 @@ def extraction_failure(
     The workspace bound along x is deliberately different from the insertion
     task's, which treats anything below 0.45 as an escape. That is where a
     successful extraction finishes.
-
-    **Grip loss is asked as slip, not as distance to a point on a lever arm.**
-    This used to bound the magnitude of the tool-to-grip vector at 30 mm, and on
-    the keyed pin that magnitude is mostly rotation: the grip point sits 0.3395 m
-    out along the pin, so 0.10 rad of module rotation swings it 35 mm with the pads
-    still exactly where they were. Extraction measured 0.068-0.104 rad of attitude
-    error, well inside the 0.35 rad limit, and 38-41 mm of magnitude -- a module
-    being carried, scored as one dropped.
-
-    So the vector is split in the tool frame, and **each component keeps the 30 mm
-    the magnitude used to be held to** -- neither is looser. Attitude keeps the old
-    0.35 rad, unchanged. A first attempt bounded axial at 15 mm on the reasoning
-    that the pocket limits it to 8 mm; that was wrong, because the reset's own
-    placement error is comparable, and it killed every episode on control step 1.
-
-    The one relaxation is deliberate and is the point: rotation no longer counts
-    twice, once as attitude and again as position.
     """
 
-    axial, lateral = grapple_grip_slip_metrics(env)
-    _, orientation = grapple_grip_error_metrics(env)
+    position, orientation = grapple_grip_error_metrics(env)
     blade_position, _ = attached_blade_pose_world(env)
     local = blade_position - env.scene.env_origins
     conditions = {
-        "grip_axial_slip": axial > grip_axial_slip_limit,
-        "grip_lost": lateral > grip_lateral_limit,
+        "grip_lost": position > grip_position_limit,
         "grip_attitude_lost": orientation > grip_orientation_limit,
         "workspace_x": (local[:, 0] < -0.10) | (local[:, 0] > 1.10),
         "workspace_yz": (local[:, 1].abs() > 0.30) | (local[:, 2] < 0.40) | (local[:, 2] > 1.10),
@@ -1028,7 +981,6 @@ __all__ = [
     "grapple_grip_attitude_axes",
     "grapple_grip_attitude_error_world",
     "grapple_grip_error_metrics",
-    "grapple_grip_slip_metrics",
     "grapple_latched",
     "grapple_grip_error_observation",
     "grapple_grip_pose_error",
