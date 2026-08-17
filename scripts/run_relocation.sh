@@ -8,6 +8,7 @@
 #   scripts/run_relocation.sh smoke       # item 2: does the two-slot scene build
 #   scripts/run_relocation.sh insert2     # item 3: insert, both slots
 #   scripts/run_relocation.sh certify2    # item 3 gate: >= 95% on both slots
+#   scripts/run_relocation.sh trace       # item 4 gate: the grip across the transit
 #   scripts/run_relocation.sh relocate    # item 5: certify the whole relocation
 #
 # Every checkpoint variable can be overridden; the defaults name the promoted set
@@ -105,6 +106,38 @@ case "$stage" in
     tail -6 "$OUT/aggregate_two_slot.log"
     ;;
 
+  trace)
+    # Item 4's gate: is the module still held after being flown to the next bay?
+    #
+    # Read off the hand-offs rather than off the success rate, because a transit
+    # that degrades the grip and an insertion that fails are different faults
+    # with different fixes, and the chain's own number cannot tell them apart.
+    # Both ends are reported: extract -> transit is the grip the transit was
+    # handed, transit -> insert is what it gives back, and the gate is on the
+    # second with the first as its control.
+    RUN="${RUN:-grapple_insert_l0_seed70_v10twoslot}"
+    INSERT_CKPT="${RELOCATE_INSERT_CKPT:-$(ls "logs/rl_games"/*/"$RUN"/nn/*_ep_*.pth 2>/dev/null |
+      sed -n 's/.*_ep_\([0-9]\+\)_.*/\1 &/p' | sort -k1,1n | tail -1 | cut -d' ' -f2-)}"
+    if [ -z "$INSERT_CKPT" ]; then echo "NO TWO-SLOT INSERT CHECKPOINT for $RUN"; exit 1; fi
+    echo "[$(date +%H:%M:%S)] TRACE the relocation hand-offs"
+    "$PYTHON" scripts/run_workflow_demo.py --headless \
+        --workflow relocate --curriculum_stage 0 \
+        --task Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0 \
+        --grasp_checkpoint "$GRASP_CKPT" --extract_checkpoint "$EXTRACT_CKPT" \
+        --insert_checkpoint "$INSERT_CKPT" \
+        --num_envs "${ENVS:-64}" --episodes "${EPISODES:-192}" --seed "${SEED:-4070}" \
+        --report "$OUT/relocate_trace_report.json" \
+        --handoff_trace "$OUT/relocate_handoff.npz" \
+        > "$OUT/relocate_trace.log" 2>&1
+    echo "[$(date +%H:%M:%S)] trace exit=$?"
+    for phase in transit insert; do
+      "$PYTHON" scripts/analyse_handoff.py "$OUT/relocate_handoff.npz" --to_phase "$phase" \
+          --json "evidence/relocate_handoff_to_${phase}.json" > "$OUT/handoff_${phase}.log" 2>&1
+      echo "[$(date +%H:%M:%S)] -> evidence/relocate_handoff_to_${phase}.json"
+      grep -A 10 '"grip_error_m"' "$OUT/handoff_${phase}.log" | head -11
+    done
+    ;;
+
   relocate)
     # The relocation seats the module in the SECOND bay, so it must be driven by
     # the two-bay insert policy item 3 produced -- not by the promoted
@@ -151,7 +184,7 @@ case "$stage" in
     ;;
 
   *)
-    echo "usage: scripts/run_relocation.sh {calibrate|smoke|insert2|certify2|relocate}"
+    echo "usage: scripts/run_relocation.sh {calibrate|smoke|insert2|certify2|trace|relocate}"
     exit 2
     ;;
 esac
