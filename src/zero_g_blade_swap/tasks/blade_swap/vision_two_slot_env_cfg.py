@@ -33,6 +33,7 @@ from isaaclab.sensors import TiledCameraCfg
 from isaaclab.utils import configclass
 
 from . import mdp
+from .assets import CONTACT_INSERTION_STAGE_BLADE_POSE, SECOND_SLOT_CENTER_Y
 from .scene_cfg import ZeroGTwoSlotGrapplePinSceneCfg, make_tiled_camera_cfg
 from .two_slot_env_cfg import RelocationCommandsCfg
 from .vision_grapple_env_cfg import (
@@ -45,6 +46,34 @@ from .workflow_demo_env_cfg import (
     WorkflowCurriculumCfg,
     WorkflowRewardsCfg,
     WorkflowTerminationsCfg,
+)
+
+
+#: Where the module is presented for collection, one pose per curriculum stage.
+#:
+#: The occupancy branch is a classifier and it needs to see all three states the
+#: rack can be in. The workflow profile's own stage poses are three *depths* in
+#: the first bay, which would label every frame as "bay one, or on its way there"
+#: and teach the head the prior rather than the rack. So:
+#:
+#:   stage 0   seated in bay one          -> (1, 0)
+#:   stage 1   seated in bay two          -> (0, 1)
+#:   stage 2   presented at the mouth     -> (0, 0)
+#:
+#: Bay two's pose is bay one's displaced by ``SECOND_SLOT_CENTER_Y``, part for
+#: part, exactly as the bay itself is -- so a difference between the two in the
+#: camera's answer is attributable to position alone. The per-episode module
+#: jitter that makes this a perception problem at all is +-15 mm laterally, well
+#: inside the 72.5 mm channel half-width the label is defined against, so it
+#: cannot flip a label.
+VISION_TWO_SLOT_STAGE_BLADE_POSE = (
+    CONTACT_INSERTION_STAGE_BLADE_POSE[0],
+    (
+        CONTACT_INSERTION_STAGE_BLADE_POSE[0][0],
+        CONTACT_INSERTION_STAGE_BLADE_POSE[0][1] + SECOND_SLOT_CENTER_Y,
+        *CONTACT_INSERTION_STAGE_BLADE_POSE[0][2:],
+    ),
+    CONTACT_INSERTION_STAGE_BLADE_POSE[2],
 )
 
 
@@ -116,6 +145,14 @@ class ZeroGBladeGrappleVisionTwoSlotCollectEnvCfg(ZeroGBladeGrappleVisionCollect
     # workflow actually runs and overwrites this, so it is a ceiling rather than
     # the operative number.
     episode_length_s: float = 90.0
+
+    def configure_robustness(self, level: int) -> None:
+        super().configure_robustness(level)
+        # Present the module in whichever bay this episode's stage names, so the
+        # occupancy branch sees all three states of the rack rather than three
+        # depths in one bay. Only the module's pose changes: the collector holds
+        # the arm still and resets often, which is what a pose regressor needs.
+        self.events.reset_blade.params["poses_by_stage"] = VISION_TWO_SLOT_STAGE_BLADE_POSE
 
 
 @configclass
