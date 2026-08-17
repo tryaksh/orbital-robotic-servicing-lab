@@ -27,7 +27,7 @@ other half — whether a report describes the checkpoint a run actually loaded.
 | `workflow_remove_certification.json` and the other pre-2026-08-15 removal runs | 14.06% removal | Same defect: certified before the velocity limits were derived | `workflow_remove_retain_certification.json` — 98.78% |
 | `workflow_install_final_certification.json` | 84.38% installation | Describes the *same two policies* by checkpoint hash, but was certified 8.5 h before commit `ffac648` raised the capture phase's budget from 6 s to 10 s | `workflow_install_promoted_certification.json` — 89.41%, and the later clock/retain re-run above it |
 | `workflow_install_v6insert_certification.json` | 86.28% installation | Same defect, same commit | as above |
-| `grapple_grasp_v5_certification.json` | 96.10% capture | Certified 9.4 h before `ffac648` tightened `capture_success_mask` from a 20 mm grip tolerance to 10 mm. Re-reading its own episodes puts it **between 43% and 96%** and the arithmetic cannot narrow that, because the criterion is the termination: an episode that ended at 15 mm under the old rule would not have ended at all under the new one | **unmeasured — re-run `scripts/certify_demo_policies.sh Grasp`** |
+| the 96.10% capture figure, formerly in `grapple_grasp_v5_certification.json` | 96.10% capture | Certified 9.4 h before `ffac648` tightened `capture_success_mask` from a 20 mm grip tolerance to 10 mm. Re-reading its own episodes could only bound it **between 43% and 96%**, because the criterion is the termination: an episode that ended at 15 mm under the old rule would not have ended at all under the new one | **re-measured 2026-08-17: 88.78% pooled and 79.22% in the worst stage, so it FAILS its 95% gate.** The file now holds that run; the number above exists only here. Both bounds were wrong — the lower far too pessimistic, the upper the stale figure itself |
 
 ## Reports that are measurements, not certifications
 
@@ -42,6 +42,28 @@ gates, and their promotion gate is marked non-applicable.
 | `uncertain_insertion_*_envelope.json` | Same |
 | `grapple_pin_rated_grip_force.json` | A refuted hypothesis, kept because the refutation is the result |
 
+## A label that is wrong on every grapple-pin report
+
+Not a retraction, and it does not move any number, but it misdescribes all of
+them and should be fixed rather than remembered.
+
+Every grapple-pin certification carries `evidence_type:
+simulation_capability_envelope`, `out_of_distribution: true`, and
+`gate.applies: false` — including the ones this project treats as certifications
+and quotes as such. The cause is one line in `play.py`, which decides whether the
+slot's lead-in flares are collidable with
+`bool(...collision_props.collision_enabled)`. That field is a **tri-state**:
+IsaacLab documents `None` as "leave as authored", and the grapple-pin scene leaves
+it `None`, so a spawned and enabled collider reports as absent. `train.py` reads
+the same field correctly, treating only an explicit `False` as disabled, and the
+two therefore disagree about the same scene.
+
+The gate values themselves are computed and reported normally — `passed` is
+correct — so no rate here is affected. What is affected is the label on top of it.
+The fix is to read the runtime collision state from the stage the way `train.py`
+does, rather than infer it from a config default, and it needs a re-run of the
+affected reports to re-label them.
+
 ## The pattern, stated once
 
 Four of the five retractions above have the same shape: **a criterion moved after
@@ -49,3 +71,7 @@ a number was measured, and nothing re-ran the number.** Not a bad experiment, no
 a bad policy — a good measurement of a system that had since changed. The defence
 is not care; it is running `check_criterion_currency.py` at the start of a
 session and re-running whatever it flags.
+
+The capture retraction is the first one to be *closed by re-measurement* rather
+than by a replacement run of a newer policy, and it closed the wrong way: the
+skill fails the gate its stale figure passed. That is the mechanism working.

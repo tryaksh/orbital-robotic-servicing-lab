@@ -3138,6 +3138,56 @@ answering is whether the module survives a *shorter* flight — cross with the
 module still shallow in the first bay's rails, which constrains it, rather than
 fully free. That is a change to the leg order, and it is cheap to test.
 
+## Capture re-certified under its own current criterion: 88.78%, and it fails its gate
+
+The re-run this page asked for. Capture v5, unchanged checkpoint, 9,011 episodes
+over three held-out seeds at the 10 mm success tolerance the code has enforced
+since `ffac648` — not the 20 mm one its 96.10% was measured under.
+
+| Reset distance | Episodes | Success |
+| --- | ---: | ---: |
+| Near, stage 0 | 3,004 | **100.00%** |
+| Medium, stage 1 | 3,004 | **87.12%** |
+| Full, stage 2 | 3,003 | **79.22%** |
+| Pooled | 9,011 | **88.78%**, Wilson [88.11%, 89.42%] |
+
+`evidence/grapple_grasp_v5_certification.json`. Zero instability terminations,
+zero non-finite terminal metrics. **The gate fails**: 95% is required in every
+stage and the widest reset distance returns 79.22%.
+
+So the honest replacements for the retracted 96.10% are those four numbers, and
+the bound this page previously gave — *"unmeasured, bounded below by 43% and above
+by 96.10%"* — is now a measurement. The lower bound was far too pessimistic and
+the upper one was the stale figure itself.
+
+**The failures are refusals, not timeouts.** Of 1,011 non-successes, 1,008 are
+`capture_failed` and 3 are `time_out`. The policy is not running out of clock at
+the wider distances; it is closing on a grip that never reaches 10 mm.
+
+**This does not retract any chain number, and the reason is worth stating
+carefully, because it looks like it should.** The chains certify at 98.78% and
+96.35% while their first skill scores 88.78% alone. Both are true because the
+skill task and the chain ask different questions. The skill task carries a
+`capture_failed` *termination*: the episode ends the moment the predicate declares
+failure. The chain carries no such term — it hands over on `grip_error <= 10 mm`
+held for 0.30 s and otherwise lets the capture keep closing for its whole 10 s
+budget. This page already records both halves of that: *"the grasp policy keeps
+closing to a 9-to-12 mm median if simply allowed to finish"*, and chained
+installation overruns its capture phase **once in 192 episodes**.
+
+That asymmetry was also measured directly and from the other direction, on the
+chained-insert task: adding a capture-failure termination to a task whose chain
+does not have one took its gate from 95.31% to 69.27%. The same effect, the same
+size, already in the record under *Do not retry*.
+
+**What this means for the claim.** "Capture certifies at 96.10%" is gone and must
+not come back. What survives, and is stronger, is: *capture reliably produces a
+10 mm grip when allowed to finish, which is what the chain requires and measures,
+and it declares failure within a fixed episode in 11% to 21% of the two widest
+reset distances when it is not.* The first is chain evidence; the second is the
+skill number. Quoting the skill number as if it described the chain, or the chain
+as if it certified the skill, is the error rule 9 exists to prevent.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
