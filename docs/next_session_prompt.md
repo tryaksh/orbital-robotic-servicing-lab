@@ -51,6 +51,12 @@ whole rack, against a 66.6% majority-class baseline, with pose at 2.81 mm mean
 (`evidence/module_pose_head_two_slot.json`). The 100% is honest and easy: the bays
 are 220 mm apart on a camera that resolves 4 mm as 1.31 px.
 
+**Done and the gate failed.** The three vision arms on a two-bay installation:
+oracle 88.72%, camera 65.10%, blind 34.03%, 576 workflows each
+(`evidence/vision_workflow_*_twoslot_certification.json`). The blind half of the
+gate passes with a 31-point margin. The camera half fails, and item 1 under
+*outstanding* below is the reason it is interesting rather than just bad.
+
 **Not done, and it is the one thing that matters.** The relocation chain does not
 complete. Every episode times out inside the lateral transit.
 
@@ -130,14 +136,26 @@ held-out seeds, zero instability, zero non-finite. **Do not start it before item
 
 ## Also outstanding, in priority order
 
-1. **The three vision arms on the two-bay rack.** `GrappleVisionTwoSlot-Install-v0`
-   exists precisely so the arms have a manipulation task that completes. Run:
+1. **Why the camera arm collapses on seed 5070.** The two-bay arms are run and the
+   gate fails, but not the way a cost curve fails: camera scores 86.46% / **25.00%**
+   / 83.85% across the three seeds while oracle is flat at 90.62 / 89.58 / 85.94.
+   Two seeds are inside the 10-point gate with room; one collapses. It is not the
+   occupancy readout (100% exact-match, and the failures are insertion timeouts, not
+   wrong-bay attempts) and not the manipulation (oracle is stable). The head's
+   held-out p95 is **6.47 mm against a 4 mm insertion lateral tolerance** while its
+   mean is 2.81 mm — adequate typical accuracy, inadequate tail.
+   **Find what that seed draws before training anything.** The per-run
+   randomization covers orbital sun intensity, angle, pitch, yaw and colour
+   temperature, rack albedo, metallic and roughness, camera radiation noise, and the
+   module's own displacement. `scripts/sweep_camera_calibration.py` and the
+   collector's `--camera_offset_mm` / `--camera_tilt_mrad` exist for this. Lighting
+   draw → fix collection coverage. Module displacement the head extrapolates badly
+   on → fix the label range.
+   The sweep costs about **6 minutes per arm-seed** at `ENVS=64`, so all three arms
+   across three seeds is under an hour:
    `TASK=Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Install-v0 WORKFLOW=install STAGE=2
    TAG=_twoslot HEAD=checkpoints/module_pose_head_two_slot.pth ENVS=64
    ARMS="oracle camera blind" bash scripts/certify_vision_workflow.sh`.
-   **Budget it properly: about 39 minutes per arm-seed at 64 environments**, so
-   three arms across three seeds is roughly six hours. Gate: camera within 10
-   points of oracle, blind clearly below both.
 2. **A labelling defect that touches every grapple-pin report.** `play.py` decides
    whether the lead-in flares are collidable with
    `bool(...collision_props.collision_enabled)`. That field is a tri-state and

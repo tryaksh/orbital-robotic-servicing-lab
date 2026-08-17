@@ -190,7 +190,27 @@
         The numbers above remain the promoted configuration; this one is not promoted, because the
         same change costs the chain 8 points until the insertion skill is retrained to absorb it.
       </p>
-      <p class="evidence">evidence/vision_workflow_blind_certification.json · vision_workflow_camera_certification.json · vision_workflow_oracle_certification.json</p>
+      <p class="note">
+        <strong>Widen the rack to two bays and that parity does not survive.</strong> The pose head
+        gains a bay-occupancy output and reads <em>which</em> bay holds the module at 100% exact-match
+        on 12,000 held-out frames, against a 66.6% majority-class baseline &mdash; the camera now
+        reports the state of the rack, not only where a part is. In the loop, over 576 workflows per
+        arm on three held-out seeds: oracle <strong>88.72%</strong>, camera <strong>65.10%</strong>,
+        blind <strong>34.03%</strong>. Camera is 23.6 points behind oracle, and the 10-point gate
+        <em>fails</em>.
+      </p>
+      <p class="note">
+        <strong>The per-seed row is the actual finding.</strong> Camera scores 86.46%, <em>25.00%</em>
+        and 83.85% while oracle is flat at 90.62 / 89.58 / 85.94. Two seeds sit inside the gate with
+        room and one collapses. So this is an estimator that fails on a single draw of the
+        randomization, not perception costing 23 points &mdash; and it is neither the occupancy
+        readout, which is perfect and whose failures would be wrong-bay attempts rather than the
+        timeouts observed, nor the manipulation, which is stable. The head's held-out p95 is 6.47 mm
+        against a 4 mm insertion tolerance while its mean is 2.81 mm: an adequate typical accuracy
+        with an inadequate tail, which is precisely the shape that fails on one seed instead of all
+        of them. Running the same sweep at one seed reported a pass. That is what three seeds are for.
+      </p>
+      <p class="evidence">evidence/vision_workflow_blind_certification.json · vision_workflow_camera_certification.json · vision_workflow_oracle_certification.json · vision_workflow_{oracle,camera,blind}_twoslot_certification.json · module_pose_head_two_slot.json</p>
     </div>
   </section>
 
