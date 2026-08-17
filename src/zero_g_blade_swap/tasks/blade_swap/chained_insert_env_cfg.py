@@ -190,6 +190,26 @@ def chained_extraction_failure(env) -> torch.Tensor:
 # fix. The capture phase is bounded by its own certified clock and nothing else.
 
 
+#: Diagnostic only: override the insert phase's deadline, in seconds.
+#:
+#: **Never use this for a promoted number.** The insert phase's clock is read
+#: from the skill's own certified episode length precisely so the chain and the
+#: certification cannot disagree, and extending it to make a gate pass is the
+#: thing this repository forbids.
+#:
+#: It exists because the failure signature is the same one that has twice
+#: justified an honest budget change here -- the insert episode went 12 s to 20 s
+#: when every success was finishing on the buzzer, and the capture phase went 6 s
+#: to 10 s for the same reason. Measured on the pre-training gate, successful
+#: insertions now use about 12.3 s at the median and close to the full 20 s at
+#: p95, and 6 of 7 failures end still short on axial depth. Whether those
+#: failures are converging slowly or stuck is a question about the skill, and
+#: this answers it for the price of one evaluation run rather than a training
+#: run. What is done about the answer is a separate decision, and it has to be
+#: made with the measurement stated.
+INSERT_BUDGET_OVERRIDE_S = float(os.environ.get("INSERT_CHAIN_INSERT_BUDGET_S", "0") or 0.0)
+
+
 def chained_time_out(env) -> torch.Tensor:
     """Two deadlines, one per phase, each read from the skill that owns it.
 
@@ -397,7 +417,15 @@ class ChainedInsertEnv(TerminalMetricsManagerBasedRLEnv):
         super().__init__(cfg, render_mode=render_mode, **kwargs)
 
         self.chain_capture_deadline = _steps(CAPTURE_BUDGET_S, self)
-        self.chain_insert_deadline = _steps(INSERT_BUDGET_S, self)
+        insert_budget_s = INSERT_BUDGET_OVERRIDE_S or INSERT_BUDGET_S
+        self.chain_insert_deadline = _steps(insert_budget_s, self)
+        if INSERT_BUDGET_OVERRIDE_S:
+            print(
+                f"[WARN] Chained insert: the insert phase budget is overridden to {insert_budget_s} s "
+                f"against the skill's certified {INSERT_BUDGET_S} s. This is a DIAGNOSTIC. Any number "
+                "produced under it describes a task no certification covers.",
+                flush=True,
+            )
         self._chain_required_hold = _steps(HANDOVER_HOLD_S, self)
         self._chain_arm = self.action_manager.get_term("arm")
         self._chain_gripper = self.action_manager.get_term("gripper")
