@@ -17,6 +17,53 @@ toward it. The demonstration has to be industrially credible and paper-worthy:
 every skill certified, the full chain certified, every number naming its evidence
 file.
 
+## READ FIRST: the interface was redesigned on 2026-08-17 and is not yet certified
+
+**Every number in the table below, and every report in `evidence/`, describes the
+TAPERED grapple pin. The tree now contains the KEYED pin. Nothing has been
+re-certified against it.** Do not quote any rate as current until it has been.
+
+The redesign and its measurements, in one place:
+
+| | Tapered pin | Keyed pin |
+| --- | ---: | ---: |
+| Seated grip offset | 0.0194 m | **0.0007 m** |
+| Seated grip attitude | 0.0637 rad | **0.0013 rad** |
+| Lateral load held, no slip | — | **120 N at 0.34 m arm, 40 N·m** |
+| Axial pull gate | 69.0 N | **19–52 N — FAILS the 66.36 N requirement** |
+| Extraction, unchanged policy | 99.02% | **0.00%** |
+
+**What it fixed.** Rotation, decisively. Flat pads on a smooth taper make line
+contact and cannot oppose a moment about the closing axis; flat pads on a flat key
+make plane contact and can. The seated grip is 28x tighter in position and 49x in
+attitude, and grip *orientation* error in extraction failures is now 0.11 rad
+against the 0.35 rad limit the old design ran away to in 99% of its failures.
+
+**What it broke, and why.** Axial retention. The taper was self-energising; a flat
+key is not. The nose flange was meant to be the positive stop, and it is not one:
+a passive shoulder only works while the jaws stay closed, and under extraction drag
+the drive yields, the pads splay toward their 87 mm aperture, and the 60 mm flange
+passes through. The module escapes 32–55 mm axially.
+
+**The missing half.** Form-fit blocks rotation; it does not block translation
+against a gripper that can open. Every flight interface pairs form-fit with a
+*positive lock* — ISS ORUs are bolted by the OTCM after capture, SIROM latches at
+three points 120° apart, HOTDOCK is form-fit plus a lock. I built the form-fit and
+left the lock out.
+
+**This also reframes the refuted latch.** `GrappleLatch` was the right instinct
+tested in the wrong place: engaged while the module was still in the rails it
+jammed and collapsed travel from 458 mm to 25 mm. Engaged on a module the rails
+have *released*, it is exactly the axial lock the keyed pin needs. That is the next
+experiment, and it is a gate before any training:
+
+```bash
+scripts/grasp_diagnostics.py --load_axis axial --plain_pin   # keyed + latch on release
+```
+
+**Do not start a retrain until the axial gate passes ≥ 66.36 N.** Extraction is
+0.00% on the current tree; six hours of PPO against a 0% interface buys nothing.
+
 ## Where things stand
 
 Deterministic evaluation, three held-out seeds, Wilson interval, terminal state
