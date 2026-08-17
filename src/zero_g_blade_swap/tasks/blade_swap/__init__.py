@@ -299,6 +299,14 @@ for _vision_two_slot_id, _vision_two_slot_cls in (
         "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
         "ZeroGBladeGrappleVisionTwoSlotWorkflowEnvCfg",
     ),
+    # Installation into the first bay, on a two-bay rack. The vision arms measure
+    # what perception costs, and that needs a manipulation task that completes;
+    # the relocation does not yet, for reasons that have nothing to do with the
+    # camera, so running the arms on it would compare three ways of failing.
+    (
+        "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Install-v0",
+        "ZeroGBladeGrappleVisionTwoSlotInstallEnvCfg",
+    ),
 ):
     gym.register(
         id=_vision_two_slot_id,

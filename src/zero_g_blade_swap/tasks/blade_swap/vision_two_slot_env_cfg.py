@@ -33,7 +33,7 @@ from isaaclab.sensors import TiledCameraCfg
 from isaaclab.utils import configclass
 
 from . import mdp
-from .assets import CONTACT_INSERTION_STAGE_BLADE_POSE, SECOND_SLOT_CENTER_Y
+from .assets import BLADE_INSERTED_POS, CONTACT_INSERTION_STAGE_BLADE_POSE, SECOND_SLOT_CENTER_Y
 from .scene_cfg import ZeroGTwoSlotGrapplePinSceneCfg, make_tiled_camera_cfg
 from .two_slot_env_cfg import RelocationCommandsCfg
 from .vision_grapple_env_cfg import (
@@ -165,10 +165,44 @@ class ZeroGBladeGrappleVisionTwoSlotWorkflowEnvCfg(ZeroGBladeGrappleVisionTwoSlo
     curriculum: WorkflowCurriculumCfg = WorkflowCurriculumCfg()
 
 
+@configclass
+class TwoSlotInstallCommandsCfg:
+    """The seated pose in the FIRST bay, on a rack that has two of them."""
+
+    insertion_goal = mdp.InsertionGoalCommandCfg(goal_pos=BLADE_INSERTED_POS)
+
+
+@configclass
+class ZeroGBladeGrappleVisionTwoSlotInstallEnvCfg(ZeroGBladeGrappleVisionTwoSlotWorkflowEnvCfg):
+    """Installation into the first bay, on a two-bay rack, seen through the camera.
+
+    Why this exists rather than only the relocation: the three vision arms measure
+    what perception *costs*, and that measurement needs a manipulation task that
+    completes. The relocation chain does not yet complete for reasons that have
+    nothing to do with the camera --- see the transit findings in docs/status.md ---
+    so running the arms on it would compare three ways of failing.
+
+    The installation does complete, and it is certified on the single-bay rack at
+    96.35%. Putting it on the two-bay rack changes exactly what item 6 is about:
+    the camera now has to find the module on a rack where a second bay exists and
+    could hold it, which is the harder perception problem, while the manipulation
+    stays the one with a certified baseline to compare against.
+
+    The goal is therefore the first bay, not the second. Keying it off the reset
+    stage the way the two-slot insert task does would be wrong here for the same
+    reason it is wrong for the relocation: this workflow starts and finishes in the
+    same bay.
+    """
+
+    commands: TwoSlotInstallCommandsCfg = TwoSlotInstallCommandsCfg()
+
+
 __all__ = [
     "SlotOccupancyLabelObsCfg",
     "VisionTwoSlotCollectObsCfg",
     "VisionTwoSlotGrappleSceneCfg",
+    "TwoSlotInstallCommandsCfg",
     "ZeroGBladeGrappleVisionTwoSlotCollectEnvCfg",
+    "ZeroGBladeGrappleVisionTwoSlotInstallEnvCfg",
     "ZeroGBladeGrappleVisionTwoSlotWorkflowEnvCfg",
 ]
