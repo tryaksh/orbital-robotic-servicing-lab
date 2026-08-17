@@ -185,10 +185,27 @@ GRAPPLE_PIN_HALF_WIDTH_Y = 0.015
 #: contact resists moments about every axis in the plane; a line contact on a
 #: taper resists none of them.
 GRAPPLE_PIN_KEY_HALF_HEIGHT = 0.015
-#: Front axial stop. Shorter than the pads can open, so an approaching gripper
-#: still passes over it, and taller than the key so a closed pad cannot ride off
-#: the end.
-GRAPPLE_PIN_NOSE_HALF_HEIGHT = 0.030
+#: Front axial stop, and **taller than the aperture can ever open**, exactly like
+#: the collar and for exactly the same reason.
+#:
+#: It was 60 mm, chosen so an approaching gripper could fly over it, and that made
+#: it useless: measured, the module escaped 32-55 mm axially and extraction scored
+#: 0.00%, because a shoulder shorter than the aperture is only a stop while the
+#: jaws stay closed. Under extraction drag the drive yields, the pads splay toward
+#: their 87.077 mm opening, and a 60 mm shoulder passes straight between them.
+#:
+#: Flying over it is not required here and never was. `reset_grapple_fingers`
+#: writes the finger joints directly and the arm is teleported to its calibrated
+#: head-on pose, so every task in this project *places* the gripper straddling the
+#: pin rather than approaching along it. The pads are therefore trapped in a pocket
+#: between two walls that neither splay nor slide can clear, which is a positive
+#: mechanical lock obtained from geometry alone -- the missing half of form-fit
+#: plus lock that every flight interface pairs.
+#:
+#: The cost is real and belongs in docs/sim2real_matrix.md: a servicer that has to
+#: *fly* onto this fixture cannot, and would need lateral entry or a retractable
+#: nose. That is a coarse-alignment problem this project does not model.
+GRAPPLE_PIN_NOSE_HALF_HEIGHT = 0.045
 #: Taller than the pads can ever open, so it is an absolute depth stop rather
 #: than something a wide-open gripper slides past.
 GRAPPLE_PIN_COLLAR_HALF_HEIGHT = 0.045
@@ -300,13 +317,13 @@ def key_seat_axial_travel_m() -> float:
 
 
 def approach_clearance_per_side_m() -> float:
-    """Room either side of the nose flange when the pads are fully open.
+    """Room either side of the key when the pads are fully open.
 
-    The nose flange is the widest thing an approaching gripper has to pass over,
-    so it is what sets the approach clearance.
+    The key is what the pads close onto, and with both stops now taller than the
+    aperture it is the only section they ever have to fit around.
     """
 
-    return 0.5 * (MAX_CLEAR_OPENING_M - 2.0 * GRAPPLE_PIN_NOSE_HALF_HEIGHT)
+    return 0.5 * (MAX_CLEAR_OPENING_M - 2.0 * GRAPPLE_PIN_KEY_HALF_HEIGHT)
 
 
 __all__ = [

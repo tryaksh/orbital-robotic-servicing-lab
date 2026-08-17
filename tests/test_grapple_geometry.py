@@ -92,10 +92,17 @@ def test_the_gripped_section_is_flat() -> None:
     assert GRAPPLE_PIN_KEY_HALF_HEIGHT == pytest.approx(GRAPPLE_PIN_SHAFT_HALF_HEIGHT)
 
 
-def test_the_pads_can_open_around_the_nose_flange() -> None:
-    """The nose flange is the widest thing the approach has to pass over."""
+def test_both_axial_stops_are_taller_than_the_aperture_can_open() -> None:
+    """The whole point of the pocket, and the correction of a measured failure.
 
-    assert 2.0 * GRAPPLE_PIN_NOSE_HALF_HEIGHT < MAX_CLEAR_OPENING_M
+    A shoulder shorter than the aperture stops nothing: at 60 mm the module escaped
+    32-55 mm axially and extraction scored 0.00%, because the drive yields under
+    drag and the pads splay toward their 87 mm opening. Both walls now exceed it, so
+    the pads are trapped whatever the jaws do.
+    """
+
+    assert 2.0 * GRAPPLE_PIN_NOSE_HALF_HEIGHT > MAX_CLEAR_OPENING_M
+    assert 2.0 * GRAPPLE_PIN_COLLAR_HALF_HEIGHT > MAX_CLEAR_OPENING_M
     # Anything under a few millimetres a side makes the head-on approach a
     # coin toss for a learned policy.
     assert approach_clearance_per_side_m() >= 0.007
