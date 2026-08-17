@@ -3175,24 +3175,65 @@ lateral sweep from there. The second bay's **staging pose** is proven reachable 
 0.0060 mm, but the **path between the bays at the retreated depth has never been
 tested for reachability.**
 
-A first attempt at that test was run and is **inconclusive, and is recorded as
-such rather than quoted.** `calibrate_grasp_pose.py` with
-`--target_offset -0.4362 0 0` — the retreat depth in the *first* bay, which the
-transit demonstrably reaches to 0.8 mm — reports not converged at all four wrist
-seeds with a 0.167 m residual (`artifacts/relocation/cross_control_bay1.json`).
-A control that fails on a pose the system reaches every episode is a broken probe,
-not a reachability result: the calibrator servos the tool to the **handle centre**
-plus the offset, and on this interface the tool actually sits about 335 mm behind
-the blade centre at the pin's grip point. So the offset asks for a different pose
-than the transit flies. Rule 6 applies to this probe as much as to any other, and
-it has not yet been shown to move what it measures.
+### The retreat depth is not reachable holding the capture attitude
 
-**The next experiment is the corrected version of that probe**, offset to the pin
-grip point rather than the handle centre, with the bay-1 retreat pose as its
-control. It answers whether the cross is a controller problem or a workcell one,
-and those have entirely different fixes: a different leg order — cross while the
-module is still shallow in the first bay's rails, which constrain it — versus a
-rack an arm at this reach cannot serve.
+That test was run, and it answers the question. It was first written up here as
+inconclusive on the grounds that the calibrator servos to the "handle centre"
+rather than the pin grip point; **that was wrong and the correction matters.** For
+the grapple-pin blade `GrapplePinBladeCfg.handle_offset` *is*
+`GRAPPLE_PIN_GRIP_OFFSET`, −0.3395 m along x, and its own docstring says so: *"here
+it is the centre of the length of pin the pads close on"*. The calibrator targets
+exactly the point the tool is driven to. The probe was correctly aimed.
+
+So this is a result, on the **control** — the retreat depth in the *first* bay, no
+lateral component at all (`artifacts/relocation/cross_control_bay1.json`):
+
+| | |
+| --- | ---: |
+| Blade pinned at | x = 0.5829 |
+| Target tool x, = 0.5829 − 0.3395 − 0.4362 | **−0.1928** |
+| Position residual after 3,000 steps, four wrist seeds | **0.174 m** |
+| Orientation residual | 0.000102 rad |
+| Converged | **no** |
+
+**The solver satisfied the attitude to 0.0001 rad and gave up 174 mm of position.**
+It is not failing to converge; it is converging to the nearest pose that holds the
+head-on capture attitude, and that pose is 174 mm short of the retreat depth.
+
+Put beside the transit's own numbers this closes the whole story:
+
+- the transit's tool *does* reach local x = **−0.1878**, within 4 mm of the same
+  target — but with its attitude unconstrained, because until last night nothing
+  commanded it;
+- so the arm reaches the retreat depth **by giving up the capture attitude**, and
+  the module then swings end-for-end about the pin. That is the flip, and this is
+  its cause rather than its symptom;
+- command the attitude instead, and the tool cannot complete the legs — which is
+  exactly what the bounded-authority run measured, grip held at 11 mm and the
+  cross leg's distance *growing*.
+
+The two failures are one failure. **The retreat pose is outside the arm's
+dexterous workspace for the attitude the interface requires**, and the transit was
+only ever reaching it by rotating the wrist into a configuration the pin cannot
+hold the module in. Note what this does *not* say: the second bay's staging pose
+converges to 0.0060 mm with the same solver and the same attitude, and the two-slot
+insert certifies at 98.34% from it. The lateral displacement is fine. **The depth
+is the problem**, and the depth is what `TRANSIT_RETREAT_M` exists to buy.
+
+So the relocation as designed is asking for a pose the workcell does not offer, and
+no follower parameter reaches it. The two ways out are both design changes:
+
+1. **Cross before retreating fully.** Move laterally while the module is still
+   shallow in the first bay's rails, which constrain its attitude, and retreat only
+   as far as the flare plane actually requires at the crossing y. The 78.25 mm
+   retreat is derived for a module turning *at* the extraction pose; a path that
+   crosses earlier may need less of it, or none.
+2. **Change the workcell.** Bay pitch, base position, or reach. This is the
+   "workcell layout, not the interface" hypothesis this page has carried as the
+   leading suspect since 2026-08-15, and it now has its first direct measurement
+   rather than an inference from failure modes.
+
+The first is cheap and untried. Do it first.
 
 ## Capture re-certified under its own current criterion: 88.78%, and it fails its gate
 

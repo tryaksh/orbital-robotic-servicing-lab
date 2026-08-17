@@ -151,24 +151,39 @@ What is **settled**:
   the tool drifts about 93 mm laterally during capture and extraction, against a
   72.5 mm channel half-width.
 
-What is **not** settled, and is the next experiment:
+**And the cause is now identified, by the converged IK calibrator.** The retreat
+depth is **not reachable holding the head-on capture attitude**. Solving for the
+tool at the retreat depth in the *first* bay — no lateral component at all — the
+solver holds the attitude to 0.0001 rad and gives up **174 mm of position**
+(`artifacts/relocation/cross_control_bay1.json`). It is not failing to converge; it
+is converging to the nearest pose that keeps the attitude, and that pose is 174 mm
+short.
 
-> The retreat leg now completes for all 64 environments. **The cross leg does
-> not** — the distance to the lateral waypoint *grows*, 0.303 → 0.397 m, while the
-> tool correctly holds its retreated depth. The retreat leaves the arm folded back
-> near its own base, and the cross then asks for a 220 mm lateral sweep from
-> there. The second bay's *staging pose* is proven reachable to 0.0060 mm; the
-> **path between the bays at the retreated depth has never been tested.**
+That closes the story, because the transit's tool *does* reach that depth, to
+within 4 mm of the same target — with its attitude unconstrained. **So the arm was
+only ever reaching the retreat pose by rotating the wrist into a configuration the
+pin cannot hold the module in.** The flip and the stalled cross leg are one
+failure, not two: give up the attitude and the module flips; command it and the
+legs cannot complete.
 
-**Do that with the converged IK calibrator, not with another follower parameter.**
-Rule 7, `scripts/calibrate_grasp_pose.py` on the Capture task at 3,000 steps. It
-answers whether this is a controller problem or a workcell one, and those have
-completely different fixes: a different leg order (cross while the module is still
-shallow in the first bay's rails, which constrain it) versus a rack layout that an
-arm at this reach cannot serve.
+The lateral displacement is *not* the problem — the second bay's staging pose
+converges to 0.0060 mm with the same solver and the same attitude, and the two-slot
+insert certifies at 98.34% from it. **The depth is the problem, and the depth is
+what `TRANSIT_RETREAT_M` exists to buy.**
+
+Two ways out, both design changes rather than parameters:
+
+1. **Cross before retreating fully** — move laterally while the module is still
+   shallow in the first bay's rails, which constrain its attitude, and retreat only
+   as far as the flare plane requires at the crossing y. The 78.25 mm figure is
+   derived for a module turning *at* the extraction pose; a path that crosses
+   earlier may need less. **Cheap, untried, do this first.**
+2. **Change the workcell** — bay pitch, base position, or reach. This is the
+   "workcell layout, not the interface" hypothesis `docs/status.md` has carried as
+   its leading suspect since 2026-08-15, and it now has a direct measurement.
 
 - Gate: module held under 20 mm grip error across the whole transit. The grip half
-  is now met at 11 mm; the traverse is not.
+  is met at 11 mm; the traverse is not.
 
 ### 5. Certify the relocation chain — blocked on item 4
 
