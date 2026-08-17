@@ -152,8 +152,32 @@ TRANSIT_RETREAT_M = EXTRACTED_BLADE_CENTRE_X - TRANSIT_CLEAR_BLADE_CENTRE_X
 #
 # The grip offset, the slot, and every calibrated arm pose are deliberately
 # unchanged, so the existing checkpoints remain a valid starting point.
-GRAPPLE_PIN_NOSE_X = (-0.411, -0.391)
-GRAPPLE_PIN_KEY_X = (-0.391, -0.311)
+#: Axial play between the seated pads and the nose flange, and the single number
+#: this interface's axial capacity now rests on.
+#:
+#: **Measured, not chosen.** The first keyed pin put the flange 23 mm from the
+#: seated pads, and the axial gate FAILED at 51.6 N against the 66.36 N
+#: requirement -- worse than the taper's 69 N. That was the taper's one real
+#: virtue showing up as a loss: it was self-energising, so pulling dragged thicker
+#: material into the pads and raised the normal force, and a flat key has no such
+#: effect. Friction alone carries about 52 N here and then the module simply slides
+#: until something stops it.
+#:
+#: The answer is the one flight hardware uses: do not carry axial load on friction
+#: at all, carry it on a stop that engages inside the tolerance. The collar already
+#: datums the insert direction; this clearance is what bounds the pull direction.
+#: It has to exceed how accurately a capture places the pads axially -- measured at
+#: 0.15 mm on the settled grasp -- and stay under the 2 mm the pull gate calls a
+#: slipped grip.
+KEY_SEAT_CLEARANCE_M = 0.0015
+#: Derived so the pads, seated against the collar, sit on the flat with exactly
+#: ``KEY_SEAT_CLEARANCE_M`` of travel before the nose flange bears.
+GRAPPLE_PIN_KEY_X = (
+    -0.311 - (PAD_SPAN_FROM_FLANGE_M[1] - PAD_SPAN_FROM_FLANGE_M[0]) - KEY_SEAT_CLEARANCE_M,
+    -0.311,
+)
+#: 20 mm of flange, immediately ahead of the key.
+GRAPPLE_PIN_NOSE_X = (GRAPPLE_PIN_KEY_X[0] - 0.020, GRAPPLE_PIN_KEY_X[0])
 GRAPPLE_PIN_COLLAR_X = (-0.311, -0.305)
 GRAPPLE_PIN_SHAFT_X = (-0.305, -0.225)
 GRAPPLE_PIN_HALF_WIDTH_Y = 0.015
@@ -309,6 +333,7 @@ __all__ = [
     "GRAPPLE_PIN_HALF_WIDTH_Y",
     "GRAPPLE_PIN_SHAFT_HALF_HEIGHT",
     "GRAPPLE_PIN_SHAFT_X",
+    "KEY_SEAT_CLEARANCE_M",
     "GRAPPLE_PIN_KEY_HALF_HEIGHT",
     "GRAPPLE_PIN_KEY_X",
     "GRAPPLE_PIN_NOSE_HALF_HEIGHT",

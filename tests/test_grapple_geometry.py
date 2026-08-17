@@ -117,7 +117,12 @@ def test_the_nose_flange_traps_a_closed_pad() -> None:
     """
 
     assert GRAPPLE_PIN_NOSE_HALF_HEIGHT > GRAPPLE_PIN_KEY_HALF_HEIGHT
-    assert 0.010 <= key_seat_axial_travel_m() <= 0.040
+    # Bounded below by how accurately a capture places the pads axially, measured
+    # at 0.15 mm on the settled grasp, and above by the 2 mm the pull gate calls a
+    # slipped grip. A first attempt at 23 mm failed that gate at 51.6 N, because
+    # friction alone carries about 52 N and the module simply slid until the
+    # flange caught it.
+    assert 0.0005 <= key_seat_axial_travel_m() <= 0.002
 
 
 def test_only_the_shaft_enters_the_slot_and_it_fits() -> None:
