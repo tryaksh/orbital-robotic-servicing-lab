@@ -3132,11 +3132,67 @@ and every passive geometry tried has been refuted. The relocation is the first
 task that has to carry the module through free space for 734 mm, which is why it
 is the first to be stopped by it.
 
-**The next experiment is not another transit parameter.** The two axial legs
-succeed and the lateral one is what accumulates the error, so the question worth
-answering is whether the module survives a *shorter* flight — cross with the
-module still shallow in the first bay's rails, which constrains it, rather than
-fully free. That is a change to the leg order, and it is cheap to test.
+### The module was flipping, not slipping
+
+The above was the state after four runs. Two more found the mechanism, and it is
+rotational.
+
+With the tool sitting exactly on its final waypoint — local x **0.2474** against a
+planned **0.2475** — the tool-to-module offset had gone from **−0.335 m** at
+transit entry to **+0.305 m**. That is a sign change, not a slip. The module had
+swung end-for-end about the pin, which is also why grip error read a mild 24 mm
+throughout: the tool was still on the pin, and the pin was no longer pointing
+where it had been. Driving the tool forward was driving the module's *tail* at the
+rack.
+
+The transit was commanding **nothing** on its three rotation channels. That is
+right for the replayed transit, which retraces a path the arm has just flown with
+the module still nearly in its rails, and wrong for a 734 mm crossing of free
+space. This page records four independent measurements that a parallel-jaw grip on
+a passive feature cannot resist a moment about the closing axis. So a phase that
+moves a module and says nothing about its attitude is not holding it still, for
+exactly the reason an arm that stops commanding while gripping is not holding
+still — the same operating rule, its rotational half.
+
+Three corrections, each measured:
+
+| Change | Effect |
+| --- | --- |
+| Hold grip attitude through the transit, bounded to a quarter of the rotation authority | grip error through the flight **24 mm → 11 mm** median; module tracks its retreat waypoint at 0.1480 against 0.1467 planned |
+| Same, *unbounded* | Also holds the module, and starves translation: a 0.1–0.3 rad error against a 0.020 rad scale saturates the command permanently, and the tool sat at the retreat waypoint 1,450 steps later. **Not adopted** |
+| Finish a leg along the axis it was laid out along, not in 3-D | the tool sat 1 mm from its waypoint in x and 53 mm away in 3-D, so the follower never advanced; 50 of 64 were still on leg 1 at the timeout. With the per-axis test **all 64 complete the retreat** |
+
+### Where it now stops: the cross leg, and a probe that did not settle it
+
+The retreat leg completes for every environment. **The cross does not** — the
+distance to the lateral waypoint *grows*, 0.303 → 0.397 m, while the tool
+correctly holds its retreated depth.
+
+The retreat exists to clear the lead-in flares, and it leaves the arm folded back
+near its own base; this page already records the extraction end pose folding it to
+0.336 m horizontally from a base at 0.570 m. The cross then asks for a 220 mm
+lateral sweep from there. The second bay's **staging pose** is proven reachable to
+0.0060 mm, but the **path between the bays at the retreated depth has never been
+tested for reachability.**
+
+A first attempt at that test was run and is **inconclusive, and is recorded as
+such rather than quoted.** `calibrate_grasp_pose.py` with
+`--target_offset -0.4362 0 0` — the retreat depth in the *first* bay, which the
+transit demonstrably reaches to 0.8 mm — reports not converged at all four wrist
+seeds with a 0.167 m residual (`artifacts/relocation/cross_control_bay1.json`).
+A control that fails on a pose the system reaches every episode is a broken probe,
+not a reachability result: the calibrator servos the tool to the **handle centre**
+plus the offset, and on this interface the tool actually sits about 335 mm behind
+the blade centre at the pin's grip point. So the offset asks for a different pose
+than the transit flies. Rule 6 applies to this probe as much as to any other, and
+it has not yet been shown to move what it measures.
+
+**The next experiment is the corrected version of that probe**, offset to the pin
+grip point rather than the handle centre, with the bay-1 retreat pose as its
+control. It answers whether the cross is a controller problem or a workcell one,
+and those have entirely different fixes: a different leg order — cross while the
+module is still shallow in the first bay's rails, which constrain it — versus a
+rack an arm at this reach cannot serve.
 
 ## Capture re-certified under its own current criterion: 88.78%, and it fails its gate
 

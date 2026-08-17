@@ -20,31 +20,49 @@ file.
 ## Where things stand
 
 Deterministic evaluation, three held-out seeds, Wilson interval, terminal state
-captured before auto-reset. Promoted: **capture v5, extract v13unsat, insert v6**.
+captured before auto-reset. Promoted: **capture v5, extract v13unsat, insert
+v10twoslot**.
 
 | | Result | Gate 95% | Evidence |
 | --- | ---: | --- | --- |
-| Capture | 96.10%, **stale** | — | `grapple_grasp_v5_certification.json`; certified 9.4 h before its own success tolerance went 20 mm → 10 mm in `ffac648`. Bounded below by 43% on its own recorded episodes and above by 96.10%. **Re-run before quoting**: `certify_demo_policies.sh Grasp` |
+| Capture, alone | **88.78%** | **fail** | `grapple_grasp_v5_certification.json`, re-run 2026-08-17 under the 10 mm tolerance. 100% / 87.12% / 79.22% by reset distance; the gate needs 95% in each. **The old 96.10% is retracted.** Failures are refusals, not timeouts: 1,008 `capture_failed` to 3 `time_out` |
 | Extract | 99.02% | pass | `grapple_extract_v14reset_certification.json` |
-| Insert, alone | **98.27%** | pass | `grapple_insert_v6clock30_certification.json`, under the 30 s budget. The 95.57% figure describes the 20 s task |
+| Insert, alone, one bay | **98.27%** | pass | `grapple_insert_v6clock30_certification.json`, under the 30 s budget. The 95.57% figure describes the 20 s task |
+| **Insert, both bays** | **98.34%** worse bay | **pass** | `grapple_insert_two_slot_certification.json`. Bay 1 98.87%, bay 2 98.34%, pooled 98.60% over 3,004 episodes. **This is the promoted insert** |
 | **Removal chain** | **98.78%** | **pass** | `workflow_remove_retain_certification.json` |
-| **Install chain** | **96.35%** | **pass** | `workflow_install_clock30retain_certification.json`, Wilson [94.49%, 97.60%], 555/576. Both earlier figures — 84.38% and 89.41% — are superseded |
-| Install, camera | 80.38% | — | `vision_workflow_camera_certification.json` |
-| Install, oracle | 80.38% | — | `vision_workflow_oracle_certification.json` |
-| Install, blind | 43.58% | — | `vision_workflow_blind_certification.json` |
+| **Install chain** | **96.35%** | **pass** | `workflow_install_clock30retain_certification.json`, Wilson [94.49%, 97.60%], 555/576 |
+| **Relocation chain** | **does not complete** | **fail** | Every episode times out in the transit. Diagnosed, not guessed — see item 4 below and `docs/status.md` |
+| Install, camera / oracle / blind, one bay | 80.38% / 80.38% / 43.58% | — | `vision_workflow_{camera,oracle,blind}_certification.json` |
 | Insert **inside the chain** | **90.45%** | — | measured, not derived: `workflow_install_promoted_certification.json` predicate-fired column |
 | Insert on the **reproduced** hand-off | **93.06%** | — | `insert_chain_handoff_gate.json` |
 | Interface axial hold | 69 N vs 66.4 N required | pass | `grapple_pin_axial_pull_gate.json` |
-| Module pose from 64x64 RGB | 1.75 mm mean | — | `module_pose_head.json` |
+| Module pose from 64x64 RGB, one bay | 1.75 mm mean | — | `module_pose_head.json` |
+| **Module pose and bay occupancy, two bays** | **2.81 mm mean, occupancy 100%** | — | `module_pose_head_two_slot.json`. Occupancy exact-match 100% against a 66.6% majority-class baseline. Read it as the bays being 220 mm apart on a camera that resolves 4 mm as 1.31 px — the task is easy and the construction is sound |
 | Onboard compute | 0.73 ms CPU, 2.2% of period | — | `inference_budget.json` |
+
+**Capture's 88.78% does not retract any chain number, and the distinction
+matters.** The skill task ends an episode when its `capture_failed` predicate
+fires; the chain has no such term, hands over on a 10 mm grip held 0.30 s, and
+otherwise lets the capture keep closing for its whole 10 s budget — which it does,
+overrunning once in 192 chained installations. Adding such a termination to the
+chained-insert task was separately measured at 95.31% → 69.27%. So *capture
+reliably produces the grip the chain needs*, and *fails a fixed-episode predicate
+at the two widest resets*. Never quote either as the other.
 
 Promoted checkpoints, under `logs/rl_games/zero_g_blade_insertion_contact/`:
 
 ```
 grapple_grasp_l0_seed70_v5/nn/last_zero_g_blade_insertion_contact_ep_1500_rew__35.348194_.pth
 grapple_extract_l0_seed70_v13unsat/nn/last_zero_g_blade_insertion_contact_ep_5700_rew__148.17932_.pth
-grapple_insert_l0_seed70_v6/nn/last_zero_g_blade_insertion_contact_ep_3200_rew__24.907995_.pth
+grapple_insert_l0_seed70_v10twoslot/nn/last_zero_g_blade_insertion_contact_ep_4400_rew__29.616938_.pth
 ```
+
+The single-bay insert v6 at `grapple_insert_l0_seed70_v6/nn/..._ep_3200_...` is
+superseded but kept: it is what the install-chain and vision certifications were
+run with, so those reports describe it and not v10twoslot.
+
+Pose heads, under `checkpoints/`: `module_pose_head.pth` (one bay, pose only) and
+`module_pose_head_two_slot.pth` (two bays, pose and occupancy).
 
 ## The plan
 
@@ -83,52 +101,104 @@ Slot 2 at **y = -0.22 m**, built as a displacement of the certified slot part fo
 part, in `ZeroGTwoSlotGrapplePinSceneCfg`. Converged IK reaches its staging pose
 to **0.0060 mm** at every stage (`artifacts/relocation/slot_two_pose.json`).
 
-### 3. Insert retrained for both bays — blocked on a pre-existing smoke defect
+### 3. Insert retrained for both bays — DONE, gate passed
 
-`Isaac-ZeroG-Blade-GrapplePin-InsertTwoSlot-v0` is built: it trains on both bays,
-with the arm pose, module pose and insertion goal all read from one stage index.
-It cannot be trained yet because `train.py --smoke` fails its contact reward
-contract — **and so does the promoted single-slot insert task, with a
-bit-identical tensor, at both 20 s and 30 s**. Standing still is not still on
-these tasks: the scripted capture closes during the 1.0 s settling window and
-moves the module, so the progress term pays.
+The smoke blocker is closed: the contact reward contract is **scoped** to the
+family it was written for, not weakened. It is skipped where
+`events.hold_gripper_closed.func is hold_two_stage_grip`, because on those tasks
+the scripted capture is still closing through the action term's 1.0 s settling
+window, so a zero action is not a stationary module and the progress term is paid
+for motion the script caused. Where it is skipped it prints the number it would
+have judged. Capture and the chained-insert task still run it.
 
-**Scope that contract to the family it was written for**, as the scripted axial
-feasibility probe already was. Then train, then:
+Then trained: 1,200 epochs at 512 environments from insert v6, both bays 50/50.
+**98.87% bay 1, 98.34% bay 2, pooled 98.60%** over 3,004 episodes and three
+held-out seeds — gated on the worse bay, which is what the gate asked for.
+`evidence/grapple_insert_two_slot_certification.json`.
 
-- Gate: **insert >= 95% on both slots**, the *worse* bay, not the pool:
-  `scripts/run_relocation.sh certify2`.
+The second bay was not hard: unlocked around epoch 3,250, it went 0 → 83% in 40
+epochs and past 95% within 250, while bay 1 never dropped below 97.9%. That is
+evidence for building the bay as a part-for-part displacement, not for the policy.
 
-### 4. Lateral transit — implemented, gate not yet measured
+### 4. Lateral transit — MEASURED, gate FAILS, and the cause is now specific
 
-Three closed-loop legs — back, across, in — retained throughout.
-**`TRANSIT_RETREAT_M` = 78.25 mm is derived, not chosen**: the lead-in flares
-stand proud of the mouth, so a module turning at the extraction pose drags its
-nose across the neighbouring bay's flare.
+**This is where the night stopped, and it is the one thing to work on next.**
+Every episode times out inside the transit. Six instrumented runs; do not repeat
+them. `scripts/run_relocation.sh trace` reproduces the whole diagnosis in about
+four minutes at `EPISODES=64`, and the `[CHAIN]` progress line now reports the
+follower's leg, its distance to that leg's waypoint, each conjunct of the arrival
+test, the grip error, and the tool's position in the module's own frame.
 
-- Gate: module held to under 20 mm grip error across the whole transit. Read it
-  off `--handoff_trace`'s transit→insert row.
+What is **settled**:
 
-### 5. Certify the relocation chain
+- **The plan is right.** Environments that arrive land at tool x = 0.2482 against
+  a planned 0.2475, module x = 0.5790 against a 0.5779 threshold. The 78.25 mm
+  retreat derivation holds.
+- **The module was flipping, not slipping.** With the tool exactly on its final
+  waypoint the tool-to-module offset had gone from −0.335 m to **+0.305 m** — a
+  sign change — while grip error stayed near 24 mm. The module had swung
+  end-for-end about the pin, so pushing the tool forward drove the module's tail
+  at the rack. The transit was commanding nothing on its three rotation channels.
+- **Holding the attitude fixes the grip.** Bounded to a quarter of the rotation
+  authority (`TRANSIT_ATTITUDE_AUTHORITY`), grip error through the flight is
+  **11 mm** at the median and the module tracks its retreat waypoint exactly.
+  Unbounded it also holds the module but starves translation, because a 0.1–0.3 rad
+  attitude error against a 0.020 rad scale saturates the command permanently.
+- Two more corrections are in and measured: legs finish along **the axis they were
+  laid out along** (the 3-D test assumed nothing else moved the tool, and holding
+  attitude does), and the cross leg and the arrival test now target **the bay in
+  the rack's frame** instead of a displacement from wherever the episode started —
+  the tool drifts about 93 mm laterally during capture and extraction, against a
+  72.5 mm channel half-width.
 
-`capture -> extract -> lateral transit -> insert(slot 2)`, one continuous
-episode, real contact throughout.
+What is **not** settled, and is the next experiment:
+
+> The retreat leg now completes for all 64 environments. **The cross leg does
+> not** — the distance to the lateral waypoint *grows*, 0.303 → 0.397 m, while the
+> tool correctly holds its retreated depth. The retreat leaves the arm folded back
+> near its own base, and the cross then asks for a 220 mm lateral sweep from
+> there. The second bay's *staging pose* is proven reachable to 0.0060 mm; the
+> **path between the bays at the retreated depth has never been tested.**
+
+**Do that with the converged IK calibrator, not with another follower parameter.**
+Rule 7, `scripts/calibrate_grasp_pose.py` on the Capture task at 3,000 steps. It
+answers whether this is a controller problem or a workcell one, and those have
+completely different fixes: a different leg order (cross while the module is still
+shallow in the first bay's rails, which constrain it) versus a rack layout that an
+arm at this reach cannot serve.
+
+- Gate: module held under 20 mm grip error across the whole transit. The grip half
+  is now met at 11 mm; the traverse is not.
+
+### 5. Certify the relocation chain — blocked on item 4
+
+`capture -> extract -> lateral transit -> insert(slot 2)`, one continuous episode.
+Do not start it before item 4's gate passes; a run today measures the transit
+failure, not the chain. `scripts/run_relocation.sh relocate`, which now resolves
+the two-bay insert checkpoint itself and refuses to run with the single-bay one.
 
 - Gate: **>= 95%**, three held-out seeds, zero instability, zero non-finite.
-- Chained numbers here have consistently landed *below* the product of their
-  parts. If it does, trace the hand-offs with `--handoff_trace` before retraining
-  anything.
-- Budget: ~1 session.
 
-### 6. Perception reads the rack
+### 6. Perception reads the rack — perception half DONE, arms measured on a two-bay install
 
-With two slots the camera must report *which* slot is occupied, not only where
-the module is. That upgrades the claim from "locates a part" to "reads the state
-of the rack" and it is the version worth demonstrating.
+The pose head has an occupancy branch: one independent logit per bay, because
+during a relocation the module is in neither for the whole transit and a softmax
+cannot say that. Trained on 60,000 two-bay frames under the same randomized
+lighting, albedo, camera noise and unknown module displacement as the single-bay
+head. Held out on 12,000: **occupancy 100% per bay and 100% exact-match over the
+whole rack, against a 66.6% majority-class baseline**, with module pose at 2.81 mm
+mean and 6.47 mm p95. `evidence/module_pose_head_two_slot.json`.
 
-- Add a slot-occupancy output to the pose head. Re-run all three vision arms.
+Read the 100% honestly: the bays are 220 mm apart and this camera resolves 4 mm as
+1.31 px, so a module in bay 2 is in a visibly different part of the frame. The
+number says the construction is sound, not that the perception is clever.
+
+The three arms were run on `GrappleVisionTwoSlot-Install-v0` — installation into
+bay 1 on a two-bay rack — rather than on the relocation, because the arms measure
+what perception *costs* and that needs a manipulation task that completes. Item 4
+is why the relocation does not. See the results table above and `docs/status.md`.
+
 - Gate: camera arm within 10 points of oracle, blind arm clearly below both.
-- Budget: ~1 session.
 
 ## Non-negotiable rules
 
