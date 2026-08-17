@@ -144,6 +144,11 @@ SEATED_RETAIN = bool(int(os.environ.get("SEATED_RETAIN", "1")))
 #: Which dominates is a measurement, and this switch is how to take it.
 RELOCATE_TRANSIT_HOLD = bool(int(os.environ.get("RELOCATE_TRANSIT_HOLD", "0")))
 
+#: Fraction of the rotation channels the relocation transit may use to hold the
+#: module's attitude, leaving the rest of the differential IK's authority for
+#: actually crossing the rack. Overridable so the trade can be swept.
+TRANSIT_ATTITUDE_AUTHORITY = float(os.environ.get("TRANSIT_ATTITUDE_AUTHORITY", "0.25"))
+
 
 #: Phases, as integers, because the driver runs them per environment in parallel.
 CAPTURE, SEAT, EXTRACT, TRANSIT, INSERT, DONE = range(6)
@@ -560,6 +565,10 @@ class WorkflowDriver:
         # them backwards. Every one of them was reachable a moment ago.
         self.max_waypoints = max(1, max_steps // TRANSIT_WAYPOINT_STRIDE + 2)
         self.waypoints = torch.zeros((self.max_waypoints, count, 3), device=device)
+        #: Which axis each planned leg travels along, for the relocation's
+        #: follower. Zero for the replayed transit, which is sampled along a
+        #: flown path rather than laid out, and does not use it.
+        self.leg_axis = torch.zeros((self.max_waypoints, count), dtype=torch.long, device=device)
         self.waypoint_write = torch.zeros(count, dtype=torch.long, device=device)
         self.waypoint_read = torch.zeros(count, dtype=torch.long, device=device)
         self.frozen = torch.zeros((count, len(WORKFLOW_METRIC_FIELDS)), dtype=torch.float64, device=device)
@@ -918,8 +927,20 @@ class WorkflowDriver:
                 # Proximity is the wrong rule for the replay, for the reason its
                 # own comment gives, and the right one here: these targets are
                 # exact rather than sampled, so the tool really does reach them.
+                # Along the leg's own axis, not the full 3-D distance.
+                #
+                # Each planned leg moves along exactly one axis -- back in x,
+                # across in y, in again in x -- and the 3-D test silently assumed
+                # nothing else would move the tool. Holding the module's attitude
+                # does move it: with the attitude command in, the tool sat 1 mm
+                # from its waypoint in x and 53 mm away in 3-D, so the follower
+                # never ticked over and 50 of 64 environments were still on the
+                # first leg when the episode ended. The leg is finished when the
+                # distance it was laid out to cover is covered.
                 reached = torch.zeros_like(self.waypoint_read, dtype=torch.bool)
-                reached[ids] = torch.linalg.vector_norm(target - tool[ids], dim=-1) <= 0.005
+                axis = self.leg_axis[self.waypoint_read[ids], ids]
+                along = (target - tool[ids]).gather(1, axis.unsqueeze(-1)).squeeze(-1)
+                reached[ids] = along.abs() <= 0.005
                 due = transiting & reached
                 # The last leg is not a transit. It drives the module 436 mm
                 # along the pull axis into the second bay's channel, past that
@@ -948,9 +969,48 @@ class WorkflowDriver:
                 )
             self.waypoint_read[due] = (self.waypoint_read[due] - 1).clamp_min(0)
             target = self.waypoints[self.waypoint_read[ids], ids]
-            scale = self.scales[TRANSIT][:3]
-            self.actions[ids, :3] = ((target - tool[ids]) / scale).clamp(-1.0, 1.0)
+            scale = self.scales[TRANSIT]
+            self.actions[ids, :3] = ((target - tool[ids]) / scale[:3]).clamp(-1.0, 1.0)
             self.actions[ids, 3:6] = 0.0
+            if self.workflow == "relocate":
+                # Hold the module's attitude for the whole flight, because
+                # nothing else does and the pin cannot.
+                #
+                # Zeroing these channels is right for the replayed transit, which
+                # retraces a path the arm has just flown while the module is
+                # still nearly in its rails. It is wrong for a 734 mm crossing of
+                # free space, and the measurement is unambiguous: the tool
+                # finishes at local x = 0.2474 against a planned 0.2475 -- exactly
+                # where it should be -- while the tool-to-module offset has gone
+                # from -0.335 m at transit entry to +0.305 m. That is a sign
+                # flip, not a slip. The module has swung end-for-end about the
+                # pin, which is why grip error stays at 24 mm throughout: the
+                # tool is still on the pin, and the pin is no longer pointing the
+                # way it was.
+                #
+                # This project has measured four separate ways that a parallel-jaw
+                # grip on a passive feature cannot resist a moment about the
+                # closing axis. A phase that moves a module through free space and
+                # commands nothing about its attitude is therefore not holding
+                # still, exactly as an arm that stops commanding while gripping is
+                # not holding still. Same rule, the rotational half of it.
+                # Bounded, not saturated. The grip attitude error a pull leaves
+                # is 0.1 to 0.3 rad and the rotation scale is 0.020 rad per step,
+                # so a plain proportional command sits on its clamp for the whole
+                # flight -- and a differential IK solving one 6-D command then
+                # spends its authority turning the wrist instead of crossing the
+                # rack. Measured that way: the module was held beautifully, grip
+                # error 24 mm to 12 mm, and the tool was still sitting at the
+                # retreat waypoint 1,450 steps later with the episode running out
+                # underneath it.
+                #
+                # A quarter of the authority still corrects far faster than the
+                # module can tumble, because it is opposing a drift rather than
+                # chasing a setpoint.
+                rotation_error = grapple_grip_attitude_error_world(task)[ids]
+                self.actions[ids, 3:6] = (rotation_error / scale[3:6]).clamp(
+                    -TRANSIT_ATTITUDE_AUTHORITY, TRANSIT_ATTITUDE_AUTHORITY
+                )
             # Rate-limiting the last leg to a third of the command, the way the
             # replayed transit is slowed, was tried here and measured *worse*:
             # the module ended at x = -0.158 against -0.003 at full command, and
@@ -1105,6 +1165,13 @@ class WorkflowDriver:
         self.waypoints[1, ids] = across
         self.waypoints[0, ids] = approach
         self.waypoint_read[ids] = 2
+        # The axis each leg is laid out along, so the follower can ask whether
+        # the leg is finished rather than whether the tool is at a point. Holding
+        # the module's attitude moves the tool off that point on the other two
+        # axes, which is correct behaviour and used to stall the follower.
+        self.leg_axis[2, ids] = 0  # back: along x
+        self.leg_axis[1, ids] = 1  # across: along y
+        self.leg_axis[0, ids] = 0  # in again: along x
 
     def transit_progress(self) -> str:
         """One line describing where the transit follower actually is.
@@ -1148,7 +1215,13 @@ class WorkflowDriver:
             f"(p50={float(blade_x.median()):.4f} need>={TRANSIT_TARGET_BLADE_X - 0.005:.4f}) "
             f"crossed={int((lateral <= 0.5 * SECOND_SLOT_CENTER_Y).sum())} "
             f"(p50={float(lateral.median()):.4f} need<={0.5 * SECOND_SLOT_CENTER_Y:.4f}) "
-            f"| grip_error_m p50={float(grip_error.median()):.4f} max={float(grip_error.max()):.4f}"
+            f"| grip_error_m p50={float(grip_error.median()):.4f} max={float(grip_error.max()):.4f} "
+            # The tool's own position, in the same environment-local frame the
+            # module is reported in. Everything above is either a distance or a
+            # module position, and three of those cannot be reconciled without
+            # knowing where the tool actually is.
+            f"| tool_local_x p50={float((tool[:, 0] - self.task.scene.env_origins[ids, 0]).median()):.4f} "
+            f"target_local_x p50={float((target[:, 0] - self.task.scene.env_origins[ids, 0]).median()):.4f}"
         )
 
     def _freeze(
