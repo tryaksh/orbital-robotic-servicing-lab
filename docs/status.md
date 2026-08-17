@@ -3285,6 +3285,29 @@ reset distances when it is not.* The first is chain evidence; the second is the
 skill number. Quoting the skill number as if it described the chain, or the chain
 as if it certified the skill, is the error rule 9 exists to prevent.
 
+## Why tonight's driver changes do not invalidate the install or removal chains
+
+`check_criterion_currency.py` flags `workflow_install_clock30retain_certification.json`
+STRONG against the 2026-08-17 commit to `scripts/run_workflow_demo.py`. That flag is
+correct as a prompt and wrong as a verdict, and the check-then-confirm step exists
+for exactly this. Confirmed by reading the diff, term by term:
+
+- the `learned_phases` and `scripted_phases` entries are report formatting;
+- writing the hand-off trace earlier in the function changes no behaviour;
+- `transit_progress()` only prints, and only when something is in `TRANSIT`;
+- the attitude hold, the per-axis leg completion, the bay-frame cross target, the
+  bay-frame arrival test and `RELOCATE_TRANSIT_HOLD` are all inside
+  `if self.workflow == "relocate"` or inside the `TRANSIT` block;
+- `scale = self.scales[TRANSIT]` then `scale[:3]` is the same tensor the old
+  `self.scales[TRANSIT][:3]` produced;
+- the episode-budget change adds `TRANSIT` for `relocate` only. `install` and
+  `remove` do not have a transit phase at all — `scripted_phases` has always been
+  `["seat"]` for them — so their derived episode lengths are byte-identical.
+
+**Neither chain has a transit phase, so nothing that changed can reach them.** No
+re-run is owed. Recorded here so the next session does not spend 15 minutes
+re-certifying to answer a question that reading answers.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
