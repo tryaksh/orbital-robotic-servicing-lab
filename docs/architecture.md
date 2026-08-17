@@ -104,10 +104,14 @@ produces" is the defect this project has hit four times. The first run of it
 found insert scoring 95.57% on its own reset and about 80% on the states the
 chain hands it, a gap invisible in every certification either side of it.
 
-`scripts/build_handoff_pose_bank.py` turns collected traces into a reset
-distribution. **Collect on training-side seeds**: a reset drawn from the seeds a
-chain is certified on is not a held-out evaluation any more, and the script
-cannot check that for you.
+Turning those traces into a *reset distribution* is a closed line of work, and
+its machinery was deleted on 2026-08-16: four reconstructions scored 0.00%,
+26.32% and 47.17% against the ~80% the same unchanged policy achieves in the real
+chain, because a hand-off is a trajectory and a gripper-controller state rather
+than a pose. `Isaac-ZeroG-Blade-GrapplePin-InsertChain-v0` reproduces it properly
+by running the frozen capture inside the environment, and measures 93.06%. The
+measurements are in `docs/status.md`; the pose bank, its generator and
+`reset_from_handoff_bank` are gone.
 
 ## What was deleted, and why it is not coming back
 

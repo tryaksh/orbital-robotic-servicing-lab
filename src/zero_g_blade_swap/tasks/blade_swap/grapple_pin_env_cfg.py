@@ -884,12 +884,12 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         # capture inside the environment and reproduces the hand-off at 93.06%
         # against the best bank's 47.17%. Do not build a fifth reset.
         #
-        # `mdp.reset_from_handoff_bank` stays implemented, and
-        # `scripts/build_handoff_pose_bank.py` regenerates the bank itself; the
-        # generated 84 kB of poses was deleted because nothing imported it and
-        # keeping refuted data in the tree is how a future session spends a
+        # The whole path is deleted -- the 84 kB pose bank, its generator, and
+        # `mdp.reset_from_handoff_bank` -- because nothing imported any of it and
+        # keeping refuted machinery in the tree is how a future session spends a
         # night rediscovering that it does not work. The measurements are in
-        # docs/status.md, which is where the result actually lives.
+        # docs/status.md, which is where a result actually lives; the code was
+        # only ever the way they were taken.
         if level < 2:
             self.events.blade_mass = None
         if level < 3:

@@ -191,8 +191,8 @@ and returns the same answer.
 - **Reproducing the insert hand-off as a reset.** Per-joint noise box 0.00%,
   measured arm poses 26.32%, arm-and-module poses paired 47.17%. **Closed:**
   `InsertChain-v0` reproduces it at 93.06% by running the real capture. Do not
-  build a fifth reset; the generated pose bank was deleted for this reason and
-  `build_handoff_pose_bank.py` still regenerates it if anyone must look.
+  build a fifth reset. The pose bank, its generator and `reset_from_handoff_bank`
+  were all deleted for this reason; the measurements are in `docs/status.md`.
 - **Fine-tuning insert on the chain's own distribution.** 300 epochs at 512
   environments took the install chain 89.41% → 88.37%, and the training curve was
   flat from the first tenth. The hand-off costs the skill 2.5 points, so there
