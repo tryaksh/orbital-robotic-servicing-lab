@@ -2913,6 +2913,13 @@ enforces is unmeasured, bounded below by 43% and above by 96.10%, and 96.10% mus
 not be quoted until it is re-run.** The re-run is
 `scripts/certify_demo_policies.sh Grasp` and costs about half an hour.
 
+> **Superseded 2026-08-17.** That re-run was done: **88.78% pooled, 79.22% in the
+> worst stage, and the gate fails.** Both bounds above were wrong — the lower far
+> too pessimistic, the upper the stale figure itself. See *Capture re-certified
+> under its own current criterion* further down this page for the measurement and
+> for why it retracts no chain number. Nothing in this section should be read as
+> the current position.
+
 *Read together with the install retraction above, the pattern is now four for
 four: every time a criterion moved, a certification written before it survived in
 the documents. The mechanism that catches it — a report's timestamp against
