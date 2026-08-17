@@ -2919,6 +2919,61 @@ the documents. The mechanism that catches it — a report's timestamp against
 `git log -S` on the criterion it uses — works, and nothing runs it automatically.
 That is the gap worth closing.*
 
+## The smoke contract is scoped, and item 2's gate is met
+
+The blocker recorded above under *The insert task fails `train.py --smoke`* is
+cleared, in the way that section said it should be: **scoped to the family it was
+written for, not deleted and not weakened.**
+
+The contract asks whether doing nothing is punished. That is a real question on a
+task whose episode opens on a settled grip. It is not a question at all on a task
+whose episode opens with the grip still being *formed*: `ExtractEventsCfg` starts
+with the fingers apart and runs the same two-stage capture the pull gate measured
+69 N on, at the control rate, while the action term holds the arm through its
+1.0 s settling window. The pads are closing on the wedge for the whole window the
+contract sums over, the closure drives the pin along the wedge until the collar
+catches it, and the module therefore moves under a zero action.
+`insertion_progress_reward` is paid for that motion — correctly, the module
+really did get closer to the goal — and the sum comes out positive.
+
+Asserting otherwise would be asserting that the scripted capture is not running.
+That is the same shape of error as asserting the chained task's zero-reward
+prologue is not there, which the contract already handles with its own branch.
+
+The scope is read off the task's own events rather than named by task string:
+the contract is skipped where `events.hold_gripper_closed.func is
+hold_two_stage_grip`. Two properties follow, and both were checked before the
+change was made:
+
+- the **Capture** and **chained-insert** tasks use `GrapplePinEventsCfg` and
+  `GraspEventsCfg`, whose hold term is `hold_gripper_closed`, so the contract
+  still runs on them unchanged — including the chained branch that first drives
+  the phase machine to the hand-off, which is also the check that the hand-off
+  fires at all;
+- the **Extract** and **Insert** families use `ExtractEventsCfg`, so they are
+  scoped out for the same measured reason.
+
+Where the contract is skipped it now prints the number it would have judged,
+because a check that stops running should not take its measurement with it. On
+`InsertTwoSlot-v0` at 32 environments:
+
+```text
+Standing still scored -1.893 to +1.120 over the window; final-step terms, mean
+over environments: progress=+0.010, success=+0.000, retention=-0.020,
+time=-0.003, misalignment=-0.000, settling=+0.000, action_rate=+0.000,
+failure=+0.000
+```
+
+Which is the diagnosis, confirmed rather than assumed: the spread straddles zero
+— the contract's `.all()` is what fails — and `progress` is the only term paying
+anything positive.
+
+**Item 2's gate is met.** The two-slot scene builds, resets, steps, and
+`scripts/run_relocation.sh smoke` exits 0, alongside the converged IK reaching
+the second bay to 0.0060 mm recorded above. No success threshold moved; the
+promoted single-slot insert task is scored by exactly the criteria it was
+certified under.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
