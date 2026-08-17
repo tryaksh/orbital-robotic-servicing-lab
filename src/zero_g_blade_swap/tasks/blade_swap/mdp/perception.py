@@ -38,9 +38,14 @@ from isaaclab.utils.math import (
     subtract_frame_transforms,
 )
 
-from zero_g_blade_swap.grapple_geometry import GRAPPLE_HEAD_ON_TOOL_ROT, GRAPPLE_PIN_GRIP_OFFSET
+from zero_g_blade_swap.grapple_geometry import (
+    EXTRACTED_BLADE_CENTRE_X,
+    GRAPPLE_HEAD_ON_TOOL_ROT,
+    GRAPPLE_PIN_GRIP_OFFSET,
+)
 from zero_g_blade_swap.pose_head import MODULE_POSE_DIM, ModulePoseHead, load_pose_head
 
+from ..assets import SLOT_CENTRE_Y, SLOT_UPPER_LIP_HALF_WIDTH_Y
 from .insertion import attached_blade_pose_world
 from .observations import camera_rgb_with_radiation_noise, end_effector_pose_world
 
@@ -56,6 +61,37 @@ def module_pose_label(env, asset_name: str = "spare_blade") -> torch.Tensor:
     position, orientation = attached_blade_pose_world(env)
     local = position - env.scene.env_origins
     return torch.cat((local, axis_angle_from_quat(orientation)), dim=-1)
+
+
+def slot_occupancy_label(env, asset_name: str = "spare_blade") -> torch.Tensor:
+    """One value per bay: is the module inside that bay's channel?
+
+    The supervision for the pose head's occupancy branch, and the thing that
+    turns "the camera locates a part" into "the camera reads the state of the
+    rack". With two bays a servicer's first question is which one holds the
+    module, and during a relocation the honest answer is sometimes *neither* ---
+    the module spends the whole transit outside both. So these are two
+    independent indicators rather than a choice between two bays, and the head
+    scores them with independent logits for the same reason.
+
+    "Inside the channel" is read off the rack geometry rather than chosen:
+
+    * axially, the module's centre is past ``EXTRACTED_BLADE_CENTRE_X``, which is
+      the centre position at which its rear face is level with the mouth --- the
+      same line extraction is judged against, so "out" here and "extracted"
+      there cannot disagree;
+    * laterally, within ``SLOT_UPPER_LIP_HALF_WIDTH_Y`` of that bay's centre,
+      which is the physical half-width of the channel the lips define. The bays
+      are 0.22 m apart and that half-width is 0.0725 m, so the two indicators
+      cannot both be true and a module parked between them sets neither.
+    """
+
+    position, _ = attached_blade_pose_world(env)
+    local = position - env.scene.env_origins
+    centres = local.new_tensor(SLOT_CENTRE_Y)
+    inside_mouth = local[:, 0] > EXTRACTED_BLADE_CENTRE_X
+    within_channel = (local[:, 1].unsqueeze(-1) - centres).abs() <= SLOT_UPPER_LIP_HALF_WIDTH_Y
+    return (within_channel & inside_mouth.unsqueeze(-1)).to(torch.float32)
 
 
 def grip_error_from_module_pose(env, module_pose: torch.Tensor) -> torch.Tensor:
@@ -172,6 +208,7 @@ __all__ = [
     "load_pose_head",
     "module_pose_label",
     "perceived_module_position_error",
+    "slot_occupancy_label",
 ]
 
 

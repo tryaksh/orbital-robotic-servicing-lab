@@ -1276,6 +1276,12 @@ SLOT_ENTRY_RIGHT_FLARE_CFG = _slot_entry_flare_cfg("BladeSlotEntryRightFlare", -
 # and would make any difference between them unattributable.
 SECOND_SLOT_CENTER_Y = -0.22
 
+#: Every bay's centre line, in the order the curriculum stage, the insertion goal
+#: and the perception occupancy label all index. One tuple so those three cannot
+#: disagree about which bay index 1 means -- the same reasoning that made the
+#: two-slot task read its arm pose, module pose and goal from a single index.
+SLOT_CENTRE_Y: tuple[float, ...] = (0.0, SECOND_SLOT_CENTER_Y)
+
 
 def offset_slot_asset(source: RigidObjectCfg, name: str, delta_y: float) -> RigidObjectCfg:
     """Copy one slot part to a new prim, displaced along y.
