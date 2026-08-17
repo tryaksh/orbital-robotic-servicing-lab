@@ -2700,6 +2700,54 @@ script went straight on to certify it.
 `train.py` now reads the epoch out of the resume checkpoint and refuses the run
 with the arithmetic spelled out, so this cannot recur on any task.
 
+## Capture's 96.10% is stale too, and this time the arithmetic cannot fix it
+
+Applying rule 10 systematically to the promoted set found a fourth instance of
+the same defect, on the first skill in the chain.
+`grapple_grasp_v5_certification.json` was generated at **2026-08-15T17:54Z**.
+Commit `ffac648`, **9.4 hours later**, changed `capture_success_mask` from
+`capture_established`'s 20 mm grip tolerance to the workflow's own
+`WORKFLOW_HANDOVER_GRIP_M` of 10 mm — twice the precision — and raised the grasp
+task's episode length from 6 s to 10 s in the same commit.
+
+Re-reading v5's own 9,026 recorded episodes against the tolerance now in force:
+
+| Capture v5, as recorded | Result |
+| --- | ---: |
+| Counted successes at the 20 mm tolerance | 8,674 = **96.10%** |
+| Of those, terminal grip inside 10 mm | 3,880 = **42.99%** |
+| Terminal grip of counted successes, p50 | **10.29 mm** |
+| By stage, 20 mm → 10 mm | 100% → 18.95% / 94.91% → 47.42% / 93.38% → 62.63% |
+
+The median counted success sits just *outside* the tolerance the code now
+requires, and stage 0 — the near reset — is the worst, because an easy start lets
+the policy declare a capture early and stop.
+
+**But that 42.99% is not the answer, and the reason is a methodological point
+worth keeping.** The extraction retraction was arithmetic on stored metrics and
+that was legitimate, because tightening a *velocity* limit does not change when
+an episode ends: those episodes had already run to their own predicate. Here the
+criterion is the termination. An episode that ended at 15 mm under the old rule
+would not have ended at all under the new one — it would have kept closing, and
+this page already records that "the grasp policy keeps closing to a 9-to-12 mm
+median if simply allowed to finish", with four more seconds of clock to do it in.
+
+So re-reading gives a **lower** bound, not an estimate, and the chain says the
+true value is far above it: driven by the same checkpoint, chained installation
+overruns its 10 s capture phase **once in 192 episodes**, which is a capture
+reaching 10 mm essentially every time.
+
+**The honest position: capture v5's success rate under the criterion the code now
+enforces is unmeasured, bounded below by 43% and above by 96.10%, and 96.10% must
+not be quoted until it is re-run.** The re-run is
+`scripts/certify_demo_policies.sh Grasp` and costs about half an hour.
+
+*Read together with the install retraction above, the pattern is now four for
+four: every time a criterion moved, a certification written before it survived in
+the documents. The mechanism that catches it — a report's timestamp against
+`git log -S` on the criterion it uses — works, and nothing runs it automatically.
+That is the gap worth closing.*
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
