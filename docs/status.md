@@ -2700,6 +2700,100 @@ script went straight on to certify it.
 `train.py` now reads the epoch out of the resume checkpoint and refuses the run
 with the arithmetic spelled out, so this cannot recur on any task.
 
+## Two probes moved the install chain further than 300 epochs of training did
+
+Both are evaluation-only, both were run on the pre-training gate's own seed, and
+between them they account for most of the shortfall that fine-tuning inside the
+chain did not touch.
+
+### The insert skill was not failing, it was slow
+
+Insert v6 unchanged, nothing but the insert phase's clock moved:
+
+| Insert phase budget | Result, 192 episodes, seed 4070 |
+| --- | ---: |
+| 20 s, as certified | 95.31% |
+| **30 s** | **97.92%** |
+
+Two of the four remaining failures at 30 s are *capture* overruns rather than
+insertions. The signature is the one this project has now seen three times:
+handed the state a real capture produces, successful insertions take 12.3 s at
+the median but run to about 18.5 s at p95, against a 20 s bound — every success
+finishing on the buzzer. That is exactly why the insert episode went 12 s → 20 s
+and the capture phase 6 s → 10 s, and both of those were right.
+
+**This is a budget, not a success threshold, and the distinction is the whole of
+rule 8.** Every tolerance in the predicate — 12 mm axial, 2.5 mm lateral,
+0.0524 rad, both velocity limits, the grip — is untouched. What it costs is
+honest and belongs beside the number: a servicing insertion is now allowed half a
+minute. The slowest insertion that succeeded under the longer clock took 24.3 s,
+so 30 s covers the measured distribution with margin and a later session can
+tighten it toward that with evidence rather than taste.
+
+### Installation was breaking its own operating rule
+
+This page's rule is that **any phase that waits must either command or retain**.
+The install chain's settling window waits 0.70 s with the *holding* closure still
+commanded — and removal has retained since the day that change took chained
+removal from 0 of 570 surviving its re-check to 569 of 576. Installation had
+simply never been asked.
+
+| Install chain, seed 4070, same policies | Success | Predicate fired |
+| --- | ---: | ---: |
+| Holding closure through the settle | 85.94% | 88.54% |
+| **Retain closure through the settle** | **90.10%** | **90.63%** |
+
+**Four points, from a rule already written down and applied to one workflow but
+not the other.** The argument against it was real and testable — a seated module
+is back in its rails, and the rails were expected to absorb the wedge thrust as
+they do during the seating pause — and it was wrong. So was the prediction that
+it could buy at most the one point lost between the predicate and the re-check:
+the module is pushed for the whole window, so what it buys is bounded by how far
+a pushed module drifts, not by the current gap. `SEATED_RETAIN` is now the
+default.
+
+## The second bay is reachable, and the transit to it is derived
+
+Item 2's gate. Converged IK on the **Capture** task at 3,000 steps, servoing to
+the head-on capture attitude 0.22 m to the side:
+
+| Second-bay staging pose | Residual |
+| --- | ---: |
+| Near stage | 0.0060 mm, 0.000012 rad |
+| Middle stage | 0.0070 mm, 0.000026 rad |
+| **Full stage, the one the insert skill uses** | **0.0060 mm, 0.000011 rad** |
+
+One detail is worth keeping because it is the difference between "unreachable"
+and "seeded badly": the middle stage did **not** converge from the zero wrist
+seed and reached 0.0070 mm from the −90° one. The calibrator sweeps four wrist
+seeds for exactly this reason, and a single-seed run would have reported a
+reachability failure that is not there — which is how this project produced a
+retracted workcell claim once already.
+
+**The lateral transit has one free parameter and it is derived, not chosen.**
+Extraction stops the instant the module's rear face clears the mouth, which is
+the right definition of "removed" and the wrong place to turn: the lead-in flares
+stand *proud* of the mouth. An 80 mm plate rotated 12° about z, centred at
+x = 0.41275, reaches forward to x = 0.37175, so a module that travels sideways
+from the extraction pose drags its nose across the neighbouring bay's flare.
+
+| Transit geometry | Value |
+| --- | ---: |
+| Flare leading face | 0.37175 m |
+| Module centre at which its front face clears it | 0.14675 m |
+| Extraction target centre | 0.22500 m |
+| **Retreat needed before turning** | **78.25 mm** |
+
+So the transit is three closed-loop legs — back, across, in — with the module
+**retained rather than held** for all of it, because it is unconstrained the
+whole way and a wedge under load is a thruster. Two implementation defects were
+found and fixed before it ran, both of which would have produced a plausible
+wrong answer rather than a crash: the waypoint follower consumed its first
+target on the step the transit began, skipping the retreat entirely, and it
+advanced on a fixed 12-step cadence that suited waypoints sampled 4 steps apart
+along a flown path but would have moved the target three times before the tool
+crossed a 220 mm leg. A planned path advances on arrival; a replayed one cannot.
+
 ## Capture's 96.10% is stale too, and this time the arithmetic cannot fix it
 
 Applying rule 10 systematically to the promoted set found a fourth instance of

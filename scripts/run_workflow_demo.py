@@ -875,16 +875,43 @@ class WorkflowDriver:
         # past it and the follower sits there driving the module further out.
         transiting = self.phase == TRANSIT
         if bool(transiting.any()):
-            due = transiting & (
-                ((step - self.transit_started) % (TRANSIT_WAYPOINT_STRIDE * self.transit_slowdown)) == 0
-            )
-            self.waypoint_read[due] = (self.waypoint_read[due] - 1).clamp_min(0)
             ids = torch.nonzero(transiting, as_tuple=False).squeeze(-1)
+            target = self.waypoints[self.waypoint_read[ids], ids]
+            if self.workflow == "relocate":
+                # A *planned* path advances on arrival, not on the clock, and the
+                # distinction is not cosmetic. The replay below walks waypoints
+                # sampled four steps apart along a path the arm has just flown,
+                # so a fixed cadence tracks it; the relocation's three legs are
+                # 78 mm, 220 mm and 436 mm long, and the same cadence would move
+                # the target three times before the tool had crossed the first
+                # one -- dragging the module diagonally through the flare the
+                # retreat exists to clear.
+                #
+                # Proximity is the wrong rule for the replay, for the reason its
+                # own comment gives, and the right one here: these targets are
+                # exact rather than sampled, so the tool really does reach them.
+                reached = torch.zeros_like(self.waypoint_read, dtype=torch.bool)
+                reached[ids] = torch.linalg.vector_norm(target - tool[ids], dim=-1) <= 0.005
+                due = transiting & reached
+            else:
+                # Never on the step the transit begins: that would consume the
+                # first waypoint before the tool had been commanded toward it.
+                due = (
+                    transiting
+                    & (step > self.transit_started)
+                    & (((step - self.transit_started) % (TRANSIT_WAYPOINT_STRIDE * self.transit_slowdown)) == 0)
+                )
+            self.waypoint_read[due] = (self.waypoint_read[due] - 1).clamp_min(0)
             target = self.waypoints[self.waypoint_read[ids], ids]
             scale = self.scales[TRANSIT][:3]
             self.actions[ids, :3] = ((target - tool[ids]) / scale).clamp(-1.0, 1.0)
             self.actions[ids, 3:6] = 0.0
             arrived = transiting & (self.waypoint_read <= 0) & (blade_x >= TRANSIT_TARGET_BLADE_X - 0.005)
+            if self.workflow == "relocate":
+                # And it has to have crossed, not merely come back out to the
+                # right depth in the bay it started in.
+                lateral = (tool[:, 1] - self.reset_tool_pos[:, 1]) <= (0.5 * SECOND_SLOT_CENTER_Y)
+                arrived = arrived & lateral
             # Insertion drives the module back into its rails, so the grip has to
             # carry contact again. Retaining through that is the failure the
             # capture/hold split exists to prevent.
