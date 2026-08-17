@@ -1,6 +1,6 @@
 {
   "title": "Vision servicing workflow on a TWO-BAY rack, CAMERA arm: module pose and bay occupancy regressed from 64x64 RGB",
-  "generated_utc": "2026-08-17T06:13:52+00:00",
+  "generated_utc": "2026-08-17T06:55:24+00:00",
   "evidence_type": "simulation_only",
   "out_of_distribution": false,
   "policy": {
@@ -17,12 +17,14 @@
       0
     ],
     "held_out_evaluation_seeds": [
-      4070
+      4070,
+      5070,
+      6070
     ],
     "curriculum_stages": [
       "full_stage_2"
     ],
-    "runs": 1,
+    "runs": 3,
     "gravity": "zero",
     "policy_rate_hz": 30,
     "physics_rate_hz": 120,
@@ -36,255 +38,255 @@
     "success_definition": "zero_g_blade_swap.tasks.blade_swap.mdp.insertion:insertion_success_conditions via contact_insertion_success_mask"
   },
   "overall": {
-    "episodes": 192,
-    "successes": 163,
-    "success_rate": 0.848958,
+    "episodes": 576,
+    "successes": 375,
+    "success_rate": 0.651042,
     "success_rate_wilson_95": {
-      "low": 0.791497,
-      "high": 0.89273
+      "low": 0.611232,
+      "high": 0.68885
     },
     "termination_reasons": {
-      "insertion_success": 163,
-      "time_out": 29
+      "insertion_success": 375,
+      "time_out": 201
     },
     "instability_terminations": 0,
     "safety_abort_terminations": 0,
     "non_finite_metric_episodes": 0,
     "terminal_metrics": {
       "axial_error_m": {
-        "count": 192,
+        "count": 576,
         "non_finite": 0,
-        "mean": 0.025366,
-        "p50": 0.011423,
-        "p95": 0.167825,
-        "max": 0.441796,
-        "min": 0.000147
+        "mean": 0.04026,
+        "p50": 0.011679,
+        "p95": 0.168272,
+        "max": 0.470537,
+        "min": 0.000256
       },
       "lateral_error_m": {
-        "count": 192,
+        "count": 576,
         "non_finite": 0,
-        "mean": 0.006677,
-        "p50": 0.00062,
-        "p95": 0.007002,
-        "max": 1.015886,
-        "min": 3.8e-05
-      },
-      "orientation_error_rad": {
-        "count": 192,
-        "non_finite": 0,
-        "mean": 0.020322,
-        "p50": 0.004278,
-        "p95": 0.030967,
-        "max": 2.388643,
-        "min": 0.000369
-      },
-      "blade_linear_velocity_mps": {
-        "count": 192,
-        "non_finite": 0,
-        "mean": 0.015297,
-        "p50": 0.00012,
-        "p95": 0.041792,
-        "max": 0.413381,
+        "mean": 0.00343,
+        "p50": 0.000619,
+        "p95": 0.016253,
+        "max": 0.988142,
         "min": 6e-06
       },
-      "blade_angular_velocity_radps": {
-        "count": 192,
+      "orientation_error_rad": {
+        "count": 576,
         "non_finite": 0,
-        "mean": 0.20885,
-        "p50": 0.001229,
-        "p95": 0.36112,
-        "max": 8.156238,
-        "min": 5e-05
+        "mean": 0.01425,
+        "p50": 0.00425,
+        "p95": 0.081853,
+        "max": 2.445717,
+        "min": 1e-06
+      },
+      "blade_linear_velocity_mps": {
+        "count": 576,
+        "non_finite": 0,
+        "mean": 0.021437,
+        "p50": 0.000135,
+        "p95": 0.196285,
+        "max": 0.719912,
+        "min": 0.0
+      },
+      "blade_angular_velocity_radps": {
+        "count": 576,
+        "non_finite": 0,
+        "mean": 0.335375,
+        "p50": 0.001274,
+        "p95": 3.043978,
+        "max": 9.330492,
+        "min": 0.0
       },
       "tool_to_handle_error_m": {
-        "count": 192,
+        "count": 576,
         "non_finite": 0,
-        "mean": 0.018237,
-        "p50": 0.011633,
-        "p95": 0.020428,
-        "max": 0.975411,
-        "min": 0.007757
+        "mean": 0.026573,
+        "p50": 0.012318,
+        "p95": 0.068028,
+        "max": 0.993716,
+        "min": 0.008417
       },
       "tool_to_handle_orientation_rad": {
-        "count": 192,
+        "count": 576,
         "non_finite": 0,
-        "mean": 0.200784,
-        "p50": 0.186853,
-        "p95": 0.25959,
-        "max": 2.356267,
-        "min": 0.028206
+        "mean": 0.200648,
+        "p50": 0.185341,
+        "p95": 0.454492,
+        "max": 2.407228,
+        "min": 0.029572
       },
       "control_steps": {
-        "count": 192,
+        "count": 576,
         "non_finite": 0,
-        "mean": 547.614583,
-        "p50": 518.0,
-        "p95": 972.85,
-        "max": 1117.0,
-        "min": 161.0
+        "mean": 466.602431,
+        "p50": 427.5,
+        "p95": 840.5,
+        "max": 1114.0,
+        "min": 165.0
       },
       "cycle_time_s": {
-        "count": 192,
+        "count": 576,
         "non_finite": 0,
-        "mean": 18.253819,
-        "p50": 17.266666,
-        "p95": 32.428334,
-        "max": 37.233334,
-        "min": 5.366667
+        "mean": 15.553414,
+        "p50": 14.25,
+        "p95": 28.016667,
+        "max": 37.133335,
+        "min": 5.5
       }
     },
     "successful_episode_metrics": {
       "axial_error_m": {
-        "count": 163,
+        "count": 375,
         "non_finite": 0,
-        "mean": 0.01004,
-        "p50": 0.011257,
-        "p95": 0.011974,
-        "max": 0.011997,
-        "min": 0.000147
+        "mean": 0.009922,
+        "p50": 0.011021,
+        "p95": 0.011972,
+        "max": 0.012,
+        "min": 0.000256
       },
       "lateral_error_m": {
-        "count": 163,
+        "count": 375,
         "non_finite": 0,
-        "mean": 0.000627,
+        "mean": 0.000625,
         "p50": 0.000619,
-        "p95": 0.000647,
-        "max": 0.000959,
-        "min": 0.000592
+        "p95": 0.000657,
+        "max": 0.000909,
+        "min": 0.000475
       },
       "orientation_error_rad": {
-        "count": 163,
+        "count": 375,
         "non_finite": 0,
-        "mean": 0.004086,
-        "p50": 0.004263,
+        "mean": 0.004103,
+        "p50": 0.004244,
         "p95": 0.004324,
-        "max": 0.004326,
-        "min": 0.002631
+        "max": 0.00632,
+        "min": 0.002721
       },
       "blade_linear_velocity_mps": {
-        "count": 163,
+        "count": 375,
         "non_finite": 0,
-        "mean": 0.000129,
-        "p50": 0.000102,
-        "p95": 0.000297,
-        "max": 0.000983,
-        "min": 6e-06
+        "mean": 0.000173,
+        "p50": 0.000105,
+        "p95": 0.000336,
+        "max": 0.005514,
+        "min": 5e-06
       },
       "blade_angular_velocity_radps": {
-        "count": 163,
+        "count": 375,
         "non_finite": 0,
-        "mean": 0.001409,
-        "p50": 0.001001,
-        "p95": 0.003045,
-        "max": 0.015865,
-        "min": 5e-05
+        "mean": 0.001578,
+        "p50": 0.001105,
+        "p95": 0.00346,
+        "max": 0.028475,
+        "min": 4.8e-05
       },
       "tool_to_handle_error_m": {
-        "count": 163,
+        "count": 375,
         "non_finite": 0,
-        "mean": 0.011601,
-        "p50": 0.011569,
-        "p95": 0.014577,
-        "max": 0.017605,
-        "min": 0.008666
+        "mean": 0.011579,
+        "p50": 0.011353,
+        "p95": 0.01452,
+        "max": 0.016103,
+        "min": 0.00843
       },
       "tool_to_handle_orientation_rad": {
-        "count": 163,
+        "count": 375,
         "non_finite": 0,
-        "mean": 0.179561,
-        "p50": 0.186866,
-        "p95": 0.196068,
-        "max": 0.202273,
-        "min": 0.05717
+        "mean": 0.178452,
+        "p50": 0.187714,
+        "p95": 0.195173,
+        "max": 0.198498,
+        "min": 0.044335
       },
       "control_steps": {
-        "count": 163,
+        "count": 375,
         "non_finite": 0,
-        "mean": 552.601227,
-        "p50": 530.0,
-        "p95": 847.3,
-        "max": 1006.0,
-        "min": 161.0
+        "mean": 516.514667,
+        "p50": 496.0,
+        "p95": 790.4,
+        "max": 1028.0,
+        "min": 165.0
       },
       "cycle_time_s": {
-        "count": 163,
+        "count": 375,
         "non_finite": 0,
-        "mean": 18.420041,
-        "p50": 17.666666,
-        "p95": 28.243333,
-        "max": 33.533333,
-        "min": 5.366667
+        "mean": 17.217156,
+        "p50": 16.533333,
+        "p95": 26.346666,
+        "max": 34.266666,
+        "min": 5.5
       }
     }
   },
   "by_curriculum_stage": {
     "full_stage_2": {
-      "episodes": 192,
-      "successes": 163,
-      "success_rate": 0.848958,
+      "episodes": 576,
+      "successes": 375,
+      "success_rate": 0.651042,
       "success_rate_wilson_95": {
-        "low": 0.791497,
-        "high": 0.89273
+        "low": 0.611232,
+        "high": 0.68885
       },
       "termination_reasons": {
-        "insertion_success": 163,
-        "time_out": 29
+        "insertion_success": 375,
+        "time_out": 201
       },
       "instability_terminations": 0,
       "terminal_metrics": {
         "axial_error_m": {
-          "count": 192,
+          "count": 576,
           "non_finite": 0,
-          "mean": 0.025366,
-          "p50": 0.011423,
-          "p95": 0.167825,
-          "max": 0.441796,
-          "min": 0.000147
+          "mean": 0.04026,
+          "p50": 0.011679,
+          "p95": 0.168272,
+          "max": 0.470537,
+          "min": 0.000256
         },
         "lateral_error_m": {
-          "count": 192,
+          "count": 576,
           "non_finite": 0,
-          "mean": 0.006677,
-          "p50": 0.00062,
-          "p95": 0.007002,
-          "max": 1.015886,
-          "min": 3.8e-05
-        },
-        "orientation_error_rad": {
-          "count": 192,
-          "non_finite": 0,
-          "mean": 0.020322,
-          "p50": 0.004278,
-          "p95": 0.030967,
-          "max": 2.388643,
-          "min": 0.000369
-        },
-        "blade_linear_velocity_mps": {
-          "count": 192,
-          "non_finite": 0,
-          "mean": 0.015297,
-          "p50": 0.00012,
-          "p95": 0.041792,
-          "max": 0.413381,
+          "mean": 0.00343,
+          "p50": 0.000619,
+          "p95": 0.016253,
+          "max": 0.988142,
           "min": 6e-06
         },
-        "blade_angular_velocity_radps": {
-          "count": 192,
+        "orientation_error_rad": {
+          "count": 576,
           "non_finite": 0,
-          "mean": 0.20885,
-          "p50": 0.001229,
-          "p95": 0.36112,
-          "max": 8.156238,
-          "min": 5e-05
+          "mean": 0.01425,
+          "p50": 0.00425,
+          "p95": 0.081853,
+          "max": 2.445717,
+          "min": 1e-06
+        },
+        "blade_linear_velocity_mps": {
+          "count": 576,
+          "non_finite": 0,
+          "mean": 0.021437,
+          "p50": 0.000135,
+          "p95": 0.196285,
+          "max": 0.719912,
+          "min": 0.0
+        },
+        "blade_angular_velocity_radps": {
+          "count": 576,
+          "non_finite": 0,
+          "mean": 0.335375,
+          "p50": 0.001274,
+          "p95": 3.043978,
+          "max": 9.330492,
+          "min": 0.0
         },
         "cycle_time_s": {
-          "count": 192,
+          "count": 576,
           "non_finite": 0,
-          "mean": 18.253819,
-          "p50": 17.266666,
-          "p95": 32.428334,
-          "max": 37.233334,
-          "min": 5.366667
+          "mean": 15.553414,
+          "p50": 14.25,
+          "p95": 28.016667,
+          "max": 37.133335,
+          "min": 5.5
         }
       }
     }
@@ -292,11 +294,29 @@
   "by_evaluation_seed": {
     "4070": {
       "episodes": 192,
-      "successes": 163,
-      "success_rate": 0.848958,
+      "successes": 166,
+      "success_rate": 0.864583,
       "success_rate_wilson_95": {
-        "low": 0.791497,
-        "high": 0.89273
+        "low": 0.808979,
+        "high": 0.905885
+      }
+    },
+    "5070": {
+      "episodes": 192,
+      "successes": 48,
+      "success_rate": 0.25,
+      "success_rate_wilson_95": {
+        "low": 0.194061,
+        "high": 0.315747
+      }
+    },
+    "6070": {
+      "episodes": 192,
+      "successes": 161,
+      "success_rate": 0.838542,
+      "success_rate_wilson_95": {
+        "low": 0.779942,
+        "high": 0.883861
       }
     }
   },
@@ -305,18 +325,40 @@
       "stage": "full_stage_2",
       "seed": 4070,
       "episodes": 192,
-      "successes": 163,
-      "success_rate": 0.848958,
+      "successes": 166,
+      "success_rate": 0.864583,
       "success_rate_wilson_95": {
-        "low": 0.791497,
-        "high": 0.89273
+        "low": 0.808979,
+        "high": 0.905885
+      }
+    },
+    {
+      "stage": "full_stage_2",
+      "seed": 5070,
+      "episodes": 192,
+      "successes": 48,
+      "success_rate": 0.25,
+      "success_rate_wilson_95": {
+        "low": 0.194061,
+        "high": 0.315747
+      }
+    },
+    {
+      "stage": "full_stage_2",
+      "seed": 6070,
+      "episodes": 192,
+      "successes": 161,
+      "success_rate": 0.838542,
+      "success_rate_wilson_95": {
+        "low": 0.779942,
+        "high": 0.883861
       }
     }
   ],
   "gate": {
     "minimum_stage_success_rate": 0.95,
-    "worst_stage_success_rate": 0.848958,
-    "pooled_success_rate": 0.848958,
+    "worst_stage_success_rate": 0.651042,
+    "pooled_success_rate": 0.651042,
     "every_stage_meets_minimum": false,
     "pooled_meets_minimum": false,
     "zero_instability_terminations": true,

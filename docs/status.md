@@ -3285,6 +3285,63 @@ reset distances when it is not.* The first is chain evidence; the second is the
 skill number. Quoting the skill number as if it described the chain, or the chain
 as if it certified the skill, is the error rule 9 exists to prevent.
 
+## The camera on a two-bay rack: the gate fails, and it fails on one seed of three
+
+Item 6's second half. Three arms on `GrappleVisionTwoSlot-Install-v0` —
+installation into the first bay of a two-bay rack — same certified checkpoints,
+same observation term, same randomization, differing only in where the module's
+pose comes from. 576 workflows per arm, three held-out seeds, 64 environments.
+
+| Arm | Pooled | Wilson 95% | 4070 | 5070 | 6070 |
+| --- | ---: | --- | ---: | ---: | ---: |
+| Oracle | **88.72%** | [85.87, 91.05] | 90.62% | 89.58% | 85.94% |
+| Camera | **65.10%** | [61.12, 68.88] | 86.46% | **25.00%** | 83.85% |
+| Blind | **34.03%** | [30.28, 37.99] | 31.77% | 37.50% | 32.81% |
+
+`evidence/vision_workflow_{oracle,camera,blind}_twoslot_certification.json`. All
+failures are timeouts; no instability, no non-finite.
+
+**The gate fails.** Camera sits 23.6 points below oracle against a 10-point
+allowance. The blind half of the gate passes comfortably — 34.03% is far below
+both, and the 31-point camera-over-blind margin says the image is carrying real
+information.
+
+**But the failure is not a degradation, it is a collapse on one seed.** Two of
+three seeds put the camera within **4.2** and **2.1** points of oracle, which is
+inside the gate with room. The third returns **25.00%**. Oracle over the same three
+seeds is flat at 90.62 / 89.58 / 85.94, so the task did not get harder — the
+estimator failed on one draw of the randomization.
+
+That is a different and more useful finding than "perception costs 23 points", and
+it is worth being precise about what it does and does not say:
+
+- it is **not** the occupancy readout. That is 100% exact-match on held-out frames
+  and the arm's failures are insertion timeouts, not wrong-bay attempts;
+- it is **not** the manipulation. Oracle is stable across the same seeds;
+- the pose head's held-out error is 2.81 mm mean and **6.47 mm p95**, against an
+  insertion lateral tolerance of 4 mm. The single-bay head was 1.75 mm mean and
+  comfortably inside it. So the two-bay head's *typical* accuracy is adequate and
+  its tail is not, which is exactly the shape that produces a seed-dependent
+  collapse rather than a uniform loss.
+
+**This is what three seeds are for.** The same sweep at seed 4070 alone — run
+earlier the same night — reported oracle 90.63%, camera 84.90%, blind 31.77%, and
+**would have been written up as a pass.** One seed would have published a gate
+that three seeds refute.
+
+**Next experiment, and it is not more training.** Find what seed 5070 draws. The
+per-run randomization covers orbital sun intensity, angle, pitch, yaw and colour
+temperature, rack albedo, metallic and roughness, camera radiation noise, and the
+module's own displacement. `scripts/sweep_camera_calibration.py` and the collection
+script's `--camera_offset_mm` / `--camera_tilt_mrad` already exist for exactly this
+kind of question. If it is a lighting draw, the fix is collection coverage; if it
+is a module displacement the head extrapolates badly on, the fix is the label
+range. Either way, measure which before training anything.
+
+Note also what this does to the single-bay comparison, which had camera *equal* to
+oracle at 80.38% on three seeds. That parity did not survive widening the
+perception problem to two bays, and the pose-error numbers say why.
+
 ## Why tonight's driver changes do not invalidate the install or removal chains
 
 `check_criterion_currency.py` flags `workflow_install_clock30retain_certification.json`

@@ -33,6 +33,7 @@ v10twoslot**.
 | **Install chain** | **96.35%** | **pass** | `workflow_install_clock30retain_certification.json`, Wilson [94.49%, 97.60%], 555/576 |
 | **Relocation chain** | **does not complete** | **fail** | Every episode times out in the transit. Diagnosed, not guessed — see item 4 below and `docs/status.md` |
 | Install, camera / oracle / blind, one bay | 80.38% / 80.38% / 43.58% | — | `vision_workflow_{camera,oracle,blind}_certification.json` |
+| **Install, oracle / camera / blind, two bays** | **88.72% / 65.10% / 34.03%** | **fail** | `vision_workflow_*_twoslot_certification.json`, 576 workflows each. Camera is 23.6 points behind oracle against a 10-point gate — but **on one seed of three**: 86.46% / **25.00%** / 83.85% while oracle is flat at 90.62 / 89.58 / 85.94. A collapse on one randomization draw, not a degradation |
 | Insert **inside the chain** | **90.45%** | — | measured, not derived: `workflow_install_promoted_certification.json` predicate-fired column |
 | Insert on the **reproduced** hand-off | **93.06%** | — | `insert_chain_handoff_gate.json` |
 | Interface axial hold | 69 N vs 66.4 N required | pass | `grapple_pin_axial_pull_gate.json` |
@@ -211,7 +212,30 @@ number says the construction is sound, not that the perception is clever.
 The three arms were run on `GrappleVisionTwoSlot-Install-v0` — installation into
 bay 1 on a two-bay rack — rather than on the relocation, because the arms measure
 what perception *costs* and that needs a manipulation task that completes. Item 4
-is why the relocation does not. See the results table above and `docs/status.md`.
+is why the relocation does not.
+
+**The gate fails, on one seed of three.** Oracle 88.72%, camera 65.10%, blind
+34.03% over 576 workflows each. The blind half of the gate passes with a 31-point
+margin. The camera half fails at 23.6 points behind oracle — but the per-seed row is
+**86.46% / 25.00% / 83.85%** against an oracle that is flat at 90.62 / 89.58 /
+85.94. Two seeds are inside the gate with room and one collapses.
+
+So this is an estimator that fails on a randomization draw, not one that costs 23
+points. It is not the occupancy readout (100% exact-match, and the failures are
+insertion timeouts rather than wrong-bay attempts) and not the manipulation (oracle
+is stable). The pose head's held-out **p95 is 6.47 mm against a 4 mm insertion
+lateral tolerance** while its mean is 2.81 mm — an adequate typical accuracy with an
+inadequate tail, which is the shape that produces exactly this.
+
+**Next: find what seed 5070 draws, before training anything.**
+`scripts/sweep_camera_calibration.py` and the collector's `--camera_offset_mm` /
+`--camera_tilt_mrad` exist for this. If it is a lighting draw the fix is collection
+coverage; if it is a module displacement the head extrapolates badly on, the fix is
+the label range.
+
+*Worth keeping: the same sweep at seed 4070 alone reported camera 84.90% against
+oracle 90.63% and would have been written up as a pass. One seed would have
+published a gate that three seeds refute.*
 
 - Gate: camera arm within 10 points of oracle, blind arm clearly below both.
 
