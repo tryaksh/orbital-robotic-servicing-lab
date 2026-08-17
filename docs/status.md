@@ -2974,6 +2974,82 @@ the second bay to 0.0060 mm recorded above. No success threshold moved; the
 promoted single-slot insert task is scored by exactly the criteria it was
 certified under.
 
+## Two defects in the relocation, found by reading rather than by running
+
+Both would have produced a plausible wrong answer rather than a crash, and both
+are the shape this project has been caught by before: a number that is right for
+one workflow being inherited by another.
+
+**The relocation's transit had no episode room at all.** The workflow episode
+length is *derived* from the phases a workflow actually runs, each at the budget
+its own skill was certified on, precisely so an overrun cannot hide inside one
+generous round number. The test deciding whether `TRANSIT` is one of those phases
+was `args.workflow == "full"`. A relocation runs a transit and was not on that
+list, so its episode came out as capture + seat + extract + insert and the three
+planned legs that cross to the second bay had no time budgeted for them.
+
+The correction adds `relocate` to that list at the extract skill's certified 25 s,
+and it is ample rather than tight: the legs are 78.2 mm and 436.1 mm along the
+pull axis at 0.24 m/s plus 220 mm across it at 0.12 m/s, so the planned path is
+734 mm and about **4.0 s of pure travel**, every term read from
+`grapple_geometry` and the certified extract action scale. The margin is for
+closed-loop tracking, not for the distance.
+
+The relocation's transit is deliberately *not* multiplied by
+`--transit_slowdown`. That factor exists because a full-speed replay of the pull
+rotates the module in the pads, and it applies to a follower advancing on a fixed
+cadence; the relocation's follower advances on arrival, so the factor would
+change nothing about how it flies and would only inflate the episode.
+
+**`run_relocation.sh relocate` would have flown the relocation with the
+single-slot insert policy.** It inherited the shared `INSERT_CKPT` default, which
+names the promoted v6 — a policy that has never seen the second bay and was
+trained with its goal command a constant. The stage would have run a real
+relocation, seated the module with a policy certified for the wrong slot, and
+filed the result as a relocation certification. It now resolves the two-slot
+checkpoint the way `certify2` does and fails loudly if item 3 has not produced
+one.
+
+*Neither of these was found by a test. Both were found by reading the derivation
+before spending a certification on it, which is the cheapest place to catch this
+class and the one place this project has repeatedly not looked.*
+
+## Item 6 is built and unrun: the two-bay vision profile
+
+`Isaac-ZeroG-Blade-GrappleVisionTwoSlot-{Collect,Workflow}-v0` change exactly two
+things about the certified single-bay vision profile: the scene is the two-bay
+rack, and the collector records `mdp.slot_occupancy_label` beside the pose label.
+Same camera, same mount, same 180 mm lens, same orbital lighting and albedo
+randomization, same module jitter, same `PerceivedGraspError` term. Any second
+difference between the arms would confound what the camera costs, which is the
+only thing those arms exist to measure.
+
+The camera is **not** re-aimed for the second bay. A fixed servicing camera is
+what a manipulator carries, and whether this one frames both bays well enough to
+tell them apart is a question for the occupancy accuracy to answer rather than
+one to design away.
+
+The occupancy label is two independent indicators rather than a choice between
+two bays, because during a relocation the module is genuinely in neither for the
+whole transit — so the head scores them with per-logit BCE rather than a softmax,
+which could not express that. "Inside the channel" is read off the rack:
+axially past `EXTRACTED_BLADE_CENTRE_X`, the same line extraction is judged
+against, and laterally within `SLOT_UPPER_LIP_HALF_WIDTH_Y` of the bay centre.
+The bays are 220 mm apart and that half-width is 72.5 mm, so the two indicators
+cannot both be true and a module parked between bays sets neither.
+
+`train_pose_head.py` picks the branch up from the dataset rather than from a
+flag, and its report carries per-bay accuracy, exact-match over the whole rack,
+and the **majority-class rate the accuracy has to beat** — because a
+classification set that turns out 99% one class trains a head that looks accurate
+and has learned the prior. The loss weight is 1.0 and untuned: if the pose and
+the occupancy ever trade against each other, the honest response is to report the
+trade, and both numbers are printed so it is visible.
+
+Exercised end to end on a synthetic two-bay set; the single-bay path was
+re-checked and still trains the head that produced `module_pose_head.json`.
+**No number has been measured on it yet.**
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
