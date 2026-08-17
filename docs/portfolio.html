@@ -276,15 +276,30 @@
       <table>
         <thead><tr><th>Skill</th><th class="num">Episodes</th><th class="num">Success</th><th class="num">95% CI</th></tr></thead>
         <tbody>
-          <tr><td>Capture the module</td><td class="num">9,026</td><td class="num">96.10%</td><td class="num">95.7 – 96.5</td></tr>
+          <tr><td>Capture the module <em>(fails its 95% gate)</em></td><td class="num">9,011</td><td class="num">88.78%</td><td class="num">88.1 – 89.4</td></tr>
           <tr><td>Insert into the rack</td><td class="num">3,000</td><td class="num">98.27%</td><td class="num">97.8 – 98.7</td></tr>
+          <tr><td>Insert into <em>either</em> bay, worse bay</td><td class="num">3,004</td><td class="num">98.34%</td><td class="num">98.1 – 99.0</td></tr>
           <tr><td>Extract from the rack</td><td class="num">9,005</td><td class="num">99.02%</td><td class="num">98.8 – 99.2</td></tr>
           <tr class="hi"><td>Install, chained end-to-end</td><td class="num">576</td><td class="num">96.35%</td><td class="num">94.5 – 97.6</td></tr>
           <tr class="hi"><td>Removal, chained end-to-end</td><td class="num">576</td><td class="num">98.78%</td><td class="num">97.5 – 99.4</td></tr>
+          <tr><td>Relocate, bay 1 &rarr; bay 2</td><td class="num">&mdash;</td><td class="num">does not complete</td><td class="num">&mdash;</td></tr>
         </tbody>
       </table>
     </div>
     <div class="col">
+      <p class="note">
+        <strong>Two of these need reading carefully, and both readings are the interesting part.</strong>
+        Capture's 88.78% <em>fails</em> its gate, and the same checkpoint overruns its capture phase
+        once in 192 chained installations. Both are true: the skill task ends an episode the moment
+        its failure predicate fires, and the chain has no such term — it hands over on a 10 mm grip
+        and otherwise lets the capture keep closing. So capture reliably produces the grip the chain
+        needs, and fails a fixed-episode predicate at the two widest starting offsets. Quoting either
+        as the other is the error the whole evidence discipline here exists to prevent.
+        And the relocation — the changeout every skill above was built for — <em>does not complete</em>.
+        Every part of it is certified and the chain still times out crossing between bays, because a
+        single-point pin cannot hold the module's attitude through 734 mm of free flight. That is
+        measured, not suspected, and it is stated here rather than left out.
+      </p>
       <p class="note">
         Extraction is the physically hard one: it moves the module 495 mm <em>out</em> of all
         constraint, ending held only by a line contact on a taper, where insertion moves 167 mm
