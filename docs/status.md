@@ -3050,6 +3050,94 @@ Exercised end to end on a synthetic two-bay set; the single-bay path was
 re-checked and still trains the head that produced `module_pose_head.json`.
 **No number has been measured on it yet.**
 
+## Insert seats a module in either bay: 98.34% on the worse one
+
+**Item 3's gate, passed.** One policy, both bays, fine-tuned from the promoted
+insert v6 for 1,200 epochs at 512 environments on
+`Isaac-ZeroG-Blade-GrapplePin-InsertTwoSlot-v0`, which draws the two bays evenly
+once its curriculum unlocks the second.
+
+| | Episodes | Success | Wilson 95% |
+| --- | ---: | ---: | --- |
+| Bay 1, y = 0 (stage 0) | 1,500 | **98.87%** | — |
+| Bay 2, y = -0.22 (stage 1) | 1,504 | **98.34%** | — |
+| Pooled | 3,004 | 98.60% | [98.12%, 98.96%] |
+
+Three held-out seeds (1070, 2070, 3070), 128 environments, deterministic
+evaluation, zero instability terminations and zero non-finite terminal metrics.
+The gate is the **worse bay** rather than the pool, because a policy that scores
+99% in one bay and 90% in the other has not done the job; at 98.34% it clears 95%
+in the bay it is worse in. Evidence:
+`evidence/grapple_insert_two_slot_certification.json`.
+
+Worth recording about the training: the second bay was not hard. The curriculum
+unlocked it around epoch 3,250 and stage-1 success went from zero to 83% within
+40 epochs and past 95% within 250, while stage 0 never dropped below 97.9%. The
+second bay is the certified one displaced, so the skill transfers almost
+immediately — which is the result the part-for-part construction was chosen to
+make possible, and it is evidence for that choice rather than for the policy.
+
+## The relocation chain does not complete, and the transit is why
+
+**Item 4's gate is NOT met, and item 5 is therefore not started.** Every one of
+64 environments enters `TRANSIT` and none reaches a seated module; the episodes
+time out inside the transit. Four instrumented runs, and the account below is
+what they measured rather than what was inferred.
+
+**The plan is right.** The eight environments that did arrive landed at
+tool x = +0.2482 and module x = +0.5790, against a planned staging of +0.2476 and
+an arrival threshold of +0.5779. The waypoints are where the flare geometry says
+they should be, and the 78.25 mm retreat derivation holds.
+
+**Three defects, two corrected.**
+
+*The cross leg targeted a displacement, not a bay.* It was written as
+`back_y + SECOND_SLOT_CENTER_Y` — cross 220 mm from wherever the tool happens to
+be — while both axial legs correctly target absolute positions with the measured
+tool-to-module offset added. Measured over 64 relocations, the tool drifts about
+**93 mm** laterally during capture and extraction, and a relative cross carries
+every millimetre of it into the second bay. The channel's half-width is 72.5 mm,
+so the module arrived outside the channel it was being pushed into. The arrival
+test had the same flaw and passed while the module sat outside the bay, because
+it asked how far the *tool* had moved from the episode's start rather than where
+the *module* now was. Both now work in the rack's frame; module lateral arrival
+went from 19 to 38 of 64.
+
+*The grip was retained through the final leg, which is not a transit.* That leg
+drives the module 436 mm between the second bay's rails — an insertion by every
+physical measure — and this project's first operating rule says a module meeting
+rails is held, not retained. The arrival test was also what released the retain,
+so the module could not be driven in while retained and the retain was not
+released until it was driven in. Releasing it one leg earlier took arrivals at
+the staging pose from **0 to 8**.
+
+*Rate-limiting the final leg was refuted.* Slowing it to a third of command, the
+way the replayed transit is slowed, measured **worse**: module x went -0.003 to
+-0.158 and crossings fell from 46 to 19, because the tool then lagged its own
+waypoint. Not adopted.
+
+**What remains is not a transit bug.** Median grip error degrades from 14.6 mm at
+transit entry to 21.6 mm mid-transit, with a p95 of 853 mm at the hand-off, and
+the module already trails the tool by 65 mm before the final leg begins — it is
+being slid out of the pads along the pull axis for the whole flight. That is the
+signature this page already records for the `full` round trip, *"the grip
+degrades from 15 mm to 35 mm during the return whatever speed it is flown at"*,
+which is listed under **Known broken** and has never been solved.
+
+So the relocation inherits the project's one unsolved interface problem rather
+than introducing a new one: **a retained grip lets the wedge slide the module
+out, and a held grip thrusts it out.** Both directions of that vise are already
+measured here — raising the drive to its rated torque *lowered* holding capacity,
+and every passive geometry tried has been refuted. The relocation is the first
+task that has to carry the module through free space for 734 mm, which is why it
+is the first to be stopped by it.
+
+**The next experiment is not another transit parameter.** The two axial legs
+succeed and the lateral one is what accumulates the error, so the question worth
+answering is whether the module survives a *shorter* flight — cross with the
+module still shallow in the first bay's rails, which constrains it, rather than
+fully free. That is a change to the leg order, and it is cheap to test.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
