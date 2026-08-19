@@ -9,12 +9,21 @@
 # converging to 0.01 mm in the second bay, 220 mm to the side, at full attitude
 # authority -- same depth, same commanded attitude, same arm.
 #
-# So the boundary has two independent exits, one along x and one along y, and a
-# base position is a point on a surface rather than a pass/fail. This sweeps the
-# lateral one directly: both failing depths, one environment per (depth, lateral
-# offset, wrist seed, start pose), in a single app launch.
+# Read across all 64 cells of that sweep the two are one boundary: every failing
+# cell lies within 110 mm of the base centre line and every cell at 220 mm or
+# beyond succeeds. So the region has a derived DEPTH -- 0.4242 m, moving one for
+# one with the base -- and a WIDTH known only to lie between 110 and 220 mm,
+# because no candidate was swept in between. This resolves the width: both
+# failing depths, one environment per (depth, lateral offset, wrist seed, start
+# pose), in a single app launch.
 #
-# The base does not move here. Moving the TARGET off the centre line and moving
+# **The base is pinned at the OLD cell, -0.45, and that is the whole point.**
+# GRAPPLE_ROBOT_ROOT_POS is now -0.65, where both of these depths already solve
+# on the centre line -- so run at the default and every cell converges and the
+# probe measures nothing. The width of the region can only be measured where the
+# region exists. Rule 6: prove a probe moves what it measures.
+#
+# Moving the TARGET off the centre line and moving
 # the BASE off it are the same displacement measured from opposite ends, and this
 # way one launch measures the whole profile instead of one launch per base.
 #
@@ -38,6 +47,7 @@ echo "[$(date +%H:%M:%S)] LATERAL PROFILE of the attitude wall"
     --steps 3000 --pin_blade --finger_joint 0.02 --stages 0 \
     --sweep_offset_x $DEPTHS \
     --sweep_offset_y $LATERAL \
+    --robot_base_x -0.45 --robot_base_y 0.0 --robot_base_z 0.15 \
     --alt_start_joint_pos 0 -1.5708 0 -1.5708 0 0 \
     --report evidence/attitude_wall_lateral_profile.json \
     > "$OUT/attitude_wall_lateral.log" 2>&1
