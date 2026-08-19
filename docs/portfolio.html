@@ -191,24 +191,30 @@
         same change costs the chain 8 points until the insertion skill is retrained to absorb it.
       </p>
       <p class="note">
-        <strong>Widen the rack to two bays and that parity does not survive.</strong> The pose head
-        gains a bay-occupancy output and reads <em>which</em> bay holds the module at 100% exact-match
-        on 12,000 held-out frames, against a 66.6% majority-class baseline &mdash; the camera now
-        reports the state of the rack, not only where a part is. In the loop, over 576 workflows per
-        arm on three held-out seeds: oracle <strong>88.72%</strong>, camera <strong>65.10%</strong>,
-        blind <strong>34.03%</strong>. Camera is 23.6 points behind oracle, and the 10-point gate
-        <em>fails</em>.
+        <strong>Widen the rack to two bays and the camera keeps up.</strong> The pose head gains a
+        bay-occupancy output and reads <em>which</em> bay holds the module at 100% exact-match on 12,000
+        held-out frames, against a 66.6% majority-class baseline &mdash; the camera reports the state of the
+        rack, not only where a part is. In the loop, over 576 workflows per arm on three held-out seeds:
+        oracle <strong>88.72%</strong>, camera <strong>84.90%</strong>, blind
+        <strong>34.03%</strong>. Camera is 3.82 points behind oracle against a 10-point allowance
+        and 50.9 points above blind, so both halves of the gate pass.
       </p>
       <p class="note">
-        <strong>The per-seed row is the actual finding.</strong> Camera scores 86.46%, <em>25.00%</em>
-        and 83.85% while oracle is flat at 90.62 / 89.58 / 85.94. Two seeds sit inside the gate with
-        room and one collapses. So this is an estimator that fails on a single draw of the
-        randomization, not perception costing 23 points &mdash; and it is neither the occupancy
-        readout, which is perfect and whose failures would be wrong-bay attempts rather than the
-        timeouts observed, nor the manipulation, which is stable. The head's held-out p95 is 6.47 mm
-        against a 4 mm insertion tolerance while its mean is 2.81 mm: an adequate typical accuracy
-        with an inadequate tail, which is precisely the shape that fails on one seed instead of all
-        of them. Running the same sweep at one seed reported a pass. That is what three seeds are for.
+        <strong>That result replaces one this project published and withdrew, and the withdrawal is the
+        more useful half.</strong> The 2026-08-17 run reported camera 65.10% and a failed gate. All of the
+        difference was one seed, which scored 25.00% and re-runs at 84.90% with the same task, the same
+        seed and the same three checkpoints by hash. Six camera runs now exist and they span
+        80.73&ndash;86.46% with a 2.13-point standard deviation; the withdrawn number
+        sits <strong>28 standard deviations</strong> outside that.
+      </p>
+      <p class="note">
+        <strong>And the caveat that replaces it is a real one.</strong> The camera arm is not
+        deterministic and the state pipeline is: two runs with identical seed, task and checkpoints diverge
+        at the first episode, while the oracle arm re-run a day later reproduces its per-seed rates
+        exactly. So a pooled confidence interval on one camera certification accounts for episode sampling
+        and not for whatever makes two identical runs differ, and a single camera run is one draw. What
+        makes them differ is unidentified &mdash; a 28-sigma excursion is usually a second
+        mechanism rather than a bad draw of the first, and finding it is open work.
       </p>
       <p class="evidence">evidence/vision_workflow_blind_certification.json · vision_workflow_camera_certification.json · vision_workflow_oracle_certification.json · vision_workflow_{oracle,camera,blind}_twoslot_certification.json · module_pose_head_two_slot.json</p>
     </div>

@@ -1,6 +1,6 @@
 {
   "title": "Vision servicing workflow, BLIND arm: no image; the module is assumed to be where the rack nominally presents it",
-  "generated_utc": "2026-08-17T07:12:43+00:00",
+  "generated_utc": "2026-08-19T05:59:53+00:00",
   "evidence_type": "simulation_only",
   "out_of_distribution": false,
   "policy": {

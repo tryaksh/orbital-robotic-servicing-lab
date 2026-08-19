@@ -3488,6 +3488,70 @@ overturned. The same failure then ran in the other direction: three seeds
 reported a gate failure that a re-run overturns, because one of the three was
 bad and nothing re-ran it.*
 
+### Re-certified: the camera arm passes its gate
+
+Nine runs, three arms, three held-out seeds, one code state, 2026-08-18.
+
+| Arm | Pooled | Per seed (4070 / 5070 / 6070) |
+| --- | ---: | --- |
+| Oracle — the simulator's own answer | **88.72%** | 90.62 / 89.58 / 85.94 |
+| Camera — 64×64 RGB through the pose head | **84.90%** | 86.46 / 84.90 / 83.33 |
+| Blind — no image, the module assumed nominal | **34.03%** | 31.77 / 37.50 / 32.81 |
+
+**The camera arm sits 3.82 points behind oracle against a 10-point allowance, so
+that half of the gate passes.** The blind arm is 50.9 points below camera, so
+the other half passes too: the image is carrying real information rather than the
+task not needing one.
+
+The superseded run reported 65.10% and a 23.6-point gap. The whole of that
+difference is one seed.
+
+### The spread, which is the number that should have been published all along
+
+Six independent camera runs exist now — the three above and three replicates made
+earlier the same day with the identical policy set:
+
+| | 4070 | 5070 | 6070 |
+| --- | ---: | ---: | ---: |
+| 2026-08-17 | 86.46% | **25.00%** | 83.85% |
+| re-certification | 86.46% | 84.90% | 83.33% |
+| replicate | 82.29% | 80.73% | 85.42% |
+
+Excluding the outlier: **min 80.73%, max 86.46%, mean 83.85%, standard deviation
+2.13 points.** The retracted 25.00% sits **27.6 standard deviations** below that
+mean. It is not a tail of this distribution; it is not from this distribution.
+
+That spread is itself a result, and a two-point run-to-run standard deviation on a
+576-workflow measurement is worth stating plainly: **the pooled Wilson interval on
+a single camera certification, [81.7%, 87.6%], understates the real uncertainty,
+because it accounts for episode sampling and not for whatever makes two identical
+runs differ.** The oracle arm has no such term — it reproduces exactly.
+
+### What this does and does not settle
+
+**A second control landed with the re-certification and sharpens the mechanism.**
+The **blind** arm also reproduces exactly — 31.77 / 37.50 / 32.81 per seed and
+34.03% pooled, identical to the 2026-08-17 run. The blind arm runs in the *same
+vision scene*, with the camera built and rendering, and simply does not read the
+image. So the non-determinism is not the presence of a camera, the Replicator
+randomizers, or the vision scene's physics. It is specifically **reading the
+rendered frame and pushing it through the pose head**, and nothing else.
+
+**Settled.** Perception costs about 4 points on a two-bay rack, not 24. The pose
+head is fine — 2.52 to 2.65 mm mean at all three seeds, 99.9% inside the capture
+tolerance. The occupancy readout is exact. The gate passes on both halves.
+
+**Not settled.** *Why* two identical camera runs differ. Rendering is the only
+non-deterministic element and the divergence is real from the first episode, but
+nothing here isolates which part of the render path, and a 56-point excursion is
+far outside the ±3-point spread the other five runs show. A 27-sigma event usually
+means a second mechanism rather than a bad draw of the first, and that mechanism
+is unidentified.
+
+**So the honest form of the claim is conditional**: on six runs, the camera arm
+costs about 4 points and passes; and one run in seven behaved in a way this
+project cannot yet explain. Both halves are stated wherever the number is quoted.
+
 ## The relocation is blocked by a kinematic wall, and it is now mapped
 
 The transit failure was diagnosed on 2026-08-17 from a single point: the retreat
