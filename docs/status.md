@@ -4420,6 +4420,25 @@ put it in.
 So the budget was wrong, not the plan. Both are continued rather than
 re-approached: extract to 9,700 epochs and insert to 9,600.
 
+### One insert policy now serves all three chains, and that is a change worth naming
+
+`main` carries two insert policies: single-bay **v6**, which the installation
+chain was certified with, and two-bay **v10twoslot**, which the relocation needs.
+This branch trains and promotes only the two-bay one, and re-certifies the
+installation chain on it.
+
+The reason is that v10twoslot already scores **98.87%** in the certified bay
+against v6's 98.27%, so keeping both buys nothing and costs a whole training run
+plus a second certification to keep current — and a stale second certification is
+the defect this project has recorded twice. The cost is that the installation
+chain's before/after is not a pure workcell comparison: the insert policy changed
+too. That is stated rather than smoothed over, and the *skill* comparison beside
+it is clean, because both sides are two-bay policies gated on the worse bay.
+
+Both chains still run on the **single-bay** `Isaac-ZeroG-Blade-GrapplePin-Workflow-v0`
+task that `main` certified them on, so the scene is unchanged and the two-bay
+policy is simply driving it at the bay it scores 98.87% in.
+
 > **What would have hidden this.** Extraction's reward rose 57.8 → 137.5, which
 > reads like recovery and is not: a progress term weighted 12 pays for travel and
 > the policy was collecting it while never completing. This page already records
