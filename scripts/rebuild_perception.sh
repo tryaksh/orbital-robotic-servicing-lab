@@ -75,9 +75,12 @@ case "$stage" in
     # camera certification is one draw from a distribution the state pipeline
     # does not have.
     for seed in $SEEDS; do
+      # The tag carries the seed as well as the repeat: without the seed
+      # every seed writes to the same two report names and the spread this
+      # stage exists to measure becomes whatever seed finished last.
       for repeat in a b; do
         ARMS="camera" TASK="$TASK" WORKFLOW="$WORKFLOW" STAGE="$STAGE" HEAD="$HEAD" \
-          TAG="_var${repeat}" SEEDS="$seed" OUT="$OUT" \
+          TAG="_var_s${seed}${repeat}" SEEDS="$seed" \
           bash scripts/certify_vision_workflow.sh
       done
     done
