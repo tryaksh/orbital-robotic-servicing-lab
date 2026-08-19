@@ -4279,6 +4279,83 @@ If the relocation still fails after retraining, and it fails on module rotation,
 that trace is the requirement the hand-side lock has to meet, and it will be a
 measured number rather than a chosen one.
 
+## Retraining onto the moved cell: capture recovers and beats main, the other two do not
+
+`scripts/retrain_workcell_skills.sh`, fine-tuning the three promoted checkpoints
+on the cell at (−0.65, 0, 0.15). This is a geometry change, not an observation or
+action change — the observation is still 50 numbers and the action still 6 — so
+resuming is legal and is how most policies here were made.
+
+| Skill | Epochs | Reward, start → end | Success in training, start → end |
+| --- | ---: | ---: | --- |
+| Capture | 1,500 → 2,400 | +29.97 → **+36.36** | 0.021 → **0.943** |
+| Extract | 5,700 → 7,200 | +57.80 → +137.50 | **0.000 → 0.000** |
+| Insert, two bays | 4,400 → 5,600 | −15.17 → **−24.17** | **0.000 → 0.000** |
+
+### Capture: 94.46%, which is 5.68 points above main
+
+`evidence/grapple_grasp_v6w65_certification.json`. 9,015 episodes, three held-out
+seeds, zero instability, zero non-finite.
+
+| | main, base −0.45 | this branch, base −0.65 |
+| --- | ---: | ---: |
+| pooled | 88.78% | **94.46%** [93.97, 94.92] |
+| near, stage 0 | 100% | 99.97% |
+| medium, stage 1 | 87.12% | 94.77% |
+| **full, stage 2** | **79.22%** | **88.65%** |
+
+It still fails the 95% gate, on stage 2, exactly as main's does — and it is
+**not worse than main's 88.78%**, which was the condition. The gain is
+concentrated where the workcell result predicts it: stage 2 is the widest reset,
+the one that most needs the arm to servo rather than sit inside the tolerance,
+and it moves 9.4 points.
+
+### Extract and insert did not re-converge, and the reason is a distribution shift
+
+Both accumulate reward and neither ever fires its success predicate. That is not
+a subtle read: `Episode_Termination/extraction_success` and
+`Episode_Termination/insertion_success` are **0.0000 at every logged epoch** of
+both runs. The control is the same two runs on the old cell, where the same
+resume from the same lineage reached **0.7177** and **0.9778**.
+
+Extraction's intermediate certification, 7,005 episodes across seven runs:
+**7 successes, 0.0999%**, with 70–86% of episodes ending on the clock rather
+than on a failure predicate. Its terminal state at those timeouts is the useful
+part, because it says which conjunct of `extraction_success_mask` is missing:
+
+| Conjunct | Limit | Retrained extract, p50 at timeout |
+| --- | ---: | ---: |
+| grip position (`capture_established`) | 0.020 m | 0.0144 ✓ |
+| grip attitude (`capture_established`) | 0.20 rad | 0.1166 ✓ |
+| linear velocity | 0.0143 m/s | 0.0114 ✓ |
+| angular velocity | 0.1429 rad/s | 0.0558 ✓ |
+| module clear of the mouth | `blade_centre_x ≤ 0.225` | **the only one left** |
+
+Every grip and settling conjunct is satisfied at the median. By elimination the
+module is not out far enough — the pull travels, slows, holds the grip, and stops
+short of the line. Grip attitude at 0.1166 rad is in fact **better** than main's
+certified extraction's 0.1262, which is the workcell result showing up in the
+grip: the arm no longer has to buy depth with attitude.
+
+**The mechanism is the observation, not the mechanics.** Six of the fifty
+observation numbers are arm joint angles, and moving the base moved them by up to
+**0.36 rad** — against a reset noise of 0.020 rad that these skills were trained
+under. The policies are being evaluated roughly eighteen times outside the joint
+distribution they ever saw. Capture recovers from that in 900 epochs because its
+approach is local to the pin; extraction and insertion are longer horizons with
+sparser success, and 1,500 and 1,200 epochs were not enough to find a success to
+climb toward.
+
+So the budget was wrong, not the plan. Both are continued rather than
+re-approached: extract to 9,700 epochs and insert to 9,600.
+
+> **What would have hidden this.** Extraction's reward rose 57.8 → 137.5, which
+> reads like recovery and is not: a progress term weighted 12 pays for travel and
+> the policy was collecting it while never completing. This page already records
+> the same trap once — extract v10 trained to a *higher* reward than its
+> predecessors and certified at 0.00%. Reward is not the gate; the termination
+> counters are, and they are in the same tfevents.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300

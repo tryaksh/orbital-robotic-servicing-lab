@@ -43,17 +43,17 @@ SEEDS="${SEEDS:-4070 5070 6070}"
 OUT=artifacts/vision_cert
 mkdir -p "$OUT" evidence
 
-GRASP_CKPT="${GRASP_OVERRIDE:-$CKPT_ROOT/grapple_grasp_l0_seed70_v5/nn/last_zero_g_blade_insertion_contact_ep_1500_rew__35.348194_.pth}"
+GRASP_CKPT="${GRASP_OVERRIDE:-$CKPT_ROOT/grapple_grasp_l0_seed70_v6w65/nn/last_zero_g_blade_insertion_contact_ep_2400_rew__37.24023_.pth}"
 # Promoted extract, moved with CLAUDE.md. The vision arms run the *install*
 # workflow, which never steps the extract policy, so this only ever reached the
 # report's policy-set hash -- but a set hash that names a superseded checkpoint
 # makes check_evidence_currency.py disagree with itself, and the whole point of
 # that hash is that it cannot.
-EXTRACT_CKPT="${EXTRACT_OVERRIDE:-$CKPT_ROOT/grapple_extract_l0_seed70_v13unsat/nn/last_zero_g_blade_insertion_contact_ep_5700_rew__148.17932_.pth}"
+EXTRACT_CKPT="${EXTRACT_OVERRIDE:-$CKPT_ROOT/grapple_extract_l0_seed70_v15w65/nn/last_zero_g_blade_insertion_contact_ep_7200_rew__136.52777_.pth}"
 # Overridable for the same reason GRASP_OVERRIDE is: retraining one skill and
 # leaving the vision arms pinned to its predecessor measures the old chain and
 # files it under the new name.
-INSERT_CKPT="${INSERT_OVERRIDE:-$CKPT_ROOT/grapple_insert_l0_seed70_v6/nn/last_zero_g_blade_insertion_contact_ep_3200_rew__24.907995_.pth}"
+INSERT_CKPT="${INSERT_OVERRIDE:-$CKPT_ROOT/grapple_insert_l0_seed70_v11w65/nn/last_zero_g_blade_insertion_contact_ep_5600_rew__-23.204594_.pth}"
 
 for c in "$GRASP_CKPT" "$EXTRACT_CKPT" "$INSERT_CKPT" "$HEAD"; do
   if [ ! -f "$c" ]; then echo "MISSING $c"; exit 1; fi
