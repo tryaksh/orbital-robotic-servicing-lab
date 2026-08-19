@@ -4331,9 +4331,22 @@ part, because it says which conjunct of `extraction_success_mask` is missing:
 | angular velocity | 0.1429 rad/s | 0.0558 ✓ |
 | module clear of the mouth | `blade_centre_x ≤ 0.225` | **the only one left** |
 
-Every grip and settling conjunct is satisfied at the median. By elimination the
-module is not out far enough — the pull travels, slows, holds the grip, and stops
-short of the line.
+Every grip and settling conjunct is satisfied at the median, so by elimination
+the module is not out far enough — and that can be quantified rather than left as
+an elimination. `axial_error_m` is `|blade_x − goal_x|` against the
+`insertion_goal` command, which on this task is the *inserted* pose at
+x = 0.75, so it decodes directly into a module position:
+
+| | axial_error p50 | module centre x | against the 0.225 line |
+| --- | ---: | ---: | --- |
+| main's certified extraction, **successes** | 0.5270 | **0.2230** | 2 mm past it |
+| this branch, **timeouts** | 0.4720 | **0.2780** | **53 mm short** |
+
+From a stage-0 start at x = 0.7195 that is **441 mm of the required 494.5 mm** —
+the policy does 89% of the pull, slows to 0.0114 m/s, holds the grip at 14.4 mm
+and 0.117 rad, and stops. The decode is checkable against main: 0.2230 sits
+2 mm *past* a threshold of 0.2250, which is exactly where a criterion of
+"`blade_centre_x ≤ 0.225` held for 0.30 s" should leave a successful pull.
 
 > It is tempting to read the 0.1166 rad against main's certified extraction's
 > 0.1262 and call it the workcell showing up in the grip. **That comparison is
