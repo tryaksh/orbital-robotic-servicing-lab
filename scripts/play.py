@@ -130,6 +130,14 @@ def _parser() -> argparse.ArgumentParser:
         help="Override the randomized blade mass range in kg. Outside the trained range this is a stress test.",
     )
     parser.add_argument(
+        "--no_lead_in",
+        action="store_true",
+        help=(
+            "Disable the slot's lead-in flares. A deliberate change to the task, not to the "
+            "initial-condition distribution, so it marks the run out of distribution."
+        ),
+    )
+    parser.add_argument(
         "--inspection_view",
         choices=("task", "grasp", "side", "top", "workcell", "array"),
         default="task",
@@ -316,6 +324,41 @@ def _summarize_robust_buckets(stats: dict[str, list[dict[str, int]]]) -> dict[st
     return output
 
 
+def _lead_in_present(env_cfg) -> bool | None:
+    """Are the slot's lead-in flares collidable? None when the task has none.
+
+    Only ``collision_enabled is False`` disables a collider. ``None`` is Isaac
+    Lab's "leave as authored", and these flares are authored collidable.
+    """
+
+    flare = getattr(env_cfg.scene, "blade_slot_entry_left_flare", None)
+    if flare is None:
+        return None
+    return flare.spawn.collision_props.collision_enabled is not False
+
+
+def _disable_lead_in(env_cfg) -> None:
+    """Turn every lead-in flare in the scene into a non-collider.
+
+    The mechanism probe this project ran by hand once, made reproducible: two
+    fully trained insertion policies both score 0% without these plates, which
+    is the measurement ``lead_in_present`` exists to label.
+    """
+
+    disabled = []
+    for name in dir(env_cfg.scene):
+        if "entry_" not in name or "flare" not in name:
+            continue
+        collision_props = getattr(getattr(getattr(env_cfg.scene, name, None), "spawn", None), "collision_props", None)
+        if collision_props is None:
+            continue
+        collision_props.collision_enabled = False
+        disabled.append(name)
+    if not disabled:
+        raise ValueError("--no_lead_in needs a task whose scene carries lead-in flares")
+    print(f"[INFO] Lead-in flares disabled: {', '.join(sorted(disabled))}")
+
+
 def _apply_stress(env_cfg) -> dict[str, object]:
     """Widen the reset distribution to probe the policy's capability envelope.
 
@@ -324,6 +367,8 @@ def _apply_stress(env_cfg) -> dict[str, object]:
     comparable to certification apart from how hard the starting state is.
     """
 
+    if args.no_lead_in:
+        _disable_lead_in(env_cfg)
     trained_noise = tuple(env_cfg.events.reset_arm.params["noise_by_stage"])
     trained_mass = (
         tuple(env_cfg.events.blade_mass.params["mass_distribution_params"])
@@ -348,11 +393,16 @@ def _apply_stress(env_cfg) -> dict[str, object]:
         # deliberate change to the task, not to the initial-condition
         # distribution, so it has to reach the report or a 0% result would be
         # filed as a failed certification instead of a mechanism probe.
-        "lead_in_present": (
-            bool(env_cfg.scene.blade_slot_entry_left_flare.spawn.collision_props.collision_enabled)
-            if getattr(env_cfg.scene, "blade_slot_entry_left_flare", None) is not None
-            else None
-        ),
+        #
+        # ``collision_enabled`` is Isaac Lab's TRI-STATE: None means "leave the
+        # authored USD alone", which for these flares means collidable, because
+        # nothing in assets.py ever sets it. Reading it with ``bool()`` collapsed
+        # that None to False and stamped every grapple-pin report
+        # ``out_of_distribution: true`` with ``gate.applies: false`` -- a wrong
+        # label on correct rates, corrected on 2026-08-18 by re-aggregating the
+        # archived rows rather than by re-measuring them. train.py always read
+        # the same field correctly; compare its ``collision_enabled is False``.
+        "lead_in_present": _lead_in_present(env_cfg),
     }
     if args.belief_bias_mm is not None and belief_term is None:
         raise ValueError("--belief_bias_mm needs a task whose actor observes a pose belief")

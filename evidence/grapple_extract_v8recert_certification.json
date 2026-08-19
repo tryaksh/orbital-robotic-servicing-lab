@@ -1,8 +1,8 @@
 {
   "title": "GrapplePin extract v8, re-judged on the derived settling limits",
   "generated_utc": "2026-08-16T13:28:45+00:00",
-  "evidence_type": "simulation_capability_envelope",
-  "out_of_distribution": true,
+  "evidence_type": "simulation_only",
+  "out_of_distribution": false,
   "policy": {
     "algorithm": "PPO (RL-Games), deterministic evaluation",
     "checkpoint_sha256": "FE6D454C2C46A137C079200AD346273312894CC46388BE258F471838C22DC724",
@@ -525,13 +525,26 @@
     "pooled_meets_minimum": false,
     "zero_instability_terminations": true,
     "zero_non_finite_metric_episodes": true,
-    "passed": false,
-    "applies": false,
-    "note": "capability envelope sweep; the gate certifies in-distribution runs only"
+    "passed": false
   },
   "scope_and_limitations": [
     "Simulation only.",
     "The identical checkpoint evidence/grapple_extract_v8_certification.json reports at 68.36, evaluated before the settled-enough velocity limits were derived and tightened on 2026-08-15.",
     "Nothing about the policy changed. Only the criterion it is judged against did."
-  ]
+  ],
+  "label_correction": {
+    "corrected_utc": "2026-08-18",
+    "field": "stress.lead_in_present",
+    "was": false,
+    "now": true,
+    "why": "play.py read the flares' tri-state collision_enabled with bool(), so Isaac Lab's None ('leave as authored', i.e. collidable) recorded as lead_in_present: false and marked the run out of distribution. The flares were present. Rates are unchanged; only the label was wrong.",
+    "changed": [
+      "out_of_distribution",
+      "evidence_type",
+      "gate.applies",
+      "gate.note"
+    ],
+    "unchanged": "every episode count, success rate, interval and terminal metric",
+    "generated_utc_preserved": "2026-08-16T13:28:45+00:00"
+  }
 }

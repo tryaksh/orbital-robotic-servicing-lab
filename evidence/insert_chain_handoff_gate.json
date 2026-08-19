@@ -1,8 +1,8 @@
 {
   "title": "Insert v6, unchanged, on the chained-insert task (pre-training gate)",
   "generated_utc": "2026-08-16T23:40:53+00:00",
-  "evidence_type": "simulation_capability_envelope",
-  "out_of_distribution": true,
+  "evidence_type": "simulation_only",
+  "out_of_distribution": false,
   "policy": {
     "algorithm": "PPO (RL-Games), deterministic evaluation",
     "checkpoint_sha256": "7E9A0C339AB56F65EDB686C04D9AB25663BF9FD761515F63E5B8CF6935E84399",
@@ -365,9 +365,7 @@
     "pooled_meets_minimum": false,
     "zero_instability_terminations": true,
     "zero_non_finite_metric_episodes": true,
-    "passed": false,
-    "applies": false,
-    "note": "capability envelope sweep; the gate certifies in-distribution runs only"
+    "passed": false
   },
   "scope_and_limitations": [
     "Simulation only. No result here was produced on real hardware.",
@@ -375,5 +373,20 @@
     "The capture is run inside the environment by the frozen promoted capture policy; the episode is judged only on the insert phase the learning policy would own.",
     "Compare against evidence/workflow_install_promoted_certification.json, the same three held-out seeds and the same two checkpoints driven by scripts/run_workflow_demo.py: 90.45 after the settling re-check.",
     "Three earlier reconstructions of this hand-off as a reset distribution scored 0.00 and 47.17 on the same question."
-  ]
+  ],
+  "label_correction": {
+    "corrected_utc": "2026-08-18",
+    "field": "stress.lead_in_present",
+    "was": false,
+    "now": true,
+    "why": "play.py read the flares' tri-state collision_enabled with bool(), so Isaac Lab's None ('leave as authored', i.e. collidable) recorded as lead_in_present: false and marked the run out of distribution. The flares were present. Rates are unchanged; only the label was wrong.",
+    "changed": [
+      "out_of_distribution",
+      "evidence_type",
+      "gate.applies",
+      "gate.note"
+    ],
+    "unchanged": "every episode count, success rate, interval and terminal metric",
+    "generated_utc_preserved": "2026-08-16T23:40:53+00:00"
+  }
 }

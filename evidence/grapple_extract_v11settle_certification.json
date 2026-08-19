@@ -1,8 +1,8 @@
 {
   "title": "Head-on grapple-pin extract skill, v11settle (the checkpoint the workflow demo loads)",
   "generated_utc": "2026-08-16T11:14:30+00:00",
-  "evidence_type": "simulation_capability_envelope",
-  "out_of_distribution": true,
+  "evidence_type": "simulation_only",
+  "out_of_distribution": false,
   "policy": {
     "algorithm": "PPO (RL-Games), deterministic evaluation",
     "checkpoint_sha256": "95BE940F2241DB465BDDEBD4826B7A047DF03DA14BC8BED29F0E72A90E57B94E",
@@ -524,9 +524,7 @@
     "pooled_meets_minimum": false,
     "zero_instability_terminations": true,
     "zero_non_finite_metric_episodes": true,
-    "passed": false,
-    "applies": false,
-    "note": "capability envelope sweep; the gate certifies in-distribution runs only"
+    "passed": false
   },
   "scope_and_limitations": [
     "Simulation only. No result here was produced on real hardware.",
@@ -534,5 +532,20 @@
     "The grasp is physical pad-against-pin contact, not a fixed joint.",
     "One PPO training seed. The evaluation seeds are held out, but training repeatability is untested.",
     "This certifies the skill in isolation. It says nothing about the chained workflow, which is certified separately."
-  ]
+  ],
+  "label_correction": {
+    "corrected_utc": "2026-08-18",
+    "field": "stress.lead_in_present",
+    "was": false,
+    "now": true,
+    "why": "play.py read the flares' tri-state collision_enabled with bool(), so Isaac Lab's None ('leave as authored', i.e. collidable) recorded as lead_in_present: false and marked the run out of distribution. The flares were present. Rates are unchanged; only the label was wrong.",
+    "changed": [
+      "out_of_distribution",
+      "evidence_type",
+      "gate.applies",
+      "gate.note"
+    ],
+    "unchanged": "every episode count, success rate, interval and terminal metric",
+    "generated_utc_preserved": "2026-08-16T11:14:30+00:00"
+  }
 }
