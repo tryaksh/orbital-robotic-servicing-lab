@@ -4202,18 +4202,34 @@ terminal axial error is **0.851 m** — the distance from the goal at which the
 module *started*. The grip held for the whole episode and the module never moved.
 Zero instability terminations, zero non-finite, at both stages.
 
-The same holds for every row. Terminal grip error across all six runs is
-**11.9 to 13.2 mm** wherever the policy engaged the pin at all, and the only
-figure outside the capture tolerance is capture's own stage 0 at 23.5 mm, with
-242 of its 257 episodes ending on the clock rather than on a failure predicate —
-an approach that never converged, not a grip that let go. Zero non-finite
-terminations in 1,539 episodes.
+Terminal grip **position** is 11.9 to 13.2 mm across all six runs wherever the
+policy engaged the pin at all. The one figure outside the capture tolerance is
+capture's own stage 0 at 23.5 mm, with 242 of its 257 episodes ending on the
+clock rather than on a failure predicate — an approach that never converged, not
+a grip that let go. Zero non-finite terminations in 1,539 episodes.
 
-That is the signature of a policy driving the arm somewhere the task is not,
-which is what a changed joint configuration produces: the observation carries six
-joint angles and a tool pose, and every one of them moved when the base did. It
-is **not** the signature of an interface that stopped holding, which this project
-has measured repeatedly and which looks like grip error growing without bound.
+**Insertion is the exception, and it is worth separating rather than averaging
+in.** Its 512 failures end at a grip *attitude* of **0.3512 rad at the median and
+0.3523 at the 95th** — against the task's own `grip_orientation_limit` of
+**0.350 rad**. A p50 and a p95 two thousandths apart, sitting on a threshold, is
+the predicate firing rather than a distribution: the module rotates in the pads
+until the limit is reached, every time, while grip position stays at 12 mm.
+
+That is a rotation failure and it should be called one. What it is *not* is
+evidence that the interface changed, because the interface did not: the pin's
+inability to resist a moment about the closing axis is a structural constant this
+project has measured four ways, and the same policy on the same interface scored
+98.87% one workcell ago. What changed is the moment applied to it — an
+out-of-distribution policy drives the module into the rails at the wrong angle
+and the rails do the rotating. The constant is the pin; the variable is the
+moment.
+
+Both signatures are of a policy driving the arm somewhere the task is not, which
+is what a changed joint configuration produces: the observation carries six joint
+angles and a tool pose, and every one of them moved when the base did. Neither is
+the signature of an interface that stopped holding, which this project has
+measured repeatedly and which looks like grip **position** growing without
+bound.
 
 Capture's stage-2 number says the same thing from the other side. Capture is the
 one skill whose approach is largely local to the pin rather than to the arm's
