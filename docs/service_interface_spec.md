@@ -238,7 +238,18 @@ base position rather than by anything on the module.
 | --- | ---: | --- |
 | Base standoff behind the deepest required tool pose | **≥ 0.4242 m** | Closer than this the arm can reach the pose but cannot hold the approach attitude there |
 | Adopted base for this rack | **x = −0.65 m**, 0.4572 m behind the transit retreat | 33 mm of margin on the derived threshold of −0.617 m |
-| Alternative, if the base cannot move back | **≥ 220 mm lateral offset** of every serviced bay from the base's own plane | The boundary is a centre-line effect and dissolves off-axis. 110 mm is **not** enough |
+| Alternative, if the base cannot move back | **≥ 220 mm lateral offset** of every serviced bay from the base's own plane | The boundary is a region around the base's own axis, not a plane at a depth. All 7 failing cells of 64 lie within 110 mm of the centre line; all 40 at 220 mm or beyond succeed, down to the deepest pose the task contains |
+
+The two requirements are alternatives because they are two ways out of one
+region. Reaching back toward the base while pointing away from it is unavailable
+only when the target is also nearly *on* the base's axis — so a cell escapes
+either by putting the poses further forward than the region is deep, or further
+to the side than it is wide.
+
+**Design against the depth, not the width.** The depth is derived and moves one
+millimetre per millimetre with the base. The width is bracketed between 110 mm
+and 220 mm by the candidates that were swept, and a bracket is a worse thing to
+build to than a derivation.
 
 ### What the number is
 

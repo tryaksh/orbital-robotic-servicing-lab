@@ -4163,6 +4163,42 @@ The lateral threshold is only bracketed — somewhere between 110 mm, which fail
 and 220 mm, which works — and a bracket is a worse thing to design against than
 a derivation.
 
+### The two exits are one boundary, and all 64 cells say so
+
+Calling them "two exits" is how they were found, not what they are. The sweep
+labelled 64 (base, pose, bay) cells with whether the arm could hold the head-on
+attitude there, and those cells carry two base-relative coordinates — how far
+**forward** of the base the target is, and how far **off its centre line**. Read
+that way the whole set separates on one rule.
+
+**All 7 misses lie within 110 mm of the base's centre line. All 40 cells at
+220 mm or more solve, down to the deepest pose the task contains.**
+
+| Lateral offset from the base's plane | cells | deepest **solved**, forward of base | shallowest **missed**, forward of base |
+| --- | ---: | ---: | ---: |
+| on the centre line | 16 | 0.4355 m | 0.3573 m |
+| ~110 mm off | 8 | 0.6934 m | 0.3355 m |
+| ~220 mm off | 24 | **0.2573 m** | none |
+| 330 mm and beyond | 16 | **0.2573 m** | none |
+
+0.2573 m forward of the base is the transit retreat, the deepest pose the
+relocation asks for. Past 220 mm of lateral offset it converges to 0.01 mm, and
+there is no miss anywhere in the region.
+
+So the boundary is not a plane at a fixed depth and not a lateral effect. It is a
+**region around the base's own axis**: reaching back toward the base while
+pointing away from it is only unavailable when the target is also nearly *on*
+that axis. Moving the base back escapes it by pushing the poses out of the
+region's depth; moving the base sideways escapes it by pushing them out of the
+region's width. Same region, two directions out.
+
+The depth threshold is derived — 0.4242 m, moving one for one with the base. The
+width threshold is only **bracketed between 110 mm and 220 mm**, because the
+sweep had no candidate in between, and a bracket is a worse thing to design
+against than a derivation. That is what `scripts/measure_attitude_wall.sh`
+resolves, and it is why the specification quotes the depth as a requirement and
+the width as a caution.
+
 ### The adopted cell, and why it is a path rather than four points
 
 **`GRAPPLE_ROBOT_ROOT_POS = (−0.65, 0.0, 0.15)`.** All four poses converge in
