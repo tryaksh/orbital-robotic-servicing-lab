@@ -4174,7 +4174,7 @@ that way the whole set separates on one rule.
 **All 7 misses lie within 110 mm of the base's centre line. All 40 cells at
 220 mm or more solve, down to the deepest pose the task contains.**
 
-| Lateral offset from the base's plane | cells | deepest **solved**, forward of base | shallowest **missed**, forward of base |
+| Lateral offset from the base's plane | cells | nearest the base that still **solves** | furthest from the base that still **misses** |
 | --- | ---: | ---: | ---: |
 | on the centre line | 16 | 0.4355 m | 0.3573 m |
 | ~110 mm off | 8 | 0.6934 m | 0.3355 m |
