@@ -4346,7 +4346,7 @@ concentrated where the workcell result predicts it: stage 2 is the widest reset,
 the one that most needs the arm to servo rather than sit inside the tolerance,
 and it moves 9.4 points.
 
-### Extract and insert did not re-converge, and the reason is a distribution shift
+### The first pass: extract and insert did not re-converge, and the reason is a distribution shift
 
 Both accumulate reward and neither ever fires its success predicate. That is not
 a subtle read: `Episode_Termination/extraction_success` and
