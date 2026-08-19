@@ -4220,7 +4220,7 @@ Terminal grip **position** is 11.9 to 13.2 mm across all six runs wherever the
 policy engaged the pin at all. The one figure outside the capture tolerance is
 capture's own stage 0 at 23.5 mm, with 242 of its 257 episodes ending on the
 clock rather than on a failure predicate — an approach that never converged, not
-a grip that let go. Zero non-finite terminations in 1,539 episodes.
+a grip that let go. Zero non-finite terminations in 1,538 episodes.
 
 **Insertion is the exception, and it is worth separating rather than averaging
 in.** Its 512 failures end at a grip *attitude* of **0.3512 rad at the median and
