@@ -4333,9 +4333,16 @@ part, because it says which conjunct of `extraction_success_mask` is missing:
 
 Every grip and settling conjunct is satisfied at the median. By elimination the
 module is not out far enough — the pull travels, slows, holds the grip, and stops
-short of the line. Grip attitude at 0.1166 rad is in fact **better** than main's
-certified extraction's 0.1262, which is the workcell result showing up in the
-grip: the arm no longer has to buy depth with attitude.
+short of the line.
+
+> It is tempting to read the 0.1166 rad against main's certified extraction's
+> 0.1262 and call it the workcell showing up in the grip. **That comparison is
+> not valid and is withdrawn.** Main's figure is the terminal state of episodes
+> that *succeeded*; this one is the terminal state of episodes that *timed out
+> short of the line*, and an episode that stopped early and settled has every
+> reason to show a smaller attitude error than one that completed a 495 mm pull.
+> Successes have to be compared with successes, which needs extraction to
+> re-certify first.
 
 **The mechanism is the observation, not the mechanics.** Six of the fifty
 observation numbers are arm joint angles, and moving the base moved them by up to
