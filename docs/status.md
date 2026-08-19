@@ -4344,14 +4344,44 @@ short of the line.
 > Successes have to be compared with successes, which needs extraction to
 > re-certify first.
 
-**The mechanism is the observation, not the mechanics.** Six of the fifty
-observation numbers are arm joint angles, and moving the base moved them by up to
-**0.36 rad** — against a reset noise of 0.020 rad that these skills were trained
-under. The policies are being evaluated roughly eighteen times outside the joint
-distribution they ever saw. Capture recovers from that in 900 epochs because its
-approach is local to the pin; extraction and insertion are longer horizons with
-sparser success, and 1,500 and 1,200 epochs were not enough to find a success to
-climb toward.
+**The mechanism is the observation, not the mechanics, and it predicts which
+skill recovers.** Six of the fifty observation numbers are arm joint angles, and
+re-solving the spawn poses at the new base moved them. The shift is dominated by
+the elbow and it is not small:
+
+| Spawn pose | Largest joint shift | Joint |
+| --- | ---: | --- |
+| bay 1, stage 0 | **0.4065 rad** | elbow |
+| bay 1, stage 1 | 0.3863 rad | elbow |
+| bay 1, stage 2 | 0.3640 rad | elbow |
+| bay 2, staging | 0.3481 rad | elbow |
+
+Now put that against the reset noise each skill was trained under, which is the
+only joint variation any of them has ever seen:
+
+| Skill | Reset noise, widest stage | Shift ÷ noise |
+| --- | ---: | ---: |
+| **Capture** | **0.085 rad** | **4.8×** |
+| Extract | 0.020 rad | **20.3×** |
+| Insert | 0.020 rad | **20.3×** |
+
+That is the whole result. Capture was trained across a joint distribution **four
+times wider** than the other two — deliberately, because *"the reset has to put
+the tool outside the 20 mm capture tolerance, or the skill is not a grasp"* — and
+it is the one skill that recovered, in 900 epochs, to 5.68 points above its own
+certified rate. Extraction and insertion were each trained on essentially one arm
+configuration, so a 0.4 rad shift puts them twenty times outside anything they
+have seen, and 1,500 and 1,200 epochs were not enough to find a success to climb
+toward.
+
+**The generalisable form, which this project has now paid for twice:** the reset
+noise that makes a skill certifiable is not the same as the reset noise that
+makes it *portable*. `docs/status.md` already records the first instance —
+insert's noise was raised from 0.002 to 0.020 rad because *"a skill that is going
+to be chained has to be trained across the states its predecessor actually
+produces"*. This is the same sentence with a different successor: a skill that is
+going to be moved has to be trained across the configurations the workcell might
+put it in.
 
 So the budget was wrong, not the plan. Both are continued rather than
 re-approached: extract to 9,700 epochs and insert to 9,600.
