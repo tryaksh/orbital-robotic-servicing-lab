@@ -188,15 +188,25 @@ class PerceivedGraspError(ManagerTermBase):
 
 
 def perceived_module_position_error(env) -> torch.Tensor:
-    """Per-environment estimator error, for the evaluation to record."""
+    """Per-environment estimator error, for the evaluation to record.
 
-    for name, term in zip(
-        env.observation_manager._term_names.get("grasp", []),
-        env.observation_manager._term_cfgs.get("grasp", []),
-        strict=False,
-    ):
-        if name == "grip_error" and isinstance(term.func, PerceivedGraspError):
-            return term.func.position_error_m
+    Zero where there is no estimator -- the oracle arm, and every state-only
+    task -- which is the right reading: those have nothing to be wrong by.
+
+    **This function had never run.** It reached for
+    ``observation_manager._term_names``, which this Isaac Lab does not have, so
+    the first caller got an AttributeError rather than a number. It is written
+    against the public ``active_terms`` now, and it is searched across every
+    observation group rather than a hard-coded "grasp", because the vision
+    profiles put the perceived term in whichever group their parent declared it.
+    """
+
+    manager = env.observation_manager
+    for group, names in manager.active_terms.items():
+        for name, term in zip(names, manager._group_obs_term_cfgs[group], strict=False):
+            del name
+            if isinstance(term.func, PerceivedGraspError):
+                return term.func.position_error_m
     return torch.zeros(env.num_envs, device=env.device)
 
 

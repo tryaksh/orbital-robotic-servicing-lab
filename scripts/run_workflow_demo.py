@@ -343,6 +343,7 @@ from zero_g_blade_swap.tasks.blade_swap.mdp.insertion import (
     insertion_error_metrics,
 )
 from zero_g_blade_swap.tasks.blade_swap.mdp.observations import end_effector_pose_world
+from zero_g_blade_swap.tasks.blade_swap.mdp.perception import perceived_module_position_error
 from zero_g_blade_swap.tasks.blade_swap.workflow_demo_env_cfg import (
     CAPTURE_BUDGET_S,
     EXTRACT_ACTION_SCALE,
@@ -404,6 +405,14 @@ WORKFLOW_METRIC_FIELDS = (
     "grip_attitude_rad",
     "predicate_fired",
     "all_conditions_after_settling",
+    # What the estimator was actually wrong by, averaged and at its worst over
+    # the episode. Without this a vision arm can only be diagnosed by inference:
+    # the two-bay camera arm collapsed to 25.00% on one seed of three and the
+    # standing explanation blamed the pose head's tail, which a direct
+    # measurement of the head then refuted. Zero on the oracle arm by
+    # construction, and on any state-only run.
+    "perceived_error_mean_m",
+    "perceived_error_max_m",
 )
 
 #: One row every time an environment changes phase, so the distribution a skill
@@ -571,6 +580,10 @@ class WorkflowDriver:
         self.leg_axis = torch.zeros((self.max_waypoints, count), dtype=torch.long, device=device)
         self.waypoint_write = torch.zeros(count, dtype=torch.long, device=device)
         self.waypoint_read = torch.zeros(count, dtype=torch.long, device=device)
+        # Running estimator error, accumulated every control step of the episode.
+        self.perceived_error_sum = torch.zeros(count, dtype=torch.float64, device=device)
+        self.perceived_error_steps = torch.zeros(count, dtype=torch.float64, device=device)
+        self.perceived_error_max = torch.zeros(count, dtype=torch.float64, device=device)
         self.frozen = torch.zeros((count, len(WORKFLOW_METRIC_FIELDS)), dtype=torch.float64, device=device)
         self.frozen_valid = torch.zeros(count, dtype=torch.bool, device=device)
         # Read, not restated: the same hold the capture skill's own success
@@ -618,6 +631,9 @@ class WorkflowDriver:
         self.done_at[env_ids] = -1
         self.done_steps[env_ids] = 0
         self.transit_started[env_ids] = 0
+        self.perceived_error_sum[env_ids] = 0.0
+        self.perceived_error_steps[env_ids] = 0.0
+        self.perceived_error_max[env_ids] = 0.0
         self.predicate_fired[env_ids] = False
         self.judged[env_ids] = False
         self.outcome[env_ids] = False
@@ -729,6 +745,14 @@ class WorkflowDriver:
 
         task = self.task
         observations = task.observation_manager.compute()
+        # Immediately after the observation, because that is when the perceived
+        # grip-error term has just run and cached how wrong it was. Zero on the
+        # oracle and on state-only tasks, which is the right reading: those have
+        # no estimator to be wrong.
+        perceived = perceived_module_position_error(task).to(torch.float64)
+        self.perceived_error_sum += perceived
+        self.perceived_error_steps += 1.0
+        self.perceived_error_max = torch.maximum(self.perceived_error_max, perceived)
         phase = self.phase
         entry_phase = self.phase.clone()
         self.actions.zero_()
@@ -1290,6 +1314,8 @@ class WorkflowDriver:
             "grip_attitude_rad": grip_attitude.to(torch.float64),
             "predicate_fired": self.predicate_fired.to(torch.float64),
             "all_conditions_after_settling": self.all_conditions.to(torch.float64),
+            "perceived_error_mean_m": self.perceived_error_sum / self.perceived_error_steps.clamp_min(1.0),
+            "perceived_error_max_m": self.perceived_error_max,
         }
         return torch.stack([columns[name] for name in WORKFLOW_METRIC_FIELDS], dim=-1)
 
