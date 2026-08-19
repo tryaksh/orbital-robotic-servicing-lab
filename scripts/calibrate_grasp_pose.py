@@ -97,6 +97,42 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--free_orientation",
+        action="store_true",
+        help=(
+            "Solve position only, leaving the tool's attitude free. The control for a reach "
+            "boundary: if a depth is unreachable with the capture attitude commanded and reachable "
+            "without it, the wall is the attitude, not the arm's reach."
+        ),
+    )
+    parser.add_argument(
+        "--sweep_offset_x",
+        type=float,
+        nargs="+",
+        default=None,
+        metavar="X",
+        help=(
+            "Solve several target depths in ONE app launch, each in its own environment. "
+            "Added to --target_offset's x. This turns the calibrator from a single-pose check "
+            "into a reach-boundary probe: the relocation's retreat is unreachable at the "
+            "capture attitude, and what matters is where the boundary actually is, not that "
+            "one point is past it."
+        ),
+    )
+    parser.add_argument(
+        "--sweep_offset_z",
+        type=float,
+        nargs="+",
+        default=None,
+        metavar="Z",
+        help=(
+            "Solve several target heights alongside --sweep_offset_x, every combination in its own "
+            "environment. Lifting is the one way across the rack that does not need the retreat: the "
+            "lead-in flares are 50 mm tall, so a module raised clear of them can cross at the "
+            "extraction depth instead of behind the flare plane."
+        ),
+    )
+    parser.add_argument(
         "--pin_blade",
         action="store_true",
         help=(
@@ -154,11 +190,20 @@ from zero_g_blade_swap.tasks.blade_swap.mdp.insertion import attached_blade_pose
 from zero_g_blade_swap.tasks.blade_swap.mdp.observations import end_effector_pose_world
 
 
-def _handle_centre(task) -> torch.Tensor:
+def _handle_centre(
+    task, sweep_x: torch.Tensor | None = None, sweep_z: torch.Tensor | None = None
+) -> torch.Tensor:
     position, orientation = attached_blade_pose_world(task)
     offset = position.new_tensor(task.cfg.scene.spare_blade.spawn.handle_offset).expand(position.shape[0], -1)
     centre = position + quat_apply(orientation, offset)
-    return centre + centre.new_tensor(args.target_offset)
+    target = centre + centre.new_tensor(args.target_offset)
+    if sweep_x is not None or sweep_z is not None:
+        target = target.clone()
+        if sweep_x is not None:
+            target[:, 0] = target[:, 0] + sweep_x
+        if sweep_z is not None:
+            target[:, 2] = target[:, 2] + sweep_z
+    return target
 
 
 def main() -> dict[str, object]:
@@ -169,22 +214,37 @@ def main() -> dict[str, object]:
         seed_offsets = args.seed_wrist_1_offsets
 
         env_cfg = parse_env_cfg(args.task, device=args.device or "cuda:0", num_envs=1)
-        if args.robot_base_x is not None:
-            base = list(env_cfg.scene.robot.init_state.pos)
-            print(f"[INFO] Robot base moved from x={base[0]:.4f} to x={args.robot_base_x:.4f} (workcell probe)")
-            base[0] = args.robot_base_x
-            env_cfg.scene.robot.init_state.pos = tuple(base)
-        if target_rot is None:
+        if args.free_orientation:
+            target_rot = None
+        elif target_rot is None:
             target_rot = getattr(env_cfg, "tool_target_rot", None)
         if seed_offsets is None:
             # A head-on pose is a quarter turn of wrist_1 away from a top-down
             # one, but which quarter turn depends on the joint's sign
             # convention, so try all four rather than assert one.
             seed_offsets = [0.0, 0.5 * math.pi, -0.5 * math.pi, math.pi] if target_rot is not None else [0.0]
-        num_envs = len(stages) * len(seed_offsets)
+        sweep = list(args.sweep_offset_x) if args.sweep_offset_x else [0.0]
+        lift = list(args.sweep_offset_z) if args.sweep_offset_z else [0.0]
+        num_envs = len(stages) * len(seed_offsets) * len(sweep) * len(lift)
 
         env_cfg = parse_env_cfg(args.task, device=args.device or "cuda:0", num_envs=num_envs)
         env_cfg.configure_robustness(0)
+        # **After** ``configure_robustness``, and that is the whole bug. The base
+        # move was applied to the first, one-environment config, thrown away by
+        # the second ``parse_env_cfg``, and would have been thrown away again
+        # here: ``configure_robustness`` ends with
+        # ``self.scene.robot = make_grapple_pin_robot_cfg(...)``, which replaces
+        # the config wholesale. So ``--robot_base_x`` had never moved anything --
+        # two sweeps 300 mm apart returned byte-identical joint solutions and a
+        # root position that still read -0.45. The workcell hypothesis
+        # docs/status.md has carried as its leading suspect since 2026-08-15 had
+        # never actually been tested. The report now records the root position
+        # read back from the simulation so this cannot recur silently.
+        if args.robot_base_x is not None:
+            base = list(env_cfg.scene.robot.init_state.pos)
+            print(f"[INFO] Robot base moved from x={base[0]:.4f} to x={args.robot_base_x:.4f} (workcell probe)")
+            base[0] = args.robot_base_x
+            env_cfg.scene.robot.init_state.pos = tuple(base)
         # A servo run must not be interrupted by the task's own episode logic.
         # The timeout is the important one: at 12 s the episode resets the arm
         # to its start pose, which silently undoes the whole solve.
@@ -211,9 +271,23 @@ def main() -> dict[str, object]:
 
         # One environment per (stage, seed) pair, so every combination solves at
         # once. Stage varies fastest so the report groups by seed.
-        stage_tensor = torch.tensor(stages, dtype=torch.long, device=task.device).repeat(len(seed_offsets))
-        offset_tensor = torch.tensor(seed_offsets, dtype=torch.float32, device=task.device).repeat_interleave(
-            len(stages)
+        # Stage varies fastest, then the wrist seed, then the swept depth, so the
+        # report groups the way it is read: all seeds for one depth together.
+        stage_tensor = torch.tensor(stages, dtype=torch.long, device=task.device).repeat(
+            len(seed_offsets) * len(sweep) * len(lift)
+        )
+        offset_tensor = (
+            torch.tensor(seed_offsets, dtype=torch.float32, device=task.device)
+            .repeat_interleave(len(stages))
+            .repeat(len(sweep) * len(lift))
+        )
+        sweep_tensor = (
+            torch.tensor(sweep, dtype=torch.float32, device=task.device)
+            .repeat_interleave(len(stages) * len(seed_offsets))
+            .repeat(len(lift))
+        )
+        lift_tensor = torch.tensor(lift, dtype=torch.float32, device=task.device).repeat_interleave(
+            len(stages) * len(seed_offsets) * len(sweep)
         )
         task._insertion_curriculum_stage = stage_tensor.clone()
         env.reset()
@@ -257,7 +331,7 @@ def main() -> dict[str, object]:
                     blade.write_root_pose_to_sim(blade_start_pose)
                     blade.write_root_velocity_to_sim(blade_zero_velocity)
                 tool, tool_rot = end_effector_pose_world(task)
-                error_w = _handle_centre(task) - tool
+                error_w = _handle_centre(task, sweep_tensor, lift_tensor) - tool
                 error_b = quat_apply(quat_inv(robot.data.root_quat_w), error_w)
                 action[:, 0:3] = (error_b / scale).clamp(-1.0, 1.0)
                 if desired_w is not None:
@@ -275,13 +349,21 @@ def main() -> dict[str, object]:
                     print(f"[CALIB] step {step:5d}: residual mm {[round(float(v), 1) for v in distances]}")
 
             tool, tool_rot = end_effector_pose_world(task)
-            residual = torch.linalg.vector_norm(_handle_centre(task) - tool, dim=-1)
+            residual = torch.linalg.vector_norm(_handle_centre(task, sweep_tensor, lift_tensor) - tool, dim=-1)
             angular_residual = (
                 torch.linalg.vector_norm(axis_angle_from_quat(quat_mul(desired_w, quat_inv(tool_rot))), dim=-1)
                 if desired_w is not None
                 else torch.zeros_like(residual)
             )
             joints = robot.data.joint_pos[:, arm_ids].clone()
+            # Local, so the answer reads directly against the blade-centre
+            # thresholds in grapple_geometry rather than against a world origin.
+            # Read from the simulation, so a config edit that does not take
+            # effect cannot be reported as one that did.
+            robot_root_local_x = float(robot.data.root_pos_w[0, 0] - task.scene.env_origins[0, 0])
+            target_local_x = _handle_centre(task, sweep_tensor, lift_tensor)[:, 0] - task.scene.env_origins[:, 0]
+            tool_local_x = tool[:, 0] - task.scene.env_origins[:, 0]
+            target_local_z = _handle_centre(task, sweep_tensor, lift_tensor)[:, 2] - task.scene.env_origins[:, 2]
 
         rows = []
         for index in range(num_envs):
@@ -292,6 +374,11 @@ def main() -> dict[str, object]:
             rows.append(
                 {
                     "curriculum_stage": int(stage_tensor[index]),
+                    "sweep_offset_x_m": round(float(sweep_tensor[index]), 6),
+                    "sweep_offset_z_m": round(float(lift_tensor[index]), 6),
+                    "target_tool_z_local_m": round(float(target_local_z[index]), 6),
+                    "target_tool_x_local_m": round(float(target_local_x[index]), 6),
+                    "reached_tool_x_local_m": round(float(tool_local_x[index]), 6),
                     "seed_wrist_1_offset_rad": round(float(offset_tensor[index]), 7),
                     "residual_tool_to_handle_m": float(residual[index]),
                     "residual_orientation_rad": float(angular_residual[index]),
@@ -309,7 +396,10 @@ def main() -> dict[str, object]:
             )
             state = "converged" if converged else "DID NOT CONVERGE"
             print(
-                f"[CALIB] stage {rows[-1]['curriculum_stage']} seed {rows[-1]['seed_wrist_1_offset_rad']:+.4f}: "
+                f"[CALIB] stage {rows[-1]['curriculum_stage']} seed {rows[-1]['seed_wrist_1_offset_rad']:+.4f} "
+                f"sweep_x {rows[-1]['sweep_offset_x_m']:+.4f} z {rows[-1]['sweep_offset_z_m']:+.4f} "
+                f"(target tool x {rows[-1]['target_tool_x_local_m']:+.4f}, reached "
+                f"{rows[-1]['reached_tool_x_local_m']:+.4f}): "
                 f"{float(residual[index]) * 1000:.2f} mm, {float(angular_residual[index]):.4f} rad ({state})"
             )
             print(f"[CALIB]   {tuple(rows[-1]['arm_joint_pos_rad'])},")
@@ -327,6 +417,10 @@ def main() -> dict[str, object]:
             "tolerance_m": args.tolerance_m,
             "tolerance_rad": args.tolerance_rad if target_rot is not None else None,
             "servo_steps": args.steps,
+            "sweep_offset_x_m": sweep,
+            "sweep_offset_z_m": lift,
+            "robot_root_x_local_m": round(robot_root_local_x, 6),
+            "robot_root_x_requested_m": args.robot_base_x,
             "held_finger_joint_rad": args.finger_joint,
             "blade_pinned_at_reset_pose": bool(args.pin_blade),
             "seed_wrist_1_offsets_rad": [round(float(value), 7) for value in seed_offsets],

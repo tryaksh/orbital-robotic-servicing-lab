@@ -1,0 +1,220 @@
+{
+  "title": "The arm cannot hold the capture attitude at the depths the relocation needs",
+  "evidence_type": "simulation_kinematic_calibration",
+  "generated_utc": "2026-08-19T04:13:25+00:00",
+  "question": "The relocation chain times out in the lateral transit. The transit was known to be unable to reach its retreat depth while commanding the module's attitude, from a single point measurement. This maps the boundary instead of sampling one point past it, and adds the two controls that say what the boundary is made of.",
+  "method": "scripts/calibrate_grasp_pose.py on the Capture task, blade pinned, fingers held at 0.02 rad, 3,000 servo steps (rule 7: before believing a solver, converge it), four wrist_1 seed quadrants per target, one environment per target so a whole sweep solves in one app launch. Convergence is 2 mm of position and 0.01 rad of attitude.",
+  "finding": {
+    "summary": "Holding the head-on capture attitude, the tool parks at local x = -0.0258 and goes no further, whatever depth is asked of it. That is a wall, not a gradient: the solver satisfies the attitude to 0.0002 rad and simply gives up the position.",
+    "attitude_holding_wall_tool_x_local_m": -0.0258,
+    "wall_forward_of_robot_base_m": 0.4242,
+    "extraction_end_tool_x_local_m": -0.1145,
+    "extraction_is_past_the_wall_m": 0.0887,
+    "transit_retreat_tool_x_local_m": -0.19275,
+    "retreat_is_past_the_wall_m": 0.167
+  },
+  "control_attitude_free": {
+    "note": "The control that says the wall is the attitude and not the arm's reach. With the orientation command removed and position solved alone, every depth converges to 0.00-0.01 mm, including the retreat and 64 mm beyond it. The arm can go there. It cannot go there pointing the right way.",
+    "rows": [
+      {
+        "target_tool_x_local_m": -0.0566,
+        "reached_tool_x_local_m": -0.056601,
+        "best_residual_m": 1e-06,
+        "converged_wrist_seeds": 4
+      },
+      {
+        "target_tool_x_local_m": -0.1145,
+        "reached_tool_x_local_m": -0.1145,
+        "best_residual_m": 3e-06,
+        "converged_wrist_seeds": 4
+      },
+      {
+        "target_tool_x_local_m": -0.1928,
+        "reached_tool_x_local_m": -0.192799,
+        "best_residual_m": 6e-06,
+        "converged_wrist_seeds": 2
+      },
+      {
+        "target_tool_x_local_m": -0.2566,
+        "reached_tool_x_local_m": -0.256598,
+        "best_residual_m": 3e-06,
+        "converged_wrist_seeds": 1
+      }
+    ]
+  },
+  "control_lift": {
+    "note": "The one route across the rack that does not need the retreat: the lead-in flares are 50 mm tall plates standing proud of the mouth, and the module is 35 mm thick, so a 45 mm lift clears them and the module could cross at the extraction depth instead of behind the flare plane. It does not help. The tool parks at exactly x = -0.0258 at every lift from 0 to 200 mm -- the wall is horizontal and height does not move it.",
+    "rows": [
+      {
+        "lift_m": 0.0,
+        "target_tool_x_local_m": -0.1928,
+        "reached_tool_x_local_m": -0.0258,
+        "converged_wrist_seeds": 0
+      },
+      {
+        "lift_m": 0.0,
+        "target_tool_x_local_m": -0.1145,
+        "reached_tool_x_local_m": -0.114077,
+        "converged_wrist_seeds": 0
+      },
+      {
+        "lift_m": 0.0,
+        "target_tool_x_local_m": -0.056601,
+        "reached_tool_x_local_m": -0.0258,
+        "converged_wrist_seeds": 0
+      },
+      {
+        "lift_m": 0.05,
+        "target_tool_x_local_m": -0.1928,
+        "reached_tool_x_local_m": -0.0258,
+        "converged_wrist_seeds": 0
+      },
+      {
+        "lift_m": 0.05,
+        "target_tool_x_local_m": -0.1145,
+        "reached_tool_x_local_m": -0.0258,
+        "converged_wrist_seeds": 0
+      },
+      {
+        "lift_m": 0.05,
+        "target_tool_x_local_m": -0.0566,
+        "reached_tool_x_local_m": -0.0258,
+        "converged_wrist_seeds": 0
+      },
+      {
+        "lift_m": 0.1,
+        "target_tool_x_local_m": -0.1928,
+        "reached_tool_x_local_m": -0.0258,
+        "converged_wrist_seeds": 0
+      },
+      {
+        "lift_m": 0.1,
+        "target_tool_x_local_m": -0.1145,
+        "reached_tool_x_local_m": -0.0258,
+        "converged_wrist_seeds": 0
+      },
+      {
+        "lift_m": 0.1,
+        "target_tool_x_local_m": -0.0566,
+        "reached_tool_x_local_m": -0.0258,
+        "converged_wrist_seeds": 0
+      },
+      {
+        "lift_m": 0.2,
+        "target_tool_x_local_m": -0.192801,
+        "reached_tool_x_local_m": -0.0258,
+        "converged_wrist_seeds": 0
+      },
+      {
+        "lift_m": 0.2,
+        "target_tool_x_local_m": -0.1145,
+        "reached_tool_x_local_m": -0.0258,
+        "converged_wrist_seeds": 0
+      },
+      {
+        "lift_m": 0.2,
+        "target_tool_x_local_m": -0.0566,
+        "reached_tool_x_local_m": -0.025799,
+        "converged_wrist_seeds": 0
+      }
+    ]
+  },
+  "attitude_held_sweep": [
+    {
+      "target_tool_x_local_m": 0.2434,
+      "reached_tool_x_local_m": 0.243403,
+      "best_residual_m": 5e-06,
+      "attitude_residual_rad": 1.4e-05,
+      "converged_wrist_seeds": 2,
+      "wrist_seeds": 4
+    },
+    {
+      "target_tool_x_local_m": 0.193399,
+      "reached_tool_x_local_m": 0.193395,
+      "best_residual_m": 7e-06,
+      "attitude_residual_rad": 2e-05,
+      "converged_wrist_seeds": 3,
+      "wrist_seeds": 4
+    },
+    {
+      "target_tool_x_local_m": 0.1434,
+      "reached_tool_x_local_m": 0.143394,
+      "best_residual_m": 8e-06,
+      "attitude_residual_rad": 1.8e-05,
+      "converged_wrist_seeds": 3,
+      "wrist_seeds": 4
+    },
+    {
+      "target_tool_x_local_m": 0.0934,
+      "reached_tool_x_local_m": 0.093407,
+      "best_residual_m": 1.1e-05,
+      "attitude_residual_rad": 3.4e-05,
+      "converged_wrist_seeds": 4,
+      "wrist_seeds": 4
+    },
+    {
+      "target_tool_x_local_m": 0.0434,
+      "reached_tool_x_local_m": 0.043401,
+      "best_residual_m": 5e-06,
+      "attitude_residual_rad": 2.3e-05,
+      "converged_wrist_seeds": 3,
+      "wrist_seeds": 4
+    },
+    {
+      "target_tool_x_local_m": -0.0066,
+      "reached_tool_x_local_m": -0.006601,
+      "best_residual_m": 4e-06,
+      "attitude_residual_rad": 6e-06,
+      "converged_wrist_seeds": 3,
+      "wrist_seeds": 4
+    },
+    {
+      "target_tool_x_local_m": -0.0566,
+      "reached_tool_x_local_m": -0.0258,
+      "best_residual_m": 0.0308,
+      "attitude_residual_rad": 0.0002,
+      "converged_wrist_seeds": 0,
+      "wrist_seeds": 4
+    },
+    {
+      "target_tool_x_local_m": -0.1145,
+      "reached_tool_x_local_m": -0.0258,
+      "best_residual_m": 0.0887,
+      "attitude_residual_rad": 0.000207,
+      "converged_wrist_seeds": 0,
+      "wrist_seeds": 4
+    },
+    {
+      "target_tool_x_local_m": -0.1566,
+      "reached_tool_x_local_m": -0.156406,
+      "best_residual_m": 0.168605,
+      "attitude_residual_rad": 0.000105,
+      "converged_wrist_seeds": 0,
+      "wrist_seeds": 4
+    },
+    {
+      "target_tool_x_local_m": -0.1928,
+      "reached_tool_x_local_m": -0.192769,
+      "best_residual_m": 0.173981,
+      "attitude_residual_rad": 0.000143,
+      "converged_wrist_seeds": 0,
+      "wrist_seeds": 4
+    }
+  ],
+  "consequence": "The relocation is not blocked by a follower parameter, a leg order, or the lateral displacement. Every crossing point is past the wall: behind the flare plane the module needs tool x = -0.1928, 167 mm past it, and crossing over the flares at the extraction depth needs -0.1145, 88.7 mm past it. Extraction itself finishes 88.7 mm past the wall, which is why the pull ends with 0.13 rad of grip attitude error -- the arm buys the depth by giving up the attitude, and in the transit, where the module is unconstrained for longer, that is what lets it swing end-for-end. The flip and the stalled cross leg were always one failure.",
+  "what_would_fix_it": "A workcell change, and it is a project rather than a knob. Moving the robot base back increases the base-relative distance to the retreat and should move the wall with it, but the arm's spawn pose is solved for the base at x = -0.45: probed at -0.65 the arm starts 200 mm short of its own capture pose, drives into the module and shoves it 137 mm before the solve begins. A base move therefore needs the head-on spawn pose re-solved, and then invalidates capture, extraction and insertion, all three of which are certified against the current cell. That trade is not worth making against a certified removal and installation demonstration.",
+  "a_probe_that_had_never_worked": "--robot_base_x had never moved anything. It edited an env_cfg that the next line's second parse_env_cfg discarded, and even placed after that it was overwritten by configure_robustness, which ends with self.scene.robot = make_grapple_pin_robot_cfg(). Two sweeps 300 mm apart returned byte-identical joint solutions -- a control that changed nothing, which means the probe is broken rather than the effect absent. Fixed, and the report now reads the robot root position back out of the simulation so a config edit that does not take effect cannot be reported as one that did. The workcell hypothesis docs/status.md has carried as its leading suspect since 2026-08-15 had never been tested.",
+  "reproduce": [
+    "scripts/calibrate_grasp_pose.py --headless --task Isaac-ZeroG-Blade-GrapplePin-Capture-v0 \\",
+    "  --steps 3000 --pin_blade --finger_joint 0.02 --stages 2 \\",
+    "  --sweep_offset_x 0.0 -0.05 -0.10 -0.15 -0.20 -0.25 -0.30 -0.3579 -0.40 -0.4362",
+    "add --free_orientation for the control, --sweep_offset_z for the lift control"
+  ],
+  "scope_and_limitations": [
+    "Kinematics only, with the module pinned. It says where the tool can be put, not what a policy does when it gets there.",
+    "The wall is measured at the convergence tolerance, 2 mm and 0.01 rad. Extraction reaches 88.7 mm past it by accepting about 0.13 rad of grip attitude error, so the wall is where the attitude can be held exactly, not where the arm stops entirely.",
+    "Curriculum stage 2 only, four wrist_1 seed quadrants. A seventh-axis or a different arm would have a different boundary.",
+    "Simulation only. No result here was produced on real hardware."
+  ],
+  "passed": false
+}

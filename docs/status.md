@@ -3372,6 +3372,118 @@ for exactly this. Confirmed by reading the diff, term by term:
 re-run is owed. Recorded here so the next session does not spend 15 minutes
 re-certifying to answer a question that reading answers.
 
+## The relocation is blocked by a kinematic wall, and it is now mapped
+
+The transit failure was diagnosed on 2026-08-17 from a single point: the retreat
+depth does not converge while the capture attitude is commanded, 174 mm short.
+One point past a boundary does not say where the boundary is or what it is made
+of. Both are now measured, with two controls.
+
+`scripts/calibrate_grasp_pose.py` gained a sweep, so a whole reach profile solves
+in one app launch — one environment per (stage, wrist seed, depth, lift), 3,000
+servo steps each. `evidence/relocation_reach_boundary.json`.
+
+### Where the wall is
+
+Holding the head-on capture attitude, blade pinned, stage 2, four wrist seeds:
+
+| Target tool x (local) | Best residual | Attitude residual | Converged |
+| ---: | ---: | ---: | :--- |
+| +0.2434 (the capture pose) | 0.01 mm | 0.0000 | yes |
+| +0.1434 | 0.01 mm | 0.0000 | yes |
+| +0.0434 | 0.01 mm | 0.0000 | yes |
+| −0.0066 | 0.00 mm | 0.0000 | yes |
+| −0.0566 | **30.8 mm** | 0.0002 | **no** |
+| −0.1145 (extraction ends here) | **88.7 mm** | 0.0002 | **no** |
+| −0.1928 (the transit's retreat) | **167.0 mm** | 0.0002 | **no** |
+| −0.2566 | 164.6 mm | 0.0001 | no |
+
+**The tool parks at x = −0.0258 and goes no further, whatever depth is asked of
+it.** That is a wall rather than a gradient: the solver satisfies the attitude to
+0.0002 rad and gives the position away entirely. The wall sits 0.4242 m forward of
+the robot base at x = −0.45.
+
+### The wall is the attitude, not the reach
+
+Control, same targets with the orientation command removed and position solved
+alone:
+
+| Target tool x | Reached | Residual |
+| ---: | ---: | ---: |
+| −0.0566 | −0.0566 | 0.00 mm |
+| −0.1145 | −0.1145 | 0.00 mm |
+| −0.1928 | −0.1928 | 0.01 mm |
+| −0.2566 | −0.2566 | 0.00 mm |
+
+**Every depth is reachable, including 64 mm beyond the retreat.** The arm can go
+there; it cannot go there pointing the right way. This is the project's central
+claim showing up in the kinematics rather than in the grip: attitude, not
+position, is the binding constraint.
+
+### Lifting over the flares does not help either
+
+The one route across the rack that avoids the retreat: the lead-in flares are
+50 mm plates standing proud of the mouth and the module is 35 mm thick, so a 45 mm
+lift clears them and the module could cross at the *extraction* depth rather than
+behind the flare plane. Swept at 0, 50, 100 and 200 mm of lift:
+
+**The tool parks at exactly x = −0.0258 at every lift.** The wall is horizontal
+and height does not move it. Crossing over the flares needs tool x = −0.1145,
+88.7 mm past it.
+
+### So the two failures were always one failure
+
+- Extraction must finish at tool x = −0.1145, **88.7 mm past the wall.** It gets
+  there by giving up attitude, and ends with about 0.13 rad of grip attitude error
+  (`grapple_extract_v14reset_certification.json`, `tool_to_handle_orientation_rad`
+  p50 0.126, p95 0.153). That error has been read as the interface's friction
+  failing. Part of it is the arm buying depth with attitude.
+- The transit needs another 78 mm, **167 mm past the wall.** Commanded attitude
+  starves translation; uncommanded, the module swings end-for-end. Neither is a
+  follower bug. Both are the same wall.
+- The lateral displacement was never the problem, and this confirms it from the
+  other side: the second bay's staging pose converges to 0.0060 mm at the same
+  attitude, and the two-bay insert certifies at 98.34% from it.
+
+**No leg order fixes this**, which retires the cheapest remaining idea with a
+reason rather than a run. Every crossing point is past the wall — behind the
+flare plane by 167 mm, over the flares by 88.7 mm.
+
+### What would fix it, and why it was not done
+
+A workcell change. Moving the robot base back increases the base-relative distance
+to the retreat and should carry the wall with it. It is a project, not a knob:
+
+- the arm's head-on spawn pose is solved for the base at x = −0.45, so probed at
+  −0.65 the arm starts 200 mm short of its own capture pose, drives into the
+  module and shoves it 137 mm before the solve even begins. A base move needs the
+  spawn pose re-solved first;
+- and then it invalidates capture, extraction and insertion, all three certified
+  against the current cell, plus both chains and all three vision arms.
+
+Trading a certified removal-and-installation demonstration for an uncertified
+relocation is the wrong trade for this project's last session. The relocation is
+therefore reported as blocked, with the blocker measured.
+
+### `--robot_base_x` had never moved anything
+
+The flag that exists to test exactly this hypothesis was inert, and the way that
+surfaced is worth keeping. Two sweeps 300 mm apart returned **byte-identical joint
+solutions** and a root position that still read −0.45. A control that changes
+nothing means the probe is broken, not that the effect is absent.
+
+It failed twice over: the edit was applied to an `env_cfg` that the next line's
+second `parse_env_cfg` discarded, and even placed after that it was overwritten by
+`configure_robustness`, which ends with
+`self.scene.robot = make_grapple_pin_robot_cfg(...)` and replaces the config
+wholesale. Both are fixed, and the report now reads the robot root position back
+out of the *simulation*, so a config edit that does not take effect can no longer
+be reported as one that did.
+
+**The "workcell layout, not the interface" hypothesis this page has carried as its
+leading suspect since 2026-08-15 had never actually been tested.** It is now, from
+the other direction, and it is correct.
+
 ## The keyed interface is closed as impossible, not as unfinished
 
 The keyed grapple pin — flat key faces between two axial stops, replacing the
