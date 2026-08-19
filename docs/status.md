@@ -4357,6 +4357,24 @@ and 0.117 rad, and stops. The decode is checkable against main: 0.2230 sits
 > Successes have to be compared with successes, which needs extraction to
 > re-certify first.
 
+**The obvious explanation for stopping short is a reward pathology, and it is
+wrong.** This project has the precedent on this page — extract v7, where *"an
+over-weighted attitude term makes standing still cheaper than pulling"* — so the
+first thing to check is whether the retention penalty makes finishing irrational.
+It does not. Using main's own certified terminal grip as the price of completing:
+
+| | grip position | grip attitude | retention, per step |
+| --- | ---: | ---: | ---: |
+| this branch, at the stall | 0.0144 m | 0.1166 rad | −1.356 |
+| main's certified extraction, completed | 0.0146 m | 0.1262 rad | −1.594 |
+| | | **marginal cost of finishing** | **0.238** |
+
+Against that, the progress term pays 0.200 per step at 0.5 mm of travel, 0.400 at
+1 mm and 0.800 at 2 mm, and the success term pays **30 per step** for the nine
+steps the 0.30 s hold takes. Finishing is net positive at any reasonable pull
+speed and overwhelmingly positive once the mask fires. The policy is not being
+paid to stop; it has not yet found the thing it would be paid for.
+
 **The mechanism is the observation, not the mechanics, and it predicts which
 skill recovers.** Six of the fifty observation numbers are arm joint angles, and
 re-solving the spawn poses at the new base moved them. The shift is dominated by
