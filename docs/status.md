@@ -4174,6 +4174,80 @@ continuous path through every pose the relocation needs, which is the thing the
 old cell did not have and the reason this is a workcell change rather than four
 lucky solves.
 
+## The unchanged policies on the moved workcell, and what that sizes
+
+Rule 5 says run the unchanged successor policy on a changed distribution before
+training on it. This applies it to a workcell change: the three promoted
+checkpoints, unretrained, on the cell at (−0.65, 0, 0.15), one held-out seed and
+256 episodes each. `scripts/probe_workcell_policies.sh`,
+`artifacts/workcell_probe/`.
+
+**It is not a certification.** One seed, a quarter of the episodes, no pooling,
+no gate. Its only job is to say what broke.
+
+| Policy, unchanged | Certified on the old cell | On the moved cell | Terminal grip error, p50 |
+| --- | ---: | ---: | ---: |
+| Capture, stage 0 (module installed) | 100% | **5.84%** | 23.5 mm |
+| Capture, stage 2 (module at the mouth) | 79.22% | **62.65%** | 9.4 mm |
+| Extract, stage 0 | 99.02% pooled | **0.00%** | 12.7 mm |
+| Extract, stage 2 | 99.02% pooled | **0.00%** | 13.2 mm |
+| Insert, bay 1 | 98.87% | **0.00%** | 12.0 mm |
+| Insert, bay 2 | 98.34% | **0.00%** | 11.9 mm |
+
+### What the failures are made of, which is the part that matters
+
+Extraction reads 0.00% and did not lose the module. Terminal grip error is
+**12.7 mm** at the median against `capture_established`'s 20 mm tolerance, and
+terminal axial error is **0.851 m** — the distance from the goal at which the
+module *started*. The grip held for the whole episode and the module never moved.
+Zero instability terminations, zero non-finite, at both stages.
+
+The same holds for every row. Terminal grip error across all six runs is
+**11.9 to 13.2 mm** wherever the policy engaged the pin at all, and the only
+figure outside the capture tolerance is capture's own stage 0 at 23.5 mm, with
+242 of its 257 episodes ending on the clock rather than on a failure predicate —
+an approach that never converged, not a grip that let go. Zero non-finite
+terminations in 1,539 episodes.
+
+That is the signature of a policy driving the arm somewhere the task is not,
+which is what a changed joint configuration produces: the observation carries six
+joint angles and a tool pose, and every one of them moved when the base did. It
+is **not** the signature of an interface that stopped holding, which this project
+has measured repeatedly and which looks like grip error growing without bound.
+
+Capture's stage-2 number says the same thing from the other side. Capture is the
+one skill whose approach is largely local to the pin rather than to the arm's
+configuration, and it keeps **62.65%** of an unchanged policy across a 200 mm
+base move, with grip error *better* than its own certified terminal figure.
+
+### What this decides about the interface work
+
+The session plan put a gripper rebuild before retraining, on the reasoning that a
+hand-side lock would force a retrain anyway so it should be paid for once. That
+reasoning holds only if the interface is implicated. On this measurement it is
+not: every failure above is an arm that did not move the module, with the grip
+intact at the terminal step.
+
+So the gripper is **not** rebuilt on speculation, and the two candidates are
+handled differently:
+
+* **the latch on release is implemented and left off**, wired to the instant the
+  driver retains the grip — `require_armed`, `arm_grapple_latch`. It is a config
+  flag, so it can be measured as an A/B on the relocation itself, under the real
+  transit load, rather than against a synthetic torque sweep;
+* **the V-grooved pads are not built**, because the measurement that would
+  justify them does not exist yet. The gate the session plan set for them —
+  "≥ 5× the plain pin's held rotational load" — cannot be evaluated as written:
+  the plain pin's yaw baseline (`grapple_pin_yaw_probe_railed_plain.json`) is
+  measured with the module **still in the rails** and holds every torque up to
+  200 N at zero slip, so there is no baseline to be 5× of. A free-body yaw
+  measurement would have to be built first, and the relocation trace measures the
+  same thing under the load that actually occurs.
+
+If the relocation still fails after retraining, and it fails on module rotation,
+that trace is the requirement the hand-side lock has to meet, and it will be a
+measured number rather than a chosen one.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300

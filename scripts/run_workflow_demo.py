@@ -270,6 +270,22 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--video_dir", type=Path, default=Path("artifacts/demo/workflow"))
     parser.add_argument("--report", type=Path, default=Path("artifacts/demo/workflow_report.json"))
     parser.add_argument(
+        "--latch_on_release",
+        action="store_true",
+        help=(
+            "Engage the modelled capture latch the instant the module clears the rails, instead of leaving "
+            "it off. The latch was refuted engaged on capture, where it jams the module in the rails; this "
+            "is the untested half, and it is the phase where a parallel-jaw grip has nothing opposing a "
+            "moment about its closing axis. Off by default."
+        ),
+    )
+    parser.add_argument(
+        "--latch_rated_torque_nm",
+        type=float,
+        default=5.0,
+        help="Rating of the latch, in newton-metres. Only used with --latch_on_release.",
+    )
+    parser.add_argument(
         "--transit_slowdown",
         type=int,
         default=3,
@@ -1401,6 +1417,28 @@ def main() -> dict[str, object]:
         env_cfg = parse_env_cfg(args.task, device=device, num_envs=args.num_envs)
         env_cfg.configure_robustness(0)
         env_cfg.seed = args.seed
+        if args.latch_on_release:
+            # The one interface experiment this project has never run. A modelled
+            # latch engaged on *capture* was swept from 10 to 160 N-m and refuted:
+            # a restoring torque on a module the rails still hold jams it in the
+            # rails and extraction travel collapses from 458 mm to about 25 mm.
+            # Engaged the instant the rails let go it has nothing left to jam the
+            # module against, and that is the phase that needs it -- the module
+            # is unconstrained for the whole crossing and nothing else opposes a
+            # moment about the closing axis.
+            #
+            # A flag rather than a task, so the comparison is one run against
+            # another with everything else identical, under the real transit load
+            # rather than a synthetic torque sweep.
+            env_cfg.latch_enabled = True
+            env_cfg.latch_engages_on_release = True
+            env_cfg._configure_latch()
+            env_cfg.latch_rated_torque_nm = args.latch_rated_torque_nm
+            env_cfg.events.grapple_latch.params["rated_torque_nm"] = args.latch_rated_torque_nm
+            print(
+                f"[INFO] Latch ARMED ON RELEASE at {args.latch_rated_torque_nm} N-m "
+                "(engages when the driver retains the grip, not on capture)"
+            )
         if args.pose_head_checkpoint is not None:
             if not args.pose_head_checkpoint.is_file():
                 raise FileNotFoundError(args.pose_head_checkpoint)
