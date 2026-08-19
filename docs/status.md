@@ -4318,9 +4318,12 @@ a subtle read: `Episode_Termination/extraction_success` and
 both runs. The control is the same two runs on the old cell, where the same
 resume from the same lineage reached **0.7177** and **0.9778**.
 
-Extraction's intermediate certification, 7,005 episodes across seven runs:
-**7 successes, 0.0999%**, with 70–86% of episodes ending on the clock rather
-than on a failure predicate. Its terminal state at those timeouts is the useful
+Extraction was measured mid-way rather than certified — seven evaluation runs
+under `artifacts/certify/extract_v15w65_*`, pooled by hand, **7 successes in
+7,005 episodes (0.0999%)**, with 70–86% of episodes ending on the clock rather
+than on a failure predicate. No report was written to `evidence/`, deliberately:
+an aggregated certification of a policy that is still training is a file whose
+only future is to be quoted by mistake. Its terminal state at those timeouts is the useful
 part, because it says which conjunct of `extraction_success_mask` is missing:
 
 | Conjunct | Limit | Retrained extract, p50 at timeout |
