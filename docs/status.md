@@ -132,7 +132,7 @@ unmodified pre-prune tree:
 | `Isaac-ZeroG-Blade-Insertion-StrictForceLimited-v0` | 2 | pass |
 | `Isaac-ZeroG-Blade-Insertion-ForceFeedback-v0` | 2 | pass |
 | `Isaac-ZeroG-Blade-Insertion-GuidedSlot-v0` | 2 | pass |
-| `Isaac-ZeroG-Blade-CaptureInSlot-v0` | 0 | **fail**, pre-existing |
+| ~~`Isaac-ZeroG-Blade-CaptureInSlot-v0`~~ | 0 | **deleted 2026-08-18** — see below |
 | `Isaac-ZeroG-Blade-GrapplePin-Capture-v0` | 0 | pass |
 | `Isaac-ZeroG-Blade-Insertion-Vision-v0` | 2 | pass |
 
@@ -3853,6 +3853,52 @@ test of this session's driver changes, and it passes.
 
 No chain re-run is owed. Recorded here so a later session does not spend an hour
 re-certifying to answer a question that reading and one already-run control answer.
+
+### The capture-in-slot task, deleted
+
+`Isaac-ZeroG-Blade-CaptureInSlot-v0` was the third thing deleted, and the reason
+is worth stating because it is a trap rather than merely dead weight.
+
+It declared `contact_grasp: bool = True` — the flag that asserts *there is no
+fixed joint here, the fingers really grip* — while inheriting its scene from the
+rigid-grasp lineage, whose blade sets `handle_collision_enabled = False` because a
+PhysX fixed joint holds it and finger/handle collision is redundant. So the task
+claimed a physical grasp on a blade whose handle is not a collider, and
+`train.py --smoke` refused it: **that contract exists precisely to catch a grasp
+task whose gripper touches nothing, a failure this project has shipped twice.**
+
+Fixing it properly meant rebuilding the task on the contact lineage, and the
+result would have duplicated the grapple-pin capture skill, which does the same
+job — close a grasp on a module the rails are still holding — and is certified.
+It was never trained and no evidence file names it.
+
+Deleted from `guided_slot_env_cfg.py`, the task registry, both script task lists
+and the integration tests. `Isaac-ZeroG-Blade-Insertion-GuidedSlot-v0` stays and
+smokes cleanly; it was only ever the capture variant that was inconsistent.
+
+### The contact task's inverted finger commands: recorded, not fixed, and now with the reason checkable
+
+The other long-standing smoke failure stays. `CONTACT_GRIPPER_PREGRASP` is
+0.80 rad and `CONTACT_GRIPPER_CLOSED` is 0.68, which under the *measured*
+convention — pad separation falls monotonically with the command, so zero is fully
+**open** — opens the fingers by 14 mm instead of closing them.
+
+The grapple-pin tasks are unaffected: `GrapplePinEventsCfg` overrides both terms
+with commands derived from the measured fit, which is why capture, extraction and
+insertion are unaffected by this and always have been.
+
+**What is affected is the rigid-grasp lineage**, and that is why the constants are
+not being corrected. `rigid_grasp_insertion_env_cfg.py` uses
+`ContactInsertionEventsCfg` directly, and the three promoted rigid-grasp
+certifications — Level 0, 1 and 2, 27,121 episodes between them — were produced
+under it. On those tasks a fixed joint holds the blade and its handle collider is
+off, so the fingers touch nothing and changing their command is *probably* inert.
+Probably inert is not measured inert, and it is not a good enough reason to move a
+number under three published certifications on the last day of the project.
+
+Recorded here with the exact blast radius so the next person can decide with the
+same information: change `CONTACT_GRIPPER_PREGRASP` / `CONTACT_GRIPPER_CLOSED` and
+re-certify `rigid_grasp_l0`, `l1` and `l2`, or leave both alone.
 
 ## What was deleted on 2026-08-18, and what was kept instead
 

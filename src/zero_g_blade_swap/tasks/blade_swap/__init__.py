@@ -166,8 +166,6 @@ gym.register(
 for _guided_id, _guided_cls in (
     ("Isaac-ZeroG-Blade-Insertion-GuidedSlot-v0", "ZeroGBladeGuidedSlotEnvCfg"),
     ("Isaac-ZeroG-Blade-Insertion-GuidedSlot-Play-v0", "ZeroGBladeGuidedSlotPlayEnvCfg"),
-    ("Isaac-ZeroG-Blade-CaptureInSlot-v0", "ZeroGBladeCaptureInSlotEnvCfg"),
-    ("Isaac-ZeroG-Blade-CaptureInSlot-Play-v0", "ZeroGBladeCaptureInSlotPlayEnvCfg"),
 ):
     gym.register(
         id=_guided_id,

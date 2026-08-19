@@ -70,49 +70,9 @@ class ZeroGBladeGuidedSlotPlayEnvCfg(ZeroGBladeGuidedSlotEnvCfg):
         configure_insertion_play_presentation(self)
 
 
-@configclass
-class ZeroGBladeCaptureInSlotEnvCfg(ZeroGBladeContactInsertionEnvCfg):
-    """Close a real finger grasp on a blade the channel is still holding.
-
-    The stage-0 reset already parks the blade at x = 0.7195, which is 31 mm
-    short of fully inserted and entirely inside the rails, with the grapple post
-    directly beneath the pads. So capture needs no new arm pose: it needs the
-    rails to be solid while the fingers close, which is exactly what level 0 of
-    the parent profile switches off.
-    """
-
-    scene: ZeroGGuidedSlotSceneCfg = ZeroGGuidedSlotSceneCfg(
-        num_envs=512,
-        env_spacing=2.6,
-        replicate_physics=True,
-        # The blade must report contacts for a grasp gate to mean anything.
-        clone_in_fabric=False,
-    )
-    contact_grasp: bool = True
-
-    def configure_robustness(self, level: int) -> None:
-        super().configure_robustness(level)
-        # Capture is only meaningful against a constrained blade, so the side
-        # walls are solid even at level 0 where the parent disables them.
-        for name in ("blade_slot_left_guide", "blade_slot_right_guide"):
-            getattr(self.scene, name).spawn.collision_props.collision_enabled = True
-        _enable_channel(self.scene)
-        self.scene.spare_blade.spawn.activate_contact_sensors = True
-
-
-@configclass
-class ZeroGBladeCaptureInSlotPlayEnvCfg(ZeroGBladeCaptureInSlotEnvCfg):
-    def __post_init__(self) -> None:
-        super().__post_init__()
-        self.scene.num_envs = 1
-        configure_insertion_play_presentation(self)
-
-
 __all__ = [
     "GUIDED_SLOT_ALWAYS_COLLIDABLE",
     "GUIDED_SLOT_ENTRY_FLARES",
-    "ZeroGBladeCaptureInSlotEnvCfg",
-    "ZeroGBladeCaptureInSlotPlayEnvCfg",
     "ZeroGBladeGuidedSlotEnvCfg",
     "ZeroGBladeGuidedSlotPlayEnvCfg",
 ]

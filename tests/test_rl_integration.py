@@ -289,8 +289,12 @@ def test_insertion_tasks_capture_terminal_metrics_before_auto_reset() -> None:
     # that rather than counting registrations.
     assert registration.count("entry_point=INSERTION_ENTRY_POINT,") >= 8
     assert "isaaclab.envs:ManagerBasedRLEnv" not in registration
-    for identifier in ("Isaac-ZeroG-Blade-Insertion-GuidedSlot-v0", "Isaac-ZeroG-Blade-CaptureInSlot-v0"):
-        assert identifier in registration
+    assert "Isaac-ZeroG-Blade-Insertion-GuidedSlot-v0" in registration
+    # Isaac-ZeroG-Blade-CaptureInSlot-v0 was deleted on 2026-08-18: it declared
+    # contact_grasp on a blade whose handle collider its parent disables, so it
+    # failed the very contract that exists to catch a grasp task gripping nothing,
+    # and the certified grapple-pin capture skill does the same job.
+    assert "CaptureInSlot" not in registration
     assert "TerminalMetricsManagerBasedRLEnv" in registration
     assert "class TerminalMetricsManagerBasedRLEnv(TerminalMetricsMixin, ManagerBasedRLEnv)" in env_module
 
@@ -482,11 +486,6 @@ def test_guided_slot_is_a_channel_and_capture_happens_inside_it() -> None:
     assert "RIGID_GRASP_BLADE_CFG.spawn.handle_size = (0.060, 0.075, 0.030)" in assets
     assert "CONTACT_INSERTION_BLADE_CFG.spawn.handle_offset = GRAPPLE_POST_OFFSET" in assets
 
-    # Capture only means something while the blade is still constrained.
-    assert "class ZeroGBladeCaptureInSlotEnvCfg" in guided
-    assert 'for name in ("blade_slot_left_guide", "blade_slot_right_guide"):' in guided
-    assert "collision_enabled = True" in guided
-    assert "contact_grasp: bool = True" in guided
     # The channel must survive the parent rebuilding the slot per level.
     assert "_enable_channel(self.scene)" in guided
 

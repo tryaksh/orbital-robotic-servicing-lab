@@ -23,7 +23,6 @@ ROBUST_FAMILY_TASKS = (
     "Insertion-UncertainBlind",
     "Insertion-Vision",
     "Insertion-GuidedSlot",
-    "Blade-CaptureInSlot",
     "Blade-GrapplePin",
 )
 

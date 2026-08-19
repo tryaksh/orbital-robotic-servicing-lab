@@ -216,12 +216,11 @@ ROBUST_FAMILY_TASKS = (
     "Insertion-UncertainBlind",
     "Insertion-Vision",
     "Insertion-GuidedSlot",
-    "Blade-CaptureInSlot",
     "Blade-GrapplePin",
 )
 
 # Task labels that share the rigid-grasp PPO configuration and checkpoint tree.
-RIGID_GRASP_AGENT_TASKS = ("Insertion-RigidGrasp", "ForceLimited", "ForceFeedback", "GuidedSlot", "CaptureInSlot")
+RIGID_GRASP_AGENT_TASKS = ("Insertion-RigidGrasp", "ForceLimited", "ForceFeedback", "GuidedSlot")
 
 # Insertion under a wrong pose belief carries an asymmetric critic, so it has its
 # own PPO configuration and its own checkpoint tree.
