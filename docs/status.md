@@ -3462,6 +3462,16 @@ turns the 25.00% from an unexplained anomaly into the tail of a distribution the
 evaluation was never sampling: a camera arm run once is one draw from a
 render-dependent process, and one of those draws was very bad.
 
+The row-level comparison is what settles it, and it is worth reading because the
+aggregate nearly hid it. Two camera runs at seed 4070 — same task, same seed, same
+stage, same 64 environments, same three checkpoints by SHA-256 — **diverge at the
+very first recorded episode**: control steps differ by up to 682, grip error by
+65 mm, estimator error by 6.5 mm. One of those two runs nevertheless landed on
+86.46% and so did the original 2026-08-17 run, to the digit. Three runs of a
+non-deterministic process, two of them agreeing exactly on the pooled number while
+disagreeing about every episode in it. **Matching aggregates are not evidence of a
+reproduced run.**
+
 What is ruled out, each by measurement: the pose head (best on the collapsing
 seed, 2.52 mm mean), the policy set (identical SHA-256 across all nine runs), the
 manipulation (oracle bit-stable), the occupancy readout (100% exact-match), and

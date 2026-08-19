@@ -259,7 +259,45 @@
         firm to 0.68 once loaded. The window is narrow and asymmetric: 0.44 holds 63 N, 0.52 holds 68 N,
         0.56 collapses to 26 N.
       </p>
-      <p class="evidence">evidence/grapple_pin_axial_pull_gate.json · gripper_collision_envelope.json</p>
+      <p class="note">
+        <strong>And there is a shape that would do this properly, which cannot be built.</strong>
+        The tapered pin holds by squeezing, and squeezing along one axis cannot stop a part twisting
+        about that same axis. The right answer is a thread-spool shape — a narrow middle with a wide
+        disc at each end, so the pads sit in the groove and are trapped by form rather than by
+        friction. Measured, it grips far better: the seated grip error falls from 19.4&nbsp;mm to
+        <strong>0.7&nbsp;mm</strong> and the seated attitude error from 0.0637 to
+        <strong>0.0013&nbsp;rad</strong>, and it carries 120&nbsp;N at a 0.34&nbsp;m lever arm without
+        slipping.
+      </p>
+      <p class="note">
+        It scores <strong>0.00%</strong> on extraction, because the inner disc has nowhere to go. Read
+        off the gripper's own collision meshes, the space in front of the fingertips is occupied by
+        the hand: solid body out to 90&nbsp;mm from the wrist, moving arms from 90 to 105&nbsp;mm
+        leaving about <strong>8&nbsp;mm</strong> of clear width. A disc that the pads cannot simply
+        spring open and slip over has to exceed their own half-opening, <strong>43.5&nbsp;mm</strong>.
+        Shrinking the spool is worse, not better: a thinner middle lets the hand close further, which
+        brings the moving arms inward. Swept across every middle thickness from 1 to 43&nbsp;mm, a
+        forward disc fits at none of them that a capture could realistically hit.
+      </p>
+      <div class="band three">
+        <div class="cell"><span class="k">Room in front of the pads</span><span class="v bad">7.9 mm</span><span class="n">set by the hand's own body</span></div>
+        <div class="cell"><span class="k">Needed for a disc that holds</span><span class="v">43.5 mm</span><span class="n">the pads' half-opening</span></div>
+        <div class="cell"><span class="k">Middle thicknesses that work</span><span class="v bad">0</span><span class="n">of 43 swept</span></div>
+      </div>
+      <p class="note">
+        <strong>So the useful conclusion is about which side the geometry goes on.</strong> Keep the
+        module simple and put the locking shape in the <em>end-effector</em>: grooved pads, or a small
+        latch that engages after the hand has closed. That is what flight hardware already does — the
+        station's arm snares a fixture and then rigidises it; the ISS manipulator grips a square boss
+        and then drives a bolt. Grip first, lock second; none of them makes friction load-bearing.
+        <br><br>
+        The corollary reverses a judgement this project held for three sessions. The gripper's throat
+        is itself cone-shaped — zero clearance at its body, opening to ±43&nbsp;mm by 120&nbsp;mm out —
+        and the tapered pin's profile matches it to within 0.8&nbsp;mm at its widest point. The taper
+        doing double duty as funnel <em>and</em> clamp was read as a compromise. It is the only shape
+        this hand's throat admits.
+      </p>
+      <p class="evidence">evidence/grapple_pin_axial_pull_gate.json · gripper_collision_envelope.json · grapple_pin_keyed_interference.json</p>
     </div>
   </section>
 
