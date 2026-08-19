@@ -3443,21 +3443,34 @@ there is capture's own 20 mm, or the chain's 10 mm hand-off.
   number. Rewritten against the public `active_terms`, and searched across every
   observation group rather than a hard-coded `"grasp"`.
 
-### What the 25.00% actually was
+### What the 25.00% actually was: the render path is the only thing that is not deterministic
 
-Not identified, and it is worth saying so plainly rather than inventing a
-mechanism. What can be ruled out: the pose head (measured, best on that seed),
-the policy set (identical SHA-256 across all nine certification runs), the
-manipulation (oracle stable), the occupancy readout (100% exact-match), and
-sampling (56 points at n = 192). The renderer warnings in that run's log are
-identical to the other two seeds'.
+The re-certification supplies the control that names it. **The oracle arm
+reproduces exactly.** Re-run a day later on a different code state, it returns
+90.62% / 89.58% / 85.94% per seed and 88.72% pooled — identical to four decimal
+places to the 2026-08-17 run.
 
-What remains is something transient in that one process — most plausibly the
-render path, since the camera arm is the only one that reads an image and the
-oracle and blind arms taken in the same session were both normal. **The honest
-statement is that one run in nine behaved differently and nothing in the record
-explains it**, and the defence is the one this page keeps relearning: a single
-run is not a measurement.
+So the simulation is deterministic given its seed: same physics, same policies,
+same resets, same numbers. The camera arm differs from the oracle arm in exactly
+one respect — it reads a rendered image and pushes it through the pose head — and
+the camera arm does **not** reproduce, even on its healthy seeds: 86.46 → 82.29
+and 83.85 → 85.42, a few points either way, against an oracle that does not move
+at all.
+
+**Rendering is the non-deterministic element, and it is the only one.** That
+turns the 25.00% from an unexplained anomaly into the tail of a distribution the
+evaluation was never sampling: a camera arm run once is one draw from a
+render-dependent process, and one of those draws was very bad.
+
+What is ruled out, each by measurement: the pose head (best on the collapsing
+seed, 2.52 mm mean), the policy set (identical SHA-256 across all nine runs), the
+manipulation (oracle bit-stable), the occupancy readout (100% exact-match), and
+sampling within a run (56 points at n = 192 is not a binomial fluctuation).
+
+**The consequence for method is the useful part.** Three seeds are three samples
+of the *configuration*. Where a run is itself stochastic in a way the seed does
+not control, they are still only three samples of the run, and the camera arm
+needs replication that the oracle arm does not.
 
 *The irony is exact. This page already carried "trusting a single-seed vision
 sweep" as a refutation, because one seed reported a gate pass that three seeds
