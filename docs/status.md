@@ -3734,6 +3734,46 @@ this project models as `GrappleLatch` and has separately refuted in the rails.
 That is a real conclusion about the hardware, and it is the one the geometry
 supports.
 
+## Why 2026-08-18's driver edits do not invalidate the certified chains
+
+`check_criterion_currency.py` flags all eight current reports against this
+session's commits, because it flags any report older than a change to a file that
+*could* define its criterion. That is the check working as designed — it is a
+prompt, not a verdict — and this is the answer it is prompting for.
+
+**Two files were touched that the chains depend on.**
+
+`mdp/grapple.py` — **prose only.** The whole diff against the pre-session tree is
+docstring text: one wording change from "the wall clearance is not the term that
+dominates" to "wall clearance was never the term that dominates", plus notes
+recording that the yoke was deleted. No constant, no predicate, no reward.
+
+`scripts/run_workflow_demo.py` — **additive recording, plus the removal of a
+workflow the chains are not.** Two per-episode columns were added
+(`perceived_error_mean_m`, `perceived_error_max_m`) and a per-step read of the
+estimator error, which returns zeros where there is no estimator and has no side
+effect. `--workflow full` was deleted, which touched three conditionals:
+
+| Before | After | For `remove` / `install` / `relocate` |
+| --- | --- | --- |
+| `workflow in ("remove", "full", "relocate")` | `workflow in ("remove", "relocate")` | identical |
+| `workflow in ("full", "relocate")` | `workflow == "relocate"` | identical |
+| `learned_phases[...]` had a `"full"` key | key removed | never read |
+
+So the edit is behaviour-preserving by inspection for every workflow that still
+exists.
+
+**And it is behaviour-preserving by measurement, which is the part that matters.**
+The two-bay vision **oracle** arm was re-certified on the post-edit code and
+returned 90.62% / 89.58% / 85.94% per seed and 88.72% pooled — identical to four
+decimal places to the run made before any of these edits. That arm drives the same
+phase machine, the same clocks, the same predicates and the same retain logic as
+the removal and installation chains. It is an accidental but complete regression
+test of this session's driver changes, and it passes.
+
+No chain re-run is owed. Recorded here so a later session does not spend an hour
+re-certifying to answer a question that reading and one already-run control answer.
+
 ## What was deleted on 2026-08-18, and what was kept instead
 
 A repository that keeps every refuted feature's code eventually stops saying
