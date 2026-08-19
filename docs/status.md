@@ -3529,7 +3529,13 @@ runs differ.** The oracle arm has no such term — it reproduces exactly.
 
 ### What this does and does not settle
 
-**A second control landed with the re-certification and sharpens the mechanism.**
+**Run twice back to back, the oracle arm is bit-identical.** Two separate
+processes, same seed 4070, same task, same checkpoints: `numpy.array_equal` over
+all 192 episodes and all 21 recorded columns returns **True**, and both score
+90.6250%. Not "reproduces to four decimals" — identical.
+`artifacts/perception_seed/determinism_{a,b}.npz`.
+
+**A second control landed with the re-certification and sharpens it further.**
 The **blind** arm also reproduces exactly — 31.77 / 37.50 / 32.81 per seed and
 34.03% pooled, identical to the 2026-08-17 run. The blind arm runs in the *same
 vision scene*, with the camera built and rendering, and simply does not read the
