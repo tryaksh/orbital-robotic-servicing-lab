@@ -7,6 +7,7 @@ usable before production CAD/USD assets are available.
 
 from __future__ import annotations
 
+import copy
 import math
 import re
 from collections.abc import Callable
@@ -37,6 +38,20 @@ from zero_g_blade_swap.grapple_geometry import (
 )
 
 ROBOT_ROOT_POS = (-0.45, 0.0, 0.15)
+#: Where the head-on grapple workcell puts the same arm, and it is a different
+#: number for a measured reason. ``evidence/relocation_reach_boundary.json``
+#: showed that with the base on the first bay's centre line the arm cannot hold
+#: the head-on capture attitude at the extraction end or the transit retreat: it
+#: holds the attitude to 0.0002 rad and gives the position away instead, by
+#: 88.7 mm and 167 mm, and neither leg order nor lifting over the flares moves
+#: that boundary. ``evidence/workcell_reach_solution.json`` swept the base and
+#: this is the cell in which every pose the relocation needs converges, in both
+#: bays, with orientation driven at full authority.
+#:
+#: Only the grapple lineage moves. The contact and insertion tasks keep
+#: ``ROBOT_ROOT_POS``, because their certifications were produced against it and
+#: nothing in this change is evidence about them.
+GRAPPLE_ROBOT_ROOT_POS = (-0.65, 0.0, 0.15)
 BLADE_INSERTED_POS = (0.75, 0.0, 0.72)
 SPARE_BLADE_POS = (0.70, -0.42, 0.50)
 SERVICE_CADDY_POS = (0.70, 0.42, 0.50)
@@ -123,9 +138,9 @@ GRAPPLE_PIN_TAPER_DEG = wedge_taper_deg()
 # command and the blade pinned at its stage pose. Every stage converged to under
 # 0.01 mm and 0.00003 rad. See evidence/grapple_pin_head_on_pose.json.
 GRAPPLE_HEAD_ON_ARM_JOINT_POS = (
-    (-0.304997, -1.421518, 2.050886, 2.512231, -1.265814, -1.570812),
-    (-0.341348, -1.517620, 2.159929, 2.499296, -1.229464, -1.570783),
-    (-0.403679, -1.653908, 2.293487, 2.502023, -1.167132, -1.570785),
+    (-0.225190, -1.125436, 1.644417, 2.622605, -1.345595, -1.570812),
+    (-0.244225, -1.212208, 1.773604, 2.580182, -1.326559, -1.570782),
+    (-0.274119, -1.325038, 1.929535, 2.537083, -1.296664, -1.570782),
 )
 
 # Robotiq specifies 20 to 235 N of grip force for the 2F-85. The drive limit
@@ -578,6 +593,7 @@ def make_grapple_pin_robot_cfg(*, floating: bool = False) -> ArticulationCfg:
     """
 
     cfg = make_contact_insertion_robot_cfg(floating=floating)
+    cfg.init_state.pos = GRAPPLE_ROBOT_ROOT_POS
     for joint_name, position in zip(
         (
             "shoulder_pan_joint",
@@ -1315,6 +1331,24 @@ MOUNT_ANCHOR_CFG = RigidObjectCfg(
     init_state=RigidObjectCfg.InitialStateCfg(pos=ROBOT_ROOT_POS),
 )
 
+#: The same anchor, under the grapple workcell's base.
+#:
+#: **This has to move with the base, and it is not a cosmetic detail.** The
+#: compliant mount is a D6 joint between the robot root and this body, and
+#: ``robot_mount_unstable`` ends the episode when the two differ by more than
+#: 16.5 mm on any axis. An anchor left at ``ROBOT_ROOT_POS`` while the arm moves
+#: therefore fires that termination on step 1 and on every step after it, and the
+#: manager resets the arm to its spawn pose before it can act.
+#:
+#: It does not look like a bug. A reach sweep run that way reported the spawn
+#: joint angles to six decimals in every environment, with residuals exactly
+#: equal to the geometric offset to each target -- which reads precisely like an
+#: unreachable pose. That is the third layer of the ``--robot_base_x`` defect in
+#: docs/status.md, and the only one of the three that produces a plausible wrong
+#: answer instead of no answer.
+GRAPPLE_MOUNT_ANCHOR_CFG = copy.deepcopy(MOUNT_ANCHOR_CFG)
+GRAPPLE_MOUNT_ANCHOR_CFG.init_state.pos = GRAPPLE_ROBOT_ROOT_POS
+
 
 __all__ = [
     "BLADE_CFG",
@@ -1329,6 +1363,8 @@ __all__ = [
     "CONTACT_TOOL_OFFSET_POS",
     "GRASP_TOOL_OFFSET_POS",
     "GRAPPLE_HEAD_ON_ARM_JOINT_POS",
+    "GRAPPLE_MOUNT_ANCHOR_CFG",
+    "GRAPPLE_ROBOT_ROOT_POS",
     "GRAPPLE_HEAD_ON_TOOL_ROT",
     "GRAPPLE_PIN_BLADE_CFG",
     "GRAPPLE_PIN_COLLAR_HALF_HEIGHT",

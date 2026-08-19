@@ -149,6 +149,16 @@ limits of +/-15 mm and +/-2 degrees, translational stiffness/damping 12,000/220,
 and rotational stiffness/damping 600/50. Bounded wrench pulses excite the
 compliant mount.
 
+**The anchor moves with the base, and that is load-bearing.** The head-on
+grapple workcell puts the arm at `GRAPPLE_ROBOT_ROOT_POS = (-0.65, 0, 0.15)`
+rather than the insertion lineage's `ROBOT_ROOT_POS = (-0.45, 0, 0.15)`, and
+`robot_mount_unstable` ends an episode when the root and the anchor differ by
+more than 16.5 mm on any axis. A base moved without its anchor therefore fires
+that termination on step 1 and every step after it, and the arm is reset to its
+spawn pose before it can act -- which a report renders as a clean, monotone
+reach boundary rather than as an error. `GRAPPLE_MOUNT_ANCHOR_CFG` follows the
+grapple base and `tests/test_configuration_contract.py` defends the pair.
+
 ## Scaling profiles
 
 The state profile clones shared physics and consumes only vector observations.

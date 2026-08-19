@@ -62,7 +62,7 @@ for skill in "${skills[@]}"; do
 import json, sys
 report = json.loads(open(sys.argv[1], encoding="utf-8").read())
 rate = report.get("success_rate")
-episodes = report.get("episodes") or report.get("completed_episodes")
+episodes = report.get("episodes_completed")
 print(f"    success_rate={rate} episodes={episodes}")
 PY
   done

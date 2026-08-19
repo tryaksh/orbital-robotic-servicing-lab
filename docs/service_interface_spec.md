@@ -224,6 +224,78 @@ directions.**
 
 ---
 
+## 6a. Required workcell geometry: where the arm stands is an interface requirement
+
+Sections 3 and 6 specify the module and the rack. This one specifies **where the
+arm is**, and it is here for the same reason section 6 is: a measurement forced
+it. A servicing interface that a manipulator cannot approach in the required
+attitude is not a serviceable interface, and whether it can is decided by the
+base position rather than by anything on the module.
+
+### The requirement
+
+| Feature | Requirement | Why |
+| --- | ---: | --- |
+| Base standoff behind the deepest required tool pose | **≥ 0.4242 m** | Closer than this the arm can reach the pose but cannot hold the approach attitude there |
+| Adopted base for this rack | **x = −0.65 m**, 0.4572 m behind the transit retreat | 33 mm of margin on the derived threshold of −0.617 m |
+| Alternative, if the base cannot move back | **≥ 220 mm lateral offset** of every serviced bay from the base's own plane | The boundary is a centre-line effect and dissolves off-axis. 110 mm is **not** enough |
+
+### What the number is
+
+Driving position and the head-on capture attitude together at full authority, the
+tool parks at a fixed distance in front of the base and goes no further whatever
+depth is asked of it. The solver satisfies the attitude to 0.0002 rad and
+surrenders the position entirely. That distance is **0.4242 m**, and it moves
+with the base one millimetre per millimetre:
+
+| Base x | Retreat shortfall | Extraction shortfall |
+| ---: | ---: | ---: |
+| −0.45 | 166.95 mm | 88.70 mm |
+| −0.55 | 66.95 mm | solved |
+| −0.65 | solved | solved |
+
+`evidence/workcell_reach_solution.json`, `evidence/relocation_reach_boundary.json`.
+
+It is a trade rather than a hard limit, and the exchange rate is the useful
+number: near this folded configuration attitude buys reach at about **7.5 metres
+per radian**, so 0.0114 rad of surrendered attitude buys 85 mm. That is why a
+marginal cell does not fail loudly. It fails by giving the attitude away — and on
+a parallel-jaw grip that cannot resist a moment about its closing axis, giving
+the attitude away is exactly what the payload cannot survive. The module carried
+between bays on the old cell swung **end-for-end** about its grip while the grip
+error still read a healthy 24 mm.
+
+### Why this belongs in an interface specification
+
+The obvious reading of sections 3 and 8 is that attitude is a *grip* problem, to
+be solved with geometry on the module. Three attempts to do that are refuted in
+section 8. This section is the other half of the same finding: **some of the
+attitude error attributed to the interface was the arm buying depth with it.**
+Extraction on the old cell had to finish 88.7 mm past the boundary and ended with
+about 0.13 rad of grip attitude error, which this project read as the interface
+failing for three sessions.
+
+How much of that 0.13 rad the workcell owns is a separate measurement and is not
+claimed here from the kinematics alone. The honest form is the one the sweep
+supports: the old cell *forced* the trade at the pose extraction has to finish
+in, so a grip-attitude number taken there cannot be attributed to the grip
+without a control. Extraction re-certified on the moved cell is that control.
+
+So the specification's requirement on attitude is not only "constrain it
+mechanically". It is:
+
+1. put the base far enough back, or the bays far enough off its plane, that the
+   arm can hold the approach attitude at every pose the operation needs — a
+   workcell requirement, free, and checkable by kinematics before anything is
+   built;
+2. and only then ask what the interface has to hold, because until (1) is
+   satisfied the interface is being blamed for the arm's trade.
+
+The cost of getting (1) wrong is not a warning. It is a clean, monotone,
+entirely convincing reach boundary in a report.
+
+---
+
 ## 7. Pose accuracy this interface requires
 
 The flare dimension in section 6 is not only a rack requirement. It sets the

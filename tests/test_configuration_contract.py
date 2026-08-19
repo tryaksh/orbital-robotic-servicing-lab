@@ -213,3 +213,87 @@ def test_every_evidence_file_the_documents_cite_exists() -> None:
             if f"evidence/{candidate}" in text or candidate.endswith("_certification.json"):
                 broken.append(f"{name} -> evidence/{candidate}")
     assert not broken, "broken evidence references: " + ", ".join(sorted(broken))
+
+
+def test_the_grapple_mount_anchor_follows_the_grapple_base() -> None:
+    """A moved base with a stationary anchor terminates every episode instantly.
+
+    The compliant mount is a D6 joint between the robot root and a
+    ``mount_anchor`` body, and ``robot_mount_unstable`` ends the episode when the
+    two differ by more than 16.5 mm on any axis. The grapple workcell moves its
+    base, so the anchor has to move with it.
+
+    Defended here rather than only commented, because the way it fails is quiet.
+    A reach sweep run with the anchor left behind reported the arm's spawn joint
+    angles to six decimals in every environment, with residuals exactly equal to
+    the geometric offset to each target -- which reads like a clean, monotone
+    reach boundary and is a frozen arm. See docs/status.md, *Three probe defects
+    between the workcell hypothesis and its measurement*.
+    """
+
+    assets = (ROOT / "src/zero_g_blade_swap/tasks/blade_swap/assets.py").read_text(encoding="utf-8")
+    scene = (ROOT / "src/zero_g_blade_swap/tasks/blade_swap/scene_cfg.py").read_text(encoding="utf-8")
+
+    assert "GRAPPLE_ROBOT_ROOT_POS = (" in assets, "the grapple workcell's base constant is gone"
+    assert "GRAPPLE_MOUNT_ANCHOR_CFG.init_state.pos = GRAPPLE_ROBOT_ROOT_POS" in assets, (
+        "the grapple mount anchor must be placed at GRAPPLE_ROBOT_ROOT_POS, never at a restated literal"
+    )
+    assert "cfg.init_state.pos = GRAPPLE_ROBOT_ROOT_POS" in assets, (
+        "make_grapple_pin_robot_cfg must place the base at GRAPPLE_ROBOT_ROOT_POS"
+    )
+    assert "mount_anchor = GRAPPLE_MOUNT_ANCHOR_CFG" in scene, (
+        "the grapple scene still inherits the anchor at ROBOT_ROOT_POS"
+    )
+
+
+def test_the_contact_lineage_keeps_the_certified_base() -> None:
+    """Only the grapple tasks moved. Everything certified against -0.45 stays there."""
+
+    assets = (ROOT / "src/zero_g_blade_swap/tasks/blade_swap/assets.py").read_text(encoding="utf-8")
+    assert "ROBOT_ROOT_POS = (-0.45, 0.0, 0.15)" in assets
+    assert "pos=ROBOT_ROOT_POS," in assets, "make_insertion_robot_cfg no longer uses the certified base"
+
+
+def test_the_base_probe_moves_the_anchor_with_the_base() -> None:
+    """The calibrator is the probe that measures the workcell; it must not lie.
+
+    ``--robot_base_x`` failed three separate ways before it measured anything:
+    an ``env_cfg`` discarded by a second ``parse_env_cfg``, a
+    ``configure_robustness`` that replaced the robot wholesale, and an anchor
+    left behind. The first two are gone; this defends the third, and the readback
+    that makes an ineffective edit impossible to report as an effective one.
+    """
+
+    calibrator = (ROOT / "scripts/calibrate_grasp_pose.py").read_text(encoding="utf-8")
+    assert "anchor.init_state.pos = tuple(moved)" in calibrator, (
+        "the base probe must move the mount anchor with the base"
+    )
+    assert "robot.data.root_pos_w" in calibrator, (
+        "the report must read the robot root back out of the simulation"
+    )
+    assert "--alt_start_joint_pos" in calibrator, (
+        "a moved base can spawn the arm inside the rack; the second start pose is what makes the sweep honest"
+    )
+
+
+def test_the_latch_can_wait_for_the_rails_to_let_go() -> None:
+    """The latch was refuted engaged on capture, which is not the same experiment.
+
+    A restoring torque on a module the rails still hold jams it in the rails --
+    measured, 458 mm of extraction travel down to about 25 mm. Engaging it the
+    instant the rails release is a different claim, and the mechanism for it has
+    to stay wired to the moment the driver retains the grip.
+    """
+
+    grapple = (ROOT / "src/zero_g_blade_swap/tasks/blade_swap/mdp/grapple.py").read_text(encoding="utf-8")
+    driver = (ROOT / "scripts/run_workflow_demo.py").read_text(encoding="utf-8")
+    config = (ROOT / "src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py").read_text(encoding="utf-8")
+
+    assert "def arm_grapple_latch(" in grapple
+    assert "require_armed" in grapple and "_grapple_latch_armed" in grapple
+    assert "arm_grapple_latch(task, cleared)" in driver, (
+        "the driver must arm the latch at the same instant it retains the grip"
+    )
+    assert "latch_engages_on_release: bool = False" in config, (
+        "the latch stays off by default; turning it on is a measured choice, not a default"
+    )

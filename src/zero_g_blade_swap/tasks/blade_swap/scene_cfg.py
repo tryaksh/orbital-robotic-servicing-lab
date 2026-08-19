@@ -10,6 +10,7 @@ from isaaclab.utils import configclass
 
 from .assets import (
     CONTACT_INSERTION_BLADE_CFG,
+    GRAPPLE_MOUNT_ANCHOR_CFG,
     GRAPPLE_PIN_BLADE_CFG,
     INSERTION_BLADE_CFG,
     INSERTION_SLOT_CFG,
@@ -134,6 +135,9 @@ class ZeroGGrapplePinSceneCfg(ZeroGContactInsertionSceneCfg):
     """
 
     robot = make_grapple_pin_robot_cfg()
+    # The anchor follows the base. See GRAPPLE_MOUNT_ANCHOR_CFG: leaving it
+    # behind terminates every episode on mount_unstable before the arm can act.
+    mount_anchor = GRAPPLE_MOUNT_ANCHOR_CFG
     spare_blade = GRAPPLE_PIN_BLADE_CFG
     blade_slot_upper_left_lip = SLOT_UPPER_LEFT_LIP_CFG
     blade_slot_upper_right_lip = SLOT_UPPER_RIGHT_LIP_CFG

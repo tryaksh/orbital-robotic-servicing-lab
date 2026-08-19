@@ -1,0 +1,1420 @@
+{
+  "title": "A workcell in which the arm holds the capture attitude at every pose the relocation needs",
+  "evidence_type": "simulation_kinematic_calibration",
+  "generated_utc": "2026-08-19T16:32:58+00:00",
+  "question": "evidence/relocation_reach_boundary.json measured that the arm cannot hold the head-on capture attitude at the extraction end (88.7 mm short) or the transit retreat (167 mm short) with the base at x = -0.45, and that neither leg order nor lifting over the flares moves that boundary. It is a folded-configuration problem, so the base is the variable. Which base position, if any, puts all four poses -- installed, staging, extracted, retreated -- inside the attitude-holding region, in BOTH bays?",
+  "method": "scripts/solve_workcell.py, one scripts/calibrate_grasp_pose.py launch per candidate base because the base is an articulation spawn pose shared by every environment in a scene. Inside each launch every (depth, bay, wrist-seed) combination solves in its own environment: the Capture task, blade pinned at its stage-0 pose, fingers held at 0.02 rad, 3000 servo steps, four wrist_1 seed quadrants, orientation driven at FULL authority. A pose counts as solved only when one seed satisfies both 2 mm and 0.010 rad; reaching the depth by giving the attitude away is the failure being measured, not a pass.",
+  "tolerance_m": 0.002,
+  "tolerance_rad": 0.01,
+  "servo_steps": 3000,
+  "task": "Isaac-ZeroG-Blade-GrapplePin-Capture-v0",
+  "curriculum_stage": 0,
+  "alt_start_joint_pos_rad": [
+    0.0,
+    -1.5708,
+    0.0,
+    -1.5708,
+    0.0,
+    0.0
+  ],
+  "required_pose_offsets_m": {
+    "installed": 0.0,
+    "staging": -0.136575,
+    "extracted": -0.494475,
+    "retreated": -0.572722
+  },
+  "bays_y_m": [
+    0.0,
+    -0.22
+  ],
+  "installed_tool_x_local_m": 0.379975,
+  "candidates": [
+    {
+      "robot_root_local_m": [
+        -0.45,
+        0.0,
+        0.15
+      ],
+      "all_required_poses_solved": false,
+      "worst_residual_m": 0.166947,
+      "worst_residual_rad": 0.000208,
+      "poses": [
+        {
+          "pose": "installed",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.379974,
+          "reached_tool_x_local_m": 0.379971,
+          "residual_m": 5e-06,
+          "residual_rad": 2.2e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.305011,
+            -1.421528,
+            2.050903,
+            2.512206,
+            -1.26577,
+            -1.570782
+          ]
+        },
+        {
+          "pose": "installed",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.379975,
+          "reached_tool_x_local_m": 0.379972,
+          "residual_m": 4e-06,
+          "residual_rad": 1.3e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.647188,
+            0.509602,
+            -1.974435,
+            -1.676761,
+            -0.923606,
+            -1.570782
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243393,
+          "residual_m": 6e-06,
+          "residual_rad": 2.8e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.403679,
+            -1.653913,
+            2.293504,
+            2.501974,
+            -1.167129,
+            -1.570783
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243401,
+          "residual_m": 1e-06,
+          "residual_rad": 1.1e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.82018,
+            0.507002,
+            -2.204713,
+            -1.443871,
+            -0.750621,
+            -1.570811
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.0258,
+          "residual_m": 0.0887,
+          "residual_rad": 0.000208,
+          "solved": false,
+          "arm_joint_pos_rad": [
+            -1.570795,
+            -2.991864,
+            2.437783,
+            5.290411,
+            0.0002,
+            -3.165479
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.1145,
+          "residual_m": 6e-06,
+          "residual_rad": 4.9e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -2.030237,
+            -2.303297,
+            2.209369,
+            0.093926,
+            -0.459444,
+            -4.712339
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.192747,
+          "reached_tool_x_local_m": -0.0258,
+          "residual_m": 0.166947,
+          "residual_rad": 0.000201,
+          "solved": false,
+          "arm_joint_pos_rad": [
+            -1.570889,
+            -0.229272,
+            -2.36218,
+            -2.540344,
+            -0.000219,
+            0.419416
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.192748,
+          "reached_tool_x_local_m": -0.192753,
+          "residual_m": 9e-06,
+          "residual_rad": 1.5e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -2.450801,
+            -2.290796,
+            2.63186,
+            2.800547,
+            0.88,
+            -1.570811
+          ]
+        }
+      ],
+      "requested_base_m": [
+        -0.45,
+        0.0,
+        0.15
+      ]
+    },
+    {
+      "robot_root_local_m": [
+        -0.45,
+        -0.11,
+        0.15
+      ],
+      "all_required_poses_solved": false,
+      "worst_residual_m": 0.06398,
+      "worst_residual_rad": 0.594256,
+      "poses": [
+        {
+          "pose": "installed",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.379974,
+          "reached_tool_x_local_m": 0.379967,
+          "residual_m": 8e-06,
+          "residual_rad": 2.4e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.112049,
+            -1.40548,
+            2.031532,
+            2.515525,
+            -1.458734,
+            -1.570781
+          ]
+        },
+        {
+          "pose": "installed",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.379975,
+          "reached_tool_x_local_m": 0.379974,
+          "residual_m": 1e-06,
+          "residual_rad": 1.6e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.486951,
+            0.51408,
+            -2.031517,
+            -1.624151,
+            -1.083844,
+            -1.570783
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243398,
+          "residual_m": 6e-06,
+          "residual_rad": 2.2e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.147944,
+            -1.628736,
+            2.270694,
+            2.499645,
+            -1.422839,
+            -1.570811
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243401,
+          "residual_m": 2e-06,
+          "residual_rad": 4e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -2.993642,
+            -3.634424,
+            2.270683,
+            4.505294,
+            1.422837,
+            -1.570796
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.114071,
+          "residual_m": 0.041484,
+          "residual_rad": 0.000154,
+          "solved": false,
+          "arm_joint_pos_rad": [
+            -0.515662,
+            -2.765256,
+            2.687755,
+            3.219021,
+            -1.055219,
+            -1.570648
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.113926,
+          "residual_m": 0.023021,
+          "residual_rad": 0.466564,
+          "solved": false,
+          "arm_joint_pos_rad": [
+            -2.434212,
+            -2.656397,
+            2.07072,
+            6.283186,
+            -0.950517,
+            -4.349992
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.192747,
+          "reached_tool_x_local_m": -0.192716,
+          "residual_m": 0.06398,
+          "residual_rad": 0.000141,
+          "solved": false,
+          "arm_joint_pos_rad": [
+            -0.041525,
+            -2.765273,
+            2.68773,
+            3.21912,
+            -1.529352,
+            -1.57068
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.192748,
+          "reached_tool_x_local_m": -0.192618,
+          "residual_m": 0.05688,
+          "residual_rad": 0.594256,
+          "solved": false,
+          "arm_joint_pos_rad": [
+            -2.847184,
+            -2.634668,
+            2.019767,
+            6.283186,
+            -1.327513,
+            -4.545984
+          ]
+        }
+      ],
+      "requested_base_m": [
+        -0.45,
+        -0.11,
+        0.15
+      ]
+    },
+    {
+      "robot_root_local_m": [
+        -0.55,
+        0.0,
+        0.15
+      ],
+      "all_required_poses_solved": false,
+      "worst_residual_m": 0.066947,
+      "worst_residual_rad": 0.0002,
+      "poses": [
+        {
+          "pose": "installed",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.379974,
+          "reached_tool_x_local_m": 0.379971,
+          "residual_m": 6e-06,
+          "residual_rad": 2.2e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.259021,
+            -1.271009,
+            1.856664,
+            2.555924,
+            -1.311761,
+            -1.570782
+          ]
+        },
+        {
+          "pose": "installed",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.379975,
+          "reached_tool_x_local_m": 0.379971,
+          "residual_m": 4e-06,
+          "residual_rad": 2.8e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.559105,
+            -1.220339,
+            1.785328,
+            2.576586,
+            -1.011694,
+            -1.570811
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243399,
+          "residual_m": 1e-06,
+          "residual_rad": 2e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.326263,
+            0.515042,
+            -2.118269,
+            -1.538361,
+            -1.244548,
+            -1.570812
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243399,
+          "residual_m": 1e-06,
+          "residual_rad": 1.6e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.686359,
+            0.514465,
+            -2.039156,
+            -1.616899,
+            -0.884435,
+            -1.570782
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.114501,
+          "residual_m": 3e-06,
+          "residual_rad": 1.5e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.921691,
+            -2.995338,
+            2.674666,
+            3.462283,
+            0.3509,
+            -1.570801
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.1145,
+          "residual_m": 1e-06,
+          "residual_rad": 1.1e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.520475,
+            -2.024406,
+            2.538965,
+            2.627062,
+            -0.05032,
+            -1.570814
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.192747,
+          "reached_tool_x_local_m": -0.1258,
+          "residual_m": 0.066947,
+          "residual_rad": 0.0002,
+          "solved": false,
+          "arm_joint_pos_rad": [
+            -1.570803,
+            -2.398801,
+            2.437825,
+            1.507943,
+            -0.000201,
+            0.02383
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.192748,
+          "reached_tool_x_local_m": -0.19275,
+          "residual_m": 2e-06,
+          "residual_rad": 1.4e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.909156,
+            -2.178121,
+            2.599329,
+            2.720386,
+            0.338357,
+            -1.570812
+          ]
+        }
+      ],
+      "requested_base_m": [
+        -0.55,
+        0.0,
+        0.15
+      ]
+    },
+    {
+      "robot_root_local_m": [
+        -0.65,
+        0.0,
+        0.15
+      ],
+      "all_required_poses_solved": true,
+      "worst_residual_m": 6e-06,
+      "worst_residual_rad": 5.3e-05,
+      "poses": [
+        {
+          "pose": "installed",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.379974,
+          "reached_tool_x_local_m": 0.379972,
+          "residual_m": 4e-06,
+          "residual_rad": 1.9e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.225195,
+            -1.12544,
+            1.644417,
+            2.622606,
+            -1.345591,
+            -1.570782
+          ]
+        },
+        {
+          "pose": "installed",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.379975,
+          "reached_tool_x_local_m": 0.379978,
+          "residual_m": 5e-06,
+          "residual_rad": 1.7e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.491532,
+            0.424576,
+            -1.575233,
+            -1.99093,
+            -1.079266,
+            -1.570783
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243397,
+          "residual_m": 3e-06,
+          "residual_rad": 1.9e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.274107,
+            0.5043,
+            -1.929537,
+            -1.716352,
+            -1.296702,
+            -1.570811
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243396,
+          "residual_m": 4e-06,
+          "residual_rad": 1.5e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.588512,
+            -1.271002,
+            1.856669,
+            2.55591,
+            -0.982291,
+            -1.570782
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.114501,
+          "residual_m": 2e-06,
+          "residual_rad": 1.1e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.656181,
+            0.286641,
+            -2.542274,
+            -0.885961,
+            -0.914611,
+            -1.570785
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.114498,
+          "residual_m": 2e-06,
+          "residual_rad": 8e-06,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.160956,
+            0.414573,
+            -2.42891,
+            -1.12725,
+            -0.40984,
+            -1.570809
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.192747,
+          "reached_tool_x_local_m": -0.192749,
+          "residual_m": 6e-06,
+          "residual_rad": 2.1e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.998173,
+            -2.363,
+            2.648252,
+            2.856311,
+            -0.572631,
+            -1.570782
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.192748,
+          "reached_tool_x_local_m": -0.192748,
+          "residual_m": 1e-06,
+          "residual_rad": 5.3e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.42948,
+            -0.109389,
+            -2.147392,
+            -4.026341,
+            0.141319,
+            1.570785
+          ]
+        }
+      ],
+      "requested_base_m": [
+        -0.65,
+        0.0,
+        0.15
+      ]
+    },
+    {
+      "robot_root_local_m": [
+        -0.75,
+        0.0,
+        0.15
+      ],
+      "all_required_poses_solved": true,
+      "worst_residual_m": 7e-06,
+      "worst_residual_rad": 3.4e-05,
+      "poses": [
+        {
+          "pose": "installed",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.379974,
+          "reached_tool_x_local_m": 0.379973,
+          "residual_m": 1e-06,
+          "residual_rad": 1.8e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.199235,
+            -0.976645,
+            1.406619,
+            2.711612,
+            -1.37155,
+            -1.570782
+          ]
+        },
+        {
+          "pose": "installed",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.379975,
+          "reached_tool_x_local_m": 0.379975,
+          "residual_m": 3e-06,
+          "residual_rad": 1.6e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.438207,
+            -0.934572,
+            1.336098,
+            2.740065,
+            -1.132579,
+            -1.570783
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243395,
+          "residual_m": 5e-06,
+          "residual_rad": 2.2e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.236474,
+            -1.178619,
+            1.724508,
+            2.595691,
+            -1.334321,
+            -1.570811
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243402,
+          "residual_m": 4e-06,
+          "residual_rad": 1.6e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.514326,
+            0.447032,
+            -1.654882,
+            -1.933738,
+            -1.056472,
+            -1.570783
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.114505,
+          "residual_m": 6e-06,
+          "residual_rad": 2.1e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.468792,
+            -1.771442,
+            2.389023,
+            2.523995,
+            -1.102019,
+            -1.570783
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.1145,
+          "residual_m": 2e-06,
+          "residual_rad": 3.4e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -3.256995,
+            -3.62777,
+            2.292707,
+            4.476622,
+            1.686193,
+            -1.570791
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.192747,
+          "reached_tool_x_local_m": -0.192754,
+          "residual_m": 7e-06,
+          "residual_rad": 1.8e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.602737,
+            -1.965907,
+            2.510391,
+            2.597086,
+            -0.968055,
+            -1.570781
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.192748,
+          "reached_tool_x_local_m": -0.192747,
+          "residual_m": 2e-06,
+          "residual_rad": 1.8e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.100474,
+            0.434408,
+            -2.401201,
+            -1.174803,
+            -0.470318,
+            -1.57081
+          ]
+        }
+      ],
+      "requested_base_m": [
+        -0.75,
+        0.0,
+        0.15
+      ]
+    },
+    {
+      "robot_root_local_m": [
+        -0.45,
+        0.22,
+        0.15
+      ],
+      "all_required_poses_solved": true,
+      "worst_residual_m": 1e-05,
+      "worst_residual_rad": 4.8e-05,
+      "poses": [
+        {
+          "pose": "installed",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.379974,
+          "reached_tool_x_local_m": 0.379973,
+          "residual_m": 1e-06,
+          "residual_rad": 1.6e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.647188,
+            0.5096,
+            -1.974434,
+            -1.676754,
+            -0.923615,
+            -1.570785
+          ]
+        },
+        {
+          "pose": "installed",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.379975,
+          "reached_tool_x_local_m": 0.379971,
+          "residual_m": 3e-06,
+          "residual_rad": 1.4e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.890636,
+            -1.200977,
+            1.75733,
+            2.585222,
+            -0.680169,
+            -1.570782
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243401,
+          "residual_m": 2e-06,
+          "residual_rad": 1.1e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.82018,
+            0.507002,
+            -2.204714,
+            -1.443871,
+            -0.750622,
+            -1.570811
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243404,
+          "residual_m": 5e-06,
+          "residual_rad": 1.7e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.064153,
+            0.508722,
+            -1.965985,
+            -1.684329,
+            -0.506634,
+            -1.570811
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.1145,
+          "residual_m": 6e-06,
+          "residual_rad": 4.8e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -2.030239,
+            -2.303298,
+            2.20937,
+            0.093927,
+            -0.459444,
+            -4.712339
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.114501,
+          "residual_m": 3e-06,
+          "residual_rad": 2.3e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.778024,
+            0.043415,
+            -1.970057,
+            -4.356569,
+            -0.207228,
+            1.570801
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.192747,
+          "reached_tool_x_local_m": -0.192753,
+          "residual_m": 1e-05,
+          "residual_rad": 1.6e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -2.450797,
+            -2.290791,
+            2.631859,
+            2.800544,
+            0.879996,
+            -1.570811
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.192748,
+          "reached_tool_x_local_m": -0.192749,
+          "residual_m": 3e-06,
+          "residual_rad": 4.3e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.961308,
+            -1.837559,
+            1.981325,
+            6.139485,
+            -0.390514,
+            -4.712416
+          ]
+        }
+      ],
+      "requested_base_m": [
+        -0.45,
+        0.22,
+        0.15
+      ]
+    },
+    {
+      "robot_root_local_m": [
+        -0.45,
+        0.33,
+        0.15
+      ],
+      "all_required_poses_solved": true,
+      "worst_residual_m": 8e-06,
+      "worst_residual_rad": 5.3e-05,
+      "poses": [
+        {
+          "pose": "installed",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.379974,
+          "reached_tool_x_local_m": 0.379975,
+          "residual_m": 3e-06,
+          "residual_rad": 1.1e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.781397,
+            0.497238,
+            -1.882189,
+            -1.756634,
+            -0.789404,
+            -1.570811
+          ]
+        },
+        {
+          "pose": "installed",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.379975,
+          "reached_tool_x_local_m": 0.379972,
+          "residual_m": 3e-06,
+          "residual_rad": 1.3e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.978574,
+            -1.097185,
+            1.600767,
+            2.637992,
+            -0.592232,
+            -1.570782
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243399,
+          "residual_m": 4e-06,
+          "residual_rad": 5.3e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.960428,
+            0.091456,
+            -1.812618,
+            -4.562087,
+            0.610359,
+            1.570811
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243399,
+          "residual_m": 1e-06,
+          "residual_rad": 6e-06,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.14144,
+            0.48237,
+            -1.802362,
+            -1.821602,
+            -0.429359,
+            -1.570788
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.114502,
+          "residual_m": 6e-06,
+          "residual_rad": 3.4e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.853634,
+            -1.875574,
+            2.459332,
+            2.557867,
+            0.28283,
+            -1.570797
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.1145,
+          "residual_m": 1e-06,
+          "residual_rad": 3e-06,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.734891,
+            -1.458314,
+            2.094069,
+            2.505829,
+            0.164097,
+            -1.570789
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.192747,
+          "reached_tool_x_local_m": -0.192747,
+          "residual_m": 8e-06,
+          "residual_rad": 3.3e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -2.104757,
+            -2.064482,
+            2.117683,
+            6.230029,
+            -0.53397,
+            -4.712449
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.192748,
+          "reached_tool_x_local_m": -0.192747,
+          "residual_m": 2e-06,
+          "residual_rad": 6e-06,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.87985,
+            -1.468811,
+            2.106058,
+            2.504342,
+            0.309059,
+            -1.570789
+          ]
+        }
+      ],
+      "requested_base_m": [
+        -0.45,
+        0.33,
+        0.15
+      ]
+    },
+    {
+      "robot_root_local_m": [
+        -0.65,
+        0.22,
+        0.15
+      ],
+      "all_required_poses_solved": true,
+      "worst_residual_m": 4e-06,
+      "worst_residual_rad": 5.3e-05,
+      "poses": [
+        {
+          "pose": "installed",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.379974,
+          "reached_tool_x_local_m": 0.379973,
+          "residual_m": 2e-06,
+          "residual_rad": 1.6e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.491534,
+            -1.080883,
+            1.575243,
+            2.647229,
+            -1.079252,
+            -1.570783
+          ]
+        },
+        {
+          "pose": "installed",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.379975,
+          "reached_tool_x_local_m": 0.379972,
+          "residual_m": 4e-06,
+          "residual_rad": 1.4e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.709373,
+            -0.95262,
+            1.36651,
+            2.727685,
+            -0.861429,
+            -1.570782
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243402,
+          "residual_m": 3e-06,
+          "residual_rad": 1.5e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.588509,
+            0.492861,
+            -1.856658,
+            -1.777784,
+            -0.982294,
+            -1.570812
+          ]
+        },
+        {
+          "pose": "staging",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": 0.2434,
+          "reached_tool_x_local_m": 0.243403,
+          "residual_m": 4e-06,
+          "residual_rad": 1.1e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -0.825185,
+            0.444507,
+            -1.645533,
+            -1.940554,
+            -0.745615,
+            -1.570811
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.114499,
+          "residual_m": 2e-06,
+          "residual_rad": 1.7e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.16096,
+            0.414576,
+            -2.428914,
+            -1.12725,
+            -0.409831,
+            -1.570785
+          ]
+        },
+        {
+          "pose": "extracted",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.1145,
+          "reached_tool_x_local_m": -0.114498,
+          "residual_m": 3e-06,
+          "residual_rad": 7e-06,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.333765,
+            0.513102,
+            -2.152313,
+            -1.502378,
+            -0.237029,
+            -1.570807
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": 0.0,
+          "target_tool_x_local_m": -0.192747,
+          "reached_tool_x_local_m": -0.192747,
+          "residual_m": 1e-06,
+          "residual_rad": 5.3e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.429475,
+            -0.109388,
+            -2.147391,
+            -4.026343,
+            0.141324,
+            1.570786
+          ]
+        },
+        {
+          "pose": "retreated",
+          "bay_y_m": -0.22,
+          "target_tool_x_local_m": -0.192748,
+          "reached_tool_x_local_m": -0.19275,
+          "residual_m": 4e-06,
+          "residual_rad": 4.7e-05,
+          "solved": true,
+          "arm_joint_pos_rad": [
+            -1.4969,
+            0.065882,
+            -1.915429,
+            -4.433581,
+            0.073901,
+            1.570786
+          ]
+        }
+      ],
+      "requested_base_m": [
+        -0.65,
+        0.22,
+        0.15
+      ]
+    }
+  ],
+  "solution": {
+    "robot_root_local_m": [
+      -0.65,
+      0.0,
+      0.15
+    ],
+    "all_required_poses_solved": true,
+    "worst_residual_m": 6e-06,
+    "worst_residual_rad": 5.3e-05,
+    "poses": [
+      {
+        "pose": "installed",
+        "bay_y_m": 0.0,
+        "target_tool_x_local_m": 0.379974,
+        "reached_tool_x_local_m": 0.379972,
+        "residual_m": 4e-06,
+        "residual_rad": 1.9e-05,
+        "solved": true,
+        "arm_joint_pos_rad": [
+          -0.225195,
+          -1.12544,
+          1.644417,
+          2.622606,
+          -1.345591,
+          -1.570782
+        ]
+      },
+      {
+        "pose": "installed",
+        "bay_y_m": -0.22,
+        "target_tool_x_local_m": 0.379975,
+        "reached_tool_x_local_m": 0.379978,
+        "residual_m": 5e-06,
+        "residual_rad": 1.7e-05,
+        "solved": true,
+        "arm_joint_pos_rad": [
+          -0.491532,
+          0.424576,
+          -1.575233,
+          -1.99093,
+          -1.079266,
+          -1.570783
+        ]
+      },
+      {
+        "pose": "staging",
+        "bay_y_m": 0.0,
+        "target_tool_x_local_m": 0.2434,
+        "reached_tool_x_local_m": 0.243397,
+        "residual_m": 3e-06,
+        "residual_rad": 1.9e-05,
+        "solved": true,
+        "arm_joint_pos_rad": [
+          -0.274107,
+          0.5043,
+          -1.929537,
+          -1.716352,
+          -1.296702,
+          -1.570811
+        ]
+      },
+      {
+        "pose": "staging",
+        "bay_y_m": -0.22,
+        "target_tool_x_local_m": 0.2434,
+        "reached_tool_x_local_m": 0.243396,
+        "residual_m": 4e-06,
+        "residual_rad": 1.5e-05,
+        "solved": true,
+        "arm_joint_pos_rad": [
+          -0.588512,
+          -1.271002,
+          1.856669,
+          2.55591,
+          -0.982291,
+          -1.570782
+        ]
+      },
+      {
+        "pose": "extracted",
+        "bay_y_m": 0.0,
+        "target_tool_x_local_m": -0.1145,
+        "reached_tool_x_local_m": -0.114501,
+        "residual_m": 2e-06,
+        "residual_rad": 1.1e-05,
+        "solved": true,
+        "arm_joint_pos_rad": [
+          -0.656181,
+          0.286641,
+          -2.542274,
+          -0.885961,
+          -0.914611,
+          -1.570785
+        ]
+      },
+      {
+        "pose": "extracted",
+        "bay_y_m": -0.22,
+        "target_tool_x_local_m": -0.1145,
+        "reached_tool_x_local_m": -0.114498,
+        "residual_m": 2e-06,
+        "residual_rad": 8e-06,
+        "solved": true,
+        "arm_joint_pos_rad": [
+          -1.160956,
+          0.414573,
+          -2.42891,
+          -1.12725,
+          -0.40984,
+          -1.570809
+        ]
+      },
+      {
+        "pose": "retreated",
+        "bay_y_m": 0.0,
+        "target_tool_x_local_m": -0.192747,
+        "reached_tool_x_local_m": -0.192749,
+        "residual_m": 6e-06,
+        "residual_rad": 2.1e-05,
+        "solved": true,
+        "arm_joint_pos_rad": [
+          -0.998173,
+          -2.363,
+          2.648252,
+          2.856311,
+          -0.572631,
+          -1.570782
+        ]
+      },
+      {
+        "pose": "retreated",
+        "bay_y_m": -0.22,
+        "target_tool_x_local_m": -0.192748,
+        "reached_tool_x_local_m": -0.192748,
+        "residual_m": 1e-06,
+        "residual_rad": 5.3e-05,
+        "solved": true,
+        "arm_joint_pos_rad": [
+          -1.42948,
+          -0.109389,
+          -2.147392,
+          -4.026341,
+          0.141319,
+          1.570785
+        ]
+      }
+    ],
+    "requested_base_m": [
+      -0.65,
+      0.0,
+      0.15
+    ]
+  },
+  "passed": true,
+  "scope_and_limitations": [
+    "Kinematics only, with the module pinned. It says where the tool can be put, not what a policy does when it gets there.",
+    "Every pose is swept from the INSTALLED module pose. An earlier version of this script swept from the rack-mouth pose, which puts the installed target 136 mm in front of the pinned module and solves it by driving the gripper into the module; that cell reported 91.6 mm and 1.02 rad and was a probe artefact.",
+    "This is a differential-IK servo, not an optimiser. Where position and orientation trade steeply, what it converges to depends on the authority each is driven with; orientation is at full authority throughout, which is the strict side of that trade.",
+    "The lateral sweep moves the TARGET to the second bay while the pinned module stays on the centre line. It measures reach into that bay, not contact with anything standing in it.",
+    "One curriculum stage, four wrist_1 seed quadrants, and two start poses. A different arm or a seventh axis would have a different boundary.",
+    "The mount anchor moves with the base. The compliant mount is a D6 joint between the robot root and a mount_anchor body and robot_mount_unstable terminates above 16.5 mm of offset, so a base moved without its anchor is reset to its spawn pose every step and the whole sweep reports that pose as the reachable set. That is the third layer of the --robot_base_x defect and the only one that produces a plausible wrong answer rather than no answer.",
+    "Simulation only. No result here was produced on real hardware."
+  ]
+}

@@ -3963,6 +3963,217 @@ rather than force-deleted — that history is the only copy.
 `keyed-interface` is kept. It is where the rotation measurements in *The keyed
 interface is closed as impossible* were taken, and nothing on it will be merged.
 
+## Three probe defects between the workcell hypothesis and its measurement
+
+The workcell hypothesis — *move the base back and the attitude-holding boundary
+moves with it* — has been this project's leading suspect since 2026-08-15 and had
+never been tested. 2026-08-18 found the reason: `--robot_base_x` was inert. That
+turned out to be the first of **three** defects stacked on the same probe, and
+the two found on 2026-08-19 are worse than the first, because the first produced
+*no* answer and these two produce *plausible wrong ones*.
+
+Rule 6 says prove a probe moves what it measures. These are what that costs when
+it is not done, and each was caught by a control rather than by inspection.
+
+### One: the installed capture pose was solved by driving the gripper into the module
+
+`scripts/solve_workcell.py` sweeps every pose the relocation needs as an offset
+from one pinned module pose. Run from curriculum **stage 2**, with the module
+parked at the rack mouth, the *installed* target sits 136 mm **in front of** the
+pinned module — inside the blade's own body. That cell reported **91.6 mm and
+1.02 rad** and would have condemned every candidate base, including the certified
+one, for a reason that has nothing to do with the arm.
+
+The fix is not a tolerance. Stage **0** is the one stage from which all four
+poses lie behind the pinned module's pin, so no target is inside anything:
+
+| Pose | Module centre | Tool x, local |
+| --- | ---: | ---: |
+| installed | 0.7195 | +0.3800 |
+| staging | 0.5829 | +0.2434 |
+| extracted | 0.2250 | −0.1145 |
+| retreated | 0.1468 | −0.1928 |
+
+Those four tool positions are the same four `relocation_reach_boundary.json`
+reports, which is the control that says the corrected sweep is aimed at the same
+place the published boundary was.
+
+### Two: a moved base spawns the arm inside the rack
+
+The task's head-on reset pose is solved for **one** base position, so moving the
+base carries the arm bodily with it. Probed 110 mm to the side, the gripper
+spawns straddling the rack's left lead-in flare. The calibrator therefore now
+solves every target from **two** start poses — the task's own, and an upright one
+(shoulder lifted to vertical, elbow straight) that parks the tool about 1.3 m
+above the base and is clear of the scene at any candidate position — and reports
+whichever converged.
+
+### Three: the mount anchor did not move with the base, and this is the one that lies
+
+The compliant mount is a D6 joint between the robot root and a `mount_anchor`
+body, and `robot_mount_unstable` ends the episode when the two differ by more
+than **16.5 mm** on any axis. `MOUNT_ANCHOR_CFG.init_state.pos` was
+`ROBOT_ROOT_POS`. So moving the base by 110 mm and leaving the anchor behind
+fired that termination on step 1 and on every step after it, and the manager put
+the arm back at its spawn pose before it could servo anywhere.
+
+What that looks like in the report is the problem:
+
+| Symptom | Reading |
+| --- | --- |
+| every environment ends at the spawn joint angles, to six decimals | including the four wrist-quadrant seeds, whose offsets were written and then undone |
+| residual equals the geometric offset to the target, exactly | 109.7 mm at the installed pose, 506.4 at extraction, 583.0 at the retreat |
+| attitude residual is tiny, 0.0003–0.0011 rad | because the spawn pose already holds the capture attitude |
+
+Read without the joint angles, that is a clean, monotone, entirely convincing
+reach boundary. It is a frozen arm.
+
+Two controls caught it. The wrist seeds are the first: four environments given
+±90° and 180° of `wrist_1` cannot all report the same tool position to four
+decimals unless something is rewriting them. The second is that the residuals
+were *exactly* the geometric offsets — a constant that survives every variable is
+not produced by any of them.
+
+`GRAPPLE_MOUNT_ANCHOR_CFG` now follows `GRAPPLE_ROBOT_ROOT_POS`, the calibrator
+moves the anchor with `--robot_base_*`, and
+`tests/test_configuration_contract.py` defends both, because this is exactly the
+class of defect rule 2 was written for: a constant that lives in two places and
+only one of them was edited.
+
+## The workcell, solved: the attitude wall is base-relative, and it has two exits
+
+`evidence/relocation_reach_boundary.json` mapped the boundary at one base
+position and drew the obvious conclusion — the arm is folded back over its own
+shoulder at the retreat, so move the base back.
+`evidence/workcell_reach_solution.json` tested that. The conclusion was right,
+the arithmetic in it was right to the millimetre, and the same sweep found a
+second exit the earlier file had the data to see and read the other way round.
+
+### The control, first
+
+With the three probe defects above fixed, the certified base reproduces the
+published boundary exactly:
+
+| Pose | Tool x, local | Reached | Short by | Attitude held |
+| --- | ---: | ---: | ---: | ---: |
+| installed | +0.3800 | +0.3800 | 0.01 mm | 0.00002 rad |
+| staging | +0.2434 | +0.2434 | 0.01 mm | 0.00003 rad |
+| extracted | −0.1145 | **−0.0258** | **88.70 mm** | 0.00021 rad |
+| retreated | −0.1928 | **−0.0258** | **166.95 mm** | 0.00020 rad |
+
+Same parking point, −0.0258. Same two failures. Same 0.0002 rad of attitude held
+while the position is given away entirely. Nothing about the boundary moved;
+what moved is that the sweep can now be trusted to follow the workcell.
+
+### Exit one: the wall is rigidly base-relative
+
+| Base x | Wall, tool x local | Retreat shortfall | Extraction shortfall |
+| ---: | ---: | ---: | ---: |
+| −0.45 | −0.0258 | 166.95 mm | 88.70 mm |
+| −0.55 | −0.1258 | 66.95 mm | 0.01 mm, **solved** |
+| **−0.65** | **−0.2258** | **0.01 mm, solved** | **0.01 mm, solved** |
+
+100 mm of base travel buys exactly 100 mm of depth. The wall is a fixed
+0.4242 m in front of the base and it moves with it one for one, which makes the
+threshold arithmetic rather than a search: the retreat needs tool x = −0.1928, so
+it needs the base at or behind **−0.617 m**. −0.65 clears it by 33 mm.
+
+### Exit two: the wall only exists on the base's own centre line
+
+The same sweep asks every pose in the second bay as well, 220 mm to the side, at
+the same commanded attitude:
+
+| Pose | Bay 1, y = 0 | Bay 2, y = −0.22 |
+| --- | ---: | ---: |
+| installed | 0.01 mm | 0.00 mm |
+| staging | 0.01 mm | 0.00 mm |
+| extracted | **88.70 mm** | **0.01 mm** |
+| retreated | **166.95 mm** | **0.01 mm** |
+
+Same base, same depth, same attitude, same arm — and 220 mm off the base's plane
+the wall is gone. It is not a reach limit and not a depth limit; the folded
+configuration it is made of is specifically the arm reaching back **along its own
+centre line**.
+
+`docs/status.md` already held half of this and read it the other way:
+
+> the lateral displacement was never the problem, and this confirms it from the
+> other side: the second bay's staging pose converges to 0.0060 mm
+
+Staging converges in *both* bays, so that measurement could not tell the two
+readings apart. The retreat can, and it says the lateral displacement was never
+the problem because it is the **cure**.
+
+Splitting the difference is the worst available choice, and it is the one an
+engineer reaches for first. A base centred between the bays puts *both* of them
+about 110 mm off its plane, and 110 mm is not enough:
+
+| Base | Bay 1 off-plane | Bay 2 off-plane | Worst residual |
+| --- | ---: | ---: | ---: |
+| (−0.45, 0) | 0 mm | 220 mm | 166.95 mm, on bay 1 |
+| (−0.45, −0.11) | 110 mm | 110 mm | 63.98 mm, on bay 1 |
+
+The shortfall falls from 167 mm to 64 mm and the tool now arrives at the right
+**depth** — −0.1927 against −0.1928 — and drifts 64 mm laterally instead. The
+failure changes axis without going away.
+
+### The whole candidate table
+
+Eight cells, every one gated on all four poses in both bays at full attitude
+authority:
+
+| Base (x, y, z) | Worst residual | All four poses, both bays |
+| --- | ---: | :--- |
+| (−0.45, 0, 0.15) — the certified cell | 166.95 mm | no |
+| (−0.55, 0, 0.15) | 66.95 mm | no |
+| (−0.45, −0.11, 0.15) — centred between the bays | 63.98 mm | no |
+| **(−0.65, 0, 0.15)** | **0.01 mm** | **yes** |
+| (−0.75, 0, 0.15) | 0.01 mm | yes |
+| (−0.45, +0.22, 0.15) — unmoved in x, offset laterally | 0.01 mm | yes |
+| (−0.45, +0.33, 0.15) | 0.01 mm | yes |
+| (−0.65, +0.22, 0.15) — both exits at once | 0.00 mm | yes |
+
+Two things in that table are worth more than the winner. **(−0.45, +0.22) solves
+everything without moving the base back at all** — it is a pure lateral fix, and
+it confirms the second exit as a base placement rather than only as a property of
+the second bay. And (−0.45, −0.11), the placement an engineer reaches for first,
+is the only candidate that is worse than doing nothing on one axis while being
+better on the other.
+
+(−0.65, 0, 0.15) is adopted because it is the smallest move that works and
+because its margin is arithmetic rather than empirical: the wall is 0.4242 m in
+front of the base and moves with it one for one, so the retreat at tool
+x = −0.1928 needs the base at or behind −0.617, and −0.65 clears that by 33 mm.
+The lateral threshold is only bracketed — somewhere between 110 mm, which fails,
+and 220 mm, which works — and a bracket is a worse thing to design against than
+a derivation.
+
+### The adopted cell, and why it is a path rather than four points
+
+**`GRAPPLE_ROBOT_ROOT_POS = (−0.65, 0.0, 0.15)`.** All four poses converge in
+both bays to **0.01 mm and 0.0001 rad** with orientation driven at full
+authority.
+
+Four converged poses are not yet a workcell. The calibrator reports *a* solution
+per pose, and an inverse-kinematics solution in one branch is no use to a
+differential controller sitting in another. So the rows are read by the start
+pose they were solved from, and every one of the eight converges from **the
+task's own head-on reset pose** — the branch a policy will actually be in:
+
+| Pose | Bay 1 joints, from the task's own start | Bay 2 |
+| --- | --- | --- |
+| installed | (−0.225, −1.125, 1.644, 2.623, −1.346, −1.571) | (−0.492, −1.081, 1.575, 2.647, −1.079, −1.571) |
+| staging | (−0.274, −1.325, 1.930, 2.537, −1.297, −1.571) | (−0.589, −1.271, 1.857, 2.556, −0.982, −1.571) |
+| extracted | (−0.656, −2.032, 2.542, 2.631, −0.915, −1.571) | (−1.161, −1.828, 2.429, 2.541, −0.410, −1.571) |
+| retreated | (−0.998, −2.363, 2.648, 2.856, −0.573, −1.571) | (−1.429, −1.980, 2.518, 2.604, −0.141, −1.571) |
+
+Read down a column: shoulder pan −0.225 → −0.998, lift −1.125 → −2.363, elbow
+1.644 → 2.648, every joint monotone, no sign changes, no branch flips. Read
+across: the cross leg is a lateral sweep inside the same branch. That is a
+continuous path through every pose the relocation needs, which is the thing the
+old cell did not have and the reason this is a workcell change rather than four
+lucky solves.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300

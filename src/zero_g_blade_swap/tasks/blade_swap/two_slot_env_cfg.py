@@ -65,12 +65,12 @@ from .workflow_demo_env_cfg import ZeroGBladeGrapplePinWorkflowEnvCfg
 #: wrist seeds for exactly this reason, and a single-seed run would have reported
 #: a reachability failure that is not there.
 SECOND_SLOT_STAGING_ARM_JOINT_POS: tuple[float, ...] = (
-    -0.820182,
-    -1.560585,
-    2.204724,
-    2.497455,
-    -0.750621,
-    -1.570789,
+    -0.588512,
+    -1.271002,
+    1.856667,
+    2.555911,
+    -0.982291,
+    -1.570782,
 )
 
 #: Where the module is presented for an insertion into the second bay: the

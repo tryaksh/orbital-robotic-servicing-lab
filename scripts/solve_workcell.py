@@ -152,6 +152,20 @@ def _parser() -> argparse.ArgumentParser:
         help="Candidate base heights, crossed with the others. 0.15 is the certified cell.",
     )
     parser.add_argument(
+        "--base_xyz",
+        type=float,
+        nargs="+",
+        default=None,
+        metavar="V",
+        help=(
+            "Explicit base positions as flattened x y z triples, instead of the cross product of --base_x, "
+            "--base_y and --base_z. The cross product wastes launches once the sweep has a direction: "
+            "y = -0.11 puts BOTH bays about 110 mm off the base's plane and neither converges, while a bay "
+            "220 mm off it converges at every depth, so the useful lateral candidates are on one side of the "
+            "rack rather than between the bays."
+        ),
+    )
+    parser.add_argument(
         "--alt_start",
         type=float,
         nargs=6,
@@ -285,10 +299,16 @@ def main() -> int:
     print(f"[WORKCELL] installed tool x = {installed_tool_x:+.4f}, offsets {offsets}, bays {bays}")
 
     candidates = []
-    for base_x in args.base_x:
-        for base_y in args.base_y:
-            for base_z in args.base_z:
-                candidates.append((base_x, base_y, base_z))
+    if args.base_xyz:
+        if len(args.base_xyz) % 3:
+            raise SystemExit("--base_xyz takes flattened x y z triples")
+        values = list(args.base_xyz)
+        candidates = [tuple(values[index : index + 3]) for index in range(0, len(values), 3)]
+    else:
+        for base_x in args.base_x:
+            for base_y in args.base_y:
+                for base_z in args.base_z:
+                    candidates.append((base_x, base_y, base_z))
 
     results = []
     for base in candidates:
