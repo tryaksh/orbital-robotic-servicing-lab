@@ -5,7 +5,8 @@
 # before it passes. Each is a separate call:
 #
 #   scripts/certify_relocation_workcell.sh promote   # move every script's defaults
-#   scripts/certify_relocation_workcell.sh skills    # Phase 5: capture + extract
+#   scripts/certify_relocation_workcell.sh skills    # Phase 5: extract
+#   scripts/certify_relocation_workcell.sh capture   # Phase 5: capture, already done as v6w65
 #   scripts/certify_relocation_workcell.sh insert2   # Phase 5: insert, both bays
 #   scripts/certify_relocation_workcell.sh chains    # Phase 6: removal + installation
 #   scripts/certify_relocation_workcell.sh trace     # Phase 7: read the relocation
@@ -39,13 +40,22 @@ case "$stage" in
     ;;
 
   skills)
-    # Capture and extraction on the single-bay tasks, three held-out seeds and
-    # three curriculum stages each. Insert is certified by `insert2` instead,
-    # because the promoted insert is the two-bay policy and its gate is the
-    # worse bay rather than a single-slot pool.
-    GRASP_VERSION=v6w65 EXTRACT_VERSION=v16w65 \
+    # Extraction only. Capture needed no second training pass -- it recovered in
+    # 900 epochs and is already certified at 94.46% as v6w65 -- and re-running an
+    # unchanged checkpoint against an unchanged task costs 36 minutes to
+    # reproduce a file that already exists. Pass `capture` to redo it.
+    #
+    # Insert is certified by `insert2` instead, because the promoted insert is
+    # the two-bay policy and its gate is the worse bay, not a single-slot pool.
+    EXTRACT_VERSION=v16w65 \
       INTERFACE="the plain grapple pin, on the moved workcell at x = -0.65" \
-      bash scripts/certify_demo_policies.sh Grasp Extract
+      bash scripts/certify_demo_policies.sh Extract
+    ;;
+
+  capture)
+    GRASP_VERSION=v6w65 \
+      INTERFACE="the plain grapple pin, on the moved workcell at x = -0.65" \
+      bash scripts/certify_demo_policies.sh Grasp
     ;;
 
   insert2)
@@ -100,7 +110,7 @@ case "$stage" in
     ;;
 
   *)
-    echo "usage: scripts/certify_relocation_workcell.sh {promote|skills|insert2|chains|trace|latchab|relocate}"
+    echo "usage: scripts/certify_relocation_workcell.sh {promote|skills|capture|insert2|chains|trace|latchab|relocate}"
     exit 2
     ;;
 esac
