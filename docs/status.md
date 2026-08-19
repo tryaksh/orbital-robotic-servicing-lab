@@ -4501,6 +4501,25 @@ identical trap once, extract v10 at a *higher* reward than its predecessors and
 0.00% certified. The reward is not the gate. The termination counters are, and
 they are in the same tfevents file.
 
+### The first logged reward after a resume is not a measurement
+
+Worth writing down because it nearly cost a wrong diagnosis. Insert's second pass
+resumes from the *end* of its first pass, a policy 1,200 epochs different from
+the one the first pass started with — and both runs log an opening reward of
+**−15.1652** and **−15.1653**. Two different policies agreeing to four decimals
+looks exactly like a resume that failed to load its checkpoint.
+
+It is not. Both runs log a first-epoch mean episode length of **1.15 steps**. The
+only episodes that complete inside the first epoch are the ones that fail on
+step 1, their return is dominated by `failure` at weight **−15.0**, and every
+policy scores about −15 on them. The number is the reward weight, not the policy.
+
+So: after a resume, the first logged point of `rewards/step` says nothing about
+what was loaded. Check `episode_lengths/step` beside it — if it is near 1, the
+reward is the failure weight and the run has not started measuring anything yet.
+The same reading explains the `episode_lengths` of 1.15 that appears at the top
+of every one of these runs.
+
 ### One insert policy now serves all three chains, and that is a change worth naming
 
 `main` carries two insert policies: single-bay **v6**, which the installation
