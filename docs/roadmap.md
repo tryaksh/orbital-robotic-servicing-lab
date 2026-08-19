@@ -83,6 +83,18 @@ relocation was not the right call for this project's last session, and that is a
 judgement rather than a measurement — a later session with GPU time to re-certify
 everything should take it.
 
+> **Taken 2026-08-19 on branch `industrial-relocation`, and the answer is
+> smaller than this paragraph expected.** The base is at
+> `GRAPPLE_ROBOT_ROOT_POS = (−0.65, 0, 0.15)` and all four poses converge to
+> 0.01 mm in both bays (`evidence/workcell_reach_solution.json`). Two things this
+> page did not predict. The parking point is *rigidly* base-relative — 0.4242 m,
+> moving one millimetre per millimetre — so the threshold is arithmetic rather
+> than a search: the retreat needs the base at or behind −0.617 m. And there is a
+> second, independent exit: the same two poses converge 220 mm off the base's own
+> plane without moving the base at all, so "cross laterally" was refuted as a
+> *leg order* and is correct as a *workcell layout*. 110 mm is not enough; a base
+> centred between the two bays is the worst placement measured.
+
 **A note on the fourth item's own history**, because it is the most useful thing on
 this page. Step 4 was diagnosed three times and the first two diagnoses were both
 wrong in the same way: they read a single measurement as a property of the system.
