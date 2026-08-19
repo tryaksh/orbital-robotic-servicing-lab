@@ -3184,6 +3184,13 @@ tested for reachability.**
 
 ### The retreat depth is not reachable holding the capture attitude
 
+> **SUPERSEDED 2026-08-18.** This is one point past a boundary, read as the
+> boundary. The 174 mm shortfall is real and so is the 0.0001 rad attitude, but
+> the pose is *also* reachable to 3.6 mm at 0.0114 rad — the two are ends of a
+> steep trade rather than a contradiction. And the `--robot_base_x` sweep quoted
+> in this section moved nothing: the flag was inert. See *The relocation is
+> blocked by a kinematic wall, and it is now mapped* below.
+
 That test was run, and it answers the question. It was first written up here as
 inconclusive on the grounds that the calibrator servos to the "handle centre"
 rather than the pin grip point; **that was wrong and the correction matters.** For

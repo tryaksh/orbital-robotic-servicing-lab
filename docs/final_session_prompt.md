@@ -1,5 +1,13 @@
 # Final session prompt
 
+> **HISTORICAL — this is a session prompt, not documentation.** It records how
+> the work was directed on the date in its own text, and the numbers in it were
+> current only then. Several are now retracted or superseded. It is kept because
+> the record of how an autonomous session was steered is part of what this
+> repository is showing. **For current numbers read `docs/status.md`,
+> `README.md`, and `evidence/RETRACTED.md`.**
+
+
 Copy everything between the rules.
 
 ---

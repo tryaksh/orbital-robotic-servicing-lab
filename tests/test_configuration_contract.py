@@ -180,3 +180,36 @@ def test_the_uncertified_full_workflow_stays_deleted() -> None:
     source = (ROOT / "scripts/run_workflow_demo.py").read_text(encoding="utf-8")
     assert '"full"' not in source
     assert 'choices=("remove", "install", "relocate")' in source
+
+
+def test_every_evidence_file_the_documents_cite_exists() -> None:
+    """No number without a file, and no file name that does not resolve.
+
+    The discipline this repository claims is that every figure names the evidence
+    it came from. That is only worth something if the names resolve: a reader who
+    clicks a filename and finds nothing has been told evidence exists when it does
+    not, which is worse than not citing it at all.
+    """
+
+    import importlib.util
+    import sys
+
+    path = ROOT / "scripts" / "check_evidence_links.py"
+    spec = importlib.util.spec_from_file_location("check_evidence_links", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    available = {p.name for p in (ROOT / "evidence").glob("*.json")}
+    broken: list[str] = []
+    for name in module.DOCUMENTS:
+        document = ROOT / name
+        assert document.exists(), f"{name} is cited by the checker but does not exist"
+        text = document.read_text(encoding="utf-8")
+        names = set(module.QUALIFIED.findall(text)) | set(module.BARE.findall(text))
+        for candidate in names:
+            if candidate in available:
+                continue
+            if f"evidence/{candidate}" in text or candidate.endswith("_certification.json"):
+                broken.append(f"{name} -> evidence/{candidate}")
+    assert not broken, "broken evidence references: " + ", ".join(sorted(broken))
