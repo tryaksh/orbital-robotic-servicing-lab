@@ -97,6 +97,22 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--attitude_authority",
+        type=float,
+        nargs="+",
+        default=None,
+        metavar="FRACTION",
+        help=(
+            "Scale the orientation command by this fraction, one environment per value. "
+            "The point is that reach and attitude TRADE near a folded configuration rather than "
+            "one being simply unavailable: at full authority this servo holds the capture attitude "
+            "to 0.0002 rad and gives up 88.7 mm of position at the extraction depth, while an "
+            "earlier 2,000-step run reached the same pose to 3.6 mm by allowing 0.0114 rad. Both "
+            "are true. Sweeping the authority measures the curve between them instead of picking a "
+            "point on it and calling it a wall."
+        ),
+    )
+    parser.add_argument(
         "--free_orientation",
         action="store_true",
         help=(
@@ -225,7 +241,8 @@ def main() -> dict[str, object]:
             seed_offsets = [0.0, 0.5 * math.pi, -0.5 * math.pi, math.pi] if target_rot is not None else [0.0]
         sweep = list(args.sweep_offset_x) if args.sweep_offset_x else [0.0]
         lift = list(args.sweep_offset_z) if args.sweep_offset_z else [0.0]
-        num_envs = len(stages) * len(seed_offsets) * len(sweep) * len(lift)
+        authority = list(args.attitude_authority) if args.attitude_authority else [1.0]
+        num_envs = len(stages) * len(seed_offsets) * len(sweep) * len(lift) * len(authority)
 
         env_cfg = parse_env_cfg(args.task, device=args.device or "cuda:0", num_envs=num_envs)
         env_cfg.configure_robustness(0)
@@ -274,21 +291,24 @@ def main() -> dict[str, object]:
         # Stage varies fastest, then the wrist seed, then the swept depth, so the
         # report groups the way it is read: all seeds for one depth together.
         stage_tensor = torch.tensor(stages, dtype=torch.long, device=task.device).repeat(
-            len(seed_offsets) * len(sweep) * len(lift)
+            len(seed_offsets) * len(sweep) * len(lift) * len(authority)
         )
         offset_tensor = (
             torch.tensor(seed_offsets, dtype=torch.float32, device=task.device)
             .repeat_interleave(len(stages))
-            .repeat(len(sweep) * len(lift))
+            .repeat(len(sweep) * len(lift) * len(authority))
         )
         sweep_tensor = (
             torch.tensor(sweep, dtype=torch.float32, device=task.device)
             .repeat_interleave(len(stages) * len(seed_offsets))
-            .repeat(len(lift))
+            .repeat(len(lift) * len(authority))
         )
         lift_tensor = torch.tensor(lift, dtype=torch.float32, device=task.device).repeat_interleave(
             len(stages) * len(seed_offsets) * len(sweep)
-        )
+        ).repeat(len(authority))
+        authority_tensor = torch.tensor(
+            authority, dtype=torch.float32, device=task.device
+        ).repeat_interleave(len(stages) * len(seed_offsets) * len(sweep) * len(lift))
         task._insertion_curriculum_stage = stage_tensor.clone()
         env.reset()
         task._insertion_curriculum_stage = stage_tensor.clone()
@@ -342,7 +362,7 @@ def main() -> dict[str, object]:
                     current_b = quat_mul(root_inverse, tool_rot)
                     desired_b = quat_mul(root_inverse, desired_w)
                     delta = axis_angle_from_quat(quat_mul(desired_b, quat_inv(current_b)))
-                    action[:, 3:6] = (delta / angular_scale).clamp(-1.0, 1.0)
+                    action[:, 3:6] = (delta / angular_scale).clamp(-1.0, 1.0) * authority_tensor.unsqueeze(-1)
                 env.step(action)
                 if step % 100 == 0:
                     distances = torch.linalg.vector_norm(error_w, dim=-1) * 1000.0
@@ -376,6 +396,7 @@ def main() -> dict[str, object]:
                     "curriculum_stage": int(stage_tensor[index]),
                     "sweep_offset_x_m": round(float(sweep_tensor[index]), 6),
                     "sweep_offset_z_m": round(float(lift_tensor[index]), 6),
+                    "attitude_authority": round(float(authority_tensor[index]), 6),
                     "target_tool_z_local_m": round(float(target_local_z[index]), 6),
                     "target_tool_x_local_m": round(float(target_local_x[index]), 6),
                     "reached_tool_x_local_m": round(float(tool_local_x[index]), 6),
@@ -419,6 +440,7 @@ def main() -> dict[str, object]:
             "servo_steps": args.steps,
             "sweep_offset_x_m": sweep,
             "sweep_offset_z_m": lift,
+            "attitude_authority": authority,
             "robot_root_x_local_m": round(robot_root_local_x, 6),
             "robot_root_x_requested_m": args.robot_base_x,
             "held_finger_joint_rad": args.finger_joint,

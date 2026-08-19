@@ -5,7 +5,7 @@
   "question": "The relocation chain times out in the lateral transit. The transit was known to be unable to reach its retreat depth while commanding the module's attitude, from a single point measurement. This maps the boundary instead of sampling one point past it, and adds the two controls that say what the boundary is made of.",
   "method": "scripts/calibrate_grasp_pose.py on the Capture task, blade pinned, fingers held at 0.02 rad, 3,000 servo steps (rule 7: before believing a solver, converge it), four wrist_1 seed quadrants per target, one environment per target so a whole sweep solves in one app launch. Convergence is 2 mm of position and 0.01 rad of attitude.",
   "finding": {
-    "summary": "Holding the head-on capture attitude, the tool parks at local x = -0.0258 and goes no further, whatever depth is asked of it. That is a wall, not a gradient: the solver satisfies the attitude to 0.0002 rad and simply gives up the position.",
+    "summary": "Driving position and the head-on capture attitude at full authority, the tool parks at local x = -0.0258 and goes no further whatever depth is asked of it: the solver satisfies the attitude to 0.0002 rad and gives the position away entirely.",
     "attitude_holding_wall_tool_x_local_m": -0.0258,
     "wall_forward_of_robot_base_m": 0.4242,
     "extraction_end_tool_x_local_m": -0.1145,
@@ -212,9 +212,17 @@
   ],
   "scope_and_limitations": [
     "Kinematics only, with the module pinned. It says where the tool can be put, not what a policy does when it gets there.",
+    "This is a differential-IK servo, not an optimiser. Where position and orientation trade steeply, what it converges to depends on the relative authority it drives them with, and 'unreachable' here means 'this servo does not get there while also driving orientation at full authority'. See the correction block.",
     "The wall is measured at the convergence tolerance, 2 mm and 0.01 rad. Extraction reaches 88.7 mm past it by accepting about 0.13 rad of grip attitude error, so the wall is where the attitude can be held exactly, not where the arm stops entirely.",
     "Curriculum stage 2 only, four wrist_1 seed quadrants. A seventh-axis or a different arm would have a different boundary.",
     "Simulation only. No result here was produced on real hardware."
   ],
-  "passed": false
+  "passed": false,
+  "correction": {
+    "corrected_utc": "2026-08-18",
+    "what_was_overclaimed": "The first write-up called this 'a wall, not a gradient'. It is not a wall. A 2,000-step servo on 2026-08-15 reached the extraction end pose -- the same tool x = -0.1145 that is 88.7 mm short here -- to 3.6 mm of position while holding 0.0114 rad of attitude error (docs/status.md, 'It has now been checked, and the workcell is not the problem').",
+    "what_is_true": "Both runs are correct and are two points on a trade-off. Near this folded configuration the Jacobian is ill-conditioned, so surrendering 0.0114 rad of attitude buys about 85 mm of reach -- roughly 7.5 metres per radian. This run holds the attitude and gives up the position; the earlier one did the reverse.",
+    "why_it_is_a_better_finding": "A wall would be a hardware limit. A 7.5 m/rad exchange rate says attitude is cheap to give away exactly where the task needs it held, which is the same shape as the reward-saturation result: the policy gave the attitude away because everything in this configuration is paid for doing so.",
+    "what_does_not_change": "The relocation is still blocked. The retreat needs 167 mm past this servo's parking point, twice the 85 mm that 0.0114 rad buys, and the grip cannot carry the attitude error that much more would cost -- measured as the module swinging end-for-end. Neither control changes: attitude free, every depth converges to 0.00 mm; and lifting over the flares does not move the parking point at any lift from 0 to 200 mm."
+  }
 }

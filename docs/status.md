@@ -3485,9 +3485,28 @@ Holding the head-on capture attitude, blade pinned, stage 2, four wrist seeds:
 | −0.2566 | 164.6 mm | 0.0001 | no |
 
 **The tool parks at x = −0.0258 and goes no further, whatever depth is asked of
-it.** That is a wall rather than a gradient: the solver satisfies the attitude to
-0.0002 rad and gives the position away entirely. The wall sits 0.4242 m forward of
-the robot base at x = −0.45.
+it.** The solver satisfies the attitude to 0.0002 rad and gives the position away
+entirely. That point sits 0.4242 m forward of the robot base at x = −0.45.
+
+> **Correction, same day, and it matters.** The first write-up of this called it
+> "a wall, not a gradient". That is an overclaim, and this page already contained
+> the measurement that refutes it: on 2026-08-15 a 2,000-step servo reached the
+> *extraction end pose* — the same tool x = −0.1145 that is 88.7 mm short above —
+> to **3.6 mm of position while holding 0.0114 rad** of attitude error.
+>
+> Both runs are correct. They are two points on a trade-off, not a contradiction:
+> near this folded configuration the Jacobian is ill-conditioned, so surrendering
+> 0.0114 rad of attitude buys about 85 mm of reach — roughly **7.5 metres per
+> radian**. What this servo does at full orientation authority is hold the
+> attitude and give up the position; what the earlier one did was the reverse.
+>
+> The steepness *is* the finding, and it is a better one than a wall would have
+> been. It says attitude is cheap to give away exactly where the task needs it
+> held, which is the same shape as the reward-saturation result two sections up:
+> the policy gave the attitude away because everything in this configuration is
+> paid for doing so. A wall would have been a hardware problem. A 7.5 m/rad
+> exchange rate is a controller and objective problem sitting on top of a
+> marginal workcell.
 
 ### The wall is the attitude, not the reach
 
