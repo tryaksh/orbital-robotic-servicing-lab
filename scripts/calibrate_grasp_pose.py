@@ -136,6 +136,19 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--sweep_offset_y",
+        type=float,
+        nargs="+",
+        default=None,
+        metavar="Y",
+        help=(
+            "Solve several target bays alongside --sweep_offset_x, every combination in its own "
+            "environment. The relocation has to hold the capture attitude in the SECOND bay as "
+            "well as the first, and at the retreat depth in between, so a reach solution "
+            "measured only on the centre line is not a solution for this task."
+        ),
+    )
+    parser.add_argument(
         "--sweep_offset_z",
         type=float,
         nargs="+",
@@ -175,6 +188,40 @@ def _parser() -> argparse.ArgumentParser:
             "over the shoulder, and this says whether that pose is the reason the grip attitude cannot be held."
         ),
     )
+    parser.add_argument(
+        "--alt_start_joint_pos",
+        type=float,
+        nargs=6,
+        default=None,
+        metavar=("J1", "J2", "J3", "J4", "J5", "J6"),
+        help=(
+            "Solve every target a second time from these arm joint angles as well as from the task's own "
+            "reset pose, one extra environment per wrist seed, and report whichever start converged. "
+            "The task's reset pose is solved for ONE base position, so moving the base carries the arm "
+            "bodily with it: probed 110 mm to the side, the gripper spawns inside the rack's lead-in flare, "
+            "the contact fires mount_unstable, and the arm is reset to its spawn pose every step. Every "
+            "environment then reports the spawn pose to six decimals and the residual reads as the "
+            "geometric offset -- a frozen arm that looks exactly like an unreachable pose."
+        ),
+    )
+    parser.add_argument(
+        "--robot_base_y",
+        type=float,
+        default=None,
+        help=(
+            "Move the robot base along world y. Two bays 220 mm apart are not symmetric about a "
+            "base on the first bay's centre line."
+        ),
+    )
+    parser.add_argument(
+        "--robot_base_z",
+        type=float,
+        default=None,
+        help=(
+            "Move the robot base along world z. The rack sits 570 mm above the base, which is "
+            "most of why the arm is folded over its own shoulder at the retreat depth."
+        ),
+    )
     parser.add_argument("--report", type=Path, default=Path("artifacts/grasp_pose_calibration.json"))
     AppLauncher.add_app_launcher_args(parser)
     return parser
@@ -207,16 +254,21 @@ from zero_g_blade_swap.tasks.blade_swap.mdp.observations import end_effector_pos
 
 
 def _handle_centre(
-    task, sweep_x: torch.Tensor | None = None, sweep_z: torch.Tensor | None = None
+    task,
+    sweep_x: torch.Tensor | None = None,
+    sweep_z: torch.Tensor | None = None,
+    sweep_y: torch.Tensor | None = None,
 ) -> torch.Tensor:
     position, orientation = attached_blade_pose_world(task)
     offset = position.new_tensor(task.cfg.scene.spare_blade.spawn.handle_offset).expand(position.shape[0], -1)
     centre = position + quat_apply(orientation, offset)
     target = centre + centre.new_tensor(args.target_offset)
-    if sweep_x is not None or sweep_z is not None:
+    if sweep_x is not None or sweep_y is not None or sweep_z is not None:
         target = target.clone()
         if sweep_x is not None:
             target[:, 0] = target[:, 0] + sweep_x
+        if sweep_y is not None:
+            target[:, 1] = target[:, 1] + sweep_y
         if sweep_z is not None:
             target[:, 2] = target[:, 2] + sweep_z
     return target
@@ -240,9 +292,13 @@ def main() -> dict[str, object]:
             # convention, so try all four rather than assert one.
             seed_offsets = [0.0, 0.5 * math.pi, -0.5 * math.pi, math.pi] if target_rot is not None else [0.0]
         sweep = list(args.sweep_offset_x) if args.sweep_offset_x else [0.0]
+        side = list(args.sweep_offset_y) if args.sweep_offset_y else [0.0]
         lift = list(args.sweep_offset_z) if args.sweep_offset_z else [0.0]
         authority = list(args.attitude_authority) if args.attitude_authority else [1.0]
-        num_envs = len(stages) * len(seed_offsets) * len(sweep) * len(lift) * len(authority)
+        starts = [None] if args.alt_start_joint_pos is None else [None, list(args.alt_start_joint_pos)]
+        num_envs = (
+            len(stages) * len(seed_offsets) * len(starts) * len(sweep) * len(side) * len(lift) * len(authority)
+        )
 
         env_cfg = parse_env_cfg(args.task, device=args.device or "cuda:0", num_envs=num_envs)
         env_cfg.configure_robustness(0)
@@ -257,11 +313,38 @@ def main() -> dict[str, object]:
         # docs/status.md has carried as its leading suspect since 2026-08-15 had
         # never actually been tested. The report now records the root position
         # read back from the simulation so this cannot recur silently.
-        if args.robot_base_x is not None:
+        requested_base = (args.robot_base_x, args.robot_base_y, args.robot_base_z)
+        if any(value is not None for value in requested_base):
             base = list(env_cfg.scene.robot.init_state.pos)
-            print(f"[INFO] Robot base moved from x={base[0]:.4f} to x={args.robot_base_x:.4f} (workcell probe)")
-            base[0] = args.robot_base_x
-            env_cfg.scene.robot.init_state.pos = tuple(base)
+            moved = list(base)
+            for axis, value in enumerate(requested_base):
+                if value is not None:
+                    moved[axis] = value
+            print(
+                f"[INFO] Robot base moved from {tuple(round(v, 4) for v in base)} "
+                f"to {tuple(round(v, 4) for v in moved)} (workcell probe)"
+            )
+            env_cfg.scene.robot.init_state.pos = tuple(moved)
+            # And the mount anchor with it, which is not a detail. The compliant
+            # mount is modelled as a D6 joint between the robot root and a
+            # ``mount_anchor`` body, and ``robot_mount_unstable`` terminates the
+            # episode when they differ by more than 16.5 mm on any axis. Leaving
+            # the anchor at ROBOT_ROOT_POS while the base moves therefore fires
+            # that termination on step 1, every step, and the manager resets the
+            # arm to its spawn pose before it can servo anywhere. The whole sweep
+            # then reports the spawn joint angles to six decimals with residuals
+            # exactly equal to the geometric offset -- a frozen arm that reads
+            # precisely like an unreachable pose.
+            #
+            # This is the third layer of the ``--robot_base_x`` defect. The first
+            # was an env_cfg thrown away by a second parse_env_cfg; the second was
+            # configure_robustness overwriting the robot wholesale; this is the
+            # third, and unlike the other two it does not show up as "nothing
+            # moved" -- it shows up as a plausible, wrong answer.
+            anchor = getattr(env_cfg.scene, "mount_anchor", None)
+            if anchor is not None:
+                anchor.init_state.pos = tuple(moved)
+                print(f"[INFO] Mount anchor moved with it, to {tuple(round(v, 4) for v in moved)}")
         # A servo run must not be interrupted by the task's own episode logic.
         # The timeout is the important one: at 12 s the episode resets the arm
         # to its start pose, which silently undoes the whole solve.
@@ -290,31 +373,46 @@ def main() -> dict[str, object]:
         # once. Stage varies fastest so the report groups by seed.
         # Stage varies fastest, then the wrist seed, then the swept depth, so the
         # report groups the way it is read: all seeds for one depth together.
+        inner = len(stages) * len(seed_offsets) * len(starts)
         stage_tensor = torch.tensor(stages, dtype=torch.long, device=task.device).repeat(
-            len(seed_offsets) * len(sweep) * len(lift) * len(authority)
+            len(seed_offsets) * len(starts) * len(sweep) * len(side) * len(lift) * len(authority)
         )
         offset_tensor = (
             torch.tensor(seed_offsets, dtype=torch.float32, device=task.device)
             .repeat_interleave(len(stages))
-            .repeat(len(sweep) * len(lift) * len(authority))
+            .repeat(len(starts) * len(sweep) * len(side) * len(lift) * len(authority))
+        )
+        start_tensor = (
+            torch.arange(len(starts), dtype=torch.long, device=task.device)
+            .repeat_interleave(len(stages) * len(seed_offsets))
+            .repeat(len(sweep) * len(side) * len(lift) * len(authority))
         )
         sweep_tensor = (
             torch.tensor(sweep, dtype=torch.float32, device=task.device)
-            .repeat_interleave(len(stages) * len(seed_offsets))
+            .repeat_interleave(inner)
+            .repeat(len(side) * len(lift) * len(authority))
+        )
+        side_tensor = (
+            torch.tensor(side, dtype=torch.float32, device=task.device)
+            .repeat_interleave(inner * len(sweep))
             .repeat(len(lift) * len(authority))
         )
         lift_tensor = torch.tensor(lift, dtype=torch.float32, device=task.device).repeat_interleave(
-            len(stages) * len(seed_offsets) * len(sweep)
+            inner * len(sweep) * len(side)
         ).repeat(len(authority))
         authority_tensor = torch.tensor(
             authority, dtype=torch.float32, device=task.device
-        ).repeat_interleave(len(stages) * len(seed_offsets) * len(sweep) * len(lift))
+        ).repeat_interleave(inner * len(sweep) * len(side) * len(lift))
         task._insertion_curriculum_stage = stage_tensor.clone()
         env.reset()
         task._insertion_curriculum_stage = stage_tensor.clone()
 
         # Seed after the reset event has written the task's own start pose.
         seeded = robot.data.joint_pos[:, arm_ids].clone()
+        for index, pose in enumerate(starts):
+            if pose is None:
+                continue
+            seeded[start_tensor == index] = seeded.new_tensor(pose)
         seeded[:, 3] += offset_tensor
         robot.write_joint_state_to_sim(seeded, torch.zeros_like(seeded), joint_ids=arm_ids)
         if finger_targets is not None:
@@ -351,7 +449,7 @@ def main() -> dict[str, object]:
                     blade.write_root_pose_to_sim(blade_start_pose)
                     blade.write_root_velocity_to_sim(blade_zero_velocity)
                 tool, tool_rot = end_effector_pose_world(task)
-                error_w = _handle_centre(task, sweep_tensor, lift_tensor) - tool
+                error_w = _handle_centre(task, sweep_tensor, lift_tensor, side_tensor) - tool
                 error_b = quat_apply(quat_inv(robot.data.root_quat_w), error_w)
                 action[:, 0:3] = (error_b / scale).clamp(-1.0, 1.0)
                 if desired_w is not None:
@@ -369,7 +467,7 @@ def main() -> dict[str, object]:
                     print(f"[CALIB] step {step:5d}: residual mm {[round(float(v), 1) for v in distances]}")
 
             tool, tool_rot = end_effector_pose_world(task)
-            residual = torch.linalg.vector_norm(_handle_centre(task, sweep_tensor, lift_tensor) - tool, dim=-1)
+            residual = torch.linalg.vector_norm(_handle_centre(task, sweep_tensor, lift_tensor, side_tensor) - tool, dim=-1)
             angular_residual = (
                 torch.linalg.vector_norm(axis_angle_from_quat(quat_mul(desired_w, quat_inv(tool_rot))), dim=-1)
                 if desired_w is not None
@@ -381,9 +479,14 @@ def main() -> dict[str, object]:
             # Read from the simulation, so a config edit that does not take
             # effect cannot be reported as one that did.
             robot_root_local_x = float(robot.data.root_pos_w[0, 0] - task.scene.env_origins[0, 0])
-            target_local_x = _handle_centre(task, sweep_tensor, lift_tensor)[:, 0] - task.scene.env_origins[:, 0]
+            robot_root_local = [
+                float(robot.data.root_pos_w[0, axis] - task.scene.env_origins[0, axis]) for axis in range(3)
+            ]
+            target_local_x = _handle_centre(task, sweep_tensor, lift_tensor, side_tensor)[:, 0] - task.scene.env_origins[:, 0]
             tool_local_x = tool[:, 0] - task.scene.env_origins[:, 0]
-            target_local_z = _handle_centre(task, sweep_tensor, lift_tensor)[:, 2] - task.scene.env_origins[:, 2]
+            target_local_z = _handle_centre(task, sweep_tensor, lift_tensor, side_tensor)[:, 2] - task.scene.env_origins[:, 2]
+            target_local_y = _handle_centre(task, sweep_tensor, lift_tensor, side_tensor)[:, 1] - task.scene.env_origins[:, 1]
+            tool_local_y = tool[:, 1] - task.scene.env_origins[:, 1]
 
         rows = []
         for index in range(num_envs):
@@ -394,12 +497,16 @@ def main() -> dict[str, object]:
             rows.append(
                 {
                     "curriculum_stage": int(stage_tensor[index]),
+                    "start_pose_index": int(start_tensor[index]),
                     "sweep_offset_x_m": round(float(sweep_tensor[index]), 6),
+                    "sweep_offset_y_m": round(float(side_tensor[index]), 6),
                     "sweep_offset_z_m": round(float(lift_tensor[index]), 6),
                     "attitude_authority": round(float(authority_tensor[index]), 6),
                     "target_tool_z_local_m": round(float(target_local_z[index]), 6),
                     "target_tool_x_local_m": round(float(target_local_x[index]), 6),
                     "reached_tool_x_local_m": round(float(tool_local_x[index]), 6),
+                    "target_tool_y_local_m": round(float(target_local_y[index]), 6),
+                    "reached_tool_y_local_m": round(float(tool_local_y[index]), 6),
                     "seed_wrist_1_offset_rad": round(float(offset_tensor[index]), 7),
                     "residual_tool_to_handle_m": float(residual[index]),
                     "residual_orientation_rad": float(angular_residual[index]),
@@ -418,7 +525,8 @@ def main() -> dict[str, object]:
             state = "converged" if converged else "DID NOT CONVERGE"
             print(
                 f"[CALIB] stage {rows[-1]['curriculum_stage']} seed {rows[-1]['seed_wrist_1_offset_rad']:+.4f} "
-                f"sweep_x {rows[-1]['sweep_offset_x_m']:+.4f} z {rows[-1]['sweep_offset_z_m']:+.4f} "
+                f"sweep_x {rows[-1]['sweep_offset_x_m']:+.4f} y {rows[-1]['sweep_offset_y_m']:+.4f} "
+                f"z {rows[-1]['sweep_offset_z_m']:+.4f} "
                 f"(target tool x {rows[-1]['target_tool_x_local_m']:+.4f}, reached "
                 f"{rows[-1]['reached_tool_x_local_m']:+.4f}): "
                 f"{float(residual[index]) * 1000:.2f} mm, {float(angular_residual[index]):.4f} rad ({state})"
@@ -439,13 +547,17 @@ def main() -> dict[str, object]:
             "tolerance_rad": args.tolerance_rad if target_rot is not None else None,
             "servo_steps": args.steps,
             "sweep_offset_x_m": sweep,
+            "sweep_offset_y_m": side,
             "sweep_offset_z_m": lift,
             "attitude_authority": authority,
             "robot_root_x_local_m": round(robot_root_local_x, 6),
+            "robot_root_local_m": [round(value, 6) for value in robot_root_local],
             "robot_root_x_requested_m": args.robot_base_x,
+            "robot_root_requested_m": list(requested_base),
             "held_finger_joint_rad": args.finger_joint,
             "blade_pinned_at_reset_pose": bool(args.pin_blade),
             "seed_wrist_1_offsets_rad": [round(float(value), 7) for value in seed_offsets],
+            "start_joint_poses": [None if pose is None else [round(float(v), 7) for v in pose] for pose in starts],
             "all_stages_converged": converged_stages == set(stages),
             "stages": rows,
         }

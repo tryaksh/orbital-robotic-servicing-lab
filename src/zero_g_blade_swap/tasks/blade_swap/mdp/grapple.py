@@ -173,10 +173,16 @@ class GrappleLatch(ManagerTermBase):
     def __init__(self, cfg: EventTermCfg, env) -> None:
         super().__init__(cfg, env)
         env._grapple_latched = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        #: Whether a driver has said the module is free of the rack yet. Only
+        #: read when ``require_armed`` is set, and ``True`` otherwise, so a task
+        #: that does not ask for it is bit-identical to before this existed.
+        env._grapple_latch_armed = torch.ones(env.num_envs, dtype=torch.bool, device=env.device)
 
     def reset(self, env_ids=None) -> None:
         ids = torch.arange(self._env.num_envs, device=self._env.device) if env_ids is None else env_ids
         self._env._grapple_latched[ids] = False
+        if bool(self.cfg.params.get("require_armed", False)):
+            self._env._grapple_latch_armed[ids] = False
         zeros = torch.zeros((len(ids), 1, 3), device=self._env.device)
         self._env.scene["spare_blade"].permanent_wrench_composer.set_forces_and_torques(
             forces=zeros, torques=zeros, env_ids=ids, is_global=True
@@ -190,10 +196,26 @@ class GrappleLatch(ManagerTermBase):
         rated_torque_nm: float = 5.0,
         saturation_rad: float = 0.05,
         damping_ratio: float = 1.0,
+        require_armed: bool = False,
     ) -> None:
         del env_ids
         latched = env._grapple_latched
-        latched |= capture_established(env)
+        # **When the latch engages is a physical question, and this project has
+        # measured half the answer.** Swept from 10 to 160 N-m against the
+        # unchanged extract policy, a latch engaged on capture never moved the
+        # rotation it was aimed at and collapsed extraction travel from 465 mm
+        # to about 25 mm: a restoring torque on a module the rails still hold
+        # jams the module in the rails.
+        #
+        # That refutes engaging it on capture. It says nothing about engaging it
+        # the instant the rails let go, which is the phase that actually needs
+        # it -- the module is unconstrained, nothing else opposes a moment about
+        # the closing axis, and there are no rails left to jam it against. With
+        # ``require_armed`` the driver picks that moment.
+        qualified = capture_established(env)
+        if require_armed:
+            qualified = qualified & env._grapple_latch_armed
+        latched |= qualified
         blade = env.scene[asset_cfg.name]
         error = grapple_grip_attitude_error_world(env)
         magnitude = torch.linalg.vector_norm(error, dim=-1, keepdim=True).clamp_min(1e-9)
@@ -244,6 +266,21 @@ def _blade_yaw_inertia(env, asset_cfg: SceneEntityCfg) -> torch.Tensor:
     diagonal = torch.stack((inertia[:, 0, 0], inertia[:, 1, 1], inertia[:, 2, 2]), dim=-1)
     env._grapple_latch_inertia = diagonal.amax(dim=-1).clamp_min(1e-4)
     return env._grapple_latch_inertia
+
+
+def arm_grapple_latch(env, mask: torch.Tensor) -> None:
+    """Tell a ``require_armed`` latch that these modules are free of the rack.
+
+    Called by the chained driver at the same instant it retains the grip, which
+    is the extract skill's own success mask: the module is out, still gripped,
+    and no longer moving. A no-op when no latch is configured, so a driver may
+    call it unconditionally.
+    """
+
+    state = getattr(env, "_grapple_latch_armed", None)
+    if state is None:
+        return
+    state[mask] = True
 
 
 def grapple_latched(env) -> torch.Tensor:
@@ -964,6 +1001,7 @@ __all__ = [
     "SLOT_MOUTH_X",
     "TwoStageRobotiqAction",
     "TwoStageRobotiqActionCfg",
+    "arm_grapple_latch",
     "blade_centre_x",
     "blade_disturbance_penalty",
     "capture_approach_reward",

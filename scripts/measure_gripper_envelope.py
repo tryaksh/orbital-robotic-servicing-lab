@@ -299,6 +299,21 @@ def main() -> dict[str, object]:
                     world - wrist_position.unsqueeze(1),
                 )
 
+        # The same collision points, in each body's OWN frame rather than the
+        # wrist's. The wrist-frame envelope says what a module feature has to fit
+        # inside; this says where to put geometry ON the gripper, which is the
+        # other half of the same question and the half a hand-side redesign
+        # needs. It is closure-independent by construction -- a child prim of a
+        # link is rigid in that link's frame -- so it is one bound per body, not
+        # one per command.
+        body_local_bounds: dict[str, dict[str, object]] = {}
+        for name, points in local_points.items():
+            body_local_bounds[name] = {
+                "min_m": [round(float(value), 6) for value in points.amin(dim=0)],
+                "max_m": [round(float(value), 6) for value in points.amax(dim=0)],
+                "collision_points": int(points.shape[0]),
+            }
+
         bodies: dict[str, list[dict[str, object]]] = {}
         for name, local in envelope.items():
             bodies[name] = [
@@ -442,6 +457,7 @@ def main() -> dict[str, object]:
                 "gripper_envelope_max_m": [round(float(value), 6) for value in gripper_high],
             },
             "bodies": bodies,
+            "bodies_in_own_frame": body_local_bounds,
             "scope_and_limitations": [
                 "Kinematics only. This is the volume the gripper sweeps, not a grasp or a holding capacity.",
                 "Collision geometry, which may be a convex hull larger than the visual pad surface.",

@@ -327,6 +327,7 @@ from zero_g_blade_swap.tasks.blade_swap.mdp.grapple import (
     WORKFLOW_SETTLE_S,
     capture_established,
     extraction_success_mask,
+    arm_grapple_latch,
     grapple_grip_attitude_error_world,
     grapple_grip_error_metrics,
     grapple_insertion_conditions,
@@ -910,6 +911,12 @@ class WorkflowDriver:
                 # The module is unconstrained for the whole transit, so retain
                 # through it and firm up again before it meets the rails.
                 self.gripper.retain_latch[cleared] = True
+                # And, if the task has a latch configured to wait for it, this is
+                # the instant it engages: the rails have just let go, so a
+                # restoring torque has nothing left to jam the module against.
+                # A no-op on every task whose latch is off, which is all of them
+                # unless one is asked for by configuration.
+                arm_grapple_latch(task, cleared)
                 self.phase[cleared] = TRANSIT
                 self.transit_started[cleared] = step
                 if self.workflow == "relocate":

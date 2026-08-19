@@ -144,7 +144,13 @@ class GrapplePinEventsCfg(ContactInsertionEventsCfg):
         mode="interval",
         interval_range_s=(1.0 / 30.0, 1.0 / 30.0),
         is_global_time=False,
-        params={"asset_cfg": SceneEntityCfg("spare_blade"), "rated_torque_nm": 5.0, "saturation_rad": 0.05, "damping_ratio": 1.0},
+        params={
+            "asset_cfg": SceneEntityCfg("spare_blade"),
+            "rated_torque_nm": 5.0,
+            "saturation_rad": 0.05,
+            "damping_ratio": 1.0,
+            "require_armed": False,
+        },
     )
 
 
@@ -184,6 +190,12 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
     # been run. See ``mdp.GrappleLatch`` and docs/status.md.
     latch_enabled: bool = False
     latch_rated_torque_nm: float = 5.0
+    #: Engage the latch only once a driver says the module is free of the rails,
+    #: instead of the instant a capture qualifies. The sweep that refuted the
+    #: latch engaged it while the module was still railed, which is exactly where
+    #: a restoring torque jams it; the transit is where the lock is needed and it
+    #: has never been tested there. See ``mdp.GrappleLatch``.
+    latch_engages_on_release: bool = False
 
     def _configure_latch(self) -> None:
         """Apply the latch settings to whichever event set is currently installed.
@@ -197,6 +209,7 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
             self.events.grapple_latch = None
             return
         self.events.grapple_latch.params["rated_torque_nm"] = self.latch_rated_torque_nm
+        self.events.grapple_latch.params["require_armed"] = self.latch_engages_on_release
 
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)
