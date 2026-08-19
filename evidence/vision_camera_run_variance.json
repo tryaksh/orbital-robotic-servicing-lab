@@ -1,0 +1,83 @@
+{
+  "title": "Run-to-run variance of the two-bay vision arms, and which of them is deterministic",
+  "evidence_type": "simulation_reproducibility_measurement",
+  "generated_utc": "2026-08-19T07:06:24+00:00",
+  "question": "The 2026-08-17 two-bay camera certification reported 65.10% and a failed gate on the strength of one seed scoring 25.00%. That seed re-runs at 84.90%. This measures how much a camera run varies when nothing about it changes, and whether the arms that do not read an image vary at all.",
+  "finding": "The camera arm is not deterministic and the state pipeline is. Six camera runs of the same three seeds span 80.7292-86.4583% with a standard deviation of 2.13 points, while two oracle runs of the same seed are bit-identical across all 192 episodes and all 21 recorded columns. The withdrawn 25.00% sits 27.6 standard deviations below the six-run mean of 83.85%, which is not the tail of the measured spread and is very likely a second, unidentified mechanism.",
+  "camera_arm_runs": {
+    "certification_2026_08_18": {
+      "4070": 86.4583,
+      "5070": 84.8958,
+      "6070": 83.3333
+    },
+    "independent_replicate_2026_08_18": {
+      "4070": 82.2917,
+      "5070": 80.7292,
+      "6070": 85.4167
+    },
+    "withdrawn_2026_08_17": {
+      "4070": 86.46,
+      "5070": 25.0,
+      "6070": 83.85
+    },
+    "six_runs_excluding_the_withdrawn_outlier": {
+      "values_percent": [
+        80.7292,
+        82.2917,
+        83.3333,
+        84.8958,
+        85.4167,
+        86.4583
+      ],
+      "min": 80.7292,
+      "max": 86.4583,
+      "mean": 83.8542,
+      "standard_deviation_points": 2.1348
+    },
+    "withdrawn_outlier_sigma_below_mean": 27.57
+  },
+  "determinism_controls": {
+    "oracle_two_runs_same_seed_bit_identical": true,
+    "oracle_run_a_success_percent": 90.625,
+    "oracle_run_b_success_percent": 90.625,
+    "oracle_across_sessions": "90.62 / 89.58 / 85.94 per seed on 2026-08-17 and again on 2026-08-18",
+    "blind_across_sessions": "31.77 / 37.50 / 32.81 per seed on 2026-08-17 and again on 2026-08-18",
+    "why_this_isolates_the_cause": "The blind arm runs in the SAME vision scene, with the camera built and rendering, and simply does not read the frame -- and it reproduces exactly. So the non-determinism is not the seed, the physics, the policies, the Replicator randomizers, or the camera's presence in the scene. It is reading the rendered frame and pushing it through the pose head, and nothing else. Each exclusion is a control that was run, not an argument."
+  },
+  "pose_head_per_evaluation_seed": {
+    "note": "The standing explanation for the 25.00% blamed the pose head's error tail. The head is at its most accurate on that seed, and the run's failures were 142 capture-budget overruns rather than the insertion timeouts that explanation required.",
+    "by_seed": {
+      "4070": {
+        "mean_mm": 2.6518664360046387,
+        "p95_mm": 6.090460777282715,
+        "inside_capture_tolerance_fraction": 0.9986979365348816,
+        "samples": 768
+      },
+      "5070": {
+        "mean_mm": 2.517855167388916,
+        "p95_mm": 5.277941703796387,
+        "inside_capture_tolerance_fraction": 0.9986979365348816,
+        "samples": 768
+      },
+      "6070": {
+        "mean_mm": 2.5319862365722656,
+        "p95_mm": 5.822430610656738,
+        "inside_capture_tolerance_fraction": 0.9986979365348816,
+        "samples": 768
+      }
+    }
+  },
+  "consequence_for_method": "A pooled Wilson interval on one camera certification accounts for episode sampling and not for whatever makes two identical runs differ, so it understates the uncertainty. Three seeds are three samples of the configuration; where a run is itself stochastic in a way the seed does not control, they are still only three samples of the run. Camera measurements need replicating. Oracle and blind measurements do not.",
+  "reproduce": [
+    "scripts/certify_vision_workflow.sh with TASK=Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Install-v0",
+    "  WORKFLOW=install STAGE=2 HEAD=checkpoints/module_pose_head_two_slot.pth ENVS=64 TAG=_twoslot",
+    "scripts/sweep_camera_calibration.py --task ...TwoSlot-Collect-v0 --seed <seed>   # the head alone",
+    "run_workflow_demo.py --oracle twice at one seed and compare the .npz rows   # the determinism control"
+  ],
+  "scope_and_limitations": [
+    "Simulation only. A rendered camera, not a calibrated real one.",
+    "Six camera runs is a small sample for a variance estimate; the standard deviation quoted has wide uncertainty of its own.",
+    "The mechanism behind the 27-sigma excursion is NOT identified. It is excluded from the variance figures above and reported separately for that reason."
+  ],
+  "passed": null
+}

@@ -3424,7 +3424,8 @@ the two-bay collector at each evaluation seed, 768 samples each:
 | 5070 | **2.52 mm** | **5.28 mm** | 99.9% |
 | 6070 | 2.53 mm | 5.82 mm | 99.9% |
 
-`artifacts/perception_seed/head_seed*.json`.
+`evidence/vision_camera_run_variance.json`, which also carries the six-run spread and the
+determinism controls below.
 
 **And the failures were not insertions.** The collapsing run's 144 failures are
 **142 capture-budget overruns** and 2 insert overruns. A 4 mm *insertion* lateral
@@ -3533,7 +3534,7 @@ runs differ.** The oracle arm has no such term — it reproduces exactly.
 processes, same seed 4070, same task, same checkpoints: `numpy.array_equal` over
 all 192 episodes and all 21 recorded columns returns **True**, and both score
 90.6250%. Not "reproduces to four decimals" — identical.
-`artifacts/perception_seed/determinism_{a,b}.npz`.
+`evidence/vision_camera_run_variance.json`.
 
 **A second control landed with the re-certification and sharpens it further.**
 The **blind** arm also reproduces exactly — 31.77 / 37.50 / 32.81 per seed and
