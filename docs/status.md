@@ -4315,7 +4315,7 @@ If the relocation still fails after retraining, and it fails on module rotation,
 that trace is the requirement the hand-side lock has to meet, and it will be a
 measured number rather than a chosen one.
 
-## Retraining onto the moved cell: capture recovers and beats main, the other two do not
+## Retraining onto the moved cell: all three recover, and the budget was the whole story
 
 `scripts/retrain_workcell_skills.sh`, fine-tuning the three promoted checkpoints
 on the cell at (−0.65, 0, 0.15). This is a geometry change, not an observation or
@@ -4455,6 +4455,51 @@ put it in.
 
 So the budget was wrong, not the plan. Both are continued rather than
 re-approached: extract to 9,700 epochs and insert to 9,600.
+
+### The second pass: extraction converged, and nothing but epochs changed
+
+Extract continued from its own first-pass checkpoint to 9,700 epochs. It found
+its first success **within about 450 epochs** of the resume and then climbed
+steadily:
+
+| Point in the continuation | `extraction_success` |
+| --- | ---: |
+| resume (epoch 7,200) | 0.0000 |
+| ~7,650 | 0.4626 |
+| 7,883 | 0.9033 |
+| 8,183 | 0.9591 |
+| 8,777 | 0.9825 |
+| **9,659** | **0.9570** |
+
+Final training state against the same skill's run on the old cell:
+
+| | success | timeout | failed | reward |
+| --- | ---: | ---: | ---: | ---: |
+| v13unsat, old cell, 5,700 epochs | 0.7177 | **0.0000** | 0.2823 | +148.5 |
+| v16w65, moved cell, 9,700 epochs | **0.9570** | 0.0189 | **0.0240** | +175.8 |
+
+Three things worth keeping from that.
+
+**Nothing but epochs changed.** No task edit, no reward edit, no geometry edit, no
+reset edit between the pass that scored 0.10% and the pass that converged. The
+first pass was not wrong, it was under-budgeted, which is exactly what the
+shift-against-reset-noise table predicted: a skill trained on one arm
+configuration and moved twenty times outside it has to rediscover the task, and
+rediscovery costs thousands of epochs rather than hundreds.
+
+**The resume transient helped rather than hurt.** Reward fell from +136.5 at the
+end of the first pass to **+36.6** on the first logged epoch of the second, then
+climbed past +190. The same transient suspected of destroying the first pass is
+what shook the policy out of the plateau it had settled into at 89% of a pull. A
+resume is not only a warm start; it is also a perturbation, and on a stuck policy
+that is the useful half.
+
+**Read the terminations, never the reward.** The first pass's reward rose 57.8 →
+137.5 while `extraction_success` sat at 0.0000 the whole way — a progress term
+weighted 12 paying for travel that never completed. This page already records the
+identical trap once, extract v10 at a *higher* reward than its predecessors and
+0.00% certified. The reward is not the gate. The termination counters are, and
+they are in the same tfevents file.
 
 ### One insert policy now serves all three chains, and that is a change worth naming
 
