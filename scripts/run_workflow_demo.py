@@ -170,14 +170,11 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--workflow",
-        choices=("remove", "install", "full", "relocate"),
+        choices=("remove", "install", "relocate"),
         default="install",
         help=(
             "remove: capture a fully installed module and pull it clear of the rack, both learned. "
             "install: capture a module at the rack mouth and seat it, both learned. "
-            "full: remove, fly back, and re-install. The return leg is blocked by the pin's yaw limitation, "
-            "not by the controller: a single-point pin does not constrain rotation once the rails release the "
-            "module, and the grip degrades from 15 mm to 35 mm during the return whatever speed it is flown at. "
             "relocate: capture a module installed in the first bay, pull it clear, fly the three planned legs "
             "to the second bay, and seat it there. Needs a two-bay profile and the insert policy trained on "
             "both bays; it is the ORU changeout this roadmap is for."
@@ -835,7 +832,7 @@ class WorkflowDriver:
         # Every workflow that begins by taking a module *out* hands the seat
         # straight to extraction; only a pure installation starts with the module
         # already at the mouth and goes to the insert phase.
-        if self.workflow in ("remove", "full", "relocate"):
+        if self.workflow in ("remove", "relocate"):
             seated = (self.phase == SEAT) & (step >= self.seat_until)
             if bool(seated.any()):
                 self.phase[seated] = EXTRACT
@@ -1450,7 +1447,7 @@ def main() -> dict[str, object]:
         # along the pull axis at 0.24 m/s and 220 mm across it at 0.12 m/s, so
         # the planned path is 734 mm and about 4.0 s of pure travel. The margin
         # is for closed-loop tracking, not for the distance.
-        if args.workflow in ("full", "relocate"):
+        if args.workflow == "relocate":
             phases.append(TRANSIT)
         if args.workflow != "remove":
             phases.append(INSERT)
@@ -1628,11 +1625,10 @@ def main() -> dict[str, object]:
             "learned_phases": {
                 "remove": ["capture", "extract"],
                 "install": ["capture", "insert"],
-                "full": ["capture", "extract", "insert"],
                 "relocate": ["capture", "extract", "insert"],
             }[args.workflow],
             "scripted_phases": ["seat"]
-            + (["transit"] if args.workflow in ("full", "relocate") else []),
+            + (["transit"] if args.workflow == "relocate" else []),
             "success_definition": (
                 "the workflow's own condition re-checked after a "
                 f"{SETTLE_STEPS / 30.0:.2f} s settling window, not the instant a predicate fired"

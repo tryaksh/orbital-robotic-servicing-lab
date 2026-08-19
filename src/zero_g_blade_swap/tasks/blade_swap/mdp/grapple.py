@@ -137,7 +137,8 @@ class GrappleLatch(ManagerTermBase):
     0.00% while holding grip *position* for a full 15 s pull, 93% of insertion
     failures ending outside the grip-attitude tolerance, 3.8% of chained
     removals ending inside it, and an anti-yaw yoke recovering only 12% of the
-    rotation while costing the insert skill 67 points.
+    rotation while costing the insert skill 67 points. That yoke has since been
+    deleted; its measurements are kept in docs/status.md.
 
     Flight servicing hardware does not solve this with friction either. The
     SSRMS latching end effector snares a grapple fixture and then *rigidizes*
@@ -259,19 +260,21 @@ def grapple_grip_attitude_axes(env) -> torch.Tensor:
 
     ``grapple_grip_error_metrics`` reports the *magnitude* of that rotation, and
     a magnitude cannot say which axis it is about. That distinction decides
-    whether an anti-yaw feature can help at all: the yoke's walls oppose
-    rotation about the **closing** axis and nothing else, because that is the
-    axis whose moment a pair of flat pad normals cannot resist.
+    whether an anti-yaw feature can help at all, and it is why the two that were
+    built could not: both opposed rotation about the **closing** axis alone,
+    because that is the axis whose moment a pair of flat pad normals cannot
+    resist, while the rotation is split almost evenly between the closing axis
+    at 0.198 rad and the transverse one at 0.199 rad.
 
-    Measured on the yoked pin, extraction still ends at 0.279 rad against a
-    0.125 rad geometric prediction, so the wall clearance is not the term that
-    dominates. This function is what tells the difference between "the walls are
-    too loose" and "most of that rotation is not the yaw the walls oppose".
+    Measured on the yoked pin, extraction still ended at 0.279 rad against a
+    0.125 rad geometric prediction, so wall clearance was never the term that
+    dominates. That yoke's code was deleted on 2026-08-18; this decomposition is
+    what refuted it, and it is kept because the next interface proposal will
+    need the same test. See docs/status.md.
 
     Returns one row per environment as ``(closing, third, approach)`` in the
     tool frame: the measured 2F-85 closes along its own x and approaches along
-    its own z (``evidence/gripper_collision_envelope.json``), so component 0 is
-    the yoke's axis.
+    its own z (``evidence/gripper_collision_envelope.json``).
     """
 
     tool_position, tool_orientation = end_effector_pose_world(env)

@@ -35,7 +35,12 @@ GRASP_VERSION="${GRASP_VERSION:-v5}"
 EXTRACT_VERSION="${EXTRACT_VERSION:-v14reset}"
 INSERT_VERSION="${INSERT_VERSION:-v6}"
 # Which physical interface these policies were trained against, recorded in the
-# report so a yoked and a plain certification can never be read as comparable.
+# report so certifications of two different interfaces can never be read as
+# comparable. There has only ever been one shipped interface -- the tapered pin
+# -- but two alternatives were built and measured against it, and both are
+# refuted: the anti-yaw yoke, whose code was deleted on 2026-08-18, and the keyed
+# redesign, which does not fit inside the gripper
+# (evidence/grapple_pin_keyed_interference.json).
 INTERFACE="${INTERFACE:-the plain grapple pin}"
 
 skills=("$@")

@@ -140,83 +140,6 @@ GRAPPLE_PIN_GRIP_OFFSET = (
 GRAPPLE_HEAD_ON_TOOL_ROT = (0.0, 0.7071068, 0.0, 0.7071068)
 
 
-# ---------------------------------------------------------------------------
-# The anti-yaw yoke: the second-generation interface feature.
-#
-# A single-point tapered pin clamped by flat pads cannot resist rotation about
-# the closing axis. The pads' contact normals lie along that axis, and a normal
-# force cannot oppose a moment about its own direction, so only friction does and
-# friction loses. Measured three ways on this workcell: extraction holds grip
-# position at 12.2 mm for a whole pull and fails on grip attitude at 0.299 rad
-# against a 0.20 rad limit; 93.0% of the insert skill's failures are outside that
-# same tolerance at the step they end on; and the chained removal workflow ends
-# inside it in 3.8% of episodes.
-#
-# The fix has to be lateral bearing surfaces, and the measured envelope says
-# exactly where they fit. The fingers are 27 mm across and the pin is already
-# 30 mm across, so the wedge's own side faces raised into walls need no new
-# width, and confining them to the fingers-only band keeps every other part of
-# the gripper out of them.
-#
-# The walls carry a lead-in flare at their mouth for the same reason the rack
-# does, and this project has measured how much that matters: delete the rack's
-# flares and two fully trained insertion policies both score 0%. A 1.5 mm slot
-# the capture had to hit blind would trade a yaw problem for a capture problem.
-
-#: Along the pin, mouth first then collar face.
-GRAPPLE_YOKE_X = (-0.345, -0.311)
-#: The parallel section, which is what actually constrains yaw.
-GRAPPLE_YOKE_PARALLEL_X = (-0.335, -0.311)
-#: Inner faces, flush with the pin's existing side faces, so the pin gains no
-#: width. 1.5 mm of clearance per side against a 13.5 mm finger half-width.
-GRAPPLE_YOKE_HALF_GAP_M = 0.015
-#: Half-gap at the flared mouth.
-GRAPPLE_YOKE_MOUTH_HALF_GAP_M = 0.01864
-GRAPPLE_YOKE_WALL_THICKNESS_M = 0.003
-#: The collar's, so the yoke reads as a channel extending from the depth stop
-#: rather than as a separate part, and never exceeds its envelope.
-GRAPPLE_YOKE_HALF_HEIGHT = 0.045
-
-
-def yoke_lead_in_catch_m() -> float:
-    """Lateral misalignment the yoke's mouth accepts, per side."""
-
-    return GRAPPLE_YOKE_MOUTH_HALF_GAP_M - PAD_HALF_WIDTH_M
-
-
-def yoke_flare_deg() -> float:
-    """Half-angle of the yoke's lead-in from its axis, in degrees."""
-
-    import math
-
-    mouth_x, _ = GRAPPLE_YOKE_X
-    parallel_x, _ = GRAPPLE_YOKE_PARALLEL_X
-    return math.degrees(
-        math.atan2(GRAPPLE_YOKE_MOUTH_HALF_GAP_M - GRAPPLE_YOKE_HALF_GAP_M, parallel_x - mouth_x)
-    )
-
-
-def yoke_mouth_depth_from_flange_m() -> float:
-    """How deep the yoke's mouth sits when the pads are seated on the collar."""
-
-    mouth_x, collar_x = GRAPPLE_YOKE_X
-    return PAD_SPAN_FROM_FLANGE_M[1] - (collar_x - mouth_x)
-
-
-def yoke_free_yaw_rad() -> float:
-    """Rotation about the closing axis available before the walls take load.
-
-    A shaft of half-width ``a`` in a slot of half-width ``a + c`` engaged over a
-    length ``L`` rotates about ``2c / L`` before a corner reaches a wall. This is
-    a geometric prediction, not a measurement: what the walls do under load is
-    what ``scripts/grasp_diagnostics.py --load_axis yaw`` reports.
-    """
-
-    clearance = GRAPPLE_YOKE_HALF_GAP_M - PAD_HALF_WIDTH_M
-    length = GRAPPLE_YOKE_PARALLEL_X[1] - GRAPPLE_YOKE_PARALLEL_X[0]
-    return 2.0 * clearance / length
-
-
 def wedge_half_height_at(blade_local_x: float) -> float:
     """Return the wedge's half-height at a point along the pin."""
 
@@ -249,17 +172,7 @@ __all__ = [
     "FINGERS_ONLY_DEPTH_FROM_FLANGE_M",
     "FINGER_JOINT_RANGE_RAD",
     "GRAPPLE_HEAD_ON_TOOL_ROT",
-    "GRAPPLE_YOKE_HALF_GAP_M",
-    "GRAPPLE_YOKE_HALF_HEIGHT",
-    "GRAPPLE_YOKE_MOUTH_HALF_GAP_M",
-    "GRAPPLE_YOKE_PARALLEL_X",
-    "GRAPPLE_YOKE_WALL_THICKNESS_M",
-    "GRAPPLE_YOKE_X",
     "NON_FINGER_HALF_WIDTH_M",
-    "yoke_flare_deg",
-    "yoke_free_yaw_rad",
-    "yoke_lead_in_catch_m",
-    "yoke_mouth_depth_from_flange_m",
     "GRAPPLE_PIN_COLLAR_HALF_HEIGHT",
     "GRAPPLE_PIN_COLLAR_X",
     "GRAPPLE_PIN_GRIP_OFFSET",

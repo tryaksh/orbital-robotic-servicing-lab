@@ -62,44 +62,26 @@ def test_vision_config_is_memory_conscious() -> None:
 def test_the_live_grapple_interface_is_declared_in_exactly_one_place() -> None:
     """Every skill must see the same interface, or none of them are comparable.
 
-    Both the yoke flag and the latch live on the shared capture configuration
-    rather than on three separate ones, and each skill re-applies the latch
-    after it rebuilds its own event set. Certified 2026-08-15: the yoke is off
-    because it cost insertion 67 points to buy extraction 0.13; the latch is on
-    because a passive interface cannot oppose a moment about the closing axis.
-    If either assertion is flipped, flip the numbers in docs/status.md with it.
+    The latch lives on the shared capture configuration rather than on three
+    separate ones, and each skill re-applies it after rebuilding its own event
+    set. If that assertion is flipped, flip the numbers in docs/status.md with it.
+
+    The anti-yaw yoke used to be asserted here too. Its code was deleted on
+    2026-08-18: it cost insertion 67 points to buy extraction 0.13, and the keyed
+    redesign meant to supersede it is itself refuted by
+    ``evidence/grapple_pin_keyed_interference.json``. The measurements stay in
+    docs/status.md and evidence/; the code does not.
     """
 
     source = (
         ROOT / "src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py"
     ).read_text(encoding="utf-8")
-    assert "anti_yaw_yoke: bool = False" in source
-    assert "self.scene.spare_blade.spawn.anti_yaw_yoke = self.anti_yaw_yoke" in source
     assert "latch_enabled: bool = False" in source
     # One declaration each, or two skills could silently diverge.
-    assert source.count("anti_yaw_yoke: bool =") == 1
     assert source.count("latch_enabled: bool =") == 1
     # Capture and the three skills each rebuild the event set in their own
     # configure_robustness, so every one of the four re-applies the latch.
     assert source.count("self._configure_latch()") == 4
-
-
-def test_the_plain_pin_stays_rebuildable() -> None:
-    """The baseline evidence has to describe something that can be rebuilt.
-
-    ``evidence/grapple_pin_axial_pull_gate.json`` and
-    ``evidence/grapple_pin_yaw_probe_railed_plain.json`` were measured on the
-    plain pin. Turning the yoke on at the task level must not erase the ability
-    to reproduce them, so the blade spawn's own default stays off and the
-    diagnostics script keeps a switch that forces it off.
-    """
-
-    assets = (ROOT / "src/zero_g_blade_swap/tasks/blade_swap/assets.py").read_text(encoding="utf-8")
-    assert "anti_yaw_yoke: bool = False" in assets
-    diagnostics = (ROOT / "scripts/grasp_diagnostics.py").read_text(encoding="utf-8")
-    assert '"--plain_pin"' in diagnostics
-    gates = (ROOT / "scripts/run_yoke_gates.sh").read_text(encoding="utf-8")
-    assert "--plain_pin" in gates
 
 
 def test_extraction_velocity_limits_are_derived_from_the_settling_window() -> None:
@@ -159,3 +141,42 @@ def test_no_large_runtime_artifacts_are_tracked_by_layout() -> None:
     ignored = (ROOT / ".gitignore").read_text(encoding="utf-8")
     for expected in (".deps/", "datasets/", "checkpoints/", "videos/", "*.hdf5", "*.onnx"):
         assert expected in ignored
+
+
+def test_the_refuted_interface_features_stay_deleted() -> None:
+    """The anti-yaw yoke is gone from the code and stays gone.
+
+    Built and certified on three held-out seeds each, it bought extraction 0.13
+    points and cost capture 6.7 and insertion 67. The keyed redesign meant to
+    replace it does not fit inside the gripper -- its nose flange overlaps the
+    palm by 45.0 mm at every closure, ``evidence/grapple_pin_keyed_interference.json``.
+    Both measurements are kept in ``docs/status.md`` and in ``evidence/``; neither
+    feature's code is.
+
+    This is the same reasoning as the deleted swap task above: the thing most
+    likely to come back is the one whose measurements still read as promising.
+    """
+
+    for directory in ("src/zero_g_blade_swap", "scripts", "tests"):
+        for path in (ROOT / directory).rglob("*.py"):
+            if path.name == "test_configuration_contract.py":
+                continue
+            text = path.read_text(encoding="utf-8")
+            assert "anti_yaw_yoke" not in text, f"{path} still declares the yoke"
+            assert "GRAPPLE_YOKE" not in text, f"{path} still reads a yoke dimension"
+    assert not (ROOT / "scripts/run_yoke_gates.sh").exists()
+    assert not (ROOT / "tests/test_yoke_asset.py").exists()
+
+
+def test_the_uncertified_full_workflow_stays_deleted() -> None:
+    """``--workflow full`` went non-finite by control step 10 and never certified.
+
+    It was the remove-and-replace round trip, and it was superseded in intent by
+    ``relocate``, which is the ORU changeout this project is actually for.
+    Keeping a workflow nobody can quote a number from is how a reader ends up
+    quoting one.
+    """
+
+    source = (ROOT / "scripts/run_workflow_demo.py").read_text(encoding="utf-8")
+    assert '"full"' not in source
+    assert 'choices=("remove", "install", "relocate")' in source

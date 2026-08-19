@@ -3294,6 +3294,13 @@ as if it certified the skill, is the error rule 9 exists to prevent.
 
 ## The camera on a two-bay rack: the gate fails, and it fails on one seed of three
 
+> **SUPERSEDED 2026-08-18.** The seed this section is built on does not
+> reproduce: 25.00% became 80.73% on an identical re-run, and the pooled
+> camera figure went 65.10% -> 82.81%. The section is kept because the
+> reasoning in it is a good record of how a wrong conclusion was reached from
+> a real measurement. See *The camera arm's collapsing seed does not
+> reproduce* below for what replaced it.
+
 Item 6's second half. Three arms on `GrappleVisionTwoSlot-Install-v0` —
 installation into the first bay of a two-bay rack — same certified checkpoints,
 same observation term, same randomization, differing only in where the module's
@@ -3371,6 +3378,85 @@ for exactly this. Confirmed by reading the diff, term by term:
 **Neither chain has a transit phase, so nothing that changed can reach them.** No
 re-run is owed. Recorded here so the next session does not spend 15 minutes
 re-certifying to answer a question that reading answers.
+
+## The camera arm's collapsing seed does not reproduce
+
+The two-bay vision gate was reported failed on 2026-08-17 on the strength of one
+seed of three: camera 86.46% / **25.00%** / 83.85% against an oracle flat at
+90.62 / 89.58 / 85.94, pooling to 65.10% against 88.72% and missing a 10-point
+allowance by 23.6 points.
+
+Re-run on 2026-08-18 — same task, same three checkpoints by SHA-256, same pose
+head, same 64 environments, same 192 episodes, same seed:
+
+| Seed | Certified | Re-run | Delta |
+| ---: | ---: | ---: | ---: |
+| 4070 | 86.46% | 82.29% | −4.17 |
+| 5070 | **25.00%** | **80.73%** | **+55.73** |
+| 6070 | 83.85% | 85.42% | +1.57 |
+| pooled | 65.10% | **82.81%** | |
+
+Two seeds move within sampling noise — the standard error on 192 episodes at
+p ≈ 0.85 is 2.6 points. One moves 56 points, which is not sampling noise at any
+plausible variance. Seed 5070 was also run with the superseded single-bay insert
+checkpoint as a third replicate and scored 87.50%.
+
+### The standing explanation was wrong twice over
+
+It read: *"the head's held-out p95 is 6.47 mm against a 4 mm insertion lateral
+tolerance while its mean is 2.81 mm — an adequate typical accuracy with an
+inadequate tail, which is the shape that produces exactly this."* Both halves
+fail.
+
+**The head is not worse on that seed; it is best on it.** Run directly against
+the two-bay collector at each evaluation seed, 768 samples each:
+
+| Seed | Mean | p95 | Inside the 20 mm capture tolerance |
+| ---: | ---: | ---: | ---: |
+| 4070 | 2.65 mm | 6.09 mm | 99.9% |
+| 5070 | **2.52 mm** | **5.28 mm** | 99.9% |
+| 6070 | 2.53 mm | 5.82 mm | 99.9% |
+
+`artifacts/perception_seed/head_seed*.json`.
+
+**And the failures were not insertions.** The collapsing run's 144 failures are
+**142 capture-budget overruns** and 2 insert overruns. A 4 mm *insertion* lateral
+tolerance cannot explain a capture that never closes. The tolerance that governs
+there is capture's own 20 mm, or the chain's 10 mm hand-off.
+
+### Two diagnostics were broken, which is why this took a re-run to find
+
+- `run_workflow_demo.py` never recorded what the estimator was wrong *by*, so a
+  vision arm could only ever be diagnosed by inference from success rates. It now
+  records `perceived_error_mean_m` and `perceived_error_max_m` per episode. Across
+  the three re-runs those are flat: p50 4.4–4.9 mm, p90 6.4–6.9 mm.
+- `perceived_module_position_error`, which exists for exactly that purpose, **had
+  never run**. It reached for `observation_manager._term_names`, which this Isaac
+  Lab does not have, so the first caller got an `AttributeError` rather than a
+  number. Rewritten against the public `active_terms`, and searched across every
+  observation group rather than a hard-coded `"grasp"`.
+
+### What the 25.00% actually was
+
+Not identified, and it is worth saying so plainly rather than inventing a
+mechanism. What can be ruled out: the pose head (measured, best on that seed),
+the policy set (identical SHA-256 across all nine certification runs), the
+manipulation (oracle stable), the occupancy readout (100% exact-match), and
+sampling (56 points at n = 192). The renderer warnings in that run's log are
+identical to the other two seeds'.
+
+What remains is something transient in that one process — most plausibly the
+render path, since the camera arm is the only one that reads an image and the
+oracle and blind arms taken in the same session were both normal. **The honest
+statement is that one run in nine behaved differently and nothing in the record
+explains it**, and the defence is the one this page keeps relearning: a single
+run is not a measurement.
+
+*The irony is exact. This page already carried "trusting a single-seed vision
+sweep" as a refutation, because one seed reported a gate pass that three seeds
+overturned. The same failure then ran in the other direction: three seeds
+reported a gate failure that a re-run overturns, because one of the three was
+bad and nothing re-ran it.*
 
 ## The relocation is blocked by a kinematic wall, and it is now mapped
 
@@ -3608,6 +3694,68 @@ V-grooved fingers, which is what the research names — or an active latch, whic
 this project models as `GrappleLatch` and has separately refuted in the rails.
 That is a real conclusion about the hardware, and it is the one the geometry
 supports.
+
+## What was deleted on 2026-08-18, and what was kept instead
+
+A repository that keeps every refuted feature's code eventually stops saying
+which one is live. These went; their measurements stayed.
+
+### The anti-yaw yoke
+
+Two passive walls on the pin's flanks, built on 2026-08-15 to oppose rotation
+about the gripper's closing axis. Trained against and certified on three held-out
+seeds each:
+
+| | Plain pin | Yoked pin |
+| --- | ---: | ---: |
+| Capture | 95.55% | 88.81% |
+| Insertion | 95.57% | **28.70%** |
+| Extraction | 0.00% | 0.13% |
+
+It bought extraction 0.13 points and cost insertion 67. The mechanism is in the
+disagreement between prediction and measurement: geometry predicts 0.125 rad of
+free yaw from `2c/L`, the interface delivered 0.279, and a model wrong by 2.2×
+says wall clearance was never the binding compliance. Decomposing the rotation
+finished it — 0.198 rad about the closing axis the walls oppose and 0.199 about
+the transverse axis they do not.
+
+Deleted: `scripts/run_yoke_gates.sh`, `tests/test_yoke_asset.py`, the seven
+`GRAPPLE_YOKE_*` constants and four helpers in `grapple_geometry.py`, the two
+mesh authoring functions and seven config fields in `assets.py`, the task flag,
+`play.py --anti_yaw_yoke`, and the `--anti_yaw_yoke` / `--plain_pin` switch in
+`grasp_diagnostics.py`. Kept: `evidence/grapple_grasp_v4_certification.json`,
+`grapple_extract_v5_certification.json`,
+`grapple_pin_yaw_probe_railed_yoked.json`,
+`grapple_pin_axial_pull_gate_yoked.json`, and the numbers above.
+
+The pin's own dimensions did not change — no `GRAPPLE_PIN_*` constant moved, and
+the smoke contract still reports `GrapplePin/Shaft, GrapplePin/Collar,
+GrapplePin/Wedge collidable`. The yoke was off by default, so nothing certified
+was ever measured with it present.
+
+`tests/test_configuration_contract.py::test_the_refuted_interface_features_stay_deleted`
+keeps it out, for the same reason the deleted swap task has a test: the thing most
+likely to come back is the one whose measurements still read as promising.
+
+### `--workflow full`
+
+The remove-and-replace round trip. It went non-finite by control step 10 and was
+never certified, so no number was ever quoted from it and none could be. Its
+intent is superseded by `relocate`, which is the ORU changeout this project is
+actually for — and which is blocked for a measured reason rather than a
+mysterious one. Keeping a workflow nobody can quote a number from is how a reader
+ends up quoting one.
+`::test_the_uncertified_full_workflow_stays_deleted` keeps it out.
+
+### Two stale local branches
+
+`agent/zero-g-blade-swap` and `backup/pre-trailer-strip` were both fully merged
+into `main` and are deleted locally. `origin/agent/zero-g-blade-swap` still exists
+and carries six pre-rebase commits that are *not* in main, so it is left alone
+rather than force-deleted — that history is the only copy.
+
+`keyed-interface` is kept. It is where the rotation measurements in *The keyed
+interface is closed as impossible* were taken, and nothing on it will be merged.
 
 ## Demonstration assets
 

@@ -171,22 +171,6 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
     # World orientation the tool frame holds for a head-on capture: the +z
     # approach axis along world +x, and the closing axis vertical.
     tool_target_rot: tuple[float, float, float, float] = GRAPPLE_HEAD_ON_TOOL_ROT
-    # The anti-yaw yoke: built, measured on 2026-08-15, and turned back off.
-    #
-    # Two passive walls cannot fix what a passive interface is missing. Trained
-    # against and certified on three held-out seeds each, the yoke bought
-    # extraction 0.13 points and cost capture 6.7 and insertion 67:
-    #
-    #   capture  95.55% -> 88.81%   extract  0.00% -> 0.13%   insert  95.57% -> 28.70%
-    #
-    # The mechanism is in the disagreement between prediction and measurement.
-    # Geometry predicts 0.125 rad of free yaw from 2c/L; the interface delivers
-    # 0.279. A model wrong by 2.2x says the wall clearance is not the binding
-    # compliance, so tightening it further aims at the wrong term. The walls
-    # stay implemented, dimensioned, and defended by tests, because the
-    # measurement is worth keeping and the feature may matter on a stiffer
-    # gripper. See docs/status.md.
-    anti_yaw_yoke: bool = False
     # A modelled latch was built next, on the reasoning that flight servicing
     # hardware latches rather than relying on friction, and it is off for a
     # measured reason of its own. Swept from 10 to 160 N-m against the unchanged
@@ -216,11 +200,6 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
 
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)
-        # One place, so the three skills cannot disagree about which interface
-        # they were trained against. The blade spawn is deep-copied per
-        # configuration by ``configclass``, so this never reaches the
-        # module-level asset.
-        self.scene.spare_blade.spawn.anti_yaw_yoke = self.anti_yaw_yoke
         # The parent rebuilds the event set for the chosen level from the
         # contact task's class, which carries the top-down poses and the old
         # finger commands, so re-assert the head-on ones afterwards.

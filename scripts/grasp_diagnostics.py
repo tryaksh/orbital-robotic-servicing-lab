@@ -107,22 +107,6 @@ def _parser() -> argparse.ArgumentParser:
             "orientation tolerance, so the gate asks the same question the skills' success predicates ask."
         ),
     )
-    yoke = parser.add_mutually_exclusive_group()
-    yoke.add_argument(
-        "--anti_yaw_yoke",
-        dest="anti_yaw_yoke",
-        action="store_true",
-        default=None,
-        help="Force the second-generation anti-yaw walls on. The grapple-pin tasks turn them on themselves, so "
-        "this is only needed to fit a yoke to a task that does not.",
-    )
-    yoke.add_argument(
-        "--plain_pin",
-        dest="anti_yaw_yoke",
-        action="store_false",
-        help="Force the anti-yaw walls off, so the plain-pin baselines in evidence/ stay rebuildable after the "
-        "yoke became the live interface.",
-    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--report", type=Path, default=Path("artifacts/grasp_diagnostics.json"))
     AppLauncher.add_app_launcher_args(parser)
@@ -183,15 +167,6 @@ def _configure(env_cfg) -> None:
     # The script drives the fingers so each environment can hold its own closure
     # target; the interval event would overwrite all of them with one value.
     env_cfg.events.hold_gripper_closed = None
-    # None means "whatever the task configures", which is the yoke on every
-    # grapple-pin task since 2026-08-14. --anti_yaw_yoke and --plain_pin
-    # override it in either direction, so both interfaces stay measurable from
-    # one script and the plain-pin evidence stays rebuildable.
-    if args.anti_yaw_yoke is not None:
-        spawn = env_cfg.scene.spare_blade.spawn
-        if not hasattr(spawn, "anti_yaw_yoke"):
-            raise ValueError(f"{args.task} does not carry a grapple pin, so it has nothing to fit a yoke to")
-        spawn.anti_yaw_yoke = bool(args.anti_yaw_yoke)
 
 
 def _grid(device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
@@ -432,10 +407,6 @@ def main() -> dict[str, object]:
                     if args.load_axis == "axial"
                     else "lateral force at the module centre, which is a yaw moment about the grip point"
                 ),
-                # The resolved value, not the flag: the grapple-pin tasks turn
-                # the yoke on themselves, so a report that echoed the argument
-                # would mislabel every default run.
-                "anti_yaw_yoke": bool(getattr(env_cfg.scene.spare_blade.spawn, "anti_yaw_yoke", False)),
                 "max_force_n": args.max_force_n,
                 "force_step_n": args.max_force_n / (args.force_levels - 1),
                 "max_torque_nm": args.max_torque_nm,
@@ -504,7 +475,7 @@ def main() -> dict[str, object]:
                 # The yaw gate has no absolute requirement to clear, because
                 # nothing in this project measures an applied servicing moment.
                 # It is a comparison: the same grid on the plain pin and on the
-                # yoke, judged against capture_established's own 0.20 rad
+                # closing axis, judged against capture_established's own 0.20 rad
                 # tolerance. Its pass/fail is therefore not applicable and the
                 # number that matters is the breakaway torque.
                 "applies": args.load_axis == "axial",

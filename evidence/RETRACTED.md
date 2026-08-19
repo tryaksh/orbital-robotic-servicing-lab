@@ -27,6 +27,7 @@ other half — whether a report describes the checkpoint a run actually loaded.
 | `workflow_remove_certification.json` and the other pre-2026-08-15 removal runs | 14.06% removal | Same defect: certified before the velocity limits were derived | `workflow_remove_retain_certification.json` — 98.78% |
 | `workflow_install_final_certification.json` | 84.38% installation | Describes the *same two policies* by checkpoint hash, but was certified 8.5 h before commit `ffac648` raised the capture phase's budget from 6 s to 10 s | `workflow_install_promoted_certification.json` — 89.41%, and the later clock/retain re-run above it |
 | `workflow_install_v6insert_certification.json` | 86.28% installation | Same defect, same commit | as above |
+| `vision_workflow_camera_twoslot_certification.json`, the 2026-08-17 run | 65.10% camera; the gate failed by 23.6 points | **One of its three seeds does not reproduce.** Seed 5070 recorded 25.00%; re-run on 2026-08-18 with the identical task, the identical three checkpoints by SHA-256, the identical pose head, 64 environments and 192 episodes, it scores **80.73%**. The other two seeds move within sampling noise, −4.17 and +1.57. The pose head is *best* on the collapsing seed — 2.52 mm mean against 2.65 and 2.53 — and the failures were 142 capture-budget overruns, not the insertion tail the write-up blamed | the re-certification of 2026-08-18, in the same file. The superseded reasoning is kept in `docs/status.md` |
 | the 96.10% capture figure, formerly in `grapple_grasp_v5_certification.json` | 96.10% capture | Certified 9.4 h before `ffac648` tightened `capture_success_mask` from a 20 mm grip tolerance to 10 mm. Re-reading its own episodes could only bound it **between 43% and 96%**, because the criterion is the termination: an episode that ended at 15 mm under the old rule would not have ended at all under the new one | **re-measured 2026-08-17: 88.78% pooled and 79.22% in the worst stage, so it FAILS its 95% gate.** The file now holds that run; the number above exists only here. Both bounds were wrong — the lower far too pessimistic, the upper the stale figure itself |
 
 ## Reports that are measurements, not certifications
@@ -42,7 +43,7 @@ gates, and their promotion gate is marked non-applicable.
 | `uncertain_insertion_*_envelope.json` | Same |
 | `grapple_pin_rated_grip_force.json` | A refuted hypothesis, kept because the refutation is the result |
 
-## A label that is wrong on every grapple-pin report
+## A label that was wrong on every grapple-pin report — FIXED 2026-08-18
 
 Not a retraction, and it does not move any number, but it misdescribes all of
 them and should be fixed rather than remembered.
@@ -60,9 +61,29 @@ two therefore disagree about the same scene.
 
 The gate values themselves are computed and reported normally — `passed` is
 correct — so no rate here is affected. What is affected is the label on top of it.
-The fix is to read the runtime collision state from the stage the way `train.py`
-does, rather than infer it from a config default, and it needs a re-run of the
-affected reports to re-label them.
+
+**Fixed on 2026-08-18.** `play.py` now reads the tri-state properly, treating only
+an explicit `False` as disabled, and gains `--no_lead_in` so the field can
+actually take the other value — without it `lead_in_present` could never read
+false, and the field it reported was dead.
+
+Re-labelling did **not** need a re-run, and that is the part worth reading. The
+archived per-episode rows are the measurement; only the metadata stamped on top of
+them was wrong. `scripts/relabel_lead_in.py` corrects the `stress` block inside
+200 archived `.npz` files and the 23 reports derived from them, in place, keeping
+each report's original `generated_utc` — the measurement is not new and must not
+read as new to `check_evidence_currency.py`. Every corrected report carries a
+`label_correction` block saying what changed and what did not.
+
+The correction is proven rather than asserted: `--verify` re-aggregates a report
+from the corrected rows and diffs it field for field against the in-place patch.
+Eight reports reproduce exactly, including `grasp_v5`, which re-derives 88.78%
+pooled and 79.22% on the worst stage straight from the raw episodes.
+
+Four reports keep `out_of_distribution: true` and are meant to — the two
+rigid-grasp envelopes and the two uncertain-insertion belief sweeps are genuine
+stress runs. The relabeller decides from the archived rows rather than from the
+report, and refuses to touch a checkpoint that appears in any real sweep.
 
 ## The pattern, stated once
 
@@ -75,3 +96,17 @@ session and re-running whatever it flags.
 The capture retraction is the first one to be *closed by re-measurement* rather
 than by a replacement run of a newer policy, and it closed the wrong way: the
 skill fails the gate its stale figure passed. That is the mechanism working.
+
+**The two-bay camera retraction has a different shape and needs its own defence.**
+Nothing moved underneath it. The criterion was current, the checkpoints were
+current, the code was current, and the number was still wrong — because one run
+in nine behaved differently and nothing re-ran it. `check_criterion_currency.py`
+could not have caught it and neither could `check_evidence_currency.py`.
+
+The only defence against that is replication, and this project had already
+written the rule down: *"trusting a single-seed vision sweep"* sits in the
+do-not-retry list because one seed once reported a pass that three seeds
+overturned. Three seeds then reported a **failure** that a re-run overturns. Three
+runs of one configuration are three samples of the configuration, not three
+samples of the run. Where a single run can differ by 56 points, the seeds are not
+the thing that needs repeating.
