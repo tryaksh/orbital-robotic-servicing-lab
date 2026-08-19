@@ -30,6 +30,50 @@ other half — whether a report describes the checkpoint a run actually loaded.
 | `vision_workflow_camera_twoslot_certification.json`, the 2026-08-17 run | 65.10% camera; the gate failed by 23.6 points | **One of its three seeds does not reproduce.** Seed 5070 recorded 25.00%; re-run on 2026-08-18 with the identical task, the identical three checkpoints by SHA-256, the identical pose head, 64 environments and 192 episodes, it scores **80.73%**. The other two seeds move within sampling noise, −4.17 and +1.57. The pose head is *best* on the collapsing seed — 2.52 mm mean against 2.65 and 2.53 — and the failures were 142 capture-budget overruns, not the insertion tail the write-up blamed | the re-certification of 2026-08-18, in the same file. The superseded reasoning is kept in `docs/status.md` |
 | the 96.10% capture figure, formerly in `grapple_grasp_v5_certification.json` | 96.10% capture | Certified 9.4 h before `ffac648` tightened `capture_success_mask` from a 20 mm grip tolerance to 10 mm. Re-reading its own episodes could only bound it **between 43% and 96%**, because the criterion is the termination: an episode that ended at 15 mm under the old rule would not have ended at all under the new one | **re-measured 2026-08-17: 88.78% pooled and 79.22% in the worst stage, so it FAILS its 95% gate.** The file now holds that run; the number above exists only here. Both bounds were wrong — the lower far too pessimistic, the upper the stale figure itself |
 
+## Not retracted, but scoped: every `main` number describes one workcell
+
+**On branch `industrial-relocation` this is the first thing to know about every
+report above and below.** `GRAPPLE_ROBOT_ROOT_POS` moved from (−0.45, 0, 0.15) to
+(−0.65, 0, 0.15), and every calibrated spawn pose was re-solved against it. So on
+this branch:
+
+| | |
+| --- | --- |
+| `grapple_grasp_v5_certification.json` (88.78%) | measured on the old cell |
+| `grapple_extract_v14reset_certification.json` (99.02%) | measured on the old cell |
+| `grapple_insert_two_slot_certification.json` (98.34% worse bay) | measured on the old cell |
+| `workflow_remove_retain_certification.json` (98.78%) | measured on the old cell |
+| `workflow_install_clock30retain_certification.json` (96.35%) | measured on the old cell |
+| `vision_workflow_*_twoslot_certification.json` | measured on the old cell |
+
+None of these is *wrong*. Each was a correct measurement of the cell it ran in,
+and each is still current on `main`, which is where that cell lives. What is no
+longer true is that **checking one out and re-running it here reproduces it** —
+the code in this tree builds a different workcell, so `check_criterion_currency.py`
+flags all six, correctly.
+
+The replacements produced on this branch carry a **`w65`** tag in the filename —
+`grapple_grasp_v6w65_certification.json` for capture, and the same pattern for
+extraction, the two-bay insert and both chains — plus one name `main` has never
+had, for the relocation chain itself. The tag is the workcell: base x at
+−0.65. (Filenames are given as a convention rather than as citations here,
+because a page that cites a report before it exists is the same defect as one
+that cites a report after it stopped being true.)
+
+The old files are kept and not overwritten, deliberately: they are the *before*
+half of every comparison this branch makes, and once overwritten the comparison
+could not be re-made without rebuilding a workcell that no longer exists in the
+tree. `run_relocation.sh` and `certify_workflow.sh` gained a `TAG` for exactly
+that reason — the first version of this work would have written the new two-bay
+insert number straight over the old one.
+
+**This is a different shape of hazard from the retractions below**, and worth
+naming as its own. Those are numbers that stopped being true. These are numbers
+that are still true about a system nobody can build from this tree. Neither
+currency check catches it, because neither asks *"is the geometry this ran on
+still the geometry the code makes"* — the honest answer is a tag in the filename
+and this page.
+
 ## Reports that are measurements, not certifications
 
 These are not retracted and not promotion evidence. They carry
