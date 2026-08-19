@@ -126,11 +126,26 @@ insertion of an already-secured replacement blade into a rack in microgravity**.
 
 ## Honest one-line summary
 
-A reinforcement-learning policy trained in NVIDIA Isaac Lab performs
-zero-gravity robotic insertion of a server blade into a rack at 100% success
-over 27,121 held-out simulated episodes across three contact-robustness levels,
-up to 1.5 mm side clearance with payload mass randomized over 5-15 kg, with
-reset-safe terminal-state evidence and confidence intervals; adding wrist-force
-feedback and retraining against a matched control cut accumulated contact
-impulse by 59% at no cost in cycle time — a simulation result on primitive
-geometry, not a validated flight or hardware capability.
+In NVIDIA Isaac Lab, in zero gravity, three PPO policies capture a modular
+compute unit by a passive interface on the module, pull it 495 mm clear of its
+rack, and seat one back in — held by real pad-against-pin contact throughout,
+with no fixed joint — at **98.78%** for the removal chain and **96.35%** for the
+installation chain over 576 held-out workflows each, with zero instability and
+zero non-finite terminations; the interface itself is specified, not assumed,
+and holds **69 N** against a **66.4 N** requirement measured from the insertion's
+own contact reaction. Carrying the module *between* bays does not work, for a
+measured reason: near the folded configuration servicing requires, this arm
+exchanges attitude for reach at about 7.5 m/rad, and every crossing point is
+further out than the grip can afford. Simulation on primitive geometry, one
+training seed per policy, no hardware.
+
+## If you read one thing
+
+Not a success rate. Read
+[`evidence/RETRACTED.md`](../evidence/RETRACTED.md) — six figures this project
+published and then withdrew, each with the measurement that withdrew it. Four
+were withdrawn because a criterion moved underneath a good measurement and
+nothing re-ran it. One was withdrawn because a single run in nine behaved
+differently and nothing re-ran *that*. The mechanisms that catch the first kind
+are in the repository as scripts; the only defence against the second is
+replication, and it is the rule this project has now broken in both directions.

@@ -459,7 +459,7 @@
       <p class="eyebrow">The other half of the record</p>
       <h2>What was tried and did not work</h2>
       <p>
-        Five hypotheses were tested and refuted with measurements. They are kept because they are what
+        Seven hypotheses were tested and refuted with measurements — including two of this project's own earlier conclusions. They are kept because they are what
         justified the decisions that followed, and because a project that reports only its wins is not
         reporting.
       </p>
@@ -487,9 +487,28 @@
           the rack's lead-in flares were already doing the alignment mechanically.</span>
       </div>
       <div class="row">
-        <span class="what">Blaming the workcell geometry</span><span class="verdict">refuted</span>
-        <span class="why">Converged IK reaches the extraction pose holding attitude to 0.0114 rad, 17×
-          inside tolerance. The earlier evidence against it was an under-converged solver.</span>
+        <span class="what">A keyed interface to replace the taper</span><span class="verdict">refuted by geometry</span>
+        <span class="why">Flat keyed faces fix rotation decisively — seated grip 0.0194&nbsp;→&nbsp;0.0007&nbsp;m,
+          seated attitude 0.0637&nbsp;→&nbsp;0.0013&nbsp;rad, 120&nbsp;N held at a 0.34&nbsp;m arm — and score
+          <strong>0.00%</strong> on extraction, because the nose flange sits <strong>45&nbsp;mm inside the
+          gripper's palm</strong> at every closure. Nor can any version fit: a stop forward of the pads needs
+          43.5&nbsp;mm of room and there is 7.9&nbsp;mm. The corollary is the useful half — the gripper's throat
+          is cone-shaped, so the taper is not a compromise, it is the only shape that fits.</span>
+      </div>
+      <div class="row">
+        <span class="what">"Blaming the workcell geometry"</span><span class="verdict">the refutation was half-right, and is itself corrected</span>
+        <span class="why">A converged solver reaches the extraction pose holding attitude to 0.0114&nbsp;rad;
+          driving orientation at full authority it holds 0.0002&nbsp;rad and gives up <strong>88.7&nbsp;mm</strong>
+          at the same pose. Both are true — near this folded configuration attitude exchanges for reach at about
+          <strong>7.5&nbsp;m per radian</strong>. The workcell is marginal rather than adequate, and the objective
+          decides which way it fails. The base-position sweep published alongside the original claim is retracted:
+          the flag that moved the base had never moved anything.</span>
+      </div>
+      <div class="row">
+        <span class="what">A one-seed vision sweep, then a three-seed one</span><span class="verdict">both refuted, in opposite directions</span>
+        <span class="why">One seed reported the camera arm passing its gate; three seeds overturned it. Three
+          seeds then reported it <em>failing</em>; a re-run overturned that, because one run in nine scored 25.00%
+          where every repeat scores about 82%. Three seeds are three samples of the configuration, not of the run.</span>
       </div>
     </div>
     <div class="col">
