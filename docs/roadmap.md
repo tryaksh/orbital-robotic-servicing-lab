@@ -42,27 +42,54 @@ of four stages and chained numbers here have consistently landed below the produ
 of their parts, so build and certify in pieces rather than assembling the whole
 scene and measuring once.
 
-### Status, 2026-08-17
+### Status, 2026-08-18 — closed
 
-Steps 1, 2 and 3 are closed, step 6's perception half is measured, and **step 4 is
-where this stops.** Insert seats a module in either bay at 98.34% in the worse one
+Steps 1, 2, 3 and 6 are done. **Step 4 is closed as blocked, with the blocker
+measured, and step 5 is therefore not attempted.** This roadmap is finished; what
+follows is the account rather than a plan.
+
+Insert seats a module in either bay at 98.34% in the worse one
 (`evidence/grapple_insert_two_slot_certification.json`), and the camera reports
 which bay holds it at 100% against a 66.6% baseline
 (`evidence/module_pose_head_two_slot.json`).
 
-The relocation chain does not complete, and the reason is not a rate. **The retreat
-depth the transit needs is not reachable while holding the head-on capture
-attitude**: the converged solver keeps the attitude to 0.0001 rad and gives up
-174 mm of position. The arm was only ever getting there by rotating the wrist into a
-configuration a single-point pin cannot hold the module in, which is why the module
-swings end-for-end mid-flight.
+**The relocation does not complete, and it is a workcell limit rather than a rate
+or a controller.** Driving position and the head-on capture attitude at full
+authority, the tool parks at local x = −0.0258. Extraction must finish 88.7 mm
+past that and the transit's retreat 167 mm past it.
+`evidence/relocation_reach_boundary.json`. Two controls close the question:
 
-That makes step 4 a **workcell** question rather than a controller one, and it is
-the first direct measurement behind the "layout, not the interface" hypothesis
-`docs/status.md` has carried as its leading suspect since 2026-08-15. The cheap
-untried fix is to cross laterally *before* retreating fully, using the first bay's
-rails to constrain the module's attitude during the lateral move; the expensive one
-is bay pitch, base position or reach. Step 5 stays blocked until one of them lands.
+- **attitude free** — every depth converges to 0.00 mm, including 64 mm beyond the
+  retreat. The arm reaches those depths; it cannot reach them pointing the way the
+  interface requires;
+- **lift** — the rack's lead-in flares are 50 mm plates and the module is 35 mm
+  thick, so a 45 mm lift clears them and lets the module cross at the extraction
+  depth instead of behind the flare plane. The parking point does not move, at 0,
+  50, 100 or 200 mm.
+
+So **the cheap untried fix this roadmap named — cross laterally before retreating
+fully — is refuted rather than untried.** Every crossing point is past the parking
+point: 167 mm behind the flare plane, or 88.7 mm over it. And the attitude is not
+simply unavailable there: near this folded configuration it exchanges for reach at
+about **7.5 m/rad**, which is exactly why the transit reached its waypoints when
+nothing commanded the attitude, and why the module then swung end-for-end.
+
+The expensive fix — base position, bay pitch, or reach — remains available and was
+not taken. It needs the head-on spawn pose re-solved first (probed at −0.65 the arm
+starts 200 mm short of its own capture pose and shoves the module 137 mm) and then
+invalidates capture, extraction, insertion, both chains and all three vision arms.
+Trading a certified removal-and-installation demonstration for an uncertified
+relocation was not the right call for this project's last session, and that is a
+judgement rather than a measurement — a later session with GPU time to re-certify
+everything should take it.
+
+**A note on the fourth item's own history**, because it is the most useful thing on
+this page. Step 4 was diagnosed three times and the first two diagnoses were both
+wrong in the same way: they read a single measurement as a property of the system.
+"The module is slipping" was really the module flipping. "The retreat depth is
+unreachable" was really one side of a steep trade. Each time the correction came
+from a *control* — a probe run against a configuration whose answer was already
+known — and not from more instrumentation of the failing case.
 
 ## The current line of work, decided 2026-08-10
 

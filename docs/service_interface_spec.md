@@ -272,7 +272,7 @@ Three things this requirement is not:
 
 ---
 
-## 8. Attitude must be constrained — and two attempts to do it mechanically failed
+## 8. Attitude must be constrained — and three attempts to do it mechanically failed
 
 > **Read 8.3 before designing anything against this section.** Two features were
 > built on the reasoning below, both were trained against and certified, and
@@ -306,6 +306,11 @@ does not. An anti-yaw feature — a keyway, or flats the pads bear against
 laterally — is the change that closes it.
 
 ### 8.1 The feature, and where the gripper allows it
+
+> **The yoke's code was deleted on 2026-08-18.** The dimensions below are kept
+> because they are correctly derived from the measured envelope and because 8.3
+> is about them; they do not describe anything the repository builds. A contract
+> test keeps the feature out.
 
 Re-reading `evidence/gripper_collision_envelope.json` across the whole closure
 range gives the constraint that decides the design:
@@ -407,6 +412,64 @@ has been tried**, because two passive features have now been paid for and both
 made the system worse.
 
 ---
+
+### 8.4 A third attempt, and the specification-level result it produced
+
+The natural next move after two failed *additions* is to change the gripped
+feature itself: replace the taper with a **flat key between two axial stops**, so
+rotation is blocked by plane contact rather than by friction, and axial load is
+carried by a shoulder rather than by wedging. That is what flight hardware does —
+Dextre's OTCM grips a micro-square and then bolts it; SIROM latches at three
+points; HOTDOCK is form-fit plus a lock. None of them makes friction
+load-bearing.
+
+**It works as a clamp and it cannot be installed.**
+
+| | Tapered pin | Keyed pin |
+| --- | ---: | ---: |
+| Seated grip offset | 0.0194 m | **0.0007 m** |
+| Seated grip attitude | 0.0637 rad | **0.0013 rad** |
+| Rotation in extraction failures | 0.30+ rad | **0.10 rad** |
+| Lateral load held without slip | — | **120 N at a 0.34 m arm, 40 N·m** |
+| Extraction | 99.02% | **0.00%** |
+
+The reason for the 0.00% is dimensional, not behavioural: with the pads seated,
+the keyed pin's nose flange occupies 77–97 mm of depth from the flange at a 45 mm
+half-height, and **the palm straddles the tool axis out to 90 mm**. The flange
+overlaps the hand by 45.0 mm at every closure, including fully open. The pads were
+never in the pocket. `evidence/grapple_pin_keyed_interference.json`.
+
+**And this generalises into a specification rule.** Sweeping the gripped section's
+half-height from 1 to 43 mm and reading the room in the window a pocket wall must
+occupy — between the palm face at 90 mm and the seated pads at 105 mm:
+
+| | |
+| --- | ---: |
+| Room forward of the seated pads | **7.9 mm** of half-height |
+| Half-opening a stop must exceed to be proof against the pads splaying | **43.5 mm** |
+| Gripped-section heights admitting *any* forward stop | 7 of 43, all under 7 mm |
+
+> **Rule.** On a stock parallel-jaw gripper, a serviceable module **cannot carry a
+> positive axial stop forward of the pads.** The volume immediately ahead of the
+> pads belongs to the hand — the palm below 90 mm and the knuckles above it — and
+> the trade is self-defeating in the obvious direction too, because a shorter
+> gripped section lets the hand close further and brings the knuckles further in.
+> An axial lock therefore has to come from the *end-effector*: V-grooved fingers,
+> or a powered latch. It cannot come from the module.
+
+**The corollary is the useful half, and it reverses a judgement this project held
+for three sessions.** The 2F-85's throat is itself cone-shaped, and the tapered
+pin's profile is close to it — 33.6 mm of half-height where the pads begin,
+falling to 8 mm at the collar, against a throat that opens the same way. The taper
+stops the pads at 0.186 rad and clears every closure at or below that. The taper
+doing double duty as funnel *and* clamp was read as a design smell. It is not: it
+is the only shape this hand's throat admits, and the two features that tried to
+improve on it both failed because they needed volume the hand occupies.
+
+`scripts/check_pin_gripper_clearance.py` and
+`scripts/measure_pin_design_window.py` derive both, from
+`evidence/gripper_collision_envelope.json` and no simulator. Run the first with no
+arguments to check the shipped pin; it passes.
 
 ## 9. What this specification does not cover
 
