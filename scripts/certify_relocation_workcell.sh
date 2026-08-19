@@ -19,8 +19,12 @@ set -u
 
 PYTHON="C:/isaac-sim/python.bat"
 GRASP_RUN="${GRASP_RUN:-grapple_grasp_l0_seed70_v6w65}"
-EXTRACT_RUN="${EXTRACT_RUN:-grapple_extract_l0_seed70_v15w65}"
-INSERT_RUN="${INSERT_RUN:-grapple_insert_l0_seed70_v11w65}"
+# v15w65 and v11w65 were the first fine-tune pass and did not re-converge: zero
+# successes in training and 0.10% on extraction's intermediate certification.
+# v16w65 and v12w65 continue them to 9,700 and 9,600 epochs. Capture needed no
+# second pass -- it certified at 94.46% after 900.
+EXTRACT_RUN="${EXTRACT_RUN:-grapple_extract_l0_seed70_v16w65}"
+INSERT_RUN="${INSERT_RUN:-grapple_insert_l0_seed70_v12w65}"
 OUT="${OUT:-artifacts/workcell_cert}"
 mkdir -p "$OUT" evidence
 
@@ -39,7 +43,7 @@ case "$stage" in
     # three curriculum stages each. Insert is certified by `insert2` instead,
     # because the promoted insert is the two-bay policy and its gate is the
     # worse bay rather than a single-slot pool.
-    GRASP_VERSION=v6w65 EXTRACT_VERSION=v15w65 \
+    GRASP_VERSION=v6w65 EXTRACT_VERSION=v16w65 \
       INTERFACE="the plain grapple pin, on the moved workcell at x = -0.65" \
       bash scripts/certify_demo_policies.sh Grasp Extract
     ;;
