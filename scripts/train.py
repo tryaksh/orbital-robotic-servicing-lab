@@ -36,6 +36,28 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max_iterations", type=int, default=None)
     parser.add_argument(
+        "--learning_rate",
+        type=float,
+        default=None,
+        help=(
+            "Override the profile's PPO learning rate. Written for resuming a policy onto changed "
+            "geometry: the first update after a resume is measured at KL 0.1187 against this profile's "
+            "0.008 threshold, which is a fifteen-fold overshoot, and a policy that survives it competent "
+            "learns far faster than one that has to be rebuilt. Leave unset for any run that is meant to "
+            "be comparable with a certified one."
+        ),
+    )
+    parser.add_argument(
+        "--entropy_coef",
+        type=float,
+        default=None,
+        help=(
+            "Override the profile's PPO entropy coefficient. For an exploration failure -- a policy that "
+            "does most of a task and never samples the success its value function would need -- this is "
+            "the knob that is about exploration and not about the task."
+        ),
+    )
+    parser.add_argument(
         "--robustness_level",
         type=int,
         choices=range(5),
@@ -227,6 +249,12 @@ def main() -> None:
         agent_cfg["params"]["config"]["device_name"] = rl_device
         if args.max_iterations is not None:
             agent_cfg["params"]["config"]["max_epochs"] = args.max_iterations
+        for flag, key in (("learning_rate", "learning_rate"), ("entropy_coef", "entropy_coef")):
+            value = getattr(args, flag)
+            if value is not None:
+                previous = agent_cfg["params"]["config"].get(key)
+                agent_cfg["params"]["config"][key] = value
+                print(f"[INFO] PPO {key}: {previous} -> {value} (overridden on the command line)", flush=True)
         if args.smoke:
             agent_cfg["params"]["config"]["max_epochs"] = 2
             agent_cfg["params"]["config"]["save_best_after"] = 0
