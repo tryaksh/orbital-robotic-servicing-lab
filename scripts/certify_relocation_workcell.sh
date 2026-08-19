@@ -9,6 +9,7 @@
 #   scripts/certify_relocation_workcell.sh capture   # Phase 5: capture, already done as v6w65
 #   scripts/certify_relocation_workcell.sh insert2   # Phase 5: insert, both bays
 #   scripts/certify_relocation_workcell.sh chains    # Phase 6: removal + installation
+#   scripts/certify_relocation_workcell.sh chains-remove   # removal only; needs no insert policy
 #   scripts/certify_relocation_workcell.sh trace     # Phase 7: read the relocation
 #   scripts/certify_relocation_workcell.sh latchab   # Phase 2: latch off vs on release
 #   scripts/certify_relocation_workcell.sh relocate  # Phase 7: certify the relocation
@@ -67,7 +68,19 @@ case "$stage" in
   chains)
     # Both existing chains, on the changed geometry. A relocation bought by
     # breaking removal is not a demonstration.
+    #
+    # **They do not depend on the same policies.** The removal workflow finishes
+    # at extraction and never steps the insert policy -- it loads the checkpoint
+    # and never calls it -- so removal is certifiable on capture and extraction
+    # alone. Installation and the relocation both need insertion. If insertion is
+    # the thing still training, `chains remove` is the half that can be earned
+    # now, and it is worth earning rather than waiting.
     TAG="_w65" bash scripts/certify_workflow.sh remove install
+    ;;
+
+  chains-remove)
+    # Removal only: capture and extraction, no insert policy involved.
+    TAG="_w65" bash scripts/certify_workflow.sh remove
     ;;
 
   trace)
@@ -110,7 +123,7 @@ case "$stage" in
     ;;
 
   *)
-    echo "usage: scripts/certify_relocation_workcell.sh {promote|skills|capture|insert2|chains|trace|latchab|relocate}"
+    echo "usage: scripts/certify_relocation_workcell.sh {promote|skills|capture|insert2|chains|chains-remove|trace|latchab|relocate}"
     exit 2
     ;;
 esac
