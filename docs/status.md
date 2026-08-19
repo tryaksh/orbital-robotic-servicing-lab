@@ -3372,6 +3372,131 @@ for exactly this. Confirmed by reading the diff, term by term:
 re-run is owed. Recorded here so the next session does not spend 15 minutes
 re-certifying to answer a question that reading answers.
 
+## The keyed interface is closed as impossible, not as unfinished
+
+The keyed grapple pin — flat key faces between two axial stops, replacing the
+tapered wedge — was built on branch `keyed-interface` on 2026-08-17 and reverted
+from main the same night. It fixed rotation decisively and took extraction to
+0.00%, and five separate corrections on the branch did not move that number:
+
+| Correction on the branch | Effect on extraction |
+| --- | --- |
+| Reset noise (0.010, 0.015, 0.020) → (0.0005, 0.001, 0.002) rad | step-1 deaths 100% → 0.4% |
+| Pad interference 2/5 mm → 0.3/1.0 mm | none |
+| `capture_established` position test → lateral slip | none |
+| Approach opening 85 mm → 45 mm, sized to the key | max control steps 4 → 11 |
+| `extraction_failure` axial bound 15 mm → 30 mm | step-1 deaths 100% → 7.6% |
+
+Grip error stayed at **0.0349, 0.0347, 0.0347 m** across three of those runs
+while noise, interference and the latch condition all changed underneath it, and
+attitude stayed at 0.0224 rad. A constant that survives every variable is not
+produced by any of them, so the fault was structural. It is, and it was never
+looked for, because five sessions of parameter work were spent first.
+
+### The nose flange is inside the gripper
+
+With the pads seated, the keyed pin's nose flange occupies **77–97 mm of depth
+from the flange with a 45 mm half-height**, and the 2F-85's palm straddles the
+tool axis out to **90 mm**. The flange overlaps the hand by **45.0 mm at 85–90 mm
+depth, at every closure, including fully open** — there is no room at all there,
+not a tight fit. The pads were therefore never in the pocket, which is why the
+axial pull gate read 19–52 N and every extraction died at control steps 2–4.
+
+`evidence/grapple_pin_keyed_interference.json`, from
+`scripts/check_pin_gripper_clearance.py`.
+
+**`PALM_FACE_FROM_FLANGE_M = 0.090` was already in `grapple_geometry.py`, with
+the comment "Nothing can sit closer to the flange than this on the tool axis."**
+The redesign put a section 13 mm inside it. This is rule 4 — read constants,
+never restate them — failing in its other direction: the constant was read by
+nobody, and no test defended it. Two now do,
+`tests/test_grapple_geometry.py::test_pin_clears_the_gripper_at_every_closure_the_pin_allows`
+and `::test_no_pin_section_reaches_closer_to_the_flange_than_the_palm`.
+
+### The probe had to be fixed twice, and the control is why
+
+Two earlier versions of the clearance check condemned the **certified tapered
+pin**, which extracts at 99.02%:
+
+1. Intersecting axis-aligned body bounds reported the taper interfering with the
+   inner knuckle by 21.3 mm. An axis-aligned box around a slanted knuckle claims
+   volume the knuckle does not occupy, and taking a tapered section at its widest
+   point claims volume the pin does not occupy.
+2. Switching to the vertex-sampled throat profile still reported 24.7 mm, because
+   it evaluated closures **the pin itself prevents the hand from reaching**. The
+   pads are rigid and stop on the pin; every knuckle is then positioned by that
+   stop. Asking whether a pin fits a hand closed on nothing is not a question
+   about the interface.
+
+Both are corrected and the taper now passes cleanly at every closure at or below
+the 0.186 rad its own profile allows. This is rule 6 twice over — a probe that
+condemns the working control is broken, and the control is the only thing that
+says so.
+
+### A forward axial stop is not available on this hand at any key height
+
+The deeper question is not whether *this* nose fits but whether any does. A keyed
+interface needs a shoulder forward of the pads, taller than the gripped section,
+or it is not a stop at all. Sweeping the gripped half-height from 1 to 43 mm and
+reading the room in the window a pocket wall must occupy — between the palm face
+at 90 mm and the seated pads at 105 mm:
+
+| | |
+| --- | ---: |
+| Room forward of the seated pads | **7.9 mm** half-height |
+| Gripped heights admitting *any* forward stop | 7 of 43, all under 7 mm |
+| Half-opening a splay-proof stop must exceed | 43.5 mm |
+
+A stop that the pads cannot splay past has to out-reach the aperture's own
+half-opening, 43.5 mm. It gets 7.9 mm — short by a factor of **5.5**, at every
+gripped-section height. And the trade is self-defeating in the obvious direction
+too: a shorter key lets the hand close further, and the knuckles come *in* as it
+does. `evidence/grapple_pin_keyed_interference.json`.
+
+### Why the taper works, which is the part worth keeping
+
+The 2F-85's throat is itself cone-shaped. The tapered pin's profile is very close
+to it — 33.6 mm half-height where the pads begin, falling to 8 mm at the collar,
+against a throat that opens the same way — which is why it stops the pads at
+0.186 rad and clears everything at or below that.
+
+**The taper doing double duty as funnel and clamp was read as a design smell for
+three sessions. It is not. It is the only shape this hand's throat admits.** The
+keyed pin is a better clamp in isolation and cannot be installed.
+
+### What stands from the branch, and what it costs
+
+The branch's rotation measurements are real and are the strongest evidence this
+project has for its central claim, because they show what removing the friction
+dependence buys:
+
+| | Tapered | Keyed |
+| --- | ---: | ---: |
+| Seated grip offset | 0.0194 m | **0.0007 m** |
+| Seated grip attitude | 0.0637 rad | **0.0013 rad** |
+| Rotation in extraction failures | 0.30+ rad | **0.10 rad** |
+| Lateral load held without slip | — | **120 N at a 0.34 m arm, 40 N·m** |
+
+`evidence/grapple_pin_yaw_gate_keyed.json`. Those numbers were taken with the pin
+interfering with the palm, so they describe a *pin*, not a working grasp — but
+they are a load test on the geometry, not a policy result, and the interference
+is forward of the pads while the load is carried on the key. They are quoted as
+what the form-fit is worth, never as a capture rate.
+
+The branch is kept, not deleted: it is where those measurements were made.
+Nothing on it will be merged.
+
+**The industrial reading.** A positive axial lock on a passive pin cannot come
+from pin geometry against a stock parallel-jaw gripper. The flight hardware this
+redesign was modelled on does not try: Dextre's OTCM grips a micro-square and
+then *bolts* it, SIROM latches at three points, HOTDOCK is form-fit plus a lock.
+Every one of them pairs form-fit with an active lock, and the lock is in the
+end-effector. Reaching this interface's rotation numbers needs a custom hand —
+V-grooved fingers, which is what the research names — or an active latch, which
+this project models as `GrappleLatch` and has separately refuted in the rails.
+That is a real conclusion about the hardware, and it is the one the geometry
+supports.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300

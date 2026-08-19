@@ -40,6 +40,7 @@ from zero_g_blade_swap.grapple_geometry import (
     NON_FINGER_HALF_WIDTH_M,
     PAD_HALF_WIDTH_M,
     PAD_SPAN_FROM_FLANGE_M,
+    PALM_FACE_FROM_FLANGE_M,
     SLOT_FLOOR_TOP_Z,
     SLOT_LIP_BOTTOM_Z,
     SLOT_MOUTH_X,
@@ -215,3 +216,57 @@ def test_yoke_predicts_a_large_reduction_in_free_yaw() -> None:
 
     measured_free_yaw_without_a_yoke_rad = 0.93
     assert yoke_free_yaw_rad() < 0.25 * measured_free_yaw_without_a_yoke_rad
+
+
+# ---------------------------------------------------------------------------
+# The pin has to fit inside the hand that grips it.
+#
+# This is the bound the keyed redesign broke, and nothing caught it: five
+# parameter corrections were made against a 0.00% extraction before anyone asked
+# whether the new geometry was physically inside the gripper. It was, by 45.0 mm,
+# at every closure including fully open. ``evidence/grapple_pin_keyed_interference.json``.
+
+
+def test_pin_clears_the_gripper_at_every_closure_the_pin_allows() -> None:
+    """No pin section may occupy the volume a non-pad gripper body occupies.
+
+    The check runs at the closures the pin itself permits, because the pads stop
+    on the pin and everything else in the hand is positioned by that stop. Asking
+    about tighter closures asks whether the pin fits a hand closed on nothing,
+    which condemned this very geometry when it was first written.
+    """
+
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parent.parent / "scripts" / "check_pin_gripper_clearance.py"
+    spec = importlib.util.spec_from_file_location("check_pin_gripper_clearance", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    result = module.analyse(None)
+    assert result["passed"], (
+        f"{len(result['interferences'])} interfering slices, worst "
+        f"{result['worst_interference_m'] * 1000:.1f} mm: {result['interferences'][:3]}"
+    )
+
+
+def test_no_pin_section_reaches_closer_to_the_flange_than_the_palm() -> None:
+    """``PALM_FACE_FROM_FLANGE_M`` exists to be read, and the keyed pin did not.
+
+    A seated grip puts the blade's grip point on the tool frame origin, so the
+    pin's free end sits at ``TOOL_Z + GRIP_OFFSET_X - free_end_x`` from the
+    flange. Anything closer than the palm face is inside the gripper.
+    """
+
+    from zero_g_blade_swap import grapple_geometry
+
+    free_end = getattr(grapple_geometry, "GRAPPLE_PIN_NOSE_X", None) or GRAPPLE_PIN_WEDGE_X
+    free_end_x = free_end[0]
+    depth = free_end_x - GRAPPLE_PIN_GRIP_OFFSET[0] + GRAPPLE_TOOL_OFFSET_POS[2]
+    assert depth >= PALM_FACE_FROM_FLANGE_M, (
+        f"the pin's free end sits {depth * 1000:.1f} mm from the flange, inside the palm at "
+        f"{PALM_FACE_FROM_FLANGE_M * 1000:.1f} mm"
+    )

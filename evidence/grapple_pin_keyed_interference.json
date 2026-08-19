@@ -1,0 +1,60 @@
+{
+  "title": "Why the keyed grapple pin cannot be built on this gripper",
+  "evidence_type": "geometric_derivation",
+  "generated_utc": "2026-08-19T03:30:54+00:00",
+  "question": "The keyed interface replaced the tapered wedge with a flat key between two axial stops. It fixed rotation decisively and broke extraction to 0.00%, and five parameter corrections on the branch did not move the number: grip error stayed at 0.0349, 0.0347, 0.0347 m while reset noise, pad interference, the hold latch and the approach opening all changed. A constant that survives every variable is not produced by any of them, so the remaining fault had to be structural. This is that structure, measured.",
+  "finding": "The keyed pin's nose flange is inside the gripper. It occupies 77-97 mm of depth from the flange with a 45 mm half-height, and the palm straddles the tool axis out to 90 mm, so the flange overlaps the hand by 45.0 mm at 85-90 mm depth AT EVERY CLOSURE, including fully open. The pads were therefore never in the pocket, which is why the axial pull gate read 19-52 N and extraction died at control steps 2-4.",
+  "generalisation": "This is not a dimensioning slip that a lead-in would fix. A keyed interface needs a shoulder forward of the pads, taller than the gripped section, and the room forward of the seated pads is 7.9 mm of half-height -- set by the palm, so it barely moves with closure. A shoulder that is proof against the pads splaying open would have to exceed the aperture's own half-opening of 43.5 mm. It gets 7.9 mm, short by a factor of 5.5, at every gripped-section height tested. A forward stop is available only for gripped sections under about 7 mm half-height, which is not a key any capture could reliably hit.",
+  "why_the_taper_works": "The 2F-85's throat is itself cone-shaped, and the tapered pin's profile is very close to it: 33.6 mm half-height where the pads begin, falling to 8 mm at the collar, against a throat that opens the same way. The taper stops the pads at 0.186 rad and clears every sampled closure at or below that. The taper doing double duty as funnel and clamp was never the design smell it was read as -- it is the only shape this hand's throat admits.",
+  "control": {
+    "note": "Two earlier versions of this probe condemned the certified tapered pin, which extracts at 99.02%. A probe that fails the working control is measuring the wrong thing. The first intersected axis-aligned body bounds, which claim volume a slanted knuckle does not occupy; the second evaluated closures the pin itself prevents the hand from reaching. Both are corrected, and the tapered pin now passes.",
+    "tapered_pin_passes": true,
+    "tapered_closure_the_pin_allows_rad": 0.186172,
+    "tapered_seated_pad_half_opening_m": 0.03365
+  },
+  "keyed_pin": {
+    "passes": false,
+    "interfering_slices": 41,
+    "worst_interference_m": 0.045,
+    "worst_slice": {
+      "section": "nose",
+      "depth_from_flange_m": [
+        0.085,
+        0.09
+      ],
+      "finger_joint_rad": 0.0,
+      "pin_half_height_m": 0.045,
+      "nearest_gripper_body_m": 0.0,
+      "interference_m": 0.045
+    },
+    "closure_the_pin_allows_rad": 0.537296
+  },
+  "forward_stop_feasibility": {
+    "gripped_heights_tested": 43,
+    "gripped_heights_admitting_a_forward_stop": 7,
+    "largest_gripped_half_height_admitting_a_stop_m": 0.007,
+    "room_ahead_of_the_pads_m": 0.007885,
+    "aperture_half_opening_a_splayproof_stop_must_exceed_m": 0.0435385
+  },
+  "consequence": "Blocker A is closed as impossible rather than unfinished. A positive axial lock on this interface cannot come from pin geometry against a stock 2F-85; it needs either a custom end-effector with V-grooved fingers -- which is what the flight hardware the redesign was modelled on actually uses -- or an active lock, which this project models as GrappleLatch and has separately refuted in the rails. Main keeps the tapered pin, and keeps its 69.0 N axial hold against the 66.36 N requirement.",
+  "reproduce": [
+    "scripts/check_pin_gripper_clearance.py                    # on main: the tapered control, passes",
+    "git checkout keyed-interface -- src/zero_g_blade_swap/grapple_geometry.py",
+    "scripts/check_pin_gripper_clearance.py                    # the keyed pin, 45.0 mm inside the palm",
+    "scripts/measure_pin_design_window.py --stop_feasibility   # can any forward stop fit"
+  ],
+  "sources": {
+    "gripper_envelope": "evidence/gripper_collision_envelope.json",
+    "keyed_geometry": "branch keyed-interface, src/zero_g_blade_swap/grapple_geometry.py",
+    "keyed_rotation_result": "evidence/grapple_pin_yaw_gate_keyed.json",
+    "keyed_axial_result": "evidence/grapple_pin_axial_pull_gate_keyed.json",
+    "tapered_axial_result": "evidence/grapple_pin_axial_pull_gate.json"
+  },
+  "scope_and_limitations": [
+    "Geometry only. It says what fits, not what a policy can do with what fits.",
+    "Collision-mesh vertices sampled per 5 mm depth slice; a slice with no sampled vertices is reported as unknown and never scored as clear.",
+    "The gripper is the 2F-85 as this asset models it. A different hand has a different throat and this conclusion would have to be re-derived for it.",
+    "Simulation only. No result here was produced on real hardware."
+  ],
+  "passed": false
+}
