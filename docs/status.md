@@ -4482,6 +4482,60 @@ policy is simply driving it at the bay it scores 98.87% in.
 > predecessors and certified at 0.00%. Reward is not the gate; the termination
 > counters are, and they are in the same tfevents.
 
+## Reproducing this branch, in order
+
+Every stage has a gate and the next must not start before it passes, so each is a
+separate invocation rather than one script. `w65` throughout is the workcell:
+`GRAPPLE_ROBOT_ROOT_POS` x at -0.65.
+
+```bash
+# Phase 0 -- find a cell that holds the capture attitude everywhere the task needs it.
+python scripts/solve_workcell.py                      # -> evidence/workcell_reach_solution.json
+# then bake the winner into GRAPPLE_ROBOT_ROOT_POS and GRAPPLE_MOUNT_ANCHOR_CFG,
+# and re-solve every calibrated spawn pose against it:
+python scripts/calibrate_grasp_pose.py --headless \
+    --task Isaac-ZeroG-Blade-GrapplePin-Capture-v0 \
+    --steps 3000 --pin_blade --finger_joint 0.02 --stages 0 1 2 \
+    --sweep_offset_y 0.0 -0.22 \
+    --alt_start_joint_pos 0 -1.5708 0 -1.5708 0 0 \
+    --report evidence/grapple_pin_head_on_pose_relocated.json
+# -> GRAPPLE_HEAD_ON_ARM_JOINT_POS and SECOND_SLOT_STAGING_ARM_JOINT_POS
+
+# Phase 1 -- what broke, before building anything to fix it.
+scripts/probe_workcell_policies.sh                    # -> artifacts/workcell_probe/
+
+# Phase 4 -- fine-tune the three skills onto the cell.
+scripts/retrain_workcell_skills.sh
+
+# Phases 5 to 7 -- one gated stage per call.
+scripts/certify_relocation_workcell.sh promote        # move every script's defaults at once
+scripts/certify_relocation_workcell.sh capture
+scripts/certify_relocation_workcell.sh skills         # extraction
+scripts/certify_relocation_workcell.sh insert2        # both bays, gated on the worse
+scripts/certify_relocation_workcell.sh chains         # removal and installation
+scripts/certify_relocation_workcell.sh trace          # read the relocation before certifying it
+scripts/certify_relocation_workcell.sh latchab        # latch off vs on release, under the real load
+scripts/certify_relocation_workcell.sh relocate
+
+# Phase 8 -- perception, which any geometry change invalidates.
+scripts/rebuild_perception.sh collect
+scripts/rebuild_perception.sh head
+scripts/rebuild_perception.sh arms
+scripts/rebuild_perception.sh variance                # the camera arm twice per seed
+```
+
+Two supporting probes, neither on the critical path:
+
+```bash
+scripts/measure_attitude_wall.sh   # the region's width, measured at the OLD base
+python scripts/promote_checkpoints.py --grasp RUN --extract RUN --insert RUN
+```
+
+**Check for orphaned Isaac processes before every launch.** One certification
+loop survived a `taskkill` on its `kit.exe` during this session, started a fresh
+one, and spent twenty minutes competing with a training run for the same GPU.
+`Get-Process kit` is the check; the loop's parent shell has to go too.
+
 ## Demonstration assets
 
 Recorded from the promoted Level-2 checkpoint at full reset distance, 300
