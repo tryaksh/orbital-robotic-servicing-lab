@@ -4042,9 +4042,10 @@ What that looks like in the report is the problem:
 Read without the joint angles, that is a clean, monotone, entirely convincing
 reach boundary. It is a frozen arm.
 
-Two controls caught it. The wrist seeds are the first: four environments given
-±90° and 180° of `wrist_1` cannot all report the same tool position to four
-decimals unless something is rewriting them. The second is that the residuals
+Two controls caught it. The wrist seeds are the first: three of the four seeds
+offset `wrist_1` by ±90° or 180°, and four environments started at four different
+wrist angles cannot all report the same tool position to four decimals unless
+something is rewriting the joint state. The second is that the residuals
 were *exactly* the geometric offsets — a constant that survives every variable is
 not produced by any of them.
 
