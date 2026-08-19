@@ -105,7 +105,12 @@ def main() -> int:
         for name, path in promoted.items():
             tail = path.split("logs/rl_games/", 1)[1]
             experiment, _, run_tail = tail.partition("/")
-            pattern = re.compile(rf'^({name}="\$\{{{name}:-)\$CKPT_ROOT/[^"]*(\}}")$', re.MULTILINE)
+            # The override variable is not always the same name as the target:
+            # certify_vision_workflow.sh writes
+            # GRASP_CKPT="${GRASP_OVERRIDE:-$CKPT_ROOT/...}". Matching only the
+            # same-name form silently skipped that whole file, which is exactly
+            # the drift this tool exists to stop.
+            pattern = re.compile(rf'^({name}="\$\{{[A-Z0-9_]+:-)\$CKPT_ROOT/[^"]*(\}}")$', re.MULTILINE)
             replacement = rf"\g<1>$CKPT_ROOT/{run_tail}\g<2>"
             text, count = pattern.subn(replacement, text)
             if count == 0:
