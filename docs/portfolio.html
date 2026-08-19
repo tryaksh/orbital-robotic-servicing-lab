@@ -359,10 +359,16 @@
         and otherwise lets the capture keep closing. So capture reliably produces the grip the chain
         needs, and fails a fixed-episode predicate at the two widest starting offsets. Quoting either
         as the other is the error the whole evidence discipline here exists to prevent.
-        And the relocation — the changeout every skill above was built for — <em>does not complete</em>.
-        Every part of it is certified and the chain still times out crossing between bays, because a
-        single-point pin cannot hold the module's attitude through 734 mm of free flight. That is
-        measured, not suspected, and it is stated here rather than left out.
+        And the relocation — the changeout every skill above was built for — <em>does not complete</em>
+        on this workcell. Every part of it is certified and the chain still times out crossing between
+        bays. The cause was read as the interface for three sessions and it is not: driving position and
+        the head-on capture attitude together, the tool parks a fixed <strong>0.4242 m</strong> in front of
+        the robot base whatever depth is asked of it, and the crossing needs 167 mm past that. The
+        boundary moves with the base one millimetre per millimetre, and it disappears entirely 220 mm off
+        the base's own centre line — so it is neither a reach limit nor a depth limit but the arm reaching
+        back along its own axis. <em>Where the robot stands is part of the interface specification.</em>
+        Measured in <code>evidence/workcell_reach_solution.json</code>, and the branch that moves the base
+        is where this is being re-earned.
       </p>
       <p class="note">
         Extraction is the physically hard one: it moves the module 495 mm <em>out</em> of all
