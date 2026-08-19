@@ -4501,6 +4501,28 @@ identical trap once, extract v10 at a *higher* reward than its predecessors and
 0.00% certified. The reward is not the gate. The termination counters are, and
 they are in the same tfevents file.
 
+### How long to wait before calling a fine-tune stuck
+
+A resumed skill that shows **zero** successes is not evidence of anything until
+you know what zero looks like on a skill that recovered. Extraction supplies that
+calibration, on the same workcell change and the same kind of resume:
+
+| Extraction's continuation | `extraction_success` |
+| --- | ---: |
+| +1 to +406 epochs | **0.0000, every single logged point** |
+| +407 | first non-zero |
+| +450 | 0.4626 |
+| +683 | 0.9033 |
+
+Four hundred epochs of a flat zero, and then it converged inside another 300.
+Had the run been judged at +268 — a point at which it looked exactly like a
+failure — it would have been abandoned about 140 epochs before it worked.
+
+So the rule used for insertion here is **+1,500 epochs**, roughly 3.7 times the
+margin extraction needed, and it is a number taken from a measurement rather than
+from patience running out. Before that point "no successes yet" is the expected
+reading, not a diagnosis.
+
 ### The first logged reward after a resume is not a measurement
 
 Worth writing down because it nearly cost a wrong diagnosis. Insert's second pass
