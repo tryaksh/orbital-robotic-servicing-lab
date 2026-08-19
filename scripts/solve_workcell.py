@@ -38,7 +38,7 @@ import json
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 #: The relocation's poses, as offsets from the module's INSTALLED pose.
@@ -344,7 +344,7 @@ def main() -> int:
     report = {
         "title": "A workcell in which the arm holds the capture attitude at every pose the relocation needs",
         "evidence_type": "simulation_kinematic_calibration",
-        "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "generated_utc": datetime.now(UTC).isoformat(timespec="seconds"),
         "question": (
             "evidence/relocation_reach_boundary.json measured that the arm cannot hold the head-on capture "
             "attitude at the extraction end (88.7 mm short) or the transit retreat (167 mm short) with the "
