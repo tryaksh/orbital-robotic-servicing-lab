@@ -170,6 +170,18 @@ the same answer.
   cross** (carries 93 mm of drift into a 72.5 mm channel).
 - **Reading the transit's arrival in 3-D.** Per-axis is not a shortcut, it is the
   correct test: holding attitude moves the tool off the other two axes.
+- **A base centred between the two bays.** (-0.45, -0.11) puts both bays about
+  110 mm off the base's plane, and 110 mm is not enough: the retreat shortfall
+  falls from 167 mm to 64 mm and *changes axis* rather than going away. The wall
+  dissolves at 220 mm, not at 110. It is the placement an engineer reaches for
+  first and the worst of the eight measured.
+- **Reading a reach sweep without reading the joint angles.** Three probe defects
+  in one session each produced a plausible reach boundary, and two of the three
+  were caught by the joint angles rather than by the residuals.
+- **Rebuilding the hand before measuring whether the interface is implicated.**
+  Five minutes of `play.py` on the unchanged policies sized a three-hour build to
+  zero: every failure keeps grip *position* at 11.9-13.2 mm against a 20 mm
+  tolerance.
 - **The eight-phase swap task** and **`--workflow full`.** Both deleted, both
   defended by contract tests.
 
@@ -225,6 +237,27 @@ These are the ones that were paid for.
     block-buffered and lags minutes — judge progress from `summaries/` tfevents and
     the `nn/` checkpoint mtime.
 15. Keep `.deps`, logs, datasets, checkpoints, artifacts and videos out of Git.
+16. **Moving the robot is not one constant.** The base position, the mount
+    anchor, `GRAPPLE_HEAD_ON_ARM_JOINT_POS` and
+    `SECOND_SLOT_STAGING_ARM_JOINT_POS` are four places one workcell lives in,
+    and only the first is obvious. An anchor left behind fires
+    `robot_mount_unstable` every step and the arm is reset to its spawn pose
+    before it can act -- which a reach sweep then reports as the spawn joint
+    angles to six decimals, with residuals *exactly* equal to the geometric
+    offset to each target. That is not an error message, it is a clean reach
+    boundary. Two contract tests defend the pair.
+17. **The reset noise that makes a skill certifiable is not the reset noise that
+    makes it portable.** Moving the base shifted the elbow by 0.4065 rad: 4.8x
+    capture's reset noise and 20.3x extract's and insert's. Capture recovered in
+    900 epochs and gained 5.68 points; the other two needed thousands, and one
+    read as broken at 1,500. Rule 4 with a different successor -- a skill that
+    will be *moved* has to be trained across the configurations the workcell
+    might put it in.
+
+(These two are appended rather than filed thematically because the rules above
+are cited by number from `docs/status.md`, `docs/claim_vs_evidence.md`, two task
+configs and two scripts. Renumbering to make room would invalidate all of them,
+which is rule 2 applied to this list.)
 
 ## Known broken, and left that way deliberately
 
@@ -269,6 +302,12 @@ zero non-finite terminal metrics.
 | Camera, pose head, blind arm | `mdp/perception.py`, `vision_grapple_env_cfg.py` |
 | The chain and how it is judged | `scripts/run_workflow_demo.py` |
 | Per-reward-term training diagnosis | the run's `summaries/` tfevents |
+| Is a base position reachable in the required attitude | `scripts/solve_workcell.py`, `evidence/workcell_reach_solution.json` |
+| Whether an unchanged policy survives a workcell change | `scripts/probe_workcell_policies.sh` |
+| Fine-tuning the skills onto a changed workcell | `scripts/retrain_workcell_skills.sh` |
+| Certifying the relocation and both chains after that | `scripts/certify_relocation_workcell.sh` |
+| Rebuilding perception after a geometry change | `scripts/rebuild_perception.sh` |
+| Moving every script's promoted checkpoint set at once | `scripts/promote_checkpoints.py` |
 | Is a pose reachable, and at what attitude | `scripts/calibrate_grasp_pose.py` — `--sweep_offset_x`, `--attitude_authority`, `--free_orientation` |
 | Does a pin feature fit inside the gripper | `scripts/check_pin_gripper_clearance.py`, `scripts/measure_pin_design_window.py` |
 | Gripper geometry, ever | `evidence/gripper_collision_envelope.json` |
