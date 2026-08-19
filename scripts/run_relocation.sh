@@ -19,6 +19,11 @@ set -u
 PYTHON="C:/isaac-sim/python.bat"
 CKPT_ROOT="logs/rl_games/zero_g_blade_insertion_contact"
 OUT="artifacts/relocation"
+# Suffix for every report this script writes. A re-run on changed geometry must
+# not overwrite the report that describes the old geometry: that report is the
+# "before" half of every comparison, and once it is gone the comparison cannot be
+# made again without re-running a workcell that no longer exists in the tree.
+TAG="${TAG:-}"
 mkdir -p "$OUT" evidence
 
 GRASP_CKPT="${GRASP_CKPT:-$CKPT_ROOT/grapple_grasp_l0_seed70_v5/nn/last_zero_g_blade_insertion_contact_ep_1500_rew__35.348194_.pth}"
@@ -94,7 +99,7 @@ case "$stage" in
       done
     done
     "$PYTHON" scripts/aggregate_evaluation.py --episodes "${rows[@]}" \
-        --output "evidence/grapple_insert_two_slot_certification.json" \
+        --output "evidence/grapple_insert_two_slot${TAG}_certification.json" \
         --title "Head-on grapple-pin insert skill, both rack bays" \
         --scope \
           "Simulation only. No result here was produced on real hardware." \
@@ -102,7 +107,7 @@ case "$stage" in
           "The gate is the worst bay, not the pool: one policy has to seat a module in either slot." \
           "The module is held by physical pad-against-pin contact throughout, with no fixed joint." \
         > "$OUT/aggregate_two_slot.log" 2>&1
-    echo "[$(date +%H:%M:%S)] aggregate exit=$? -> evidence/grapple_insert_two_slot_certification.json"
+    echo "[$(date +%H:%M:%S)] aggregate exit=$? -> evidence/grapple_insert_two_slot${TAG}_certification.json"
     tail -6 "$OUT/aggregate_two_slot.log"
     ;;
 
@@ -132,8 +137,8 @@ case "$stage" in
     echo "[$(date +%H:%M:%S)] trace exit=$?"
     for phase in transit insert; do
       "$PYTHON" scripts/analyse_handoff.py "$OUT/relocate_handoff.npz" --to_phase "$phase" \
-          --json "evidence/relocate_handoff_to_${phase}.json" > "$OUT/handoff_${phase}.log" 2>&1
-      echo "[$(date +%H:%M:%S)] -> evidence/relocate_handoff_to_${phase}.json"
+          --json "evidence/relocate_handoff_to_${phase}${TAG}.json" > "$OUT/handoff_${phase}.log" 2>&1
+      echo "[$(date +%H:%M:%S)] -> evidence/relocate_handoff_to_${phase}${TAG}.json"
       grep -A 10 '"grip_error_m"' "$OUT/handoff_${phase}.log" | head -11
     done
     ;;
@@ -170,7 +175,7 @@ case "$stage" in
       rows+=("${out}.npz")
     done
     "$PYTHON" scripts/aggregate_evaluation.py --episodes "${rows[@]}" \
-        --output "evidence/workflow_relocate_certification.json" \
+        --output "evidence/workflow_relocate${TAG}_certification.json" \
         --title "Chained servicing workflow: relocation, bay 1 to bay 2" \
         --scope \
           "Simulation only. No result here was produced on real hardware." \
@@ -179,7 +184,7 @@ case "$stage" in
           "Capture, extraction and insertion are trained policies; the seating pause and the waypoint-followed transit are scripted and labelled." \
           "Success is the workflow's own condition re-checked after a 0.70 s settling window." \
         > "$OUT/aggregate_relocate.log" 2>&1
-    echo "[$(date +%H:%M:%S)] aggregate exit=$? -> evidence/workflow_relocate_certification.json"
+    echo "[$(date +%H:%M:%S)] aggregate exit=$? -> evidence/workflow_relocate${TAG}_certification.json"
     tail -6 "$OUT/aggregate_relocate.log"
     ;;
 

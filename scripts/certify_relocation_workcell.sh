@@ -45,7 +45,9 @@ case "$stage" in
     ;;
 
   insert2)
-    RUN="$INSERT_RUN" bash scripts/run_relocation.sh certify2
+    # Tagged, because run_relocation.sh's untagged name is the file main's
+    # 98.34% lives in and that is the "before" half of the comparison.
+    RUN="$INSERT_RUN" TAG="_w65" bash scripts/run_relocation.sh certify2
     ;;
 
   chains)
@@ -55,7 +57,7 @@ case "$stage" in
     ;;
 
   trace)
-    RUN="$INSERT_RUN" EPISODES="${EPISODES:-64}" bash scripts/run_relocation.sh trace
+    RUN="$INSERT_RUN" TAG="_w65" EPISODES="${EPISODES:-64}" bash scripts/run_relocation.sh trace
     ;;
 
   latchab)
@@ -88,6 +90,8 @@ case "$stage" in
     ;;
 
   relocate)
+    # NOT tagged. evidence/workflow_relocate_certification.json is the file this
+    # whole branch exists to produce and main has no version of it to protect.
     RUN="$INSERT_RUN" bash scripts/run_relocation.sh relocate
     ;;
 
