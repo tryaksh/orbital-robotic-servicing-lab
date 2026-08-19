@@ -3647,9 +3647,16 @@ and height does not move it. Crossing over the flares needs tool x = −0.1145,
 - The transit needs another 78 mm, **167 mm past the wall.** Commanded attitude
   starves translation; uncommanded, the module swings end-for-end. Neither is a
   follower bug. Both are the same wall.
-- The lateral displacement was never the problem, and this confirms it from the
+- ~~The lateral displacement was never the problem, and this confirms it from the
   other side: the second bay's staging pose converges to 0.0060 mm at the same
-  attitude, and the two-bay insert certifies at 98.34% from it.
+  attitude, and the two-bay insert certifies at 98.34% from it.~~
+  **SUPERSEDED 2026-08-19.** Both measurements are correct and the inference is
+  backwards. *Staging* converges in both bays, so it cannot distinguish "lateral
+  displacement is irrelevant" from "lateral displacement is the cure". The
+  *retreat* can, and it says the second: at this same base, the two poses that
+  miss by 88.70 mm and 166.95 mm on the first bay's centre line converge to
+  0.01 mm in the second bay, 220 mm to the side, at the same commanded attitude.
+  See *The workcell, solved* below.
 
 **No leg order fixes this**, which retires the cheapest remaining idea with a
 reason rather than a run. Every crossing point is past the wall — behind the
@@ -3670,6 +3677,13 @@ to the retreat and should carry the wall with it. It is a project, not a knob:
 Trading a certified removal-and-installation demonstration for an uncertified
 relocation is the wrong trade for this project's last session. The relocation is
 therefore reported as blocked, with the blocker measured.
+
+> **Taken 2026-08-19, on branch `industrial-relocation`.** That trade is exactly
+> what the branch exists to make, and both halves of the objection turned out to
+> be tractable: the spawn poses are re-solved by the same calibrator that found
+> the boundary, and the invalidated certifications are re-earned rather than
+> preserved. `main` keeps the cell this paragraph describes. See *The workcell,
+> solved: the attitude wall is base-relative, and it has two exits*.
 
 ### `--robot_base_x` had never moved anything
 
