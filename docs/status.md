@@ -4534,15 +4534,37 @@ blocking it. What is missing is the gradient from there to reliability.
    from the base on this cell against 0.83 m on the old one, and a longer lever
    is a lower effective tool stiffness against the rails.
 
-The next run tests **(1) alone**, because it is the only one of the four that can
-be removed without changing the task: recover on the *single-bay* insert task,
-which resets to exactly one arm configuration, then unlock the second bay. This
-project has already measured that transfer, in the other direction, going
-**0 to 83% within 40 epochs**. If single-bay recovery works, (1) was the cause
-and (2) to (4) are not implicated. If it does not, (1) is excluded and the
-remaining three are what a later session should measure — starting with (4),
-which is the only one that is a property of the *new* cell rather than of the
-task.
+**(1) was tested and is excluded.** The single-bay insert task resets to exactly
+one arm configuration, so recovering on it removes that variable and nothing
+else. It ran 1,545 epochs from the same checkpoint and did not converge either:
+best `insertion_success` **0.0117**, settling back to 0.0020. Slightly better
+than the two-bay run's 0.0039, and nowhere near a policy. One arm configuration
+is not enough.
+
+**(4) is substantially weakened by evidence already in hand, without a new run.**
+The concern was that the seated pose is the most extended the arm ever gets —
+1.177 m from the base on this cell against 1.007 m on the old one — and that a
+longer lever means less force available against the rails. But **extraction
+starts at that exact pose**: its stage-0 reset has the module fully installed,
+and its first job is to break it free of the rails, which is the highest-force
+moment anywhere in the task. Extraction trains to **98.5%** there. Whatever is
+stopping insertion, it is not that the arm cannot transmit force at 1.177 m.
+
+Worth recording alongside it: the lateral cell that Phase 0 also found,
+(−0.45, +0.22), would have cost only **24 mm** of extension at the seated pose
+(1.031 m) against the adopted cell's **170 mm** (1.177 m), because a lateral
+offset buys the retreat its clearance without pushing every other pose further
+away. The adopted cell was chosen for a derived margin rather than a bracketed
+one, which was the right reason on the evidence available — but if a later
+session revisits (4), the lateral cell is the cheaper place to test it.
+
+**What remains are (2) and (3), and they are not separable by a training run
+alone.** Insertion pushes into constraint and its failure predicate fires at
+0.35 rad, so a crooked push ends the episode before the policy can learn to
+recover from one. The obvious next experiment is a *training* curriculum on that
+predicate — relax it during recovery, restore it for certification, which leaves
+the criterion untouched — and it was not run here for time rather than for any
+reason of principle.
 
 ### How long to wait before calling a fine-tune stuck
 

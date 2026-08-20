@@ -39,8 +39,8 @@ mkdir -p "$OUT" evidence
 # would have re-measured the old chain and filed it as the current one.
 CKPT_ROOT="logs/rl_games/zero_g_blade_insertion_contact"
 GRASP_CKPT="${GRASP_CKPT:-$CKPT_ROOT/grapple_grasp_l0_seed70_v6w65/nn/last_zero_g_blade_insertion_contact_ep_2400_rew__37.24023_.pth}"
-EXTRACT_CKPT="${EXTRACT_CKPT:-$CKPT_ROOT/grapple_extract_l0_seed70_v15w65/nn/last_zero_g_blade_insertion_contact_ep_7200_rew__136.52777_.pth}"
-INSERT_CKPT="${INSERT_CKPT:-$CKPT_ROOT/grapple_insert_l0_seed70_v11w65/nn/last_zero_g_blade_insertion_contact_ep_5600_rew__-23.204594_.pth}"
+EXTRACT_CKPT="${EXTRACT_CKPT:-$CKPT_ROOT/grapple_extract_l0_seed70_v16w65/nn/last_zero_g_blade_insertion_contact_ep_9700_rew__176.34572_.pth}"
+INSERT_CKPT="${INSERT_CKPT:-$CKPT_ROOT/grapple_insert_l0_seed70_v12w65/nn/last_zero_g_blade_insertion_contact_ep_7100_rew_-20.706831.pth}"
 TAG="${TAG:-}"
 
 workflows=("$@")
