@@ -4666,6 +4666,57 @@ policy is simply driving it at the bay it scores 98.87% in.
 > predecessors and certified at 0.00%. Reward is not the gate; the termination
 > counters are, and they are in the same tfevents.
 
+## The three skills re-certified on the moved cell
+
+Same protocol as `main` on every row: three held-out seeds, the same episode
+counts, the same tasks, the same gate.
+
+| | `main`, base −0.45 | this branch, base −0.65 | |
+| --- | ---: | ---: | --- |
+| **Capture** | 88.78% (worst stage 79.22%) | **94.46%** (88.65%) | **+5.68** |
+| **Extract** | 99.02% (98.53%) | **94.89%** (90.87%) | **−4.13** |
+| **Insert, both bays** | 98.60% (worse bay 98.34%) | **10.50%** (0.00%) | **−88.10** |
+
+`grapple_grasp_v6w65_certification.json`,
+`grapple_extract_v16w65_certification.json`,
+`grapple_insert_two_slot_w65_certification.json`. Zero instability and zero
+non-finite terminations on all three.
+
+**Capture improves, and where it improves is the point.** Stage 2 — the widest
+reset, the one that actually requires the arm to servo onto the pin rather than
+start inside the tolerance — goes 79.22% → 88.65%. Stage 0 and 1 move less
+because they had less room. This is the workcell result appearing in a skill
+number for the first time.
+
+**Extraction recovers but does not return to its old figure**, and the shortfall
+is entirely timeouts at the widest reset: 242 of its 9,002 episodes end on the
+clock where `main`'s run had **zero**, and stage 2 carries almost all of them at
+90.87%. Stage 0, which is what the removal chain actually runs, is **98.20%**.
+The honest reading is that 2,500 epochs of continuation recovered the skill to
+within four points and did not finish the job; the trend at the end of training
+was still upward.
+
+**Insertion is the failure of this session.** 10.50% pooled, and the two bays are
+not alike: **bay 2 reaches 21.45% while bay 1 is 0.00%** — the reverse of what
+its history would suggest, since bay 1 is the bay this policy's lineage was built
+on and bay 2 the one added later. A plausible reading is that the older, more
+entrenched bay-1 representation was the harder one to move, but that is a
+hypothesis with no measurement behind it and is offered as such.
+
+### The vision arms were not run, and that is a measurement decision
+
+The three vision arms all drive the **installation** workflow, which needs the
+insert policy, and insertion scores **0.00% in bay 1** — the bay that workflow
+uses. Oracle, camera and blind would therefore all score approximately zero, and
+their gate is a *comparison between them*: the camera within 10 points of the
+oracle and clearly above blind. Three zeros satisfy "within 10 points" while
+measuring nothing at all, and filing that as a passed gate would be the worst
+kind of number in this repository.
+
+So the arms are not run. The pose head **is** rebuilt, because its accuracy —
+millimetres of module pose, and per-bay occupancy — does not depend on the
+manipulation policy at all and is a real measurement of the changed geometry.
+
 ## The relocation on the moved cell: the arm now flies it, and the grip loses the module
 
 `artifacts/relocation/relocate_trace_report.json`, 64 episodes, seed 4070, the
