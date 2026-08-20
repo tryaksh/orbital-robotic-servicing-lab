@@ -4776,6 +4776,34 @@ So the arms are not run. The pose head **is** rebuilt, because its accuracy —
 millimetres of module pose, and per-bay occupancy — does not depend on the
 manipulation policy at all and is a real measurement of the changed geometry.
 
+## Both chains re-certified: removal improves, installation follows insertion down
+
+| | `main`, base −0.45 | this branch, base −0.65 | gate |
+| --- | ---: | ---: | --- |
+| **Removal chain** | 98.78% | **99.48%** [98.48, 99.82] | **pass** |
+| **Installation chain** | 96.35% | **0.17%** | fail |
+
+`workflow_remove_w65_certification.json`, `workflow_install_w65_certification.json`.
+576 workflows each, three held-out seeds, zero instability and zero non-finite in
+both.
+
+**Removal is the clean result of this branch.** It runs capture and extraction
+and never steps the insert policy — it loads the checkpoint and never calls it —
+so it is the one chain that measures the workcell change on its own. It goes
+**98.78% → 99.48%**, and the module is held by real pad-against-pin contact
+throughout with no fixed joint, exactly as before.
+
+**Installation collapses to 0.17%, and it is not a chain failure.** 575 of its 576
+episodes end on the clock, one seats a module. The chain is driven by an insert
+policy that scores **0.00% in bay 1**, which is the bay this workflow uses, so the
+chain can do no better than its skill. Nothing about the hand-off, the clock or
+the retain changed; those are the three things that have historically cost this
+chain points, and none of them is implicated here.
+
+The honest way to read the pair: the workcell change is *positive* for everything
+that does not depend on insertion, and insertion is the single point of failure
+for everything that does.
+
 ## The relocation on the moved cell: the arm now flies it, and the grip loses the module
 
 `artifacts/relocation/relocate_trace_report.json`, 64 episodes, seed 4070, the

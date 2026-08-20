@@ -1415,9 +1415,17 @@ def main() -> dict[str, object]:
     try:
         device = args.device or "cuda:0"
         env_cfg = parse_env_cfg(args.task, device=device, num_envs=args.num_envs)
-        env_cfg.configure_robustness(0)
-        env_cfg.seed = args.seed
         if args.latch_on_release:
+            # **Set before configure_robustness, not after, and that ordering is
+            # the whole of it.** configure_robustness rebuilds the event set and
+            # ends by calling _configure_latch(), which sets
+            # events.grapple_latch = None whenever latch_enabled is False. Once
+            # the term is None it cannot be re-enabled: the next
+            # _configure_latch() dereferences it and raises
+            # "AttributeError: 'NoneType' object has no attribute 'params'".
+            # That is exactly how the first attempt at this flag failed, and it
+            # failed silently into a report file rather than loudly.
+            #
             # The one interface experiment this project has never run. A modelled
             # latch engaged on *capture* was swept from 10 to 160 N-m and refuted:
             # a restoring torque on a module the rails still hold jams it in the
@@ -1426,19 +1434,21 @@ def main() -> dict[str, object]:
             # module against, and that is the phase that needs it -- the module
             # is unconstrained for the whole crossing and nothing else opposes a
             # moment about the closing axis.
-            #
-            # A flag rather than a task, so the comparison is one run against
-            # another with everything else identical, under the real transit load
-            # rather than a synthetic torque sweep.
             env_cfg.latch_enabled = True
             env_cfg.latch_engages_on_release = True
-            env_cfg._configure_latch()
             env_cfg.latch_rated_torque_nm = args.latch_rated_torque_nm
-            env_cfg.events.grapple_latch.params["rated_torque_nm"] = args.latch_rated_torque_nm
+        env_cfg.configure_robustness(0)
+        if args.latch_on_release:
+            if env_cfg.events.grapple_latch is None:
+                raise RuntimeError(
+                    "--latch_on_release did not survive configure_robustness: the task's "
+                    "_configure_latch() removed the term. The flag must be set before it runs."
+                )
             print(
                 f"[INFO] Latch ARMED ON RELEASE at {args.latch_rated_torque_nm} N-m "
                 "(engages when the driver retains the grip, not on capture)"
             )
+        env_cfg.seed = args.seed
         if args.pose_head_checkpoint is not None:
             if not args.pose_head_checkpoint.is_file():
                 raise FileNotFoundError(args.pose_head_checkpoint)
