@@ -4501,6 +4501,49 @@ identical trap once, extract v10 at a *higher* reward than its predecessors and
 0.00% certified. The reward is not the gate. The termination counters are, and
 they are in the same tfevents file.
 
+### Insertion did not recover in 2,702 epochs, and that is the measured result
+
+Two passes, from the promoted two-bay policy, on the moved cell:
+
+| Pass | Epochs | Reward | `insertion_success` |
+| --- | ---: | ---: | --- |
+| first | 4,400 → 5,600 | −15.17 → −24.17 | 0.0000 throughout |
+| second | 5,600 → 7,102 | −15.17 → −20.70 | 0.0000 throughout, one flicker of **0.0039** at +126 |
+
+**2,702 epochs, zero convergence**, against extraction which converged at +407 of
+its continuation under the identical workcell change, the identical kind of
+resume and the identical PPO configuration. That is the control, and it is what
+makes this a result rather than an impatience.
+
+The flicker matters: a completed two-bay insertion is *reachable* on this cell —
+the policy found one — so the task is not impossible and the reward is not
+blocking it. What is missing is the gradient from there to reliability.
+
+**Four things make insertion different from extraction, and they are separable.**
+
+1. **Two arm configurations, not one.** The two-bay task draws its reset evenly
+   from both bays, so recovering it means rediscovering insertion in two
+   configurations at once from a policy that scores zero in either.
+2. **It pushes *into* constraint.** Extraction pulls a module out of rails that
+   are letting go; insertion drives one into rails that resist, and the reaction
+   is what rotates the module in the pads.
+3. **Its failure predicate truncates early.** `extraction_failure` fires at
+   0.35 rad of grip attitude, so a crooked push ends the episode before much
+   experience accumulates — about half of them, against half timing out.
+4. **It is the most extended the arm ever gets.** The seated pose sits 1.03 m
+   from the base on this cell against 0.83 m on the old one, and a longer lever
+   is a lower effective tool stiffness against the rails.
+
+The next run tests **(1) alone**, because it is the only one of the four that can
+be removed without changing the task: recover on the *single-bay* insert task,
+which resets to exactly one arm configuration, then unlock the second bay. This
+project has already measured that transfer, in the other direction, going
+**0 to 83% within 40 epochs**. If single-bay recovery works, (1) was the cause
+and (2) to (4) are not implicated. If it does not, (1) is excluded and the
+remaining three are what a later session should measure — starting with (4),
+which is the only one that is a property of the *new* cell rather than of the
+task.
+
 ### How long to wait before calling a fine-tune stuck
 
 A resumed skill that shows **zero** successes is not evidence of anything until
