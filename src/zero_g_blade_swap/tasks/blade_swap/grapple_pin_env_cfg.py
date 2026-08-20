@@ -732,7 +732,43 @@ class ZeroGBladeGrapplePinExtractEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
 class InsertRewardsCfg:
     progress = RewTerm(func=mdp.insertion_progress_reward, weight=12.0)
     success = RewTerm(func=mdp.grapple_insertion_success_reward, weight=30.0)
-    retention = RewTerm(func=mdp.grip_retention_penalty, weight=-0.50)
+    # **Extraction's attitude parameters, adopted here on a measurement.**
+    #
+    # These were the soft defaults -- free_rad 0.08, scale 0.15, weight 0.25 --
+    # and the reason given for keeping them was explicit: they "must not change
+    # for insertion, whose certification was produced under them". That
+    # certification is insert v6 on the old workcell, which this branch replaces,
+    # so the reason has expired and the defaults can be judged on their merits.
+    #
+    # They do not survive that. `grapple_insertion_conditions` refuses success
+    # above **0.20 rad** of grip attitude, and the certified two-bay policy on the
+    # old cell was passing that condition at p95 = 0.19447 -- 0.00554 rad of
+    # margin, 2.8% of the limit. Under the soft defaults, 0.20 rad costs the
+    # policy about 0.08 per step, which is nothing: the objective was almost
+    # indifferent to the one quantity its success predicate turns on, and the
+    # 0.188 rad it happened to reach was luck rather than optimisation.
+    #
+    # On the moved cell the same policy sits at p50 0.19994 -- about 6% higher,
+    # and over the line. Every other condition passes in bay 2 at the median:
+    # 5.0 mm axial of a 12 mm limit, 0.9 mm lateral of 2.5, 0.0029 rad of 0.0524.
+    # Grip attitude is the whole difference between 98.60% and 10.50%.
+    #
+    # These are extraction's values, unchanged, and they were tuned against this
+    # exact quantity for this exact reason: at 0.20 rad they cost about 3.6 per
+    # step instead of 0.08, so the term finally has a gradient where the criterion
+    # has an edge. The risk they carry is recorded too -- extract v7 showed an
+    # over-weighted attitude term can make standing still cheaper than acting --
+    # which is why the certification that follows is the judge, not the reward.
+    retention = RewTerm(
+        func=mdp.grip_retention_penalty,
+        weight=-0.50,
+        params={
+            "free_rad": 0.04,
+            "orientation_scale": 0.06,
+            "orientation_weight": 1.0,
+            "max_penalty": 60.0,
+        },
+    )
     time = RewTerm(func=mdp.elapsed_time_penalty, weight=-0.10)
     misalignment = RewTerm(func=mdp.insertion_misalignment_penalty, weight=-0.03)
     settling = RewTerm(func=mdp.insertion_settling_penalty, weight=-0.04)
