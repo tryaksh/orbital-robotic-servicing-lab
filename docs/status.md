@@ -4633,6 +4633,70 @@ policy is simply driving it at the bay it scores 98.87% in.
 > predecessors and certified at 0.00%. Reward is not the gate; the termination
 > counters are, and they are in the same tfevents.
 
+## The relocation on the moved cell: the arm now flies it, and the grip loses the module
+
+`artifacts/relocation/relocate_trace_report.json`, 64 episodes, seed 4070, the
+scripted three-leg transit. **0 successes** — and the failure is a different one
+from `main`'s, which is the result.
+
+### What changed: the crossing completes
+
+On the old cell the transit died on the **cross leg**: the distance to the
+lateral waypoint *grew*, 0.303 → 0.397 m, and 50 of 64 environments were still on
+leg 1 when the episode ended, because the arm could not hold the module's
+attitude at the retreated depth. On the moved cell, at step 927 of the same
+driver:
+
+```
+transit: legs_remaining=[59, 0, 0]   to_waypoint_m p50=0.0042
+```
+
+**Zero environments remain on the retreat or the cross.** All 59 still
+transiting are on the final approach leg, with the tool 4.2 mm from its waypoint,
+and by step 1854 that is 1.2 mm. The arm flies the whole planned path. That is
+the workcell result showing up in the chain the workcell was blocking.
+
+### What now fails: the module does not come with it
+
+| Step | tool to its waypoint | grip error, p50 | module x, p50 | module crossed |
+| ---: | ---: | ---: | ---: | ---: |
+| 927 | 4.2 mm | **31 mm** | 0.4241 (needs 0.5779) | 18 / 64 |
+| 1854 | 1.2 mm | **857 mm** | 0.4957 | 18 / 64 |
+
+Terminal state over all 64: tool-to-module **1.216 m** at the median, module
+orientation error **2.26 rad**, lateral error **0.671 m** against a bay pitch of
+0.22 m. The module is not slipping out of the pads — it is being thrown clear,
+and then coasting to a stop in free space (terminal linear velocity 0.0026 m/s).
+
+Phases reached: 46 of 64 never finished the transit, 4 were still inserting, and
+14 gave up inside the insert budget. No episode fired the insertion predicate,
+which is unsurprising given insertion did not re-converge.
+
+### Why this is the interface question and not a driver bug
+
+The loss begins at the transition from the cross to the final leg, which is
+exactly where the driver **releases the retain and holds hard** — because that
+last leg drives the module 436 mm between bay 2's rails and this project's
+operating rule says a module meeting rails is held, not retained.
+
+Both sides of that are already measured here, and they are a vise:
+
+* **hold** through the final leg — the wedge converts closing force into thrust
+  along the pull axis, and with the module unconstrained in free space nothing
+  opposes it. That is what this trace shows, 31 mm growing to 857 mm.
+* **retain** through the final leg — measured previously: the tool flew the whole
+  leg and stopped 0.4 mm from its waypoint while the module travelled about
+  **95 mm of the 436**. The module cannot be driven in while retained.
+
+So the relocation's remaining blocker is the one this project has named from the
+start and never solved: **a parallel-jaw grip on a passive feature cannot both
+carry a module through free space and drive it into rails.** What the workcell
+change did was remove the *other* blocker, the one that was masking this one, and
+move the failure 734 mm further along the task.
+
+That is what the latch-on-release experiment exists to test, and it is now
+testable against a concrete failure rather than against a synthetic torque.
+
 ## Reproducing this branch, in order
 
 Every stage has a gate and the next must not start before it passes, so each is a
