@@ -4868,6 +4868,37 @@ move the failure 734 mm further along the task.
 That is what the latch-on-release experiment exists to test, and it is now
 testable against a concrete failure rather than against a synthetic torque.
 
+## Where this session stopped, and what was left unfinished
+
+Stopped deliberately, with the GPU idle and the tree clean. Nothing is mid-run.
+
+**Finished and certified on the moved cell:** the workcell solution and its two
+probes, capture, extraction, the removal chain, the installation chain, the
+two-bay insert skill, and one relocation trace. All of those numbers are in
+`evidence/` and in the tables above.
+
+**Started and not finished:**
+
+* **A latch-on-release A/B.** `run_workflow_demo.py --latch_on_release` exists and
+  its first attempt crashed on an ordering bug — `configure_robustness` nulls the
+  latch term when it is disabled, so the flag has to be set *before* that runs.
+  The bug is fixed and guarded, and the experiment has never produced a result.
+  The control arm, latch off, is measured: 0/192.
+* **Insertion's grip-attitude penalty was raised** to extraction's tuned values,
+  on the measurement that the old values charged 0.08 per step at the attitude
+  its own success predicate refuses at. **No policy has been trained under the
+  new penalty.** It is an untested hypothesis, and reverting it costs nothing.
+* **Perception was not touched.** The pose head still describes the old geometry.
+  The three vision arms were deliberately not run: they all drive the
+  installation workflow, insertion scores 0.00% in the bay it uses, so all three
+  would read approximately zero — and their gate is a comparison between them,
+  which three zeros satisfy while measuring nothing.
+
+**Checkpoints left on disk**, under `logs/rl_games/zero_g_blade_insertion_contact/`:
+`grapple_grasp_l0_seed70_v6w65` (promoted), `grapple_extract_l0_seed70_v16w65`
+(promoted), `grapple_insert_l0_seed70_v12w65` (promoted, 10.50%),
+`grapple_insert_l0_seed70_v13w65single` (the excluded single-bay experiment).
+
 ## Reproducing this branch, in order
 
 Every stage has a gate and the next must not start before it passes, so each is a
