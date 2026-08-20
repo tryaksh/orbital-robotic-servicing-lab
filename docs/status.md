@@ -4703,6 +4703,65 @@ on and bay 2 the one added later. A plausible reading is that the older, more
 entrenched bay-1 representation was the harder one to move, but that is a
 hypothesis with no measurement behind it and is offered as such.
 
+### Why insertion fails, measured: main was passing one condition by 2.8%
+
+The insert certification's terminal metrics say what refuses, and it is not what
+the success rate suggests.
+
+| | `main` | this branch | limit |
+| --- | ---: | ---: | ---: |
+| module axial error, p50 | 0.0077 m | 0.1376 m | ≤ 0.012 |
+| module lateral, p50 | — | **0.0010 m** | ≤ 0.0025 |
+| module orientation, p50 | — | **0.0043 rad** | ≤ 0.0524 |
+| grip position, p50 | 0.0144 m | **0.0141 m** | ≤ 0.020 |
+| **grip attitude, p50** | **0.18822** | **0.19994** | **≤ 0.20** |
+| **grip attitude, p95** | **0.19447** | 0.35008 | ≤ 0.20 |
+
+**`main`'s certified 98.60% insertion was passing the grip-attitude condition by
+0.00554 rad at the 95th percentile — 2.8% of the limit.** It was not comfortably
+inside that threshold; it was resting on it. This branch's policy sits at 0.19994
+at the median, about 6% higher, and that is the whole difference between 98.60%
+and a failure.
+
+That is this project's own thesis arriving in the least convenient place: attitude
+is the binding constraint, and here it binds on a *certification threshold* rather
+than on the physics. A 6% change in a quantity nobody was tracking flipped a
+headline number by 88 points.
+
+**The two bays fail differently, and only one of them is about attitude.**
+
+* **Bay 2** satisfies every geometric condition at the median — 5.0 mm axial
+  against a 12 mm limit, 0.9 mm lateral against 2.5 mm, 0.0029 rad orientation
+  against 0.0524 — and scores 21.45%. Grip attitude is what refuses.
+* **Bay 1** never gets the module in at all: axial error 0.1452 m against the
+  12 mm limit, while lateral (1.0 mm) and orientation (0.0049 rad) are near
+  perfect. The module is held beautifully still at the staging pose and not
+  pushed. 1,395 of its 1,565 episodes end on the clock.
+
+Bay 1's signature — perfect alignment, no travel — is the shape this page already
+records for extract v7: *standing still is cheaper than acting*. Pushing risks
+`extraction_failure` at 0.35 rad of grip attitude, which ends the episode and
+collects a reward term weighted **−15**; not pushing costs only the time penalty
+at **−0.10**. The policy took the safe option.
+
+### The training metric that caused this run to be stopped early was wrong
+
+Worth recording plainly because it changed a decision. The insert continuation was
+stopped at +1,502 epochs on the grounds that `Episode_Termination/insertion_success`
+had been **0.0000** at every logged point. Certified deterministically, the same
+checkpoint scores **10.50%**, and **21.45%** in bay 2.
+
+Training success is measured with the exploration noise still on; the certification
+runs the policy deterministically. For a skill this close to a threshold, the noise
+is worth more than ten points, so a training counter reading exactly zero is
+consistent with a policy that already works one time in five. Extraction did not
+expose this because its margins are wide — 0.9855 in training, 94.89% certified.
+
+**The rule that follows:** judge a resumed skill by a short deterministic
+evaluation, not by the training termination counter. It costs two minutes of
+`play.py` and it is the difference between "this is not learning" and "this is a
+fifth of the way there".
+
 ### The vision arms were not run, and that is a measurement decision
 
 The three vision arms all drive the **installation** workflow, which needs the
