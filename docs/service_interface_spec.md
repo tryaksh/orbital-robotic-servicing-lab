@@ -238,7 +238,7 @@ base position rather than by anything on the module.
 | --- | ---: | --- |
 | Base standoff behind the deepest required tool pose | **≥ 0.4242 m** | Closer than this the arm can reach the pose but cannot hold the approach attitude there |
 | Adopted base for this rack | **x = −0.65 m**, 0.4572 m behind the transit retreat | 33 mm of margin on the derived threshold of −0.617 m |
-| Alternative, if the base cannot move back | **≥ 220 mm lateral offset** of every serviced bay from the base's own plane | The boundary is a region around the base's own axis, not a plane at a depth. All 7 failing cells of 64 lie within 110 mm of the centre line; all 40 at 220 mm or beyond succeed, down to the deepest pose the task contains |
+| Alternative, if the base cannot move back | **≥ 200 mm lateral offset** of every serviced bay from the base's own plane (measured half-width 155–167 mm, plus margin) | The boundary is a region around the base's own axis, not a plane at a depth. All 7 failing cells of 64 lie within 110 mm of the centre line; all 40 at 220 mm or beyond succeed, down to the deepest pose the task contains |
 
 The two requirements are alternatives because they are two ways out of one
 region. Reaching back toward the base while pointing away from it is unavailable
@@ -246,10 +246,14 @@ only when the target is also nearly *on* the base's axis — so a cell escapes
 either by putting the poses further forward than the region is deep, or further
 to the side than it is wide.
 
-**Design against the depth, not the width.** The depth is derived and moves one
-millimetre per millimetre with the base. The width is bracketed between 110 mm
-and 220 mm by the candidates that were swept, and a bracket is a worse thing to
-build to than a derivation.
+Both are now derived rather than bracketed. The depth moves one millimetre per
+millimetre with the base. The width is **167 mm at the transit retreat and about
+152 mm at the extraction end** — a cone about the base's axis that widens
+slightly with depth — and the retreat's shortfall falls one millimetre per
+millimetre of lateral offset until it reaches zero
+(`evidence/attitude_wall_lateral_profile.json`). 200 mm is quoted above as the
+requirement rather than 167 mm because a workcell tolerance should not be
+specified at the measured edge.
 
 ### What the number is
 

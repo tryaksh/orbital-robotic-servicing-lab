@@ -4193,11 +4193,44 @@ region's depth; moving the base sideways escapes it by pushing them out of the
 region's width. Same region, two directions out.
 
 The depth threshold is derived — 0.4242 m, moving one for one with the base. The
-width threshold is only **bracketed between 110 mm and 220 mm**, because the
-sweep had no candidate in between, and a bracket is a worse thing to design
-against than a derivation. That is what `scripts/measure_attitude_wall.sh`
-resolves, and it is why the specification quotes the depth as a requirement and
-the width as a caution.
+width was only *bracketed* between 110 mm and 220 mm by these eight cells, and a
+bracket is a worse thing to design against than a derivation, so it was measured
+separately: **155 to 167 mm**, in the next section.
+
+### The region's width, measured: about 155 to 167 mm, and the shortfall falls one for one
+
+`evidence/attitude_wall_lateral_profile.json`. The base pinned at the **old**
+cell, −0.45, because the width of a region can only be measured where the region
+exists — at −0.65 both of these depths already solve on the centre line and every
+cell would have converged. Eight lateral offsets, both failing depths, one launch.
+
+| Lateral offset | extraction end, shortfall | transit retreat, shortfall |
+| ---: | ---: | ---: |
+| 0 mm | 88.70 mm | 166.95 mm |
+| 50 mm | 81.23 mm | 116.89 mm |
+| 100 mm | 51.49 mm | 66.87 mm |
+| 150 mm | **1.55 mm, solved** | 16.88 mm |
+| 200 mm | solved | **0.00 mm, solved** |
+| 220, 300, 400 mm | solved | solved |
+
+**The retreat's shortfall falls exactly one millimetre per millimetre of lateral
+offset** — 166.95, 116.89, 66.87, 16.88, differences of 50.06, 50.02 and 49.99 —
+and reaches zero at **167 mm**. The extraction end reaches zero at about
+**152 mm**. So the region is a cone about the base's axis that widens slightly
+with depth, and its half-width over the poses this task needs is **155 to
+167 mm**.
+
+That replaces the bracket. It also explains the (−0.45, −0.11) candidate exactly:
+110 mm is inside 152 mm, so *both* bays sat within the region, which is why
+splitting the difference between them was the worst of the eight cells measured.
+And 220 mm clears 167 mm, which is why the second bay always solved.
+
+One detail worth keeping. At the retreat, the three offsets that fail with the
+shortfall falling linearly hold the attitude to 0.0002 rad — the solver is giving
+away position and keeping attitude, the behaviour the original boundary was
+mapped by. At 150 mm the attitude residual jumps to **0.594 rad**: right at the
+edge the solver stops holding the attitude at all. The region does not fade out,
+it changes character.
 
 ### The adopted cell, and why it is a path rather than four points
 
