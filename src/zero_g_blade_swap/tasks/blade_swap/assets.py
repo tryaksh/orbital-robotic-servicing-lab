@@ -20,6 +20,14 @@ from isaaclab.utils import configclass
 from isaaclab_assets.robots.universal_robots import UR10e_ROBOTIQ_2F_85_CFG
 from pxr import Gf, PhysxSchema, Sdf, Usd, UsdGeom, UsdPhysics
 
+from zero_g_blade_swap.fiducial import (
+    FIDUCIAL_QUIET_ZONE_SIZE_M,
+    FIDUCIAL_TAG_BASIS_MODULE,
+    FIDUCIAL_TAG_BITS,
+    FIDUCIAL_TAG_CENTER_M,
+    FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
+    FIDUCIAL_TAG_SIZE_M,
+)
 from zero_g_blade_swap.grapple_geometry import (
     CLOSING_RATE_M_PER_RAD,
     GRAPPLE_HEAD_ON_TOOL_ROT,
@@ -284,7 +292,8 @@ def _define_compliant_d6(
                 "root-link path instead of silently falling back to pose noise."
             )
 
-    _relocate_ur10e_articulation_root(stage, environment_path)
+    if cfg.relocate_robot_articulation_root:
+        _relocate_ur10e_articulation_root(stage, environment_path)
 
     container = UsdGeom.Xform.Define(stage, container_path)
     if not sim_utils.standardize_xform_ops(
@@ -301,6 +310,7 @@ def _define_compliant_d6(
     # coordinate articulation.  It still acts on the articulation root body.
     joint.CreateExcludeFromArticulationAttr().Set(True)
     joint.CreateCollisionEnabledAttr().Set(False)
+    joint.CreateJointEnabledAttr().Set(cfg.enabled)
     joint.CreateLocalPos0Attr().Set(Gf.Vec3f(0.0, 0.0, 0.0))
     joint.CreateLocalPos1Attr().Set(Gf.Vec3f(0.0, 0.0, 0.0))
     identity = Gf.Quatf(1.0, Gf.Vec3f(0.0, 0.0, 0.0))
@@ -308,10 +318,28 @@ def _define_compliant_d6(
     joint.CreateLocalRot1Attr().Set(identity)
 
     joint_prim = joint.GetPrim()
+    translation_x_low = (
+        -cfg.translation_limit if cfg.translation_x_lower_limit is None else cfg.translation_x_lower_limit
+    )
+    translation_x_high = (
+        cfg.translation_limit if cfg.translation_x_upper_limit is None else cfg.translation_x_upper_limit
+    )
+    translation_y_low = (
+        -cfg.translation_limit if cfg.translation_y_lower_limit is None else cfg.translation_y_lower_limit
+    )
+    translation_y_high = (
+        cfg.translation_limit if cfg.translation_y_upper_limit is None else cfg.translation_y_upper_limit
+    )
+    translation_z_low = (
+        -cfg.translation_limit if cfg.translation_z_lower_limit is None else cfg.translation_z_lower_limit
+    )
+    translation_z_high = (
+        cfg.translation_limit if cfg.translation_z_upper_limit is None else cfg.translation_z_upper_limit
+    )
     axes = (
-        ("transX", -cfg.translation_limit, cfg.translation_limit, cfg.translation_stiffness, cfg.translation_damping),
-        ("transY", -cfg.translation_limit, cfg.translation_limit, cfg.translation_stiffness, cfg.translation_damping),
-        ("transZ", -cfg.translation_limit, cfg.translation_limit, cfg.translation_stiffness, cfg.translation_damping),
+        ("transX", translation_x_low, translation_x_high, cfg.translation_stiffness, cfg.translation_damping),
+        ("transY", translation_y_low, translation_y_high, cfg.translation_stiffness, cfg.translation_damping),
+        ("transZ", translation_z_low, translation_z_high, cfg.translation_stiffness, cfg.translation_damping),
         ("rotX", -cfg.rotation_limit_deg, cfg.rotation_limit_deg, cfg.rotation_stiffness, cfg.rotation_damping),
         ("rotY", -cfg.rotation_limit_deg, cfg.rotation_limit_deg, cfg.rotation_stiffness, cfg.rotation_damping),
         ("rotZ", -cfg.rotation_limit_deg, cfg.rotation_limit_deg, cfg.rotation_stiffness, cfg.rotation_damping),
@@ -380,7 +408,17 @@ class CompliantD6JointCfg(SpawnerCfg):
     func: Callable[..., Usd.Prim] = spawn_compliant_d6_joint
     body0_relative_path: str = "MountAnchor"
     body1_relative_path: str = "Robot/base_link"
+    relocate_robot_articulation_root: bool = True
+    enabled: bool = True
     translation_limit: float = 0.015
+    # Optional asymmetric travel for a driven positioning stage. ``None``
+    # preserves the original symmetric compliant mount on that axis.
+    translation_x_lower_limit: float | None = None
+    translation_x_upper_limit: float | None = None
+    translation_y_lower_limit: float | None = None
+    translation_y_upper_limit: float | None = None
+    translation_z_lower_limit: float | None = None
+    translation_z_upper_limit: float | None = None
     rotation_limit_deg: float = 2.0
     translation_stiffness: float = 12_000.0
     translation_damping: float = 220.0
@@ -427,6 +465,9 @@ def spawn_fixed_grasp_joint(
         joint.CreateBody1Rel().SetTargets([Sdf.Path(body1_path)])
         joint.CreateExcludeFromArticulationAttr().Set(True)
         joint.CreateCollisionEnabledAttr().Set(False)
+        joint.CreateJointEnabledAttr().Set(cfg.enabled)
+        joint.CreateBreakForceAttr().Set(cfg.break_force_n)
+        joint.CreateBreakTorqueAttr().Set(cfg.break_torque_nm)
         joint.CreateLocalPos0Attr().Set(Gf.Vec3f(*cfg.local_pos0))
         joint.CreateLocalPos1Attr().Set(Gf.Vec3f(*cfg.local_pos1))
         joint.CreateLocalRot0Attr().Set(Gf.Quatf(cfg.local_rot0[0], Gf.Vec3f(*cfg.local_rot0[1:])))
@@ -447,6 +488,44 @@ class FixedGraspJointCfg(SpawnerCfg):
     local_rot0: tuple[float, float, float, float] = TOOL_OFFSET_ROT
     local_pos1: tuple[float, float, float] = CONTACT_BLADE_HANDLE_OFFSET
     local_rot1: tuple[float, float, float, float] = GRIPPER_GRASP_ROT
+    enabled: bool = True
+    break_force_n: float = 1.0e30
+    break_torque_nm: float = 1.0e30
+
+
+@configclass
+class ReleaseLatchJointCfg(FixedGraspJointCfg):
+    """Disabled fixed joint armed only after a physical grapple-pin capture.
+
+    Its frames are replaced with the measured wrist-to-payload transform at
+    engagement, so enabling the joint does not teleport either body or inject a
+    pose-correction impulse. The break ratings remain explicit design inputs.
+    """
+
+    local_pos0: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    local_rot0: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
+    local_pos1: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    local_rot1: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
+    enabled: bool = False
+    break_force_n: float = 600.0
+    break_torque_nm: float = 30.0
+
+
+@configclass
+class ArmBrakeJointCfg(FixedGraspJointCfg):
+    """Disabled wrist-to-base posture brake used by the moving workcell stage.
+
+    The measured frame is authored immediately before engagement, so enabling
+    the brake adds a physical closed-loop constraint without moving the arm.
+    This models an industrial posture lock while the external stage carries the
+    already-secured payload.
+    """
+
+    body0_relative_path: str = "Robot/base_link"
+    body1_relative_path: str = "Robot/wrist_3_link"
+    enabled: bool = False
+    break_force_n: float = 1.0e30
+    break_torque_nm: float = 1.0e30
 
 
 def make_robot_cfg() -> ArticulationCfg:
@@ -494,16 +573,16 @@ def make_insertion_robot_cfg() -> ArticulationCfg:
             pos=ROBOT_ROOT_POS,
             rot=(1.0, 0.0, 0.0, 0.0),
             joint_pos={
-            "shoulder_pan_joint": INSERTION_STAGING_ARM_JOINT_POS[0],
-            "shoulder_lift_joint": INSERTION_STAGING_ARM_JOINT_POS[1],
-            "elbow_joint": INSERTION_STAGING_ARM_JOINT_POS[2],
-            "wrist_1_joint": INSERTION_STAGING_ARM_JOINT_POS[3],
-            "wrist_2_joint": INSERTION_STAGING_ARM_JOINT_POS[4],
-            "wrist_3_joint": INSERTION_STAGING_ARM_JOINT_POS[5],
-            "finger_joint": 0.0,
-            ".*_inner_finger_joint": 0.0,
-            ".*_inner_finger_knuckle_joint": 0.0,
-            ".*_outer_.*_joint": 0.0,
+                "shoulder_pan_joint": INSERTION_STAGING_ARM_JOINT_POS[0],
+                "shoulder_lift_joint": INSERTION_STAGING_ARM_JOINT_POS[1],
+                "elbow_joint": INSERTION_STAGING_ARM_JOINT_POS[2],
+                "wrist_1_joint": INSERTION_STAGING_ARM_JOINT_POS[3],
+                "wrist_2_joint": INSERTION_STAGING_ARM_JOINT_POS[4],
+                "wrist_3_joint": INSERTION_STAGING_ARM_JOINT_POS[5],
+                "finger_joint": 0.0,
+                ".*_inner_finger_joint": 0.0,
+                ".*_inner_finger_knuckle_joint": 0.0,
+                ".*_outer_.*_joint": 0.0,
             },
             joint_vel={".*": 0.0},
         ),
@@ -777,6 +856,90 @@ def spawn_blade_with_grapple_pin(
         if stage.GetPrimAtPath(visual_path).IsValid():
             for name in names:
                 sim_utils.bind_visual_material(f"{pin_path}/{name}", visual_path, stage=stage)
+
+        # A standard ArUco service datum turns the module into a calibrated
+        # part. It is code-native visual geometry under the blade rigid body, so
+        # it follows motion without adding collision, mass, or another body.
+        fiducial_root = f"{root_path}/Fiducials"
+        UsdGeom.Xform.Define(stage, fiducial_root)
+        black_material_path = f"{fiducial_root}/BlackMaterial"
+        black_material_cfg = sim_utils.PreviewSurfaceCfg(
+            diffuse_color=(0.001, 0.001, 0.001),
+            roughness=1.0,
+            metallic=0.0,
+        )
+        black_material_cfg.func(black_material_path, black_material_cfg)
+        white_material_path = f"{fiducial_root}/WhiteMaterial"
+        white_material_cfg = sim_utils.PreviewSurfaceCfg(
+            diffuse_color=(1.0, 1.0, 1.0),
+            emissive_color=(2.0, 2.0, 2.0),
+            metallic=0.0,
+            roughness=1.0,
+        )
+        white_material_cfg.func(white_material_path, white_material_cfg)
+        centre_x, centre_y, centre_z = FIDUCIAL_TAG_CENTER_M
+        tag_x_axis = tuple(row[0] for row in FIDUCIAL_TAG_BASIS_MODULE)
+        tag_y_axis = tuple(row[1] for row in FIDUCIAL_TAG_BASIS_MODULE)
+        tag_normal = tuple(row[2] for row in FIDUCIAL_TAG_BASIS_MODULE)
+
+        def tag_point(
+            local_x: float,
+            local_y: float,
+            normal_offset: float,
+            _centre: tuple[float, float, float] = (centre_x, centre_y, centre_z),
+            _x_axis: tuple[float, ...] = tag_x_axis,
+            _y_axis: tuple[float, ...] = tag_y_axis,
+            _normal: tuple[float, ...] = tag_normal,
+        ) -> tuple[float, float, float]:
+            return tuple(
+                centre + local_x * _x_axis[axis] + local_y * _y_axis[axis] + normal_offset * _normal[axis]
+                for axis, centre in enumerate(_centre)
+            )
+
+        quiet_path = f"{fiducial_root}/QuietZone"
+        quiet = UsdGeom.Cube.Define(stage, quiet_path)
+        quiet.CreateSizeAttr(1.0)
+        sim_utils.standardize_xform_ops(
+            quiet.GetPrim(),
+            translation=tag_point(0.0, 0.0, -0.0004),
+            orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
+            scale=(FIDUCIAL_QUIET_ZONE_SIZE_M, FIDUCIAL_QUIET_ZONE_SIZE_M, 0.0002),
+        )
+        sim_utils.bind_visual_material(quiet_path, white_material_path, stage=stage)
+
+        tag_path = f"{fiducial_root}/ArUco23"
+        tag = UsdGeom.Cube.Define(stage, tag_path)
+        tag.CreateSizeAttr(1.0)
+        sim_utils.standardize_xform_ops(
+            tag.GetPrim(),
+            translation=tag_point(0.0, 0.0, 0.0),
+            orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
+            scale=(FIDUCIAL_TAG_SIZE_M, FIDUCIAL_TAG_SIZE_M, 0.0002),
+        )
+        sim_utils.bind_visual_material(tag_path, black_material_path, stage=stage)
+
+        cell_size = FIDUCIAL_TAG_SIZE_M / len(FIDUCIAL_TAG_BITS)
+        half_cells = 0.5 * len(FIDUCIAL_TAG_BITS)
+        for row, bits in enumerate(FIDUCIAL_TAG_BITS):
+            for column, bit in enumerate(bits):
+                if not bit:
+                    continue
+                cell_path = f"{fiducial_root}/White_{row}_{column}"
+                cell = UsdGeom.Cube.Define(stage, cell_path)
+                cell.CreateSizeAttr(1.0)
+                cell_x = (column + 0.5 - half_cells) * cell_size
+                # Raster rows grow downward while the right-handed tag frame
+                # uses +y upward.  Negating the row coordinate is required;
+                # omitting it mirrors the ArUco payload and makes the otherwise
+                # crisp square impossible for a standards-compliant decoder.
+                cell_y = -(row + 0.5 - half_cells) * cell_size
+                sim_utils.standardize_xform_ops(
+                    cell.GetPrim(),
+                    translation=tag_point(cell_x, cell_y, 0.0004),
+                    orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
+                    scale=(cell_size, cell_size, 0.0002),
+                )
+                sim_utils.bind_visual_material(cell_path, white_material_path, stage=stage)
     return root
 
 
@@ -958,12 +1121,12 @@ for _insertion_guide_cfg in (INSERTION_SLOT_LEFT_GUIDE_CFG, INSERTION_SLOT_RIGHT
 # envelope smaller than the 0.75 mm clearance on each side.  The old 3 mm
 # envelope made the geometry overlap before the blade touched either rail.
 ROBUST_INSERTION_BLADE_CFG = INSERTION_BLADE_CFG.copy()
-ROBUST_INSERTION_BLADE_CFG.spawn.collision_props.contact_offset = 0.0003
+ROBUST_INSERTION_BLADE_CFG.spawn.collision_props.contact_offset = 0.0001
 ROBUST_INSERTION_BLADE_CFG.spawn.physics_material.static_friction = 0.55
 ROBUST_INSERTION_BLADE_CFG.spawn.physics_material.dynamic_friction = 0.45
 ROBUST_INSERTION_BLADE_CFG.spawn.physics_material.friction_combine_mode = "max"
 ROBUST_INSERTION_SLOT_CFG = SLOT_CFG.copy()
-ROBUST_INSERTION_SLOT_CFG.spawn.collision_props.contact_offset = 0.0004
+ROBUST_INSERTION_SLOT_CFG.spawn.collision_props.contact_offset = 0.0001
 ROBUST_INSERTION_SLOT_CFG.spawn.physics_material.static_friction = 0.12
 ROBUST_INSERTION_SLOT_CFG.spawn.physics_material.dynamic_friction = 0.08
 ROBUST_INSERTION_SLOT_CFG.spawn.physics_material.friction_combine_mode = "min"
@@ -976,7 +1139,7 @@ ROBUST_INSERTION_SLOT_RIGHT_GUIDE_CFG = _slot_guide_cfg(
     (BLADE_INSERTED_POS[0], -GUIDE_CENTER_OFFSET_Y, BLADE_INSERTED_POS[2]),
 )
 for _robust_guide_cfg in (ROBUST_INSERTION_SLOT_LEFT_GUIDE_CFG, ROBUST_INSERTION_SLOT_RIGHT_GUIDE_CFG):
-    _robust_guide_cfg.spawn.collision_props.contact_offset = 0.0004
+    _robust_guide_cfg.spawn.collision_props.contact_offset = 0.0001
     _robust_guide_cfg.spawn.physics_material.static_friction = 0.12
     _robust_guide_cfg.spawn.physics_material.dynamic_friction = 0.08
     _robust_guide_cfg.spawn.physics_material.friction_combine_mode = "min"
@@ -1071,16 +1234,19 @@ GRAPPLE_PIN_BLADE_CFG = RigidObjectCfg(
         size=BLADE_SIZE,
         rigid_props=_rigid_props(kinematic=False),
         mass_props=sim_utils.MassPropertiesCfg(mass=10.0),
-        collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.0003, rest_offset=0.0),
+        # The production channel has 0.75 mm of lateral clearance per side.
+        # Keep the chassis envelope well below that clearance; 0.3 mm on the
+        # blade plus the rail/flare envelope left PhysX only 0.35 mm of useful
+        # mouth clearance and a perfectly aligned payload stopped on the
+        # broadphase contact plane instead of entering the guide.
+        collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.0001, rest_offset=0.0),
         physics_material=sim_utils.RigidBodyMaterialCfg(
             static_friction=0.55,
             dynamic_friction=0.45,
             restitution=0.0,
             friction_combine_mode="max",
         ),
-        visual_material=sim_utils.PreviewSurfaceCfg(
-            diffuse_color=(0.04, 0.18, 0.30), metallic=0.75, roughness=0.25
-        ),
+        visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.04, 0.18, 0.30), metallic=0.75, roughness=0.25),
         semantic_tags=[("class", "grapple_pin_replacement_blade")],
         activate_contact_sensors=False,
     ),
@@ -1122,7 +1288,7 @@ def _slot_upper_lip_cfg(name: str, y_center: float) -> RigidObjectCfg:
             size=(0.45, 0.020, 0.010),
             rigid_props=_rigid_props(kinematic=True),
             mass_props=sim_utils.MassPropertiesCfg(mass=10.0),
-            collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.0004, rest_offset=0.0),
+            collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.0001, rest_offset=0.0),
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.8,
                 dynamic_friction=0.65,
@@ -1162,7 +1328,7 @@ def _slot_entry_flare_cfg(name: str, y_center: float, rotation: tuple[float, flo
             size=(0.080, 0.018, 0.050),
             rigid_props=_rigid_props(kinematic=True),
             mass_props=sim_utils.MassPropertiesCfg(mass=10.0),
-            collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.0004, rest_offset=0.0),
+            collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.0001, rest_offset=0.0),
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 # A lead-in that grabs defeats the point, so it is the slipperiest
                 # surface in the slot.
@@ -1171,7 +1337,9 @@ def _slot_entry_flare_cfg(name: str, y_center: float, rotation: tuple[float, flo
                 restitution=0.0,
                 friction_combine_mode="min",
             ),
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.68, 0.52, 0.16), metallic=0.85, roughness=0.30),
+            visual_material=sim_utils.PreviewSurfaceCfg(
+                diffuse_color=(0.68, 0.52, 0.16), metallic=0.85, roughness=0.30
+            ),
             activate_contact_sensors=False,
         ),
         init_state=RigidObjectCfg.InitialStateCfg(pos=(_FLARE_CENTER_X, y_center, BLADE_INSERTED_POS[2]), rot=rotation),
@@ -1357,6 +1525,8 @@ __all__ = [
     "BLADE_SIZE",
     "CompliantD6JointCfg",
     "FixedGraspJointCfg",
+    "ReleaseLatchJointCfg",
+    "ArmBrakeJointCfg",
     "CONTACT_BLADE_HANDLE_OFFSET",
     "CONTACT_INSERTION_STAGE_ARM_JOINT_POS",
     "CONTACT_INSERTION_STAGE_BLADE_POSE",

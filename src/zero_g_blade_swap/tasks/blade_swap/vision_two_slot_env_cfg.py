@@ -48,7 +48,6 @@ from .workflow_demo_env_cfg import (
     WorkflowTerminationsCfg,
 )
 
-
 #: Where the module is presented for collection, one pose per curriculum stage.
 #:
 #: The occupancy branch is a classifier and it needs to see all three states the
@@ -81,8 +80,8 @@ VISION_TWO_SLOT_STAGE_BLADE_POSE = (
 class VisionTwoSlotGrappleSceneCfg(ZeroGTwoSlotGrapplePinSceneCfg):
     """Two bays, with the same servicing camera watching the interface.
 
-    The camera is `make_tiled_camera_cfg()` unchanged, mount and 180 mm focal
-    length included. It is not re-aimed for the second bay, and that is the
+    The camera is `make_tiled_camera_cfg()` unchanged, including the 256 px /
+    45 mm scale-preserving overview field of view. It is not re-aimed for the second bay, and that is the
     honest configuration to measure: a fixed servicing camera is what a real
     manipulator carries, and whether this one frames both bays well enough to
     tell them apart is a question for the occupancy accuracy to answer rather
@@ -163,6 +162,17 @@ class ZeroGBladeGrappleVisionTwoSlotWorkflowEnvCfg(ZeroGBladeGrappleVisionTwoSlo
     rewards: WorkflowRewardsCfg = WorkflowRewardsCfg()
     terminations: WorkflowTerminationsCfg = WorkflowTerminationsCfg()
     curriculum: WorkflowCurriculumCfg = WorkflowCurriculumCfg()
+    # This class must declare the deployment controls itself: it inherits the
+    # two-slot collection scene, not ZeroGBladeGrappleVisionWorkflowEnvCfg.
+    # Without them the runner silently kept the pose-head default and rejected
+    # a requested fiducial backend during observation-manager construction.
+    pose_head_checkpoint: str | None = None
+    perception_mode: str = mdp.PERCEPTION_DEPLOYMENT
+    perception_backend: str = mdp.PERCEPTION_BACKEND_POSE_HEAD
+    perception_velocity_filter_time_constant_s: float = 0.10
+    perception_blind_occupancy: tuple[float, float] = (1.0, 0.0)
+    pose_head_oracle_blend: float = 0.0
+    pose_head_blind: bool = False
 
 
 @configclass

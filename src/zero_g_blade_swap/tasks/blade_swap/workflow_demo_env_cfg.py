@@ -45,6 +45,7 @@ from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.utils import configclass
 
 from . import mdp
+from .assets import CONTACT_INSERTION_STAGE_BLADE_POSE
 from .grapple_pin_env_cfg import (
     GrappleSkillObsCfg,
     GraspActionsCfg,
@@ -125,9 +126,13 @@ SEAT_STEPS = 30
 #: skill cannot disagree about what "captured" means.
 HANDOVER_HOLD_S = 0.30
 
-#: Where the scripted transit hands over to the insert policy: the blade centre
-#: the insert skill was trained to start from.
-TRANSIT_TARGET_BLADE_X = 0.5829
+#: Where the scripted transit hands over to the insert policy: the exact module
+#: pose used by the insert task's full-distance reset.  The relocation offsets
+#: only its bay-centre coordinate; depth, height and rack attitude remain this
+#: reset pose.  Deriving it here prevents the workflow from silently drifting
+#: away from the checkpoint's training distribution.
+TRANSIT_TARGET_BLADE_POSE = CONTACT_INSERTION_STAGE_BLADE_POSE[2]
+TRANSIT_TARGET_BLADE_X = TRANSIT_TARGET_BLADE_POSE[0]
 
 
 @configclass
@@ -243,6 +248,7 @@ __all__ = [
     "INSERT_BUDGET_S",
     "SEAT_STEPS",
     "TRANSIT_TARGET_BLADE_X",
+    "TRANSIT_TARGET_BLADE_POSE",
     "certified_episode_length_s",
     "WorkflowExtractObsCfg",
     "WorkflowGraspObsCfg",

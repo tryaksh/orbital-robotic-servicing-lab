@@ -148,9 +148,9 @@ def test_phase_two_tight_geometry_has_valid_contact_envelope() -> None:
     assets = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "assets.py").read_text(encoding="utf-8")
 
     assert "GUIDE_CENTER_OFFSET_Y = 0.08975" in assets
-    assert "ROBUST_INSERTION_BLADE_CFG.spawn.collision_props.contact_offset = 0.0003" in assets
-    assert "ROBUST_INSERTION_SLOT_CFG.spawn.collision_props.contact_offset = 0.0004" in assets
-    assert "_robust_guide_cfg.spawn.collision_props.contact_offset = 0.0004" in assets
+    assert "ROBUST_INSERTION_BLADE_CFG.spawn.collision_props.contact_offset = 0.0001" in assets
+    assert "ROBUST_INSERTION_SLOT_CFG.spawn.collision_props.contact_offset = 0.0001" in assets
+    assert "_robust_guide_cfg.spawn.collision_props.contact_offset = 0.0001" in assets
     assert 'ROBUST_INSERTION_BLADE_CFG.spawn.physics_material.friction_combine_mode = "max"' in assets
 
 

@@ -1,43 +1,50 @@
-"""Where the module is, regressed from a camera instead of read from the sim.
+"""Camera-derived module state for the deployed servicing workflow.
 
-Every certified policy in this repository is handed ``grapple_grip_error_observation``
-— the exact vector from the tool frame to the point on the module it has to grip
-— computed from simulator ground truth. That is the honest weakness of the whole
-project, recorded as such since 2026-08-10. This module replaces that one term
-with a value derived from a 64x64 RGB image, and changes nothing else.
+The three workflow policies were trained with four views of the module state:
+the tool-to-grip error, extraction travel remaining, insertion-goal error, and
+module velocity. Replacing only the first of those is not a vision policy; the
+other three values still reveal the simulator's answer. This module replaces
+all four while preserving their original widths and ordering.
 
-**What is perceived and what is not, and why the split is the design.** A real
-servicing arm knows its own joint angles, its tool pose, its gripper state and
-the forces on it, from encoders and forward kinematics. It does *not* know where
-a free-floating module is. So the head regresses the **module's pose in the
-world**, which is a pure function of the image, and the tool-to-grip vector the
-policy consumes is then computed from that estimate and the arm's own known tool
-pose — exactly as a real system would.
+``ModuleStateEstimator`` is shared by every perception observation term on one
+vectorized environment. It caches by ``common_step_counter``, so all three
+observation groups consume one pose-head evaluation per control step. Position
+and attitude come from the camera. Linear and angular velocity are finite
+differences of consecutive camera estimates passed through a first-order
+temporal filter; simulator body velocity is never consulted in deployment mode.
 
-Regressing the tool-relative vector directly would have been the easy thing to
-write and it would have been wrong: the camera cannot see the gripper from this
-mount, so the network would have had to invent the half of the answer that
-proprioception already supplies exactly. That mistake was caught by rendering a
-frame and projecting the targets into it before any data was collected.
+There are three deliberately explicit modes:
 
-The head is small on purpose. A 64x64 tile at 15 Hz across many environments is
-the throughput budget this project measured and kept, and the quantity is a
-smooth six-dimensional function of one rigid body's pose, not a semantic
-problem. Four strided convolutions take 64x64 to 4x4.
+* ``deployment`` requires a checkpoint and only reads the camera;
+* ``oracle`` reads simulator pose for an evaluation upper bound;
+* ``blind`` reads a configured nominal pose for an evaluation lower bound and
+  neither renders an image nor reads the live module state.
+
+The exact module pose is otherwise read only by collection labels and diagnostic
+error metrics. In particular, diagnostic error is not computed as a side effect
+of producing a policy observation.
 """
 
 from __future__ import annotations
+
+import math
+from collections.abc import Sequence
 
 import torch
 from isaaclab.managers import ManagerTermBase, SceneEntityCfg
 from isaaclab.utils.math import (
     axis_angle_from_quat,
+    combine_frame_transforms,
+    matrix_from_quat,
     quat_apply,
     quat_from_angle_axis,
+    quat_from_matrix,
+    quat_inv,
     quat_mul,
     subtract_frame_transforms,
 )
 
+from zero_g_blade_swap.fiducial import estimate_fiducial_pose
 from zero_g_blade_swap.grapple_geometry import (
     EXTRACTED_BLADE_CENTRE_X,
     GRAPPLE_HEAD_ON_TOOL_ROT,
@@ -46,180 +53,645 @@ from zero_g_blade_swap.grapple_geometry import (
 from zero_g_blade_swap.pose_head import MODULE_POSE_DIM, ModulePoseHead, load_pose_head
 
 from ..assets import SLOT_CENTRE_Y, SLOT_UPPER_LIP_HALF_WIDTH_Y
-from .insertion import attached_blade_pose_world
 from .observations import camera_rgb_with_radiation_noise, end_effector_pose_world
+
+PERCEPTION_DEPLOYMENT = "deployment"
+PERCEPTION_ORACLE = "oracle"
+PERCEPTION_BLIND = "blind"
+PERCEPTION_MODES = frozenset((PERCEPTION_DEPLOYMENT, PERCEPTION_ORACLE, PERCEPTION_BLIND))
+PERCEPTION_BACKEND_POSE_HEAD = "pose_head"
+PERCEPTION_BACKEND_FIDUCIAL_PNP = "fiducial_pnp"
+PERCEPTION_BACKENDS = frozenset((PERCEPTION_BACKEND_POSE_HEAD, PERCEPTION_BACKEND_FIDUCIAL_PNP))
+
+# These functions all expose the live module pose or velocity. They are valid
+# for state-only policies, rewards, terminations, and metrics, but never as
+# active terms in a deployed vision policy group.
+FORBIDDEN_DEPLOYMENT_OBSERVATION_FUNCTIONS = frozenset(
+    (
+        "attached_blade_velocity",
+        "attached_blade_pose_world",
+        "extraction_remaining_observation",
+        "grapple_grip_error_observation",
+        "grapple_grip_error_metrics",
+        "insertion_goal_error",
+        "module_pose_label",
+        "slot_occupancy_label",
+    )
+)
 
 
 def module_pose_label(env, asset_name: str = "spare_blade") -> torch.Tensor:
-    """The regression target: the module's pose in its own environment's frame.
+    """Return simulator module pose for supervised labels and diagnostics only.
 
-    Environment-local rather than world, so the label does not encode which tile
-    of the cloned grid an environment happens to occupy — a network handed world
-    coordinates would learn the grid instead of the module.
+    The position is environment-local, so the label cannot encode which tile of
+    the cloned grid an environment occupies. This function must not be wired to
+    a deployed policy observation group; ``audit_vision_deployment_observations``
+    enforces that boundary at configuration time.
     """
 
-    position, orientation = attached_blade_pose_world(env)
-    local = position - env.scene.env_origins
-    return torch.cat((local, axis_angle_from_quat(orientation)), dim=-1)
+    blade = env.scene[asset_name]
+    local_position = blade.data.root_pos_w - env.scene.env_origins
+    return torch.cat((local_position, axis_angle_from_quat(blade.data.root_quat_w)), dim=-1)
 
 
 def slot_occupancy_label(env, asset_name: str = "spare_blade") -> torch.Tensor:
-    """One value per bay: is the module inside that bay's channel?
+    """Return exact per-bay occupancy labels for offline supervision.
 
-    The supervision for the pose head's occupancy branch, and the thing that
-    turns "the camera locates a part" into "the camera reads the state of the
-    rack". With two bays a servicer's first question is which one holds the
-    module, and during a relocation the honest answer is sometimes *neither* ---
-    the module spends the whole transit outside both. So these are two
-    independent indicators rather than a choice between two bays, and the head
-    scores them with independent logits for the same reason.
-
-    "Inside the channel" is read off the rack geometry rather than chosen:
-
-    * axially, the module's centre is past ``EXTRACTED_BLADE_CENTRE_X``, which is
-      the centre position at which its rear face is level with the mouth --- the
-      same line extraction is judged against, so "out" here and "extracted"
-      there cannot disagree;
-    * laterally, within ``SLOT_UPPER_LIP_HALF_WIDTH_Y`` of that bay's centre,
-      which is the physical half-width of the channel the lips define. The bays
-      are 0.22 m apart and that half-width is 0.0725 m, so the two indicators
-      cannot both be true and a module parked between them sets neither.
+    These are two independent indicators because a module in transit occupies
+    neither bay. Like ``module_pose_label``, this is privileged label data and
+    must not be connected to a deployed policy observation.
     """
 
-    position, _ = attached_blade_pose_world(env)
-    local = position - env.scene.env_origins
+    blade = env.scene[asset_name]
+    local = blade.data.root_pos_w - env.scene.env_origins
     centres = local.new_tensor(SLOT_CENTRE_Y)
     inside_mouth = local[:, 0] > EXTRACTED_BLADE_CENTRE_X
     within_channel = (local[:, 1].unsqueeze(-1) - centres).abs() <= SLOT_UPPER_LIP_HALF_WIDTH_Y
     return (within_channel & inside_mouth.unsqueeze(-1)).to(torch.float32)
 
 
-def grip_error_from_module_pose(env, module_pose: torch.Tensor) -> torch.Tensor:
-    """Turn an estimated module pose into the six values the policies consume.
+def occupancy_from_module_pose(module_pose: torch.Tensor) -> torch.Tensor:
+    """Infer rack occupancy from an estimated pose, without simulator state."""
 
-    Every other quantity in here is proprioception: the tool pose comes from
-    forward kinematics and the grip offset is a dimension of the interface. This
-    is the arithmetic ``grapple_grip_error_observation`` does, with the module's
-    pose supplied instead of looked up.
+    centres = module_pose.new_tensor(SLOT_CENTRE_Y)
+    inside_mouth = module_pose[:, 0] > EXTRACTED_BLADE_CENTRE_X
+    within_channel = (module_pose[:, 1].unsqueeze(-1) - centres).abs() <= SLOT_UPPER_LIP_HALF_WIDTH_Y
+    return (within_channel & inside_mouth.unsqueeze(-1)).to(torch.float32)
+
+
+def _orientation_from_module_pose(module_pose: torch.Tensor) -> torch.Tensor:
+    """Convert the pose head's rotation vector to a numerically safe quaternion."""
+
+    rotation_vector = module_pose[:, 3:]
+    angle = torch.linalg.vector_norm(rotation_vector, dim=-1)
+    fallback_axis = rotation_vector.new_zeros(rotation_vector.shape)
+    fallback_axis[:, 0] = 1.0
+    axis = torch.where(
+        (angle > 1.0e-8).unsqueeze(-1),
+        rotation_vector / angle.clamp_min(1.0e-8).unsqueeze(-1),
+        fallback_axis,
+    )
+    return quat_from_angle_axis(angle, axis)
+
+
+def grip_error_from_module_pose(env, module_pose: torch.Tensor) -> torch.Tensor:
+    """Convert an estimated local module pose to the policy's six-value grip error.
+
+    The tool pose is encoder/forward-kinematics information available on a real
+    robot. No live module state is read here.
     """
 
     tool_position, tool_orientation = end_effector_pose_world(env)
     blade_position = module_pose[:, :3] + env.scene.env_origins
-    angle = torch.linalg.vector_norm(module_pose[:, 3:], dim=-1, keepdim=True).clamp_min(1e-8)
-    blade_orientation = quat_from_angle_axis(angle.squeeze(-1), module_pose[:, 3:] / angle)
+    blade_orientation = _orientation_from_module_pose(module_pose)
     offset = blade_position.new_tensor(GRAPPLE_PIN_GRIP_OFFSET).expand(env.num_envs, -1)
     grip_position = blade_position + quat_apply(blade_orientation, offset)
     desired = quat_mul(
-        blade_orientation, blade_orientation.new_tensor(GRAPPLE_HEAD_ON_TOOL_ROT).expand_as(blade_orientation)
+        blade_orientation,
+        blade_orientation.new_tensor(GRAPPLE_HEAD_ON_TOOL_ROT).expand_as(blade_orientation),
     )
     relative_position, relative_quat = subtract_frame_transforms(
-        tool_position, tool_orientation, grip_position, desired
+        tool_position,
+        tool_orientation,
+        grip_position,
+        desired,
     )
     return torch.cat((relative_position, axis_angle_from_quat(relative_quat)), dim=-1)
 
 
-class PerceivedGraspError(ManagerTermBase):
-    """The grip error, from the camera rather than from the simulator.
+def extraction_remaining_from_module_pose(
+    module_pose: torch.Tensor,
+    target_x: float = EXTRACTED_BLADE_CENTRE_X,
+) -> torch.Tensor:
+    """Return camera-estimated extraction travel as the original one-column term."""
 
-    Set ``env.cfg.pose_head_checkpoint`` to a trained head. If it is unset the
-    term **raises** rather than falling back to ground truth: a vision
-    evaluation that quietly used the simulator's own answer is the most
-    expensive kind of wrong number this project could produce, because it would
-    look like a triumph.
+    return (module_pose[:, :1] - target_x).clamp_min(0.0)
 
-    ``pose_head_oracle_blend`` at 1.0 runs the oracle arm of the comparison
-    through this identical code path, so the difference between the two arms
-    cannot be an artefact of one of them taking a different route through the
-    observation manager.
+
+def insertion_goal_error_from_module_pose(
+    env,
+    module_pose: torch.Tensor,
+    command_name: str = "insertion_goal",
+) -> torch.Tensor:
+    """Return goal-minus-estimated-module pose with the original six-value layout."""
+
+    goal = env.command_manager.get_command(command_name)
+    relative_position, relative_quat = subtract_frame_transforms(
+        module_pose[:, :3],
+        _orientation_from_module_pose(module_pose),
+        goal[:, :3],
+        goal[:, 3:7],
+    )
+    return torch.cat((relative_position, axis_angle_from_quat(relative_quat)), dim=-1)
+
+
+def _resolve_perception_mode(cfg) -> str:
+    """Resolve the explicit mode while retaining the existing evaluation CLI flags."""
+
+    configured = str(getattr(cfg, "perception_mode", PERCEPTION_DEPLOYMENT)).lower()
+    if configured not in PERCEPTION_MODES:
+        choices = ", ".join(sorted(PERCEPTION_MODES))
+        raise ValueError(f"perception_mode must be one of {choices}; got {configured!r}")
+
+    # Existing evaluation scripts spell the two controls this way. Preserve the
+    # flags, but reject interpolation: a partly privileged policy is neither a
+    # deployment result nor an interpretable oracle comparison.
+    blind = bool(getattr(cfg, "pose_head_blind", False))
+    oracle_blend = float(getattr(cfg, "pose_head_oracle_blend", 0.0))
+    if oracle_blend not in (0.0, 1.0):
+        raise ValueError(
+            "pose_head_oracle_blend no longer permits mixed estimates. Use perception_mode='deployment' "
+            "or perception_mode='oracle' so privileged state cannot leak partially into a policy."
+        )
+    if blind and oracle_blend == 1.0:
+        raise ValueError("blind and oracle perception controls are mutually exclusive")
+
+    legacy_mode = PERCEPTION_BLIND if blind else PERCEPTION_ORACLE if oracle_blend == 1.0 else None
+    if configured != PERCEPTION_DEPLOYMENT and legacy_mode is not None and legacy_mode != configured:
+        raise ValueError(f"conflicting perception modes: perception_mode={configured!r}, legacy flag={legacy_mode!r}")
+    return legacy_mode if configured == PERCEPTION_DEPLOYMENT and legacy_mode is not None else configured
+
+
+class ModuleStateEstimator:
+    """One cached camera estimator shared by every module observation term.
+
+    The object belongs to the vectorized environment (stored under
+    ``_module_state_estimator``), not to an individual observation term. A call
+    from grasp, extract, insert, or diagnostics in the same control step returns
+    the same cached tensors. ``cnn_evaluation_count`` is exposed for runtime
+    audits and throughput tests.
     """
+
+    def __init__(self, env) -> None:
+        self._env = env
+        self._mode = _resolve_perception_mode(env.cfg)
+        self._backend = str(getattr(env.cfg, "perception_backend", PERCEPTION_BACKEND_POSE_HEAD)).lower()
+        if self._backend not in PERCEPTION_BACKENDS:
+            choices = ", ".join(sorted(PERCEPTION_BACKENDS))
+            raise ValueError(f"perception_backend must be one of {choices}; got {self._backend!r}")
+        checkpoint = getattr(env.cfg, "pose_head_checkpoint", None)
+        if self._mode == PERCEPTION_DEPLOYMENT and self._backend == PERCEPTION_BACKEND_POSE_HEAD and checkpoint is None:
+            raise ValueError(
+                "deployment perception requires env.cfg.pose_head_checkpoint; refusing to substitute "
+                "simulator module state. Use perception_mode='oracle' or 'blind' only for an explicit ablation."
+            )
+        self._head = (
+            load_pose_head(checkpoint, env.device)
+            if self._mode == PERCEPTION_DEPLOYMENT and self._backend == PERCEPTION_BACKEND_POSE_HEAD
+            else None
+        )
+        self._sensor_cfg = SceneEntityCfg("camera")
+        self._filter_time_constant_s = float(getattr(env.cfg, "perception_velocity_filter_time_constant_s", 0.10))
+        if not math.isfinite(self._filter_time_constant_s) or self._filter_time_constant_s < 0.0:
+            raise ValueError("perception_velocity_filter_time_constant_s must be finite and non-negative")
+
+        self._cached_step: int | None = None
+        self._last_update_step: int | None = None
+        self._pose = torch.zeros((env.num_envs, MODULE_POSE_DIM), device=env.device)
+        self._velocity = torch.zeros((env.num_envs, 6), device=env.device)
+        self._occupancy_probabilities: torch.Tensor | None = None
+        self._previous_position = torch.zeros((env.num_envs, 3), device=env.device)
+        self._previous_orientation = torch.zeros((env.num_envs, 4), device=env.device)
+        self._previous_orientation[:, 0] = 1.0
+        self._history_valid = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        self._cnn_evaluation_count = 0
+        self._fiducial_evaluation_count = 0
+        self._fiducial_detection_count = 0
+        self._fiducial_failure_count = 0
+        self._fiducial_consecutive_failures = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
+        self._fiducial_max_consecutive_failures = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
+        self._confidence = torch.zeros(env.num_envs, device=env.device)
+        self._reprojection_error_px = torch.full((env.num_envs,), float("inf"), device=env.device)
+        self._fiducial_detection_valid = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        self._fiducial_current_detection = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        self._payload_stage_engaged = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        self._module_in_tool_position = torch.zeros((env.num_envs, 3), device=env.device)
+        self._module_in_tool_orientation = torch.zeros((env.num_envs, 4), device=env.device)
+        self._module_in_tool_orientation[:, 0] = 1.0
+
+    @property
+    def mode(self) -> str:
+        return self._mode
+
+    @property
+    def cnn_evaluation_count(self) -> int:
+        return self._cnn_evaluation_count
+
+    @property
+    def backend(self) -> str:
+        return self._backend
+
+    @property
+    def fiducial_detection_statistics(self) -> dict[str, float | int]:
+        """Return measured detector availability without exposing sim truth."""
+
+        attempts = self._fiducial_detection_count + self._fiducial_failure_count
+        return {
+            "attempts": attempts,
+            "detections": self._fiducial_detection_count,
+            "failures": self._fiducial_failure_count,
+            "detection_rate": self._fiducial_detection_count / attempts if attempts else 0.0,
+            "max_consecutive_failures": int(self._fiducial_max_consecutive_failures.max().item()),
+        }
+
+    @property
+    def fiducial_current_detection(self) -> torch.Tensor:
+        """Return which environments have a valid datum in the current frame."""
+
+        self.estimate()
+        return self._fiducial_current_detection
+
+    def mark_payload_stage_engaged(self, env_ids: Sequence[int] | torch.Tensor) -> None:
+        """Switch missed-frame propagation from robot grasp to safe hold-last.
+
+        Before handoff, robot encoders and forward kinematics propagate the
+        last camera pose through brief line-of-sight occlusions. Once the
+        physical shuttle owns the payload, that rigid tool relationship is no
+        longer valid and missed frames hold the last estimate instead.
+        """
+
+        self._payload_stage_engaged[env_ids] = True
+
+    @property
+    def confidence(self) -> torch.Tensor:
+        """Return the latest bounded detector quality score."""
+
+        self.estimate()
+        return self._confidence
+
+    @property
+    def reprojection_error_px(self) -> torch.Tensor:
+        """Return the latest geometric reprojection RMS in pixels."""
+
+        self.estimate()
+        return self._reprojection_error_px
+
+    def pose_wxyz(self) -> torch.Tensor:
+        """Return the cached local pose as position plus a unit quaternion.
+
+        This is a reporting interface, not a second estimator call: ``estimate``
+        is step-cached, so policy observations and the exported terminal evidence
+        refer to the same camera result.
+        """
+
+        pose, _ = self.estimate()
+        return torch.cat((pose[:, :3], _orientation_from_module_pose(pose)), dim=-1)
+
+    def occupancy_probabilities(self) -> torch.Tensor | None:
+        """Return the cached per-bay occupancy scores when the head supports them.
+
+        These sigmoid outputs are useful planning scores, not calibrated
+        confidence.  Calling this method shares the same camera pass as the pose
+        observations; it never invokes a second network evaluation.
+        """
+
+        self.estimate()
+        return self._occupancy_probabilities
+
+    def reset(self, env_ids: Sequence[int] | torch.Tensor | None = None) -> None:
+        """Invalidate reset environments so velocity never crosses episode boundaries."""
+
+        ids = slice(None) if env_ids is None else env_ids
+        self._history_valid[ids] = False
+        self._fiducial_detection_valid[ids] = False
+        self._fiducial_current_detection[ids] = False
+        self._payload_stage_engaged[ids] = False
+        self._velocity[ids] = 0.0
+        # A partial reset can happen after this step's observations were cached.
+        # Invalidate the whole batch; inference remains one pass on the next read.
+        self._cached_step = None
+
+    def estimate(self) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return cached ``(pose, filtered_velocity)`` for the current control step."""
+
+        step = int(self._env.common_step_counter)
+        if self._cached_step == step:
+            return self._pose, self._velocity
+
+        if self._mode == PERCEPTION_DEPLOYMENT:
+            pose = self._estimate_deployment()
+        elif self._mode == PERCEPTION_ORACLE:
+            pose = self._estimate_oracle()
+        else:
+            pose = self._estimate_blind()
+
+        if pose.shape != (self._env.num_envs, MODULE_POSE_DIM):
+            raise RuntimeError(
+                f"module pose estimator returned {tuple(pose.shape)}, expected "
+                f"({self._env.num_envs}, {MODULE_POSE_DIM})"
+            )
+        if not bool(torch.isfinite(pose).all()):
+            raise RuntimeError("module pose estimator produced a non-finite policy observation")
+
+        pose = pose.to(device=self._pose.device, dtype=self._pose.dtype)
+        orientation = _orientation_from_module_pose(pose)
+        elapsed_steps = 1 if self._last_update_step is None else max(1, step - self._last_update_step)
+        dt = float(self._env.step_dt) * elapsed_steps
+
+        linear = (pose[:, :3] - self._previous_position) / dt
+        rotation_delta = quat_mul(orientation, quat_inv(self._previous_orientation))
+        angular = axis_angle_from_quat(rotation_delta) / dt
+        raw_velocity = torch.cat((linear, angular), dim=-1)
+        raw_velocity = torch.where(self._history_valid.unsqueeze(-1), raw_velocity, torch.zeros_like(raw_velocity))
+
+        tau = self._filter_time_constant_s
+        alpha = 1.0 if tau == 0.0 else dt / (tau + dt)
+        self._velocity.mul_(1.0 - alpha).add_(raw_velocity, alpha=alpha)
+        self._velocity.masked_fill_(~self._history_valid.unsqueeze(-1), 0.0)
+        self._pose.copy_(pose)
+        self._previous_position.copy_(pose[:, :3])
+        self._previous_orientation.copy_(orientation)
+        self._history_valid.fill_(True)
+        self._last_update_step = step
+        self._cached_step = step
+        return self._pose, self._velocity
+
+    def _estimate_deployment(self) -> torch.Tensor:
+        """Infer pose from one camera frame, without touching live module state."""
+
+        if self._backend == PERCEPTION_BACKEND_FIDUCIAL_PNP:
+            # A deterministic geometric detector consumes the calibrated sensor
+            # stream directly.  The Gaussian "radiation" transform is training
+            # augmentation for the learned head, not a property of the camera
+            # calibration and would needlessly corrupt sub-pixel corners.
+            image = self._env.scene.sensors[self._sensor_cfg.name].data.output["rgb"][..., :3]
+            if image.dtype == torch.uint8:
+                image = image.to(dtype=torch.float32).mul_(1.0 / 255.0)
+            else:
+                image = image.to(dtype=torch.float32).clamp_(0.0, 1.0)
+            return self._estimate_fiducial_pnp(image)
+        image = camera_rgb_with_radiation_noise(self._env, sensor_cfg=self._sensor_cfg)
+        if self._head is None:  # constructor invariant, kept explicit at the privileged boundary
+            raise RuntimeError("deployment perception has no loaded pose head")
+        with torch.inference_mode():
+            if self._head.occupancy is None:
+                pose = self._head(image)
+                self._occupancy_probabilities = None
+            else:
+                pose, logits = self._head.forward_with_occupancy(image)
+                if logits.ndim != 2 or logits.shape[0] != self._env.num_envs:
+                    raise RuntimeError(
+                        f"occupancy head returned shape {tuple(logits.shape)}, expected ({self._env.num_envs}, slots)"
+                    )
+                if not bool(torch.isfinite(logits).all()):
+                    raise RuntimeError("occupancy head produced non-finite planning scores")
+                self._occupancy_probabilities = torch.sigmoid(logits)
+        self._cnn_evaluation_count += 1
+        self._confidence.fill_(float("nan"))
+        self._reprojection_error_px.fill_(float("nan"))
+        return pose
+
+    def _estimate_fiducial_pnp(self, image: torch.Tensor) -> torch.Tensor:
+        """Recover module poses from RGB fiducials and calibrated cameras."""
+
+        camera = self._env.scene.sensors[self._sensor_cfg.name]
+        images = image.detach().cpu().numpy()
+        depth_images = camera.data.output["distance_to_image_plane"].detach().cpu().numpy()
+        intrinsics = camera.data.intrinsic_matrices.detach().cpu().numpy()
+        camera_position = camera.data.pos_w
+        camera_rotation = matrix_from_quat(camera.data.quat_w_ros)
+        pose = self._pose.new_empty((self._env.num_envs, MODULE_POSE_DIM))
+        detected_now = torch.zeros(self._env.num_envs, dtype=torch.bool, device=self._env.device)
+
+        for env_index in range(self._env.num_envs):
+            try:
+                estimate = estimate_fiducial_pose(images[env_index], intrinsics[env_index], depth_images[env_index])
+            except (RuntimeError, ValueError):
+                self._fiducial_failure_count += 1
+                self._fiducial_consecutive_failures[env_index] += 1
+                self._fiducial_max_consecutive_failures[env_index] = torch.maximum(
+                    self._fiducial_max_consecutive_failures[env_index],
+                    self._fiducial_consecutive_failures[env_index],
+                )
+                # Tiled cameras have no valid frame during the environment's
+                # reset observation. Return a drawing-level prior solely to
+                # keep that zero-action warm-up step finite. Confidence and
+                # occupancy remain zero, so the driver's visual preflight
+                # cannot accept or move until a real RGB-D detection arrives.
+                if bool(self._fiducial_detection_valid[env_index]):
+                    pose[env_index] = self._pose[env_index]
+                else:
+                    initial = self._env.cfg.scene.spare_blade.init_state
+                    pose[env_index, :3] = pose.new_tensor(initial.pos)
+                    initial_quat = pose.new_tensor(initial.rot).unsqueeze(0)
+                    pose[env_index, 3:] = axis_angle_from_quat(initial_quat)[0]
+                self._confidence[env_index] = 0.0
+                self._reprojection_error_px[env_index] = float("inf")
+                continue
+            rotation_camera_from_object = self._pose.new_tensor(estimate.rotation_camera_from_object)
+            position_camera = self._pose.new_tensor(estimate.position_camera_m)
+            rotation_world_from_object = camera_rotation[env_index] @ rotation_camera_from_object
+            position_world = camera_position[env_index] + camera_rotation[env_index] @ position_camera
+            position_local = position_world - self._env.scene.env_origins[env_index]
+            orientation_world = quat_from_matrix(rotation_world_from_object.unsqueeze(0))[0]
+            pose[env_index, :3] = position_local
+            pose[env_index, 3:] = axis_angle_from_quat(orientation_world.unsqueeze(0))[0]
+            self._confidence[env_index] = estimate.confidence
+            self._reprojection_error_px[env_index] = estimate.reprojection_error_px
+            self._fiducial_detection_valid[env_index] = True
+            self._fiducial_detection_count += 1
+            self._fiducial_consecutive_failures[env_index] = 0
+            detected_now[env_index] = True
+
+        self._occupancy_probabilities = occupancy_from_module_pose(pose)
+        self._occupancy_probabilities[~detected_now] = 0.0
+        tool_position, tool_orientation = end_effector_pose_world(self._env)
+        module_position_world = pose[:, :3] + self._env.scene.env_origins
+        module_orientation_world = _orientation_from_module_pose(pose)
+        relative_position, relative_orientation = subtract_frame_transforms(
+            tool_position,
+            tool_orientation,
+            module_position_world,
+            module_orientation_world,
+        )
+        self._module_in_tool_position[detected_now] = relative_position[detected_now]
+        self._module_in_tool_orientation[detected_now] = relative_orientation[detected_now]
+        propagate = ~detected_now & self._fiducial_detection_valid & ~self._payload_stage_engaged
+        if bool(propagate.any()):
+            propagated_position, propagated_orientation = combine_frame_transforms(
+                tool_position,
+                tool_orientation,
+                self._module_in_tool_position,
+                self._module_in_tool_orientation,
+            )
+            pose[propagate, :3] = propagated_position[propagate] - self._env.scene.env_origins[propagate]
+            pose[propagate, 3:] = axis_angle_from_quat(propagated_orientation[propagate])
+        self._fiducial_current_detection.copy_(detected_now)
+        self._fiducial_evaluation_count += 1
+        return pose
+
+    def _estimate_oracle(self) -> torch.Tensor:
+        """Read exact pose for an explicitly requested evaluation upper bound."""
+
+        self._occupancy_probabilities = slot_occupancy_label(self._env)
+        return module_pose_label(self._env)
+
+    def _estimate_blind(self) -> torch.Tensor:
+        """Return a configured nominal prior without reading image or live module state."""
+
+        configured_occupancy = getattr(self._env.cfg, "perception_blind_occupancy", None)
+        if configured_occupancy is None:
+            self._occupancy_probabilities = None
+        else:
+            occupancy = self._pose.new_tensor(configured_occupancy).flatten()
+            if occupancy.numel() != len(SLOT_CENTRE_Y):
+                raise ValueError(f"perception_blind_occupancy must contain {len(SLOT_CENTRE_Y)} bay scores")
+            if not bool(torch.isfinite(occupancy).all()) or not bool(((occupancy >= 0.0) & (occupancy <= 1.0)).all()):
+                raise ValueError("perception_blind_occupancy scores must be finite and in [0, 1]")
+            self._occupancy_probabilities = occupancy.expand(self._env.num_envs, -1)
+
+        configured = getattr(self._env.cfg, "perception_blind_module_pose", None)
+        if configured is not None:
+            pose = self._pose.new_tensor(configured).flatten()
+            if pose.numel() == MODULE_POSE_DIM:
+                return pose.expand(self._env.num_envs, -1)
+            if pose.numel() == 7:
+                rotation = axis_angle_from_quat(pose[3:7].expand(self._env.num_envs, -1))
+                return torch.cat((pose[:3].expand(self._env.num_envs, -1), rotation), dim=-1)
+            raise ValueError("perception_blind_module_pose must contain position+rotation-vector (6) or pose (7)")
+
+        # Asset configuration is a design prior, not a simulator readback. It is
+        # intentionally fixed even if a reset event moves the live module.
+        initial = self._env.cfg.scene.spare_blade.init_state
+        position = self._pose.new_tensor(initial.pos).expand(self._env.num_envs, -1)
+        orientation = self._pose.new_tensor(initial.rot).expand(self._env.num_envs, -1)
+        return torch.cat((position, axis_angle_from_quat(orientation)), dim=-1)
+
+    def diagnostic_position_error_m(self) -> torch.Tensor:
+        """Compare the cached estimate with truth without affecting policy values."""
+
+        estimated, _ = self.estimate()
+        truth = module_pose_label(self._env)
+        return torch.linalg.vector_norm(estimated[:, :3] - truth[:, :3], dim=-1)
+
+
+def shared_module_state_estimator(env) -> ModuleStateEstimator:
+    """Return the sole module estimator attached to this vectorized environment."""
+
+    estimator = getattr(env, "_module_state_estimator", None)
+    if estimator is None:
+        estimator = ModuleStateEstimator(env)
+        env._module_state_estimator = estimator
+    elif not isinstance(estimator, ModuleStateEstimator):
+        raise TypeError("env._module_state_estimator is not a ModuleStateEstimator")
+    return estimator
+
+
+class _PerceivedModuleObservation(ManagerTermBase):
+    """Base manager term that binds all policy views to the shared estimator."""
 
     def __init__(self, cfg, env) -> None:
         super().__init__(cfg, env)
-        checkpoint = getattr(env.cfg, "pose_head_checkpoint", None)
-        self._blend = float(getattr(env.cfg, "pose_head_oracle_blend", 0.0))
-        self._blind = bool(getattr(env.cfg, "pose_head_blind", False))
-        if checkpoint is None and self._blend < 1.0 and not self._blind:
-            raise ValueError(
-                "PerceivedGraspError needs env.cfg.pose_head_checkpoint. Refusing to fall back to "
-                "ground truth: a vision result computed from the simulator's own answer is worse "
-                "than no result. Set pose_head_oracle_blend = 1.0 to run the oracle arm deliberately."
-            )
-        self._head = None if checkpoint is None else load_pose_head(checkpoint, env.device)
-        self._sensor_cfg = SceneEntityCfg("camera")
-        self._error = torch.zeros(env.num_envs, device=env.device)
-        # ``self._blind`` is the control that says whether the camera does any
-        # work at all: the robot assumes the module is exactly where the rack
-        # nominally presents it, reading no image. If a blind run scores as well
-        # as a seeing one, the perception result is measuring nothing.
+        self._estimator = shared_module_state_estimator(env)
+
+    def reset(self, env_ids: Sequence[int] | torch.Tensor | None = None) -> None:
+        self._estimator.reset(env_ids)
+
+
+class PerceivedGraspError(_PerceivedModuleObservation):
+    """Six-value tool-to-grip error derived from the shared camera pose."""
 
     def __call__(self, env) -> torch.Tensor:
-        truth_pose = module_pose_label(env)
-        if self._blind:
-            # The pose the rack nominally presents, recorded before the episode's
-            # displacement was applied. No image is read at all.
-            stored = getattr(env, "_module_nominal_pose", None)
-            if stored is None:
-                # The observation manager evaluates every term once while the
-                # environment is being built, before any reset has run. There is
-                # no displacement yet either, so the truth *is* the nominal.
-                return grip_error_from_module_pose(env, truth_pose)
-            believed = torch.cat(
-                (stored[:, :3] - env.scene.env_origins, axis_angle_from_quat(stored[:, 3:7])), dim=-1
-            )
-            self._error = torch.linalg.vector_norm(believed[:, :3] - truth_pose[:, :3], dim=-1)
-            return grip_error_from_module_pose(env, believed)
-        if self._blend >= 1.0:
-            self._error = torch.zeros_like(self._error)
-            return grip_error_from_module_pose(env, truth_pose)
-        image = camera_rgb_with_radiation_noise(env, sensor_cfg=self._sensor_cfg)
-        with torch.inference_mode():
-            predicted = self._head(image).to(truth_pose.dtype)
-        # Recorded per step so the evaluation can report how wrong the estimator
-        # actually was, rather than only whether the workflow survived it.
-        self._error = torch.linalg.vector_norm(predicted[:, :3] - truth_pose[:, :3], dim=-1)
-        pose = predicted if self._blend <= 0.0 else torch.lerp(predicted, truth_pose, self._blend)
+        pose, _ = self._estimator.estimate()
         return grip_error_from_module_pose(env, pose)
 
     @property
     def position_error_m(self) -> torch.Tensor:
-        """How far the last prediction was from the module's true position."""
+        """Diagnostic position error; this property is privileged by design."""
 
-        return self._error
+        return self._estimator.diagnostic_position_error_m()
+
+
+class PerceivedExtractionRemaining(_PerceivedModuleObservation):
+    """One-value extraction distance derived from the shared camera pose."""
+
+    def __call__(self, env, target_x: float = EXTRACTED_BLADE_CENTRE_X) -> torch.Tensor:
+        del env
+        pose, _ = self._estimator.estimate()
+        return extraction_remaining_from_module_pose(pose, target_x)
+
+
+class PerceivedInsertionGoalError(_PerceivedModuleObservation):
+    """Six-value insertion-goal error derived from the shared camera pose."""
+
+    def __call__(self, env, command_name: str = "insertion_goal") -> torch.Tensor:
+        pose, _ = self._estimator.estimate()
+        return insertion_goal_error_from_module_pose(env, pose, command_name)
+
+
+class PerceivedModuleVelocity(_PerceivedModuleObservation):
+    """Six-value filtered finite-difference velocity from camera pose history."""
+
+    def __call__(self, env) -> torch.Tensor:
+        del env
+        _, velocity = self._estimator.estimate()
+        return velocity
 
 
 def perceived_module_position_error(env) -> torch.Tensor:
-    """Per-environment estimator error, for the evaluation to record.
+    """Return privileged estimator error for reporting, never for policy input."""
 
-    Zero where there is no estimator -- the oracle arm, and every state-only
-    task -- which is the right reading: those have nothing to be wrong by.
+    estimator = getattr(env, "_module_state_estimator", None)
+    if estimator is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    if not isinstance(estimator, ModuleStateEstimator):
+        raise TypeError("env._module_state_estimator is not a ModuleStateEstimator")
+    return estimator.diagnostic_position_error_m()
 
-    **This function had never run.** It reached for
-    ``observation_manager._term_names``, which this Isaac Lab does not have, so
-    the first caller got an AttributeError rather than a number. It is written
-    against the public ``active_terms`` now, and it is searched across every
-    observation group rather than a hard-coded "grasp", because the vision
-    profiles put the perceived term in whichever group their parent declared it.
+
+_REQUIRED_DEPLOYMENT_TERMS = {
+    "grasp": {
+        "grip_error": PerceivedGraspError,
+        "blade_velocity": PerceivedModuleVelocity,
+    },
+    "extract": {
+        "grip_error": PerceivedGraspError,
+        "blade_velocity": PerceivedModuleVelocity,
+        "remaining_travel": PerceivedExtractionRemaining,
+    },
+    "insert": {
+        "grip_error": PerceivedGraspError,
+        "blade_velocity": PerceivedModuleVelocity,
+        "blade_goal_error": PerceivedInsertionGoalError,
+    },
+}
+
+
+def audit_vision_deployment_observations(observations) -> None:
+    """Fail closed if a deployed vision group exposes exact module state.
+
+    The audit checks both the four required replacements and every other active
+    term declared on the three policy groups. It intentionally compares function
+    names as well as identities so a rebuilt config cannot evade the contract by
+    importing the same forbidden function through another module namespace.
     """
 
-    manager = env.observation_manager
-    for group, names in manager.active_terms.items():
-        for name, term in zip(names, manager._group_obs_term_cfgs[group], strict=False):
-            del name
-            if isinstance(term.func, PerceivedGraspError):
-                return term.func.position_error_m
-    return torch.zeros(env.num_envs, device=env.device)
+    failures: list[str] = []
+    for group_name, required in _REQUIRED_DEPLOYMENT_TERMS.items():
+        group = getattr(observations, group_name, None)
+        if group is None:
+            failures.append(f"missing policy group {group_name!r}")
+            continue
 
+        for term_name, expected in required.items():
+            term = getattr(group, term_name, None)
+            function = getattr(term, "func", None)
+            if function is not expected:
+                actual = getattr(function, "__name__", repr(function))
+                failures.append(f"{group_name}.{term_name} uses {actual}, expected {expected.__name__}")
 
-__all__ = [
-    "MODULE_POSE_DIM",
-    "ModulePoseHead",
-    "PerceivedGraspError",
-    "grip_error_from_module_pose",
-    "load_pose_head",
-    "module_pose_label",
-    "perceived_module_position_error",
-    "slot_occupancy_label",
-]
+        for term_name in dir(group):
+            if term_name.startswith("_"):
+                continue
+            term = getattr(group, term_name)
+            function = getattr(term, "func", None)
+            function_name = getattr(function, "__name__", "")
+            if function_name in FORBIDDEN_DEPLOYMENT_OBSERVATION_FUNCTIONS:
+                failures.append(f"{group_name}.{term_name} exposes forbidden exact state via {function_name}")
+
+    if failures:
+        detail = "; ".join(failures)
+        raise RuntimeError(f"vision deployment observation audit failed: {detail}")
 
 
 def jitter_module_pose(
@@ -229,33 +701,17 @@ def jitter_module_pose(
     yaw_noise_rad: float = 0.05,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("spare_blade"),
 ) -> None:
-    """Present the module at a pose nothing in the observation reveals.
+    """Move the module by an episode-random offset that only the camera reveals.
 
-    Without this the vision experiment is hollow. The module's reset pose is one
-    of three fixed stage poses, so a head could memorise three positions and
-    score beautifully while having learned nothing about seeing. Displacing it by
-    an amount drawn per episode makes the image the *only* source of the answer,
-    which is the same reasoning that made the pose-belief task move the slot
-    physically instead of adding a bias to a reported number.
-
-    The default envelope is deliberately not symmetric. Along the pull axis the
-    module is constrained by its rails and cannot move, so ``x`` is zero; across
-    the slot and vertically it has room, and 15 mm is comfortably inside the
-    20 mm capture tolerance the grasp policy was certified against, so a *perfect*
-    estimator would cost nothing and the measurement isolates the estimator.
+    The pull-axis offset is zero because the rails constrain that direction;
+    lateral and vertical offsets remain inside the certified grasp envelope.
+    The blind control uses configuration as its prior; this event does not store
+    a pre-jitter simulator pose where a policy could later retrieve it.
     """
 
     ids = torch.arange(env.num_envs, device=env.device) if env_ids is None else env_ids
     blade = env.scene[asset_cfg.name]
     pose = blade.data.root_state_w[ids, :7].clone()
-    # Keep the pose *before* the displacement. That is what a robot working from
-    # the drawing rather than from an image would believe, and it is the control
-    # the perception result has to be measured against.
-    nominal = getattr(env, "_module_nominal_pose", None)
-    if nominal is None or nominal.shape[0] != env.num_envs:
-        nominal = torch.zeros((env.num_envs, 7), device=env.device)
-        env._module_nominal_pose = nominal
-    nominal[ids] = pose
     noise = blade.data.root_state_w.new_tensor(position_noise_m)
     pose[:, :3] += (2.0 * torch.rand((len(ids), 3), device=env.device) - 1.0) * noise
     if yaw_noise_rad > 0.0:
@@ -267,19 +723,35 @@ def jitter_module_pose(
     blade.write_root_velocity_to_sim(torch.zeros((len(ids), 6), device=env.device), env_ids=ids)
 
 
-__all__.append("jitter_module_pose")
+__all__ = [
+    "FORBIDDEN_DEPLOYMENT_OBSERVATION_FUNCTIONS",
+    "MODULE_POSE_DIM",
+    "ModulePoseHead",
+    "ModuleStateEstimator",
+    "PERCEPTION_BLIND",
+    "PERCEPTION_BACKENDS",
+    "PERCEPTION_BACKEND_FIDUCIAL_PNP",
+    "PERCEPTION_BACKEND_POSE_HEAD",
+    "PERCEPTION_DEPLOYMENT",
+    "PERCEPTION_MODES",
+    "PERCEPTION_ORACLE",
+    "PerceivedExtractionRemaining",
+    "PerceivedGraspError",
+    "PerceivedInsertionGoalError",
+    "PerceivedModuleVelocity",
+    "audit_vision_deployment_observations",
+    "extraction_remaining_from_module_pose",
+    "grip_error_from_module_pose",
+    "insertion_goal_error_from_module_pose",
+    "jitter_module_pose",
+    "load_pose_head",
+    "module_pose_label",
+    "perceived_module_position_error",
+    "shared_module_state_estimator",
+    "slot_occupancy_label",
+]
 
 
-# ``jitter_camera_pose`` used to live here and was **deleted on 2026-08-15
-# because it did nothing**. It called ``set_world_poses`` on the tiled camera
-# inside a reset hook; the camera's reported position moved by exactly 0.0 mm
-# and two renders 50 mm apart differed by 23.79 levels against a 24.22-level
-# camera-noise floor. That is an inert probe, and this project has published one
-# of those already.
-#
-# Camera miscalibration is now applied where it demonstrably takes effect: on
-# the sensor's configured mount offset, before the environment is constructed.
-# It is constant for a run rather than drawn per episode, which models a
-# calibration offset more faithfully anyway -- a mis-mounted camera is
-# mis-mounted all day. See ``scripts/sweep_camera_calibration.py``.
-
+# Camera miscalibration is applied to the configured sensor mount before the
+# environment is constructed. A reset-time ``set_world_poses`` probe previously
+# lived here but did not move the tiled camera and was therefore removed.

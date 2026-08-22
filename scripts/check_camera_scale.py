@@ -1,18 +1,16 @@
 """Render one frame and measure what the servicing camera can actually resolve.
 
-``docs/perception_plan.md`` derives that the authored 64x64 camera at 18 mm
-resolves a 4 mm slot displacement as 0.13 px, and that narrowing the field of
-view rather than adding pixels is the fix. That derivation is arithmetic. This
-script is the render that has to confirm it before any perception training is
-started, and it answers the one question the arithmetic cannot: **a 7-degree
-cone sees a 195 mm patch at 1.6 m, so does the interface actually fall inside
-it?**
+The original 64x64 camera at 180 mm resolved a 4 mm displacement but failed the
+rendered framing gate: the slot mouth projected outside the image. This script
+checks both requirements together before perception training starts, so optics
+that pass scale arithmetic while looking at the wrong patch cannot pass.
 
 Three things are reported and all three are gates:
 
 1. the ground resolution in millimetres per pixel, from the configured optics;
-2. whether the slot mouth and the module's leading edge are both inside the
-   frame, computed by projecting their world positions through the camera;
+2. whether both slot mouths, the free-transfer midpoint, and the module centre
+   are inside the frame, computed by projecting their world positions through
+   the camera;
 3. whether the rendered image carries signal at all rather than a flat field,
    because a correctly aimed camera pointed at featureless geometry is just as
    useless as a mis-aimed one.
@@ -63,8 +61,8 @@ import torch
 from isaaclab_tasks.utils import parse_env_cfg
 
 import zero_g_blade_swap.tasks.blade_swap  # noqa: F401
-from zero_g_blade_swap.tasks.blade_swap.assets import BLADE_INSERTED_POS
-from zero_g_blade_swap.grapple_geometry import SLOT_MOUTH_X
+from zero_g_blade_swap.tasks.blade_swap.assets import BLADE_INSERTED_POS, SECOND_SLOT_CENTER_Y
+from zero_g_blade_swap.grapple_geometry import SLOT_MOUTH_X, TRANSIT_CLEAR_BLADE_CENTRE_X
 
 
 def _project(point_w: torch.Tensor, camera) -> tuple[float, float]:
@@ -97,21 +95,36 @@ def main() -> dict[str, object]:
         camera = task.scene["camera"]
         spawn = env_cfg.scene.camera.spawn
         width = int(env_cfg.scene.camera.width)
+        height = int(env_cfg.scene.camera.height)
         focal_length = float(spawn.focal_length)
         aperture = float(spawn.horizontal_aperture)
         fov_rad = 2.0 * math.atan(0.5 * aperture / focal_length)
 
         origin = task.scene.env_origins[0]
         mouth_w = origin + origin.new_tensor((SLOT_MOUTH_X, 0.0, BLADE_INSERTED_POS[2]))
+        second_mouth_w = origin + origin.new_tensor(
+            (SLOT_MOUTH_X, SECOND_SLOT_CENTER_Y, BLADE_INSERTED_POS[2])
+        )
+        transfer_w = origin + origin.new_tensor(
+            (TRANSIT_CLEAR_BLADE_CENTRE_X, 0.5 * SECOND_SLOT_CENTER_Y, BLADE_INSERTED_POS[2])
+        )
         blade_w = task.scene["spare_blade"].data.root_pos_w[0]
         distance = float(torch.linalg.vector_norm(camera.data.pos_w[0] - mouth_w))
         metres_per_pixel = 2.0 * distance * math.tan(0.5 * fov_rad) / width
 
         mouth_px = _project(mouth_w, camera)
+        second_mouth_px = _project(second_mouth_w, camera)
+        transfer_px = _project(transfer_w, camera)
         blade_px = _project(blade_w, camera)
+        projected = {
+            "first_slot_mouth": mouth_px,
+            "second_slot_mouth": second_mouth_px,
+            "transfer_clear_midpoint": transfer_px,
+            "module_centre": blade_px,
+        }
         in_frame = {
-            "slot_mouth": bool(0 <= mouth_px[0] < width and 0 <= mouth_px[1] < width),
-            "module_centre": bool(0 <= blade_px[0] < width and 0 <= blade_px[1] < width),
+            name: bool(0 <= pixel[0] < width and 0 <= pixel[1] < height)
+            for name, pixel in projected.items()
         }
 
         rgb = camera.data.output["rgb"][0].to(torch.float32)
@@ -153,7 +166,7 @@ def main() -> dict[str, object]:
                 "required_lateral_resolution_m": REQUIRED_LATERAL_RESOLUTION_M,
                 "pixels_per_required_displacement": pixels_per_displacement,
             },
-            "framing": {"pixel_coordinates": {"slot_mouth": mouth_px, "module_centre": blade_px}, "in_frame": in_frame},
+            "framing": {"pixel_coordinates": projected, "in_frame": in_frame},
             "signal": signal,
             "frame": wrote_frame,
             "gate": {

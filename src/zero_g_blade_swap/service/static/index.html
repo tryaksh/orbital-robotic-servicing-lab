@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#07100f">
+    <meta
+      name="description"
+      content="Run and inspect simulation-backed robotic serviceability compute jobs."
+    >
+    <title>Serviceability Qualification Console</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#workspace">Skip to compute workspace</a>
+
+    <div class="ambient-grid" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Serviceability Qualification Console home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 42 42" role="img">
+            <path d="M7 11.5 21 4l14 7.5v19L21 38 7 30.5z"></path>
+            <path d="m14 16 7-4 7 4v9.5l-7 4-7-4z"></path>
+            <path d="M4 21h10m14 0h10M21 1v11m0 17v12"></path>
+          </svg>
+        </span>
+        <span>
+          <span class="eyebrow">6AXIS / DESIGN EVIDENCE</span>
+          <span class="brand-name">Qualification Console</span>
+        </span>
+      </a>
+
+      <div class="service-state" aria-live="polite">
+        <span class="status-dot is-checking" id="serviceDot" aria-hidden="true"></span>
+        <span>
+          <span class="status-label">Compute service</span>
+          <strong id="serviceStatus">Connecting</strong>
+        </span>
+        <span class="latency" id="serviceLatency">— ms</span>
+      </div>
+    </header>
+
+    <main id="workspace">
+      <section class="hero" aria-labelledby="pageTitle">
+        <div class="hero-copy">
+          <div class="hero-kicker">
+            <span class="mode-badge badge-replay" id="environmentBadge">RECORDED REPLAY</span>
+            <span>Robot-ready interface decisions before hardware lock-in</span>
+          </div>
+          <h1 id="pageTitle">Can the robot service<br><em>this design?</em></h1>
+          <p>
+            Run a fixed module-and-workcell preset through traceable perception,
+            motion, load, and acceptance reporting. This console distinguishes
+            what the current simulation proves from what still needs validation.
+          </p>
+        </div>
+
+        <aside class="boundary-note" aria-label="Evidence boundary">
+          <div class="boundary-icon" aria-hidden="true">SIM</div>
+          <div>
+            <strong>Evidence boundary</strong>
+            <p id="boundaryText">
+              Representative telemetry replay. It exercises the service contract
+              but does not launch a simulator or create new physical evidence.
+            </p>
+          </div>
+        </aside>
+      </section>
+
+      <section class="workspace-grid" aria-label="Compute job workspace">
+        <aside class="config-column">
+          <div class="section-heading">
+            <div>
+              <span class="step-index">01</span>
+              <h2>Configure run</h2>
+            </div>
+            <button class="text-button" id="resetConfig" type="button">Reset</button>
+          </div>
+
+          <form id="jobForm" novalidate>
+            <fieldset class="preset-fieldset">
+              <legend>Execution preset</legend>
+              <div class="preset-grid" id="presetGrid">
+                <label class="preset-card is-selected" data-preset-card="replay_full_chain">
+                  <input type="radio" name="preset" value="replay_full_chain" checked>
+                  <span class="preset-topline">
+                    <span class="preset-icon" aria-hidden="true">▶</span>
+                    <span class="preset-tag tag-ready" data-role="tag">REPLAY READY</span>
+                  </span>
+                  <strong data-role="title">Representative service-path replay</strong>
+                  <small data-role="description">A synthetic event fixture that exercises the service and dashboard without physics or model inference.</small>
+                  <span class="preset-gate" data-role="meta">~4 s · synthetic replay</span>
+                </label>
+
+                <label class="preset-card" data-preset-card="isaac_full_chain_perception">
+                  <input type="radio" name="preset" value="isaac_full_chain_perception">
+                  <span class="preset-topline">
+                    <span class="preset-icon" aria-hidden="true">⌁</span>
+                    <span class="preset-tag tag-investigate" data-role="tag">CHECKING GPU</span>
+                  </span>
+                  <strong data-role="title">Live RGB-D compute-module service run</strong>
+                  <small data-role="description">Runs visual occupancy planning, learned capture and extraction, physical shuttle transfer, guarded insertion, and settled verification.</small>
+                  <span class="preset-gate" data-role="meta">~5 min · outcome may fail</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <div class="form-section">
+              <div class="field-row run-parameters">
+                <label class="field">
+                  <span>Seed</span>
+                  <input id="seed" name="seed" type="number" value="4070" min="0" max="2147483647" inputmode="numeric">
+                </label>
+
+                <div class="field capability-fact">
+                  <span>Execution boundary</span>
+                  <strong id="modeHelp">Recorded service replay</strong>
+                  <small id="runtimeHelp">Estimated runtime: ~4 seconds</small>
+                </div>
+              </div>
+            </div>
+
+            <section class="preflight" aria-labelledby="preflightTitle">
+              <div class="subsection-heading">
+                <h3 id="preflightTitle">Preflight</h3>
+                <span id="preflightSummary">Checking service…</span>
+              </div>
+              <ul class="check-list" id="preflightList">
+                <li data-check="api">
+                  <span class="check-icon is-pending" aria-hidden="true"></span>
+                  <span><strong>Compute API</strong><small>Waiting for health response</small></span>
+                </li>
+                <li data-check="worker">
+                  <span class="check-icon is-pending" aria-hidden="true"></span>
+                  <span><strong>Execution worker</strong><small>Capability not loaded</small></span>
+                </li>
+                <li data-check="perception">
+                  <span class="check-icon is-pending" aria-hidden="true"></span>
+                  <span><strong>Perception input</strong><small>Capability not loaded</small></span>
+                </li>
+                <li data-check="config">
+                  <span class="check-icon is-pending" aria-hidden="true"></span>
+                  <span><strong>Run configuration</strong><small>Validating fields</small></span>
+                </li>
+              </ul>
+            </section>
+
+            <div class="submit-row">
+              <button class="primary-button" id="submitJob" type="submit" disabled>
+                <span>Start run</span>
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"></path></svg>
+              </button>
+              <p class="form-message" id="formMessage" role="status" aria-live="polite"></p>
+            </div>
+          </form>
+        </aside>
+
+        <section class="run-column" aria-labelledby="runTitle">
+          <div class="section-heading run-heading">
+            <div>
+              <span class="step-index">02</span>
+              <h2 id="runTitle">Run evidence</h2>
+            </div>
+            <label class="job-picker-label" id="jobPickerWrap" hidden>
+              <span class="sr-only">Select recent job</span>
+              <select id="jobPicker" aria-label="Select recent job"></select>
+            </label>
+          </div>
+
+          <div class="empty-state" id="emptyState">
+            <div class="empty-orbit" aria-hidden="true">
+              <span class="orbit-ring orbit-one"></span>
+              <span class="orbit-ring orbit-two"></span>
+              <span class="empty-core">
+                <svg viewBox="0 0 48 48"><path d="M14 17h20v20H14zM19 12v5m10-5v5M9 22h5m20 0h5M9 31h5m20 0h5M20 23h8v8h-8z"></path></svg>
+              </span>
+            </div>
+            <span class="empty-label">NO ACTIVE EVIDENCE</span>
+            <h3>Ready for a compute run</h3>
+            <p>
+              Select an objective and start a job. Telemetry appears only after
+              the service accepts it; this screen does not synthesize a successful run.
+            </p>
+            <div class="empty-flow" aria-label="Expected job phases">
+              <span>INPUT</span><i></i><span>PERCEIVE</span><i></i><span>EXECUTE</span><i></i><span>GATE</span>
+            </div>
+          </div>
+
+          <div class="run-dashboard" id="runDashboard" hidden>
+            <section class="run-summary" aria-label="Selected job summary">
+              <div>
+                <div class="run-identifiers">
+                  <span class="mode-badge badge-simulation" id="jobModeBadge">SIMULATION</span>
+                  <span class="run-id" id="jobId">JOB —</span>
+                  <button class="copy-button" id="copyJobId" type="button" aria-label="Copy job identifier" title="Copy job identifier">
+                    <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M6 6h8v8H6zM4 11H3V3h8v1"></path></svg>
+                  </button>
+                </div>
+                <h3 id="jobTitle">Qualification job</h3>
+                <p id="jobSubtitle">Waiting for the worker to report progress.</p>
+              </div>
+              <div class="run-status-block">
+                <span class="run-status status-queued" id="jobStatus">QUEUED</span>
+                <span class="run-time" id="jobElapsed">00:00</span>
+              </div>
+            </section>
+
+            <section class="phase-panel panel" aria-labelledby="phaseTitle">
+              <div class="panel-heading">
+                <div>
+                  <span class="panel-kicker">PIPELINE</span>
+                  <h3 id="phaseTitle">Qualification phases</h3>
+                </div>
+                <span class="progress-label" id="progressLabel">0%</span>
+              </div>
+              <div class="progress-track" role="progressbar" aria-label="Qualification progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressBar">
+                <span id="progressFill"></span>
+              </div>
+              <ol class="phase-timeline" id="phaseTimeline">
+                <li data-phase="preflight"><span class="phase-marker"></span><strong>Preflight</strong><small>Contracts</small></li>
+                <li data-phase="perception"><span class="phase-marker"></span><strong>Perceive</strong><small>Pose</small></li>
+                <li data-phase="planning"><span class="phase-marker"></span><strong>Plan</strong><small>Bay gate</small></li>
+                <li data-phase="capture"><span class="phase-marker"></span><strong>Capture</strong><small>Grapple</small></li>
+                <li data-phase="extract"><span class="phase-marker"></span><strong>Extract</strong><small>Clear rails</small></li>
+                <li data-phase="transit"><span class="phase-marker"></span><strong>Transfer</strong><small>Free-space</small></li>
+                <li data-phase="insert"><span class="phase-marker"></span><strong>Install</strong><small>Contact</small></li>
+                <li data-phase="verification"><span class="phase-marker"></span><strong>Verify</strong><small>Package</small></li>
+              </ol>
+              <div class="phase-message" id="phaseMessage" aria-live="polite">
+                Waiting for the worker to begin.
+              </div>
+            </section>
+
+            <div class="evidence-grid">
+              <section class="panel perception-panel" aria-labelledby="perceptionTitle">
+                <div class="panel-heading compact">
+                  <div>
+                    <span class="panel-kicker">PERCEPTION</span>
+                    <h3 id="perceptionTitle">Module pose</h3>
+                  </div>
+                  <span class="confidence-badge is-pending" id="confidenceBadge">NO ESTIMATE</span>
+                </div>
+
+                <div class="pose-visual" aria-hidden="true">
+                  <div class="pose-reticle">
+                    <span class="axis axis-x">X</span>
+                    <span class="axis axis-y">Y</span>
+                    <span class="axis axis-z">Z</span>
+                    <span class="pose-target" id="poseTarget"></span>
+                  </div>
+                  <div class="confidence-ring" id="confidenceRing"><span id="confidenceValue">—</span><small>CONF</small></div>
+                </div>
+
+                <dl class="pose-values">
+                  <div><dt>X</dt><dd id="poseX">—</dd><span>m</span></div>
+                  <div><dt>Y</dt><dd id="poseY">—</dd><span>m</span></div>
+                  <div><dt>Z</dt><dd id="poseZ">—</dd><span>m</span></div>
+                  <div class="pose-wide"><dt>Orientation</dt><dd id="poseOrientation">—</dd><span>quaternion</span></div>
+                </dl>
+                <div class="rack-plan" id="rackPlan">
+                  <div class="rack-plan-heading">
+                    <span>Visual bay preflight</span>
+                    <strong id="planGate">NOT EVALUATED</strong>
+                  </div>
+                  <div class="rack-plan-route">
+                    <div class="rack-bay">
+                      <small>SOURCE · BAY 0</small>
+                      <strong id="bay0Score">—</strong>
+                    </div>
+                    <span class="rack-plan-arrow" aria-hidden="true">→</span>
+                    <div class="rack-bay">
+                      <small>DESTINATION · BAY 1</small>
+                      <strong id="bay1Score">—</strong>
+                    </div>
+                  </div>
+                  <small class="rack-score-note">Occupancy decision scores; not calibrated confidence.</small>
+                </div>
+                <div class="source-note">
+                  <span>Source</span><strong id="poseSource">Awaiting evidence</strong>
+                </div>
+              </section>
+
+              <section class="panel telemetry-panel" aria-labelledby="telemetryTitle">
+                <div class="panel-heading compact">
+                  <div>
+                    <span class="panel-kicker">SAFETY ENVELOPE</span>
+                    <h3 id="telemetryTitle">Load telemetry</h3>
+                  </div>
+                  <span class="telemetry-state" id="telemetryState">AWAITING DATA</span>
+                </div>
+
+                <div class="metric-list">
+                  <div class="metric" data-metric="force">
+                    <div class="metric-label"><span>Peak contact force</span><strong><b id="forceValue">—</b> N</strong></div>
+                    <div class="metric-bar"><span id="forceBar"></span><i id="forceLimitMarker"></i></div>
+                    <small>Acceptance limit <span id="forceLimit">—</span> N</small>
+                  </div>
+                  <div class="metric" data-metric="torque">
+                    <div class="metric-label"><span>Peak joint torque</span><strong><b id="torqueValue">—</b> N·m</strong></div>
+                    <div class="metric-bar"><span id="torqueBar"></span><i id="torqueLimitMarker"></i></div>
+                    <small>Acceptance limit <span id="torqueLimit">—</span> N·m</small>
+                  </div>
+                  <div class="metric" data-metric="impulse">
+                    <div class="metric-label"><span>Contact impulse</span><strong><b id="impulseValue">—</b> N·s</strong></div>
+                    <div class="metric-bar"><span id="impulseBar"></span><i id="impulseLimitMarker"></i></div>
+                    <small>Accumulated across contact</small>
+                  </div>
+                  <div class="metric" data-metric="pose_error">
+                    <div class="metric-label"><span>Simulation-truth pose diagnostic</span><strong><b id="poseErrorValue">—</b> mm</strong></div>
+                    <div class="metric-bar"><span id="poseErrorBar"></span><i id="poseErrorLimitMarker"></i></div>
+                    <small>Privileged diagnostic, not a deployed sensor channel · limit <span id="poseErrorLimit">—</span> mm</small>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <section class="gate-panel panel is-pending" id="gatePanel" aria-labelledby="gateTitle">
+              <div class="gate-emblem" aria-hidden="true">
+                <svg viewBox="0 0 40 40"><path class="gate-shield" d="M20 3 34 8v10c0 9-5.8 15.4-14 19-8.2-3.6-14-10-14-19V8z"></path><path class="gate-result" id="gateResultPath" d="M13 20h14"></path></svg>
+              </div>
+              <div class="gate-copy">
+                <span class="panel-kicker">ACCEPTANCE DECISION</span>
+                <h3 id="gateTitle">Gate pending</h3>
+                <p id="gateSummary">The service has not produced a qualification decision.</p>
+              </div>
+              <dl class="gate-stats">
+                <div><dt>Success</dt><dd id="successRate">—</dd></div>
+                <div><dt>Trials</dt><dd id="trialCount">—</dd></div>
+                <div><dt>Gate</dt><dd id="gateThreshold">—</dd></div>
+              </dl>
+            </section>
+
+            <div class="lower-grid">
+              <section class="panel event-panel" aria-labelledby="eventTitle">
+                <div class="panel-heading compact">
+                  <div>
+                    <span class="panel-kicker">OBSERVABILITY</span>
+                    <h3 id="eventTitle">Event stream</h3>
+                  </div>
+                  <span class="stream-state" id="streamState"><i></i> POLLING</span>
+                </div>
+                <ol class="event-list" id="eventList" aria-live="polite">
+                  <li class="event-placeholder">No worker events received.</li>
+                </ol>
+              </section>
+
+              <section class="panel artifact-panel" aria-labelledby="artifactTitle">
+                <div class="panel-heading compact">
+                  <div>
+                    <span class="panel-kicker">TRACEABILITY</span>
+                    <h3 id="artifactTitle">Artifacts</h3>
+                  </div>
+                  <span class="artifact-count" id="artifactCount">0 FILES</span>
+                </div>
+                <ul class="artifact-list" id="artifactList">
+                  <li class="artifact-placeholder">
+                    <span class="file-icon" aria-hidden="true">—</span>
+                    <span><strong>No artifacts yet</strong><small>Files appear after the worker writes them.</small></span>
+                  </li>
+                </ul>
+              </section>
+            </div>
+
+            <div class="run-actions">
+              <button class="secondary-button danger-button" id="cancelJob" type="button" disabled>Cancel job</button>
+              <button class="secondary-button" id="refreshJob" type="button">Refresh evidence</button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="limitations" aria-labelledby="limitationsTitle">
+        <div class="limitations-heading">
+          <span class="step-index">03</span>
+          <div>
+            <span class="panel-kicker">INTERPRETATION</span>
+            <h2 id="limitationsTitle">What this evidence does—and does not—mean</h2>
+          </div>
+        </div>
+        <div class="limitation-grid" id="limitationGrid">
+          <article>
+            <span class="limit-index">01</span>
+            <h3>Simulation-backed</h3>
+            <p>Loads, contact, and success rates come from the configured digital twin, not a physical robot.</p>
+          </article>
+          <article>
+            <span class="limit-index">02</span>
+            <h3>Model-bounded</h3>
+            <p>Conclusions are valid only for represented geometry, uncertainty, actuation, and acceptance limits.</p>
+          </article>
+          <article>
+            <span class="limit-index">03</span>
+            <h3>Decision support</h3>
+            <p>A pass supports design iteration; it is not safety certification, flight qualification, or release authority.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>ZERO-G BLADE SWAP / SERVICEABILITY QUALIFICATION</span>
+      <span id="buildLabel">API contract v1</span>
+    </footer>
+
+    <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+  </body>
+</html>

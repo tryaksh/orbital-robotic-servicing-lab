@@ -1,0 +1,47 @@
+{
+  "status": "passed",
+  "generated_utc": "2026-08-21T01:39:23+00:00",
+  "planner": "Isaac Sim Lula RRT",
+  "seed": 4070,
+  "robot": "UR10e",
+  "robot_description": "C:\\isaac-sim\\exts\\isaacsim.robot_motion.motion_generation\\motion_policy_configs\\universal_robots\\ur10e\\rmpflow\\ur10e_robot_description.yaml",
+  "urdf": "C:\\isaac-sim\\exts\\isaacsim.robot_motion.motion_generation\\motion_policy_configs\\universal_robots\\ur10e\\ur10e.urdf",
+  "planner_config": "configs/ur10e_relocation_rrt.yaml",
+  "endpoint_source": "evidence/workcell_reach_solution.json",
+  "scope": "self-collision and joint limits; executed only behind the rack flares",
+  "start_joint_position_rad": [
+    -0.998173,
+    -2.363,
+    2.648252,
+    2.856311,
+    -0.572631,
+    -1.570782
+  ],
+  "target_joint_position_rad": [
+    -1.42948,
+    -0.109389,
+    -2.147392,
+    -4.026341,
+    0.141319,
+    1.570785
+  ],
+  "waypoint_count": 2,
+  "waypoints_rad": [
+    [
+      -0.998173,
+      -2.363,
+      2.648252,
+      2.856311,
+      -0.572631,
+      -1.570782
+    ],
+    [
+      -1.42948,
+      -0.109389,
+      -2.147392,
+      -4.026341,
+      0.141319,
+      1.570785
+    ]
+  ]
+}

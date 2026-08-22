@@ -39,6 +39,7 @@ from .assets import (
     SLOT_UPPER_RIGHT_LIP_CFG,
     CompliantD6JointCfg,
     FixedGraspJointCfg,
+    ReleaseLatchJointCfg,
     make_contact_insertion_robot_cfg,
     make_grapple_pin_robot_cfg,
     make_insertion_robot_cfg,
@@ -139,6 +140,13 @@ class ZeroGGrapplePinSceneCfg(ZeroGContactInsertionSceneCfg):
     # behind terminates every episode on mount_unstable before the arm can act.
     mount_anchor = GRAPPLE_MOUNT_ANCHOR_CFG
     spare_blade = GRAPPLE_PIN_BLADE_CFG
+    release_latch_joint = AssetBaseCfg(
+        prim_path="{ENV_REGEX_NS}/ReleaseLatchJoint",
+        spawn=ReleaseLatchJointCfg(),
+    )
+    # Populated only by the relocation workflow after the payload entity has
+    # been declared, preserving the required spawn order.
+    payload_stage: AssetBaseCfg | None = None
     blade_slot_upper_left_lip = SLOT_UPPER_LEFT_LIP_CFG
     blade_slot_upper_right_lip = SLOT_UPPER_RIGHT_LIP_CFG
     blade_slot_entry_left_flare = SLOT_ENTRY_LEFT_FLARE_CFG
@@ -167,34 +175,37 @@ class ZeroGTwoSlotGrapplePinSceneCfg(ZeroGGrapplePinSceneCfg):
 
 
 def make_tiled_camera_cfg() -> TiledCameraCfg:
-    """Create the 64x64, 15 Hz camera used by vision and data collection."""
+    """Create the 384x384, 15 Hz servicing RGB-D overview camera.
+
+    Resolution and focal length scale together, preserving the original
+    millimetres-per-pixel while expanding the field around the whole transfer
+    workspace. The former 64 px / 180 mm design passed scale arithmetic but
+    failed the projection gate: the rack mouth landed at u=-19 px and free
+    transit was farther outside still.
+    """
 
     return TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/Camera",
         update_period=1.0 / 15.0,
-        height=64,
-        width=64,
-        data_types=["rgb"],
+        height=384,
+        width=384,
+        # Metric image-plane depth is paired with RGB for the industrial
+        # fiducial path.  RGB identifies the service datum; depth removes the
+        # weak, noise-sensitive scale/tilt estimate of single-plane RGB PnP.
+        data_types=["rgb", "distance_to_image_plane"],
         offset=TiledCameraCfg.OffsetCfg(
             pos=(-0.55, -0.65, 1.15),
-            rot=(0.9610, -0.0346, 0.1438, 0.2317),
-            convention="world",
+            # ROS camera frame (+z forward, +x right, +y down), aimed at the
+            # centre of the two-bay transfer envelope (0.35, -0.11, 0.72).
+            rot=(0.4846, -0.7242, 0.4100, -0.2744),
+            convention="ros",
         ),
         spawn=sim_utils.PinholeCameraCfg(
-            # 180 mm, not the 18 mm this started with, and the difference is
-            # between a perception stage that can work and one that cannot.
-            # docs/perception_plan.md derives it: at 18 mm the camera resolves a
-            # 4 mm slot displacement as 0.13 px, which is an absent signal
-            # rather than a hard regression problem. At 180 mm it is 1.31 px,
-            # which sub-pixel regression handles routinely, and the 64x64 tile
-            # and its measured 256-environment throughput are unchanged.
-            #
-            # The fix is a narrower field of view rather than more pixels, and a
-            # servicing camera aimed at the interface rather than at the room is
-            # the more realistic instrument anyway. Verified by rendering, not
-            # by trusting this arithmetic: see scripts/check_camera_scale.py.
-            focal_length=180.0,
-            horizontal_aperture=22.0,
+            # The 30 mm aperture widens the earlier crop enough to keep the
+            # complete two-bay transfer envelope in frame. 384 px preserves
+            # (and slightly improves) its measured ground sampling density.
+            focal_length=45.0,
+            horizontal_aperture=30.0,
             focus_distance=1.4,
             f_stop=0.0,
             clipping_range=(0.05, 4.0),

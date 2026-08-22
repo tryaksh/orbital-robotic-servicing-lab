@@ -1,0 +1,275 @@
+{
+  "status": "diagnostic",
+  "title": "Overview pose-head generalization failure audit",
+  "evidence_type": "simulation_perception_failure_analysis",
+  "identity": {
+    "dataset": "datasets\\grapple_vision_two_slot_w65_overview_validated.npz",
+    "dataset_sha256": "c350e0026f50d377a20377249273cd13c7dc2db94325f53301a07d0fdc735ca7",
+    "checkpoint": "checkpoints\\module_pose_head_two_slot_w65_overview_validated_v2.pth",
+    "checkpoint_sha256": "e42e75d06b39dc7e38187c69b6ab233c7b25b2cc0026ee20cbbf2d16dace8fa0",
+    "training_report": "evidence\\module_pose_head_two_slot_w65_overview_validated_v2.json",
+    "training_report_checkpoint_hash_matches": true,
+    "architecture_version": 2,
+    "feature_grid_size": 8
+  },
+  "split_and_order": {
+    "frames": 6000,
+    "training_frames": 4800,
+    "held_out_frames": 1200,
+    "collection_num_envs": 64,
+    "row_order": "round-major, then environment index",
+    "training_round_range_inclusive": [
+      0,
+      74
+    ],
+    "held_out_round_range_inclusive": [
+      75,
+      93
+    ],
+    "held_out_first_environment": 0,
+    "held_out_last_environment": 47,
+    "round_and_environment_arrays_inferred": true,
+    "note": "The collector version stored num_envs but not row-level round/environment IDs; these are unambiguous because it appends one complete vectorized batch per round and only truncates the tail."
+  },
+  "model_error": {
+    "training": {
+      "frames": 4800,
+      "position_error_mm_mean": 25.39293670654297,
+      "position_error_mm_p95": 81.00765304565431,
+      "lateral_error_mm_mean": 13.286978721618652,
+      "lateral_error_mm_p95": 51.37414951324463,
+      "per_axis_absolute_error_mm": {
+        "x": {
+          "mean": 19.149385452270508,
+          "p95": 62.4413711547852
+        },
+        "y": {
+          "mean": 10.302725791931152,
+          "p95": 41.46920814514161
+        },
+        "z": {
+          "mean": 6.473507404327393,
+          "p95": 29.621920490264895
+        }
+      }
+    },
+    "held_out": {
+      "frames": 1200,
+      "position_error_mm_mean": 29.804414749145508,
+      "position_error_mm_p95": 96.44882698059082,
+      "lateral_error_mm_mean": 16.099449157714844,
+      "lateral_error_mm_p95": 65.60684127807616,
+      "per_axis_absolute_error_mm": {
+        "x": {
+          "mean": 22.16802978515625,
+          "p95": 74.1255729675293
+        },
+        "y": {
+          "mean": 11.816631317138672,
+          "p95": 48.67740211486813
+        },
+        "z": {
+          "mean": 8.6803617477417,
+          "p95": 41.43676891326902
+        }
+      }
+    },
+    "occupancy_exact_match_training": 0.9970833333333333,
+    "occupancy_exact_match_held_out": 0.9891666666666666,
+    "training_curve_context": {
+      "selected_epoch": 10,
+      "selected_epoch_train_loss": 0.0814188571770986,
+      "final_epoch_train_loss": 0.0028415881966551144
+    }
+  },
+  "distribution_comparison": {
+    "training_labels": {
+      "position": {
+        "x": {
+          "mean": 0.4727393090724945,
+          "std": 0.24423138797283173,
+          "p01": 0.04049840927124024,
+          "p05": 0.08305540084838867,
+          "p50": 0.5977342128753662,
+          "p95": 0.7172481656074524,
+          "p99": 0.7285814428329468
+        },
+        "y": {
+          "mean": -0.11627233028411865,
+          "std": 0.10531206429004669,
+          "p01": -0.27631078124046327,
+          "p05": -0.22955220937728882,
+          "p50": -0.14331293106079102,
+          "p95": 0.0007495880126953125,
+          "p99": 0.02928534269332896
+        },
+        "z": {
+          "mean": 0.7286730408668518,
+          "std": 0.039735909551382065,
+          "p01": 0.6354431140422822,
+          "p05": 0.6840849459171295,
+          "p50": 0.7206082046031952,
+          "p95": 0.8076323419809341,
+          "p99": 0.8962339735031128
+        }
+      },
+      "rotation_vector_norm_rad": {
+        "p01": 3.54221168663571e-06,
+        "p05": 0.0006486110360128805,
+        "p50": 0.0043291503097862005,
+        "p95": 1.086431896686554,
+        "p99": 1.6948578691482545
+      }
+    },
+    "held_out_labels": {
+      "position": {
+        "x": {
+          "mean": 0.47445642948150635,
+          "std": 0.24399776756763458,
+          "p01": 0.048651987314224245,
+          "p05": 0.08714529275894166,
+          "p50": 0.5966646671295166,
+          "p95": 0.7202704429626465,
+          "p99": 0.7296750640869141
+        },
+        "y": {
+          "mean": -0.11522924154996872,
+          "std": 0.10448437929153442,
+          "p01": -0.26659815073013304,
+          "p05": -0.22807801961898805,
+          "p50": -0.1441410779953003,
+          "p95": 0.0007498621940612792,
+          "p99": 0.02773938179016113
+        },
+        "z": {
+          "mean": 0.7308273315429688,
+          "std": 0.041371479630470276,
+          "p01": 0.6459595185518264,
+          "p05": 0.6878339558839798,
+          "p50": 0.7206677496433258,
+          "p95": 0.8057235181331633,
+          "p99": 0.9114120298624039
+        }
+      },
+      "rotation_vector_norm_rad": {
+        "p01": 1.881222650581549e-06,
+        "p05": 0.0005233270989265294,
+        "p50": 0.004282183945178986,
+        "p95": 1.0456078290939326,
+        "p99": 1.6314277648925781
+      }
+    },
+    "training_image_signal_proxy": {
+      "sampled_frames": 256,
+      "frame_mean": {
+        "mean": 64.3394546508789,
+        "p01": 34.02070999145508,
+        "p05": 38.2134313583374,
+        "p50": 65.35327529907227,
+        "p95": 86.92358207702637,
+        "p99": 95.57029876708982
+      },
+      "frame_std": {
+        "mean": 81.870849609375,
+        "p01": 59.961696815490725,
+        "p05": 66.06541061401367,
+        "p50": 82.74191665649414,
+        "p95": 94.78861618041992,
+        "p99": 97.26458549499512
+      },
+      "global_max": 255
+    },
+    "held_out_image_signal_proxy": {
+      "sampled_frames": 256,
+      "frame_mean": {
+        "mean": 62.53500747680664,
+        "p01": 33.629109954833986,
+        "p05": 39.77042865753174,
+        "p50": 61.75510025024414,
+        "p95": 86.11582565307617,
+        "p99": 97.22928619384764
+      },
+      "frame_std": {
+        "mean": 81.320068359375,
+        "p01": 57.18270206451416,
+        "p05": 64.67533111572266,
+        "p50": 81.96652603149414,
+        "p95": 94.87125778198242,
+        "p99": 96.77134170532227
+      },
+      "global_max": 255
+    },
+    "lighting_metadata_available": false,
+    "lighting_note": "Per-frame sun parameters were not recorded. Frame mean/std are reported only as observable lighting/exposure proxies and are not presented as the actual randomized sun state."
+  },
+  "image_label_alignment": {
+    "held_out_occupancy_exact_match": 0.9891666666666666,
+    "what_it_establishes": "The frame and label agree at bay-category scale; a one-round category shift would not preserve the rotating bay0/bay1/neither schedule. It does not establish millimetre pose observability.",
+    "nearest_cross_split_neighbor": {
+      "comparison": "each held-out frame to its nearest 16x16 grayscale train feature",
+      "cosine_similarity": {
+        "p01": 0.7371305394172668,
+        "p05": 0.8095783710479736,
+        "p50": 0.9473667144775391,
+        "p95": 0.9824254453182221,
+        "p99": 0.9876701617240906
+      },
+      "position_label_delta_mm": {
+        "mean": 53.8402214050293,
+        "p01": 1.0356842350959778,
+        "p05": 2.869447445869446,
+        "p50": 34.54228401184082,
+        "p95": 153.48697509765623,
+        "p99": 431.6309320068357
+      },
+      "frames_with_cosine_at_least_0_99": 4,
+      "fraction_of_very_similar_pairs_over_20mm_apart": 0.5,
+      "interpretation_limit": "This coarse feature is an ambiguity diagnostic, not a learned perceptual metric; high label separation among near-identical features is evidence against merely adding network capacity."
+    }
+  },
+  "post_physics_drift": {
+    "neither_bay": {
+      "frames": 1960,
+      "fraction_outside_authored_position_envelope": 0.46785714285714286,
+      "fraction_more_than_20mm_outside": 0.3076530612244898,
+      "distance_outside_mm": {
+        "p50": 0.0,
+        "p95": 107.48823463916776,
+        "p99": 181.5482701969892,
+        "max": 336.3146681273429
+      }
+    },
+    "bay_0": {
+      "frames": 2023,
+      "fraction_outside_authored_position_envelope": 0.06426099851705389,
+      "fraction_more_than_20mm_outside": 0.015818091942659415,
+      "distance_outside_mm": {
+        "p50": 0.0,
+        "p95": 3.0023102760314715,
+        "p99": 293.13403213523594,
+        "max": 376.3719395564189
+      }
+    },
+    "bay_1": {
+      "frames": 2017,
+      "fraction_outside_authored_position_envelope": 0.053544868616757564,
+      "fraction_more_than_20mm_outside": 0.012890431333663858,
+      "distance_outside_mm": {
+        "p50": 0.0,
+        "p95": 0.5570487976074033,
+        "p99": 30.66256370047774,
+        "max": 340.7416009408088
+      }
+    }
+  },
+  "diagnosis": {
+    "capacity_hypothesis_supported": false,
+    "findings": [
+      "Architecture v2 drove the training objective down, but both selected-checkpoint train and held-out tails remain large.",
+      "Train and held-out pose distributions and image-signal proxies are similar.",
+      "The free-transfer sampler frequently moves outside its authored envelope during the physics/render wait.",
+      "Occupancy remains easy because neither-bay classification does not require millimetre localization."
+    ],
+    "recommended_pivot": "Treat perception as part of the service interface: add a high-contrast fiducial with known geometry to the module, calibrate the overview camera, and solve pose geometrically (PnP, optionally depth) with reprojection/error rejection. Collect only collision-free, kinematically held poses and record the intended pose, rendered pose, round, environment, and lighting parameters. This is more industrial and falsifiable than another end-to-end RGB regressor capacity increase."
+  }
+}

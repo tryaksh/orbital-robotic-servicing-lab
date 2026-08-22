@@ -62,10 +62,7 @@ def profile(slice_m: float = 0.001, max_depth_m: float = 0.26,
                 # The body spans low[0]..high[0] on the closing axis. A feature
                 # centred on that axis is stopped by whichever face is nearer to
                 # it; a body straddling the axis leaves no room at all.
-                if low[0] <= 0.0 <= high[0]:
-                    room = 0.0
-                else:
-                    room = min(abs(low[0]), abs(high[0]))
+                room = 0.0 if low[0] <= 0.0 <= high[0] else min(abs(low[0]), abs(high[0]))
                 if room < allowed:
                     allowed = room
                     limiter = {"body": body, "finger_joint_rad": sample["finger_joint_rad"]}

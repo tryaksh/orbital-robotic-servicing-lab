@@ -26,6 +26,7 @@ were certified on. This is a separate scene and separate registrations.
 
 from __future__ import annotations
 
+from isaaclab.assets import AssetBaseCfg
 from isaaclab.controllers import DifferentialIKControllerCfg
 from isaaclab.managers import CurriculumTermCfg as CurrTerm
 from isaaclab.managers import EventTermCfg as EventTerm
@@ -44,6 +45,7 @@ from .assets import (
     GRAPPLE_HEAD_ON_ARM_JOINT_POS,
     GRAPPLE_HEAD_ON_TOOL_ROT,
     GRAPPLE_TOOL_OFFSET_POS,
+    CompliantD6JointCfg,
     make_grapple_pin_robot_cfg,
 )
 from .contact_insertion_env_cfg import (
@@ -147,8 +149,15 @@ class GrapplePinEventsCfg(ContactInsertionEventsCfg):
         params={
             "asset_cfg": SceneEntityCfg("spare_blade"),
             "rated_torque_nm": 5.0,
-            "saturation_rad": 0.05,
-            "damping_ratio": 1.0,
+            "rotation_stiffness": 10.0,
+            "rotation_damping_ratio": 0.9,
+            # Zero preserves the original torque-only latch experiment. A
+            # workflow may explicitly rate the form-locking translational load
+            # path before arming it after rail release.
+            "rated_force_n": 0.0,
+            "position_stiffness": 2_500.0,
+            "position_damping_ratio": 0.9,
+            "joint_mode": "compliant",
             "require_armed": False,
         },
     )
@@ -190,6 +199,13 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
     # been run. See ``mdp.GrappleLatch`` and docs/status.md.
     latch_enabled: bool = False
     latch_rated_torque_nm: float = 5.0
+    latch_rated_force_n: float = 0.0
+    latch_position_stiffness_n_per_m: float = 2_500.0
+    latch_position_damping_ratio: float = 0.9
+    latch_rotation_stiffness_nm_per_rad: float = 10.0
+    latch_rotation_damping_ratio: float = 0.9
+    latch_joint_mode: str = "compliant"
+    base_rail_enabled: bool = False
     #: Engage the latch only once a driver says the module is free of the rails,
     #: instead of the instant a capture qualifies. The sweep that refuted the
     #: latch engaged it while the module was still railed, which is exactly where
@@ -209,7 +225,100 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
             self.events.grapple_latch = None
             return
         self.events.grapple_latch.params["rated_torque_nm"] = self.latch_rated_torque_nm
+        self.events.grapple_latch.params["rated_force_n"] = self.latch_rated_force_n
+        self.events.grapple_latch.params["position_stiffness"] = self.latch_position_stiffness_n_per_m
+        self.events.grapple_latch.params["position_damping_ratio"] = self.latch_position_damping_ratio
+        self.events.grapple_latch.params["rotation_stiffness"] = self.latch_rotation_stiffness_nm_per_rad
+        self.events.grapple_latch.params["rotation_damping_ratio"] = self.latch_rotation_damping_ratio
+        self.events.grapple_latch.params["joint_mode"] = self.latch_joint_mode
         self.events.grapple_latch.params["require_armed"] = self.latch_engages_on_release
+
+    def configure_base_rail(self) -> None:
+        """Install the physical payload shuttle after task setup.
+
+        Every grapple skill overrides ``configure_robustness`` and several of
+        those overrides replace ``scene.robot`` after calling ``super``.  A
+        rail selected before that chain therefore used to be silently replaced
+        by the fixed-root robot, leaving the moving anchor as an unattached
+        marker.  This method is deliberately called *after* the complete task
+        robustness configuration so its physical topology is the final one.
+        """
+
+        if not self.base_rail_enabled:
+            raise ValueError("configure_base_rail() requires base_rail_enabled=True")
+        # The payload stage is a procedurally authored D6 joint.  PhysX scene
+        # replication only copied the first joint, so parallel qualification
+        # environments had a stage prim but no usable joint.  Author each
+        # environment independently, as the camera workflow already does.
+        self.scene.replicate_physics = False
+        self.scene.clone_in_fabric = False
+        # The arm remains fixed to its workcell after it hands the extracted
+        # ORU to the shuttle.  Moving the entire six-axis articulation made its
+        # finite-effort joints counteract the base drive and coupled pose axes.
+        self.scene.robot = make_grapple_pin_robot_cfg(floating=False)
+        self.scene.base_compliance = None
+        # Design-for-serviceability destination mouth.  The original funnel
+        # converged to the same 0.75 mm per-side clearance as the straight
+        # production rails.  A carried module aligned to 10 micrometres and
+        # 0.4 milliradians repeatedly stopped on its front contact plane, even
+        # after reducing valid PhysX contact envelopes.  The metrology-guided
+        # bay therefore omits those two colliders and enters the unchanged
+        # 1.5 mm straight channel directly.  Their visuals stay in the model so
+        # the design comparison remains obvious; they no longer pretend to be
+        # a useful passive funnel for a precision shuttle.
+        self.scene.blade_slot_two_entry_left_flare.spawn.collision_props.collision_enabled = False
+        self.scene.blade_slot_two_entry_right_flare.spawn.collision_props.collision_enabled = False
+        # Open the destination's straight rails from 1.5 mm to 4.5 mm total
+        # clearance.  The unmodified guide front faces produced the same exact
+        # x=0.225 m stop after the flare colliders were removed, identifying the
+        # remaining butt-contact.  A 2.25 mm-per-side key is still a tight
+        # service interface, but it has resolvable manufacturing/physics margin
+        # and matches the 2.5 mm lateral acceptance envelope.
+        rail_relief_m = 0.0015
+        left_guide = list(self.scene.blade_slot_two_left_guide.init_state.pos)
+        right_guide = list(self.scene.blade_slot_two_right_guide.init_state.pos)
+        left_guide[1] += rail_relief_m
+        right_guide[1] -= rail_relief_m
+        self.scene.blade_slot_two_left_guide.init_state.pos = tuple(left_guide)
+        self.scene.blade_slot_two_right_guide.init_state.pos = tuple(right_guide)
+        # The old floor top was exactly coincident with the module's lower
+        # face.  Its front vertical face therefore formed a second x=0.225 m
+        # butt contact even after the side rails were relieved.  Lowering only
+        # the destination floor by 2 mm provides a real lead-in clearance; the
+        # upper lips and side rails still capture all remaining five motions.
+        destination_floor = list(self.scene.blade_slot_two.init_state.pos)
+        destination_floor[2] -= 0.002
+        self.scene.blade_slot_two.init_state.pos = tuple(destination_floor)
+        self.scene.payload_stage = AssetBaseCfg(
+            prim_path="{ENV_REGEX_NS}/PayloadStage",
+            # A disabled D6 joint is armed at the measured extraction pose. It
+            # then carries the module directly, like a service caddy/hexapod,
+            # while the robot opens and clears the work envelope.
+            spawn=CompliantD6JointCfg(
+                body1_relative_path="SpareBlade",
+                relocate_robot_articulation_root=False,
+                enabled=False,
+                translation_limit=0.8,
+                translation_x_lower_limit=-0.200,
+                translation_x_upper_limit=0.800,
+                translation_y_lower_limit=-0.600,
+                translation_y_upper_limit=0.200,
+                translation_z_lower_limit=-0.400,
+                translation_z_upper_limit=0.400,
+                rotation_limit_deg=20.0,
+                # This is a positioning stage, not a compliant suspension.
+                # The earlier 10 kN/m drive deflected 71 mm when the loaded arm
+                # replayed its extraction path, carrying the module outside the
+                # receiving channel even though the commanded target was exact.
+                # These near-critical gains keep the carriage physical while
+                # giving it the authority a machine-tool axis requires.
+                translation_stiffness=200_000.0,
+                translation_damping=10_000.0,
+                rotation_stiffness=500_000.0,
+                rotation_damping=15_000.0,
+                max_force=100_000.0,
+            ),
+        )
 
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)
@@ -217,9 +326,7 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
         # contact task's class, which carries the top-down poses and the old
         # finger commands, so re-assert the head-on ones afterwards.
         self.events = GrapplePinEventsCfg()
-        self.events.reset_arm.params["noise_by_stage"] = (
-            (0.0005, 0.001, 0.002) if level == 0 else (0.001, 0.002, 0.004)
-        )
+        self.events.reset_arm.params["noise_by_stage"] = (0.0005, 0.001, 0.002) if level == 0 else (0.001, 0.002, 0.004)
         self.events.reset_blade.params["poses_by_stage"] = CONTACT_INSERTION_STAGE_BLADE_POSE
         if level < 2:
             self.events.blade_mass = None

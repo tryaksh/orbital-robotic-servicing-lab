@@ -40,7 +40,6 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np

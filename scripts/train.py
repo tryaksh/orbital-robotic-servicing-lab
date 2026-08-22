@@ -384,7 +384,8 @@ def main() -> None:
                     terms = env.unwrapped.reward_manager.active_terms
                     per_term = env.unwrapped.reward_manager._step_reward.mean(dim=0) * env.unwrapped.step_dt
                     breakdown = ", ".join(
-                        f"{name}={float(value):+.3f}" for name, value in zip(terms, per_term.tolist())
+                        f"{name}={float(value):+.3f}"
+                        for name, value in zip(terms, per_term.tolist(), strict=True)
                     )
                     print(
                         "[INFO] Contact reward contract SCOPED OUT: this task's reset runs the two-stage "

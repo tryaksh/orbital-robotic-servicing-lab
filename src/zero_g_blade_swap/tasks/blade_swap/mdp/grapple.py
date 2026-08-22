@@ -25,8 +25,17 @@ from collections.abc import Sequence
 
 import torch
 from isaaclab.managers import ActionTerm, EventTermCfg, ManagerTermBase, SceneEntityCfg
+from isaaclab.sim.utils import get_current_stage
 from isaaclab.utils import configclass
-from isaaclab.utils.math import axis_angle_from_quat, quat_apply, quat_inv, quat_mul, subtract_frame_transforms
+from isaaclab.utils.math import (
+    axis_angle_from_quat,
+    compute_pose_error,
+    quat_apply,
+    quat_inv,
+    quat_mul,
+    subtract_frame_transforms,
+)
+from pxr import Gf, UsdPhysics
 
 from zero_g_blade_swap.grapple_geometry import (
     EXTRACTED_BLADE_CENTRE_X,
@@ -42,7 +51,16 @@ from .actions import (
     RobotiqBinaryActionCfg,
     robotiq_2f85_coupled_targets,
 )
-from .insertion import attached_blade_pose_world, attached_blade_velocity, insertion_error_metrics
+from .insertion import (
+    INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS,
+    INSERTION_AXIAL_DEPTH_TOLERANCE_M,
+    INSERTION_LATERAL_TOLERANCE_M,
+    INSERTION_LINEAR_VELOCITY_LIMIT_MPS,
+    INSERTION_ORIENTATION_TOLERANCE_RAD,
+    attached_blade_pose_world,
+    attached_blade_velocity,
+    insertion_error_metrics,
+)
 from .observations import end_effector_pose_world
 
 # A grasp counts as formed only when the drive torque rises off its noise floor,
@@ -128,7 +146,7 @@ def grapple_grip_attitude_error_world(env) -> torch.Tensor:
 
 
 class GrappleLatch(ManagerTermBase):
-    """A modelled latching capture. Not a grasp, and labelled as one nowhere.
+    """A bounded compliant model of a form-locking capture latch.
 
     **Why this exists.** A parallel-jaw grip on a passive feature cannot resist a
     moment about the closing axis: the pads' contact normals lie along that axis
@@ -147,19 +165,17 @@ class GrappleLatch(ManagerTermBase):
     through a latch, not friction on a passive feature. So the interface
     specification's answer to yaw is a latch, and this is its model.
 
-    **What it does, exactly, so nothing is hidden.** It engages the first step a
-    capture qualifies -- ``capture_established``: the drive loaded, the grip
-    within 20 mm, the attitude within 0.20 rad -- and stays engaged until the
-    episode resets. While engaged it applies a restoring *torque* to the module
-    opposing the grip attitude error, stiff up to ``saturation_rad`` and then
-    clamped at ``rated_torque_nm``.
+    **What it does, exactly, so nothing is hidden.** It engages after a capture
+    qualifies and, when ``require_armed`` is set, only after the workflow says
+    the module is clear of the rails. At engagement it records the actual
+    tool-to-module transform, then applies bounded, damped restoring force and
+    torque to preserve it. This is the load path a form-closing mechanism
+    supplies after the fingers have acquired the pin.
 
     **What it deliberately does not do.**
 
-    * It applies no force. The axial hold is still the wedge's measured 69 N and
-      still has to be earned; the latch cannot carry the extraction load.
     * It has a finite rating, so "the latch holds" is a number rather than an
-      assumption, and the rating that extraction actually needs is the
+      assumption, and the force/torque rating the workflow actually needs is the
       specification deliverable this term exists to produce.
     * It engages only on a capture the policy achieved. A policy that never
       arrives never gets one.
@@ -168,6 +184,9 @@ class GrappleLatch(ManagerTermBase):
       would absorb most of it, but this is a simplification and not a free
       lunch: a real latch loads the wrist and the joint torques it implies are
       unmeasured here.
+
+    With ``rated_force_n=0`` the term is the earlier torque-only experiment.
+    That mode is retained so its negative evidence remains reproducible.
     """
 
     def __init__(self, cfg: EventTermCfg, env) -> None:
@@ -177,12 +196,77 @@ class GrappleLatch(ManagerTermBase):
         #: read when ``require_armed`` is set, and ``True`` otherwise, so a task
         #: that does not ask for it is bit-identical to before this existed.
         env._grapple_latch_armed = torch.ones(env.num_envs, dtype=torch.bool, device=env.device)
+        env._grapple_latch_relative_pos = torch.zeros((env.num_envs, 3), device=env.device)
+        env._grapple_latch_relative_quat = torch.zeros((env.num_envs, 4), device=env.device)
+        env._grapple_latch_relative_quat[:, 0] = 1.0
+        # Runtime evidence for the modelled interface.  Configuration proves
+        # only that the term exists; these values prove whether it engaged,
+        # whether it preserved the transform it captured, and whether the
+        # requested motion exceeded either finite load rating.
+        env._grapple_latch_first_engagement_step = torch.full(
+            (env.num_envs,), -1, dtype=torch.long, device=env.device
+        )
+        env._grapple_latch_position_error_m = torch.zeros(env.num_envs, device=env.device)
+        env._grapple_latch_orientation_error_rad = torch.zeros(env.num_envs, device=env.device)
+        env._grapple_latch_applied_force_n = torch.zeros(env.num_envs, device=env.device)
+        env._grapple_latch_applied_torque_nm = torch.zeros(env.num_envs, device=env.device)
+        env._grapple_latch_max_position_error_m = torch.zeros(env.num_envs, device=env.device)
+        env._grapple_latch_max_orientation_error_rad = torch.zeros(env.num_envs, device=env.device)
+        env._grapple_latch_max_applied_force_n = torch.zeros(env.num_envs, device=env.device)
+        env._grapple_latch_max_applied_torque_nm = torch.zeros(env.num_envs, device=env.device)
+        env._grapple_latch_force_saturated = torch.zeros(
+            env.num_envs, dtype=torch.bool, device=env.device
+        )
+        env._grapple_latch_torque_saturated = torch.zeros(
+            env.num_envs, dtype=torch.bool, device=env.device
+        )
+        env._grapple_latch_force_saturation_count = torch.zeros(
+            env.num_envs, dtype=torch.long, device=env.device
+        )
+        env._grapple_latch_torque_saturation_count = torch.zeros(
+            env.num_envs, dtype=torch.long, device=env.device
+        )
+        body_ids, body_names = env.scene["robot"].find_bodies(["wrist_3_link"], preserve_order=True)
+        if len(body_ids) != 1:
+            raise RuntimeError(f"GrappleLatch expected wrist_3_link, resolved {body_names}")
+        self._wrist_body_id = int(body_ids[0])
+        self._fixed_joints: list[UsdPhysics.FixedJoint] = []
+        if self.cfg.params.get("joint_mode", "compliant") == "fixed":
+            stage = get_current_stage()
+            for env_path in env.scene.env_prim_paths:
+                joint = UsdPhysics.FixedJoint(
+                    stage.GetPrimAtPath(f"{env_path}/ReleaseLatchJoint/Joint")
+                )
+                if not joint or not joint.GetPrim().IsValid():
+                    raise RuntimeError(
+                        f"Fixed release latch is missing at '{env_path}/ReleaseLatchJoint/Joint'"
+                    )
+                self._fixed_joints.append(joint)
 
     def reset(self, env_ids=None) -> None:
         ids = torch.arange(self._env.num_envs, device=self._env.device) if env_ids is None else env_ids
         self._env._grapple_latched[ids] = False
         if bool(self.cfg.params.get("require_armed", False)):
             self._env._grapple_latch_armed[ids] = False
+        self._env._grapple_latch_relative_pos[ids] = 0.0
+        self._env._grapple_latch_relative_quat[ids] = 0.0
+        self._env._grapple_latch_relative_quat[ids, 0] = 1.0
+        self._env._grapple_latch_first_engagement_step[ids] = -1
+        self._env._grapple_latch_position_error_m[ids] = 0.0
+        self._env._grapple_latch_orientation_error_rad[ids] = 0.0
+        self._env._grapple_latch_applied_force_n[ids] = 0.0
+        self._env._grapple_latch_applied_torque_nm[ids] = 0.0
+        self._env._grapple_latch_max_position_error_m[ids] = 0.0
+        self._env._grapple_latch_max_orientation_error_rad[ids] = 0.0
+        self._env._grapple_latch_max_applied_force_n[ids] = 0.0
+        self._env._grapple_latch_max_applied_torque_nm[ids] = 0.0
+        self._env._grapple_latch_force_saturated[ids] = False
+        self._env._grapple_latch_torque_saturated[ids] = False
+        self._env._grapple_latch_force_saturation_count[ids] = 0
+        self._env._grapple_latch_torque_saturation_count[ids] = 0
+        if self._fixed_joints:
+            for index in ids.detach().cpu().tolist():
+                self._fixed_joints[index].GetJointEnabledAttr().Set(False)
         zeros = torch.zeros((len(ids), 1, 3), device=self._env.device)
         self._env.scene["spare_blade"].permanent_wrench_composer.set_forces_and_torques(
             forces=zeros, torques=zeros, env_ids=ids, is_global=True
@@ -194,11 +278,17 @@ class GrappleLatch(ManagerTermBase):
         env_ids: torch.Tensor | None,
         asset_cfg: SceneEntityCfg,
         rated_torque_nm: float = 5.0,
-        saturation_rad: float = 0.05,
-        damping_ratio: float = 1.0,
+        rotation_stiffness: float = 10.0,
+        rotation_damping_ratio: float = 0.9,
+        rated_force_n: float = 0.0,
+        position_stiffness: float = 2_500.0,
+        position_damping_ratio: float = 0.9,
+        joint_mode: str = "compliant",
         require_armed: bool = False,
     ) -> None:
         del env_ids
+        if joint_mode not in ("compliant", "fixed"):
+            raise ValueError(f"joint_mode must be 'compliant' or 'fixed', got {joint_mode!r}")
         latched = env._grapple_latched
         # **When the latch engages is a physical question, and this project has
         # measured half the answer.** Swept from 10 to 160 N-m against the
@@ -215,37 +305,177 @@ class GrappleLatch(ManagerTermBase):
         qualified = capture_established(env)
         if require_armed:
             qualified = qualified & env._grapple_latch_armed
-        latched |= qualified
+        newly_latched = qualified & ~latched
         blade = env.scene[asset_cfg.name]
-        error = grapple_grip_attitude_error_world(env)
-        magnitude = torch.linalg.vector_norm(error, dim=-1, keepdim=True).clamp_min(1e-9)
-        # Stiff, then flat: a latch is a mechanism with a strength, not a spring
-        # that grows without bound. Full rating once the error passes
-        # ``saturation_rad``, which is a quarter of the capture tolerance.
-        stiffness = rated_torque_nm / saturation_rad
-        restoring = -error / magnitude * rated_torque_nm * (magnitude / saturation_rad).clamp(max=1.0)
-        # Damping is not a refinement here, it is the difference between a latch
-        # and a catapult. In zero gravity nothing dissipates the energy a
-        # stiffness injects, so a spring alone drives the payload into
-        # oscillation: measured undamped at 5 N-m, the module pinned itself
-        # against the 0.35 rad failure limit and travelled 84 mm of 495 instead
-        # of the plain pin's 465. A real latch dissipates through friction and
-        # structural damping, and this is that term.
-        #
-        # Sized from the payload's own inertia about its longest axis so the
-        # ratio means what it says: c = 2 * zeta * sqrt(k * I).
-        inertia = _blade_yaw_inertia(env, asset_cfg)
-        damping = 2.0 * damping_ratio * torch.sqrt(stiffness * inertia)
-        torque = (restoring - damping.unsqueeze(-1) * blade.data.root_ang_vel_w) * latched.unsqueeze(-1)
-        # Never exceed the rating, whatever the damping asks for. The rating is
-        # the specification number this whole term exists to produce.
-        overload = (torch.linalg.vector_norm(torque, dim=-1, keepdim=True) / rated_torque_nm).clamp_min(1.0)
-        torque = torque / overload
-        blade.permanent_wrench_composer.set_forces_and_torques(
-            forces=torch.zeros_like(torque).unsqueeze(1),
-            torques=torque.unsqueeze(1),
-            is_global=True,
+        tool_position, tool_orientation = end_effector_pose_world(env)
+        if bool(newly_latched.any()):
+            inverse_tool = quat_inv(tool_orientation[newly_latched])
+            env._grapple_latch_relative_pos[newly_latched] = quat_apply(
+                inverse_tool,
+                blade.data.root_pos_w[newly_latched] - tool_position[newly_latched],
+            )
+            env._grapple_latch_relative_quat[newly_latched] = quat_mul(
+                inverse_tool,
+                blade.data.root_quat_w[newly_latched],
+            )
+            env._grapple_latch_first_engagement_step[newly_latched] = env.episode_length_buf[
+                newly_latched
+            ].to(torch.long)
+            if joint_mode == "fixed":
+                self._engage_fixed_joints(env, blade, newly_latched)
+        latched |= qualified
+
+        desired_position = tool_position + quat_apply(tool_orientation, env._grapple_latch_relative_pos)
+        desired_orientation = quat_mul(tool_orientation, env._grapple_latch_relative_quat)
+        # Use the same pose-error convention as the already exercised rigid-
+        # grasp insertion fixture.  The first translational prototype formed
+        # this difference by hand and paired it with an unrelated canonical
+        # capture-attitude error.  In a relocation that inconsistency injected
+        # energy until the module escaped the tool; the apparent hand-off to
+        # insertion was therefore a false positive, not a successful latch.
+        position_error, rotation_error = compute_pose_error(
+            blade.data.root_pos_w,
+            blade.data.root_quat_w,
+            desired_position,
+            desired_orientation,
+            rot_error_type="axis_angle",
         )
+        position_error_norm = torch.linalg.vector_norm(position_error, dim=-1)
+        rotation_error_norm = torch.linalg.vector_norm(rotation_error, dim=-1)
+        env._grapple_latch_position_error_m.copy_(
+            torch.where(latched, position_error_norm, torch.zeros_like(position_error_norm))
+        )
+        env._grapple_latch_orientation_error_rad.copy_(
+            torch.where(latched, rotation_error_norm, torch.zeros_like(rotation_error_norm))
+        )
+        env._grapple_latch_max_position_error_m.copy_(
+            torch.maximum(env._grapple_latch_max_position_error_m, env._grapple_latch_position_error_m)
+        )
+        env._grapple_latch_max_orientation_error_rad.copy_(
+            torch.maximum(
+                env._grapple_latch_max_orientation_error_rad,
+                env._grapple_latch_orientation_error_rad,
+            )
+        )
+        if joint_mode == "fixed":
+            # The fixed joint is the load path; applying the old one-sided
+            # external wrench as well would double-count it and erase the
+            # equal-and-opposite reaction that motivated this model.
+            return
+        robot = env.scene["robot"]
+        wrist_position = robot.data.body_pos_w[:, self._wrist_body_id]
+        wrist_linear_velocity = robot.data.body_lin_vel_w[:, self._wrist_body_id]
+        wrist_angular_velocity = robot.data.body_ang_vel_w[:, self._wrist_body_id]
+        wrist_to_blade = desired_position - wrist_position
+        desired_linear_velocity = wrist_linear_velocity + torch.cross(
+            wrist_angular_velocity,
+            wrist_to_blade,
+            dim=-1,
+        )
+        force = torch.zeros_like(position_error)
+        force_demand_norm = torch.zeros(env.num_envs, device=env.device)
+        if rated_force_n > 0.0:
+            if position_stiffness <= 0.0:
+                raise ValueError(f"position_stiffness must be positive, got {position_stiffness}")
+            if not 0.0 < position_damping_ratio <= 2.0:
+                raise ValueError(
+                    f"position_damping_ratio must be in (0, 2], got {position_damping_ratio}"
+                )
+            masses = _blade_mass(env, asset_cfg)
+            position_damping = 2.0 * position_damping_ratio * torch.sqrt(position_stiffness * masses)
+            force = position_stiffness * position_error + position_damping.unsqueeze(-1) * (
+                desired_linear_velocity - blade.data.root_lin_vel_w
+            )
+            force_norm = torch.linalg.vector_norm(force, dim=-1, keepdim=True).clamp_min(1.0e-9)
+            force_demand_norm = force_norm.squeeze(-1)
+            force = force / (force_norm / rated_force_n).clamp_min(1.0)
+        force = force * latched.unsqueeze(-1)
+
+        torque = torch.zeros_like(rotation_error)
+        torque_demand_norm = torch.zeros(env.num_envs, device=env.device)
+        if rated_torque_nm > 0.0:
+            if rotation_stiffness <= 0.0:
+                raise ValueError(f"rotation_stiffness must be positive, got {rotation_stiffness}")
+            if not 0.0 < rotation_damping_ratio <= 2.0:
+                raise ValueError(
+                    f"rotation_damping_ratio must be in (0, 2], got {rotation_damping_ratio}"
+                )
+            inertia = _blade_yaw_inertia(env, asset_cfg)
+            rotation_damping = 2.0 * rotation_damping_ratio * torch.sqrt(
+                rotation_stiffness * inertia
+            )
+            torque = rotation_stiffness * rotation_error + rotation_damping.unsqueeze(-1) * (
+                wrist_angular_velocity - blade.data.root_ang_vel_w
+            )
+            # Compliance and load rating are different physical properties.
+            # Coupling them made a larger claimed rating a stiffer controller
+            # and catapulted the module.  These gains match the exercised
+            # secured-blade fixture; the rating is solely a norm cap.
+            torque_norm = torch.linalg.vector_norm(torque, dim=-1, keepdim=True).clamp_min(1.0e-9)
+            torque_demand_norm = torque_norm.squeeze(-1)
+            torque = torque / (torque_norm / rated_torque_nm).clamp_min(1.0)
+        torque = torque * latched.unsqueeze(-1)
+
+        applied_force = torch.linalg.vector_norm(force, dim=-1)
+        applied_torque = torch.linalg.vector_norm(torque, dim=-1)
+        force_saturated = latched & (rated_force_n > 0.0) & (force_demand_norm > rated_force_n)
+        torque_saturated = latched & (rated_torque_nm > 0.0) & (torque_demand_norm > rated_torque_nm)
+        env._grapple_latch_applied_force_n.copy_(applied_force)
+        env._grapple_latch_applied_torque_nm.copy_(applied_torque)
+        env._grapple_latch_max_applied_force_n.copy_(
+            torch.maximum(env._grapple_latch_max_applied_force_n, applied_force)
+        )
+        env._grapple_latch_max_applied_torque_nm.copy_(
+            torch.maximum(env._grapple_latch_max_applied_torque_nm, applied_torque)
+        )
+        env._grapple_latch_force_saturated.copy_(force_saturated)
+        env._grapple_latch_torque_saturated.copy_(torque_saturated)
+        env._grapple_latch_force_saturation_count.add_(force_saturated.to(torch.long))
+        env._grapple_latch_torque_saturation_count.add_(torque_saturated.to(torch.long))
+        # WrenchComposer converts a global wrench through a link pose cached on
+        # its first call and then applies the composed wrench as body-local on
+        # every physics step.  That is correct for a fixed link and unstable for
+        # this rotating payload: a nominally restoring world force rotated with
+        # the module until it accelerated the module away (measured 109 m grip
+        # error under a continuously saturated 150 N command). Convert from the
+        # desired world wrench with the *current* module attitude ourselves on
+        # every interval event, then store an explicitly local wrench.
+        world_to_blade = quat_inv(blade.data.root_quat_w)
+        force_b = quat_apply(world_to_blade, force)
+        torque_b = quat_apply(world_to_blade, torque)
+        blade.permanent_wrench_composer.set_forces_and_torques(
+            forces=force_b.unsqueeze(1),
+            torques=torque_b.unsqueeze(1),
+            is_global=False,
+        )
+
+    def _engage_fixed_joints(self, env, blade, mask: torch.Tensor) -> None:
+        """Capture the current wrist-to-payload frame, then enable the joint."""
+
+        if len(self._fixed_joints) != env.num_envs:
+            raise RuntimeError(
+                f"Expected {env.num_envs} fixed release joints, found {len(self._fixed_joints)}"
+            )
+        robot = env.scene["robot"]
+        wrist_position = robot.data.body_pos_w[:, self._wrist_body_id]
+        wrist_orientation = robot.data.body_quat_w[:, self._wrist_body_id]
+        inverse_wrist = quat_inv(wrist_orientation)
+        local_position = quat_apply(
+            inverse_wrist,
+            blade.data.root_pos_w - wrist_position,
+        )
+        local_orientation = quat_mul(inverse_wrist, blade.data.root_quat_w)
+        for index in mask.nonzero(as_tuple=False).flatten().detach().cpu().tolist():
+            position = local_position[index].detach().cpu().tolist()
+            orientation = local_orientation[index].detach().cpu().tolist()
+            joint = self._fixed_joints[index]
+            joint.GetLocalPos0Attr().Set(Gf.Vec3f(*position))
+            joint.GetLocalRot0Attr().Set(
+                Gf.Quatf(orientation[0], Gf.Vec3f(*orientation[1:]))
+            )
+            joint.GetLocalPos1Attr().Set(Gf.Vec3f(0.0, 0.0, 0.0))
+            joint.GetLocalRot1Attr().Set(Gf.Quatf(1.0, Gf.Vec3f(0.0, 0.0, 0.0)))
+            joint.GetJointEnabledAttr().Set(True)
 
 
 def _blade_yaw_inertia(env, asset_cfg: SceneEntityCfg) -> torch.Tensor:
@@ -266,6 +496,18 @@ def _blade_yaw_inertia(env, asset_cfg: SceneEntityCfg) -> torch.Tensor:
     diagonal = torch.stack((inertia[:, 0, 0], inertia[:, 1, 1], inertia[:, 2, 2]), dim=-1)
     env._grapple_latch_inertia = diagonal.amax(dim=-1).clamp_min(1e-4)
     return env._grapple_latch_inertia
+
+
+def _blade_mass(env, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+    """Payload mass for critical damping of the translational latch."""
+
+    cached = getattr(env, "_grapple_latch_mass", None)
+    if cached is not None:
+        return cached
+    env._grapple_latch_mass = (
+        env.scene[asset_cfg.name].root_physx_view.get_masses().to(env.device)[:, 0].clamp_min(1.0e-4)
+    )
+    return env._grapple_latch_mass
 
 
 def arm_grapple_latch(env, mask: torch.Tensor) -> None:
@@ -290,6 +532,42 @@ def grapple_latched(env) -> torch.Tensor:
     if state is None:
         return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
     return state
+
+
+def grapple_latch_diagnostics(env) -> dict[str, torch.Tensor]:
+    """Read behavior-neutral runtime evidence for the compliant form lock.
+
+    A task without the latch event returns an all-zero, never-engaged record so
+    callers can instrument latch-on and latch-off workflows through one path.
+    Values are per environment and are updated by :class:`GrappleLatch` at the
+    30 Hz control rate.
+    """
+
+    zeros = torch.zeros(env.num_envs, device=env.device)
+    false = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+    counts = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
+    first = torch.full((env.num_envs,), -1, dtype=torch.long, device=env.device)
+
+    def read(name: str, fallback: torch.Tensor) -> torch.Tensor:
+        value = getattr(env, name, None)
+        return fallback if value is None else value
+
+    return {
+        "engaged": read("_grapple_latched", false),
+        "first_engagement_episode_step": read("_grapple_latch_first_engagement_step", first),
+        "position_error_m": read("_grapple_latch_position_error_m", zeros),
+        "orientation_error_rad": read("_grapple_latch_orientation_error_rad", zeros),
+        "applied_force_n": read("_grapple_latch_applied_force_n", zeros),
+        "applied_torque_nm": read("_grapple_latch_applied_torque_nm", zeros),
+        "max_position_error_m": read("_grapple_latch_max_position_error_m", zeros),
+        "max_orientation_error_rad": read("_grapple_latch_max_orientation_error_rad", zeros),
+        "max_applied_force_n": read("_grapple_latch_max_applied_force_n", zeros),
+        "max_applied_torque_nm": read("_grapple_latch_max_applied_torque_nm", zeros),
+        "force_saturated": read("_grapple_latch_force_saturated", false),
+        "torque_saturated": read("_grapple_latch_torque_saturated", false),
+        "force_saturation_count": read("_grapple_latch_force_saturation_count", counts),
+        "torque_saturation_count": read("_grapple_latch_torque_saturation_count", counts),
+    }
 
 
 def grapple_grip_attitude_axes(env) -> torch.Tensor:
@@ -736,11 +1014,15 @@ def grapple_insertion_conditions(
     grip_position, grip_orientation = grapple_grip_error_metrics(env)
     velocity = attached_blade_velocity(env)
     return {
-        "axial_depth": axial <= 0.012,
-        "lateral_alignment": lateral <= 0.0025,
-        "orientation": orientation <= 0.0523599,
-        "linear_velocity": torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= 0.030,
-        "angular_velocity": torch.linalg.vector_norm(velocity[:, 3:], dim=-1) <= 0.080,
+        "axial_depth": axial <= INSERTION_AXIAL_DEPTH_TOLERANCE_M,
+        "lateral_alignment": lateral <= INSERTION_LATERAL_TOLERANCE_M,
+        "orientation": orientation <= INSERTION_ORIENTATION_TOLERANCE_RAD,
+        "linear_velocity": (
+            torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= INSERTION_LINEAR_VELOCITY_LIMIT_MPS
+        ),
+        "angular_velocity": (
+            torch.linalg.vector_norm(velocity[:, 3:], dim=-1) <= INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS
+        ),
         # Keyed with the shared names on purpose. The curriculum term walks
         # INSERTION_SUCCESS_CONDITION_NAMES to attribute timeouts, so renaming
         # these to "grip_*" crashed training with KeyError: 'grasp_position'.
@@ -1022,6 +1304,7 @@ __all__ = [
     "grapple_grip_attitude_axes",
     "grapple_grip_attitude_error_world",
     "grapple_grip_error_metrics",
+    "grapple_latch_diagnostics",
     "grapple_latched",
     "grapple_grip_error_observation",
     "grapple_grip_pose_error",

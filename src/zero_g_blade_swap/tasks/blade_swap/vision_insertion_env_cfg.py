@@ -48,7 +48,7 @@ from .scene_cfg import make_tiled_camera_cfg
 
 @configclass
 class VisionInsertionSceneCfg(ForceLimitedInsertionSceneCfg):
-    """The force-feedback insertion scene with a 64x64 tiled camera."""
+    """The force-feedback insertion scene with a 256x256 tiled camera."""
 
     camera: TiledCameraCfg = make_tiled_camera_cfg()
 
@@ -195,7 +195,7 @@ class VisualRandomizationCfg(ContactInsertionEventsCfg):
 
 @configclass
 class ZeroGBladeVisionInsertionEnvCfg(ZeroGBladeForceFeedbackInsertionEnvCfg):
-    """Insertion from 64x64 RGB plus proprioception, under orbital lighting.
+    """Insertion from 256x256 RGB plus proprioception, under orbital lighting.
 
     Identical physics, actions, rewards, and terminations to the force-feedback
     task. What changes is the actor's input: images instead of the simulator's

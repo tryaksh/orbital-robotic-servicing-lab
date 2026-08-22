@@ -75,6 +75,17 @@ class GraspSettlingDifferentialInverseKinematicsAction(DifferentialInverseKinema
 
     cfg: GraspSettlingDifferentialInverseKinematicsActionCfg
 
+    def __init__(self, cfg: GraspSettlingDifferentialInverseKinematicsActionCfg, env) -> None:
+        super().__init__(cfg, env)
+        # An external base rail must carry a fixed arm posture with it. A zero
+        # Cartesian delta instead makes differential IK counter-move the six arm
+        # joints to preserve the old world-frame tool pose. These are actuator
+        # targets, never joint-state writes.
+        self._joint_hold_enabled = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+        self._joint_hold_targets = torch.zeros(
+            (self.num_envs, len(self._joint_ids)), dtype=torch.float32, device=self.device
+        )
+
     def process_actions(self, actions: torch.Tensor) -> None:
         if self.cfg.settling_time_s <= 0.0:
             super().process_actions(actions)
@@ -83,6 +94,44 @@ class GraspSettlingDifferentialInverseKinematicsAction(DifferentialInverseKinema
         settling = self._env.episode_length_buf.to(torch.float32) * float(self._env.step_dt) < self.cfg.settling_time_s
         safe_actions[settling] = 0.0
         super().process_actions(safe_actions)
+
+    def set_joint_hold_mask(self, enabled: torch.Tensor) -> None:
+        """Capture and hold arm joints for newly enabled rail environments."""
+
+        if enabled.shape != self._joint_hold_enabled.shape:
+            raise ValueError(
+                f"Joint-hold mask must have shape {tuple(self._joint_hold_enabled.shape)}, got {tuple(enabled.shape)}."
+            )
+        newly_enabled = enabled & ~self._joint_hold_enabled
+        if bool(newly_enabled.any()):
+            self._joint_hold_targets[newly_enabled] = self._asset.data.joint_pos[newly_enabled][:, self._joint_ids]
+        self._joint_hold_enabled.copy_(enabled)
+
+    def set_joint_target_override(self, env_ids: torch.Tensor, joint_targets: torch.Tensor) -> None:
+        """Command explicit actuator targets for a measured joint-path replay."""
+
+        if joint_targets.shape != (env_ids.numel(), len(self._joint_ids)):
+            raise ValueError(
+                "Joint-target override shape mismatch: expected "
+                f"{(env_ids.numel(), len(self._joint_ids))}, got {tuple(joint_targets.shape)}."
+            )
+        self._joint_hold_enabled[env_ids] = True
+        self._joint_hold_targets[env_ids] = joint_targets
+
+    def apply_actions(self) -> None:
+        super().apply_actions()
+        if bool(self._joint_hold_enabled.any()):
+            env_ids = torch.nonzero(self._joint_hold_enabled, as_tuple=False).squeeze(-1)
+            self._asset.set_joint_position_target(
+                self._joint_hold_targets[env_ids],
+                joint_ids=self._joint_ids,
+                env_ids=env_ids,
+            )
+
+    def reset(self, env_ids: Sequence[int] | None = None) -> None:
+        super().reset(env_ids)
+        ids = slice(None) if env_ids is None else env_ids
+        self._joint_hold_enabled[ids] = False
 
 
 @configclass

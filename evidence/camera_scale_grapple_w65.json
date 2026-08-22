@@ -1,0 +1,61 @@
+{
+  "status": "passed",
+  "title": "Servicing camera scale and framing, measured by rendering",
+  "evidence_type": "simulation_sensor_characterization",
+  "protocol": {
+    "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Collect-v0",
+    "resolution_px": 256,
+    "focal_length_mm": 45.0,
+    "horizontal_aperture_mm": 22.0,
+    "horizontal_field_of_view_deg": 27.472536611245143,
+    "camera_to_slot_mouth_m": 1.2678327560424805
+  },
+  "resolution": {
+    "metres_per_pixel": 0.0024212083882755703,
+    "millimetres_per_pixel": 2.4212083882755704,
+    "required_lateral_resolution_m": 0.004,
+    "pixels_per_required_displacement": 1.652067628449311
+  },
+  "framing": {
+    "pixel_coordinates": {
+      "first_slot_mouth": [
+        110.26520332297169,
+        104.37541753883436
+      ],
+      "second_slot_mouth": [
+        193.73657513061792,
+        121.72079552304737
+      ],
+      "transfer_clear_midpoint": [
+        71.7284318233445,
+        162.24932211542455
+      ],
+      "module_centre": [
+        162.55297140172837,
+        76.12591497157703
+      ]
+    },
+    "in_frame": {
+      "first_slot_mouth": true,
+      "second_slot_mouth": true,
+      "transfer_clear_midpoint": true,
+      "module_centre": true
+    }
+  },
+  "signal": {
+    "mean": 62.25697326660156,
+    "std": 84.98583221435547,
+    "unique_intensity_levels": 765
+  },
+  "frame": "artifacts\\perception\\overview_w65.png",
+  "gate": {
+    "applies": true,
+    "minimum_pixels_per_displacement": 1.0,
+    "passed": true,
+    "rationale": "A displacement smaller than a pixel is absent signal, not a hard regression problem. Framing is gated as well because a correctly scaled camera aimed at the wrong place resolves nothing, and that cannot be caught by arithmetic."
+  },
+  "scope_and_limitations": [
+    "Simulation only. This characterises the authored sensor, not a calibrated real camera.",
+    "One frame at one reset. It says the interface is framed and resolvable, not that a policy can learn from it."
+  ]
+}

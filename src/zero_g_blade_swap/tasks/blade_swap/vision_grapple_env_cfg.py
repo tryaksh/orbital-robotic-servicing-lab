@@ -1,32 +1,15 @@
-"""The servicing workflow seen through a camera instead of through the simulator.
+"""Camera collection and leak-free visual workflow configurations.
 
-Every policy in this repository so far reads the module's pose straight out of
-the simulator. That is the project's central weakness and it has been recorded
-as one since 2026-08-10: with a rigid known object and perfect knowledge, this
-is motion planning, and reinforcement learning is not earning its keep. The
-pose-belief experiment closed half the gap by making the *slot* physically move
-by an amount no observation reveals, and certified 99.87% under it. What was
-never closed is where the estimate comes from.
+The deployed profile replaces every policy channel derived from the live module
+state: grip error, extraction remaining, insertion-goal error, and module
+linear/angular velocity. All channels share one cached pose estimate per control
+step. Robot joint state, tool forward kinematics, gripper sensing, commands, and
+previous action remain available because equivalent signals exist on hardware.
 
-This profile closes it. The scene is the head-on grapple-pin workcell, unchanged
-in every physical respect — same pin, same contacts, same 69 N interface — with
-a camera added and the rack's albedo and the orbital sun randomized per episode.
-``mdp.PerceivedGraspError`` replaces the ground-truth grip vector with one
-regressed from that camera, so the capture and insertion policies run on an
-estimate they have to live with rather than on the truth.
-
-Three things make the comparison honest rather than decorative:
-
-* **The policies are unchanged.** The same certified checkpoints run in both
-  arms. Nothing is retrained to flatter the camera, so the difference between
-  the two numbers is the perception and nothing else.
-* **The label is the quantity the policy actually consumes**, not a proxy. The
-  regressor predicts the module pose; the grip vector is then computed from it
-  and the arm's own forward kinematics, which is what a real system would do and
-  is legitimately known.
-* **The randomization is on during collection and evaluation both.** A pose head
-  trained under one lighting condition and tested under the same one measures
-  nothing.
+The collection profile deliberately retains exact labels beside images for
+offline supervised training. It is not a deployment profile. The workflow
+profile is audited during configuration and fails closed if one of the exact
+module-state observation functions is wired back into grasp, extract, or insert.
 """
 
 from __future__ import annotations
@@ -39,13 +22,13 @@ from isaaclab.sensors import TiledCameraCfg
 from isaaclab.utils import configclass
 
 from . import mdp
-from .grapple_pin_env_cfg import (
-    GrappleSkillObsCfg,
-)
+from .grapple_pin_env_cfg import GrappleSkillObsCfg
 from .scene_cfg import ZeroGGrapplePinSceneCfg, make_tiled_camera_cfg
 from .vision_insertion_env_cfg import VisualRandomizationCfg
 from .workflow_demo_env_cfg import (
     WorkflowCurriculumCfg,
+    WorkflowExtractObsCfg,
+    WorkflowInsertObsCfg,
     WorkflowObservationsCfg,
     WorkflowRewardsCfg,
     WorkflowTerminationsCfg,
@@ -62,13 +45,15 @@ class VisionGrappleSceneCfg(ZeroGGrapplePinSceneCfg):
 
 @configclass
 class GraspPoseLabelObsCfg(ObsGroup):
-    """The regression label: where the module actually is, in the tool's frame.
+    """Privileged regression label: module pose in the environment frame.
 
-    Recorded beside each image by ``scripts/collect_grapple_vision.py``. It is
-    the module's pose in its own environment's frame -- position and axis-angle
-    orientation -- because that is what is genuinely *in* the image. The
-    tool-relative grip vector the policy consumes is computed from this estimate
-    plus the arm's own forward kinematics, which a real robot knows exactly.
+    Recorded beside each image by ``scripts/collect_grapple_vision.py``. The
+    environment-local position avoids encoding the cloned simulation tile. The
+    axis-angle orientation and position are both visible in the image; the
+    tool-relative policy values are derived later with forward kinematics.
+
+    This group exists only on the collection environment and is forbidden from
+    all three deployed policy groups.
     """
 
     module_pose = ObsTerm(func=mdp.module_pose_label)
@@ -80,7 +65,7 @@ class GraspPoseLabelObsCfg(ObsGroup):
 
 @configclass
 class GrappleRgbObsCfg(ObsGroup):
-    """What the servicing camera sees, with sensor noise."""
+    """Normalized camera RGB with the configured sensor-noise model."""
 
     rgb = ObsTerm(
         func=mdp.camera_rgb_with_radiation_noise,
@@ -94,8 +79,12 @@ class GrappleRgbObsCfg(ObsGroup):
 
 @configclass
 class VisionGrappleCollectObsCfg(WorkflowObservationsCfg):
-    """Everything the collector needs in one step: images, labels, and the
-    three policies' own inputs so the workflow can be driven while recording."""
+    """Images, privileged labels, and state-policy inputs for data collection.
+
+    This is intentionally not a deployable observation configuration. Exact
+    state drives the existing policies while paired image/label examples are
+    written for offline training.
+    """
 
     rgb: GrappleRgbObsCfg = GrappleRgbObsCfg()
     pose_label: GraspPoseLabelObsCfg = GraspPoseLabelObsCfg()
@@ -103,11 +92,10 @@ class VisionGrappleCollectObsCfg(WorkflowObservationsCfg):
 
 @configclass
 class VisionGrappleEventsCfg(VisualRandomizationCfg):
-    """Randomized optics *and* an unknown module pose.
+    """Randomized optics and an episode-random module displacement.
 
-    The second is what makes this a perception problem rather than a lighting
-    demo: without it the module sits at one of three fixed stage poses and a
-    head could memorise them.
+    Moving the module prevents a pose head from memorizing the finite set of
+    nominal workflow stage poses.
     """
 
     jitter_module = EventTerm(func=mdp.jitter_module_pose, mode="reset")
@@ -115,7 +103,7 @@ class VisionGrappleEventsCfg(VisualRandomizationCfg):
 
 @configclass
 class ZeroGBladeGrappleVisionCollectEnvCfg(ZeroGBladeGrapplePinWorkflowEnvCfg):
-    """Run the certified workflow while recording what a camera would have seen."""
+    """Run the state-driven workflow while recording camera supervision."""
 
     scene: VisionGrappleSceneCfg = VisionGrappleSceneCfg(
         num_envs=64,
@@ -137,9 +125,8 @@ class ZeroGBladeGrappleVisionCollectEnvCfg(ZeroGBladeGrapplePinWorkflowEnvCfg):
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)
         # Every ancestor rebuilds the event set from its own class, which drops
-        # the two Replicator terms. Copy the fully configured result onto a
-        # subclass that declares them rather than replaying each ancestor's
-        # decisions and drifting out of sync with them.
+        # the Replicator terms. Copy its configured result onto the visual event
+        # subclass rather than duplicating every ancestor's decisions here.
         visual = VisionGrappleEventsCfg()
         for name, value in self.events.__dict__.items():
             setattr(visual, name, value)
@@ -148,36 +135,85 @@ class ZeroGBladeGrappleVisionCollectEnvCfg(ZeroGBladeGrapplePinWorkflowEnvCfg):
 
 @configclass
 class PerceivedGrappleSkillObsCfg(GrappleSkillObsCfg):
-    """The skills' own observation, with the grip vector coming from the camera.
+    """Grasp-policy layout with every module-state channel camera-derived.
 
-    One term differs from what the policies trained on, and it is deliberately
-    the only one: ``grip_error`` is regressed from the image instead of read
-    from the simulator. Everything else — joint state, tool pose, gripper state,
-    module velocity — is proprioception a real robot genuinely has.
+    Widths remain unchanged: the grip error is six values and filtered module
+    velocity is six values. Joint, tool, and gripper terms remain legitimate
+    proprioceptive signals.
     """
 
     grip_error = ObsTerm(func=mdp.PerceivedGraspError)
+    blade_velocity = ObsTerm(func=mdp.PerceivedModuleVelocity, scale=0.10)
+
+
+@configclass
+class PerceivedWorkflowExtractObsCfg(WorkflowExtractObsCfg):
+    """Extract-policy layout with pose, travel, and velocity from the camera."""
+
+    grip_error = ObsTerm(func=mdp.PerceivedGraspError)
+    blade_velocity = ObsTerm(func=mdp.PerceivedModuleVelocity, scale=0.10)
+    remaining_travel = ObsTerm(func=mdp.PerceivedExtractionRemaining)
+
+
+@configclass
+class PerceivedWorkflowInsertObsCfg(WorkflowInsertObsCfg):
+    """Insert-policy layout with pose, goal error, and velocity from the camera."""
+
+    grip_error = ObsTerm(func=mdp.PerceivedGraspError)
+    blade_velocity = ObsTerm(func=mdp.PerceivedModuleVelocity, scale=0.10)
+    blade_goal_error = ObsTerm(func=mdp.PerceivedInsertionGoalError)
 
 
 @configclass
 class PerceivedWorkflowObsCfg(WorkflowObservationsCfg):
+    """All three policy groups bound to one shared cached module estimator."""
+
     grasp: PerceivedGrappleSkillObsCfg = PerceivedGrappleSkillObsCfg()
+    extract: PerceivedWorkflowExtractObsCfg = PerceivedWorkflowExtractObsCfg()
+    insert: PerceivedWorkflowInsertObsCfg = PerceivedWorkflowInsertObsCfg()
+
+    def __post_init__(self) -> None:
+        # Keep the guard with the deployable group itself so profiles such as
+        # the two-bay workflow inherit the contract without needing to remember
+        # an environment-level hook.
+        mdp.audit_vision_deployment_observations(self)
 
 
 @configclass
 class ZeroGBladeGrappleVisionWorkflowEnvCfg(ZeroGBladeGrappleVisionCollectEnvCfg):
-    """The servicing workflow driven by a camera estimate rather than the truth."""
+    """The full workflow driven by one camera estimate per control step."""
 
     observations: PerceivedWorkflowObsCfg = PerceivedWorkflowObsCfg()
     rewards: WorkflowRewardsCfg = WorkflowRewardsCfg()
     terminations: WorkflowTerminationsCfg = WorkflowTerminationsCfg()
     curriculum: WorkflowCurriculumCfg = WorkflowCurriculumCfg()
 
+    pose_head_checkpoint: str | None = None
+    perception_mode: str = mdp.PERCEPTION_DEPLOYMENT
+    # ``fiducial_pnp`` is the production path: calibrated geometry with a
+    # fail-closed reprojection gate. ``pose_head`` remains available as the
+    # learned-perception research baseline.
+    perception_backend: str = mdp.PERCEPTION_BACKEND_POSE_HEAD
+    perception_velocity_filter_time_constant_s: float = 0.10
+    # Drawing-level prior for the blind control.  It is fixed by the requested
+    # relocation scenario and is not populated from simulator state at reset.
+    perception_blind_occupancy: tuple[float, float] = (1.0, 0.0)
+    # Compatibility with the existing evaluation driver. Only the endpoints are
+    # accepted; intermediate oracle blends fail closed in the estimator.
+    pose_head_oracle_blend: float = 0.0
+    pose_head_blind: bool = False
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        mdp.audit_vision_deployment_observations(self.observations)
+
 
 __all__ = [
     "GraspPoseLabelObsCfg",
     "GrappleRgbObsCfg",
     "PerceivedGrappleSkillObsCfg",
+    "PerceivedWorkflowExtractObsCfg",
+    "PerceivedWorkflowInsertObsCfg",
     "PerceivedWorkflowObsCfg",
     "VisionGrappleCollectObsCfg",
     "VisionGrappleEventsCfg",

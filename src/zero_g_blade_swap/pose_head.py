@@ -15,14 +15,18 @@ supplies exactly. That error was caught by rendering a frame and projecting the
 targets into it before any data was collected, which is the cheapest place to
 catch it.
 
-The network is small on purpose. A 64x64 tile is the throughput budget this
-project measured and kept, and the target is a smooth six-dimensional function
-of one rigid body's pose rather than a semantic problem. Four strided
-convolutions take 64x64 to 4x4.
+The network is small on purpose: the target is a smooth six-dimensional
+function of one rigid body's pose rather than a semantic problem. Four strided
+convolutions are followed by parameter-free adaptive pooling. Architecture v1
+keeps the legacy 4x4 feature grid; v2 preserves an 8x8 grid for the 256x256
+overview instead of averaging away the spatial precision it added.
 """
 
 from __future__ import annotations
 
+import hashlib
+import math
+import secrets
 from pathlib import Path
 
 import torch
@@ -42,9 +46,46 @@ MODULE_POSE_DIM = 6
 #: vector, where a normalised MSE would report it in millimetres.
 SECOND_SLOT_OCCUPANCY_SLOTS = 2
 
+POSE_HEAD_ARCHITECTURE_V1 = 1
+POSE_HEAD_ARCHITECTURE_V2 = 2
+POSE_HEAD_LEGACY_GRID_SIZE = 4
+POSE_HEAD_OVERVIEW_GRID_SIZE = 8
+
+
+def _architecture_version_for_grid(feature_grid_size: int) -> int:
+    versions = {
+        POSE_HEAD_LEGACY_GRID_SIZE: POSE_HEAD_ARCHITECTURE_V1,
+        POSE_HEAD_OVERVIEW_GRID_SIZE: POSE_HEAD_ARCHITECTURE_V2,
+    }
+    try:
+        return versions[int(feature_grid_size)]
+    except KeyError as exc:
+        raise ValueError(
+            f"unsupported pose-head feature grid {feature_grid_size}; expected one of {sorted(versions)}"
+        ) from exc
+
+
+def checkpoint_sha256(path: str | Path) -> str:
+    """Hash a checkpoint for evidence/runtime identity checks."""
+
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def checkpoint_matches_sha256(path: str | Path, recorded_sha256: str) -> bool:
+    """Return whether an evidence digest identifies these exact weights."""
+
+    normalized = recorded_sha256.strip().lower()
+    if len(normalized) != 64 or any(character not in "0123456789abcdef" for character in normalized):
+        return False
+    return secrets.compare_digest(checkpoint_sha256(path), normalized)
+
 
 class ModulePoseHead(nn.Module):
-    """64x64 RGB to the module's six-value pose, and optionally which bay it is in.
+    """RGB to the module's six-value pose, and optionally which bay it is in.
 
     Label normalisation statistics are registered buffers and therefore travel
     inside the checkpoint. A head fed differently at evaluation than at training
@@ -59,8 +100,25 @@ class ModulePoseHead(nn.Module):
     than invent an answer on a head that has no such branch.
     """
 
-    def __init__(self, output_dim: int = MODULE_POSE_DIM, occupancy_slots: int = 0) -> None:
+    def __init__(
+        self,
+        output_dim: int = MODULE_POSE_DIM,
+        occupancy_slots: int = 0,
+        feature_grid_size: int = POSE_HEAD_LEGACY_GRID_SIZE,
+        architecture_version: int | None = None,
+    ) -> None:
         super().__init__()
+        feature_grid_size = int(feature_grid_size)
+        expected_version = _architecture_version_for_grid(feature_grid_size)
+        if architecture_version is None:
+            architecture_version = expected_version
+        if int(architecture_version) != expected_version:
+            raise ValueError(
+                f"pose-head architecture v{architecture_version} cannot use a {feature_grid_size}x"
+                f"{feature_grid_size} feature grid; expected v{expected_version}"
+            )
+        self.register_buffer("_architecture_version", torch.tensor(int(architecture_version), dtype=torch.int64))
+        self.register_buffer("_feature_grid_size", torch.tensor(feature_grid_size, dtype=torch.int64))
         self.features = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=5, stride=2, padding=2),
             nn.ReLU(inplace=True),
@@ -70,10 +128,12 @@ class ModulePoseHead(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
             nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d((feature_grid_size, feature_grid_size)),
         )
+        flattened_features = 128 * feature_grid_size * feature_grid_size
         self.regressor = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(128 * 4 * 4, 256),
+            nn.Linear(flattened_features, 256),
             nn.ReLU(inplace=True),
             nn.Linear(256, output_dim),
         )
@@ -85,7 +145,7 @@ class ModulePoseHead(nn.Module):
         self.occupancy = (
             nn.Sequential(
                 nn.Flatten(),
-                nn.Linear(128 * 4 * 4, 64),
+                nn.Linear(flattened_features, 64),
                 nn.ReLU(inplace=True),
                 nn.Linear(64, self.occupancy_slots),
             )
@@ -94,6 +154,14 @@ class ModulePoseHead(nn.Module):
         )
         self.register_buffer("label_mean", torch.zeros(output_dim))
         self.register_buffer("label_std", torch.ones(output_dim))
+
+    @property
+    def architecture_version(self) -> int:
+        return int(self._architecture_version)
+
+    @property
+    def feature_grid_size(self) -> int:
+        return int(self._feature_grid_size)
 
     def forward(self, image: torch.Tensor) -> torch.Tensor:
         """``image`` is (N, H, W, 3) in [0, 1]; returns (N, 6) in metres and radians."""
@@ -122,17 +190,48 @@ class ModulePoseHead(nn.Module):
 def load_pose_head(checkpoint: str | Path, device: torch.device | str) -> ModulePoseHead:
     """Load a trained head, weights and label statistics together.
 
-    Both output widths are recovered from the state dict rather than passed in,
-    for the same reason the label statistics travel inside the checkpoint: the
-    caller cannot then describe a head differently than it was trained.
+    Output widths and feature-grid architecture are recovered from the state
+    dict rather than passed in, for the same reason the label statistics travel
+    inside the checkpoint: the caller cannot then describe a head differently
+    than it was trained. Metadata-free legacy weights are inferred as v1 from
+    their regressor width.
     """
 
     state = torch.load(Path(checkpoint), map_location=device, weights_only=True)
+    flattened_features = int(state["regressor.1.weight"].shape[1])
+    inferred_grid = math.isqrt(flattened_features // 128)
+    if 128 * inferred_grid * inferred_grid != flattened_features:
+        raise ValueError(
+            f"checkpoint regressor width {flattened_features} is not a square 128-channel feature grid"
+        )
+    recorded_grid = state.get("_feature_grid_size")
+    feature_grid_size = inferred_grid if recorded_grid is None else int(recorded_grid)
+    if feature_grid_size != inferred_grid:
+        raise ValueError(
+            f"checkpoint records feature grid {feature_grid_size}, but regressor weights require {inferred_grid}"
+        )
+    inferred_version = _architecture_version_for_grid(feature_grid_size)
+    recorded_version = state.get("_architecture_version")
+    architecture_version = inferred_version if recorded_version is None else int(recorded_version)
+    if architecture_version != inferred_version:
+        raise ValueError(
+            f"checkpoint records architecture v{architecture_version}, but grid {feature_grid_size} "
+            f"requires v{inferred_version}"
+        )
     occupancy_weight = state.get("occupancy.3.weight")
     head = ModulePoseHead(
         output_dim=int(state["label_mean"].numel()),
         occupancy_slots=0 if occupancy_weight is None else int(occupancy_weight.shape[0]),
+        feature_grid_size=feature_grid_size,
+        architecture_version=architecture_version,
     )
+    # Checkpoints created before architecture metadata existed are v1 by
+    # construction. Add inferred buffers only in memory so strict loading still
+    # validates every learned tensor without rewriting legacy files.
+    state.setdefault("_feature_grid_size", head._feature_grid_size.clone())
+    state.setdefault("_architecture_version", head._architecture_version.clone())
+    if occupancy_weight is not None and int(state["occupancy.1.weight"].shape[1]) != flattened_features:
+        raise ValueError("checkpoint occupancy and pose branches use different feature-grid widths")
     head.load_state_dict(state)
     head.to(device).eval()
     for parameter in head.parameters():
@@ -142,7 +241,13 @@ def load_pose_head(checkpoint: str | Path, device: torch.device | str) -> Module
 
 __all__ = [
     "MODULE_POSE_DIM",
+    "POSE_HEAD_ARCHITECTURE_V1",
+    "POSE_HEAD_ARCHITECTURE_V2",
+    "POSE_HEAD_LEGACY_GRID_SIZE",
+    "POSE_HEAD_OVERVIEW_GRID_SIZE",
     "SECOND_SLOT_OCCUPANCY_SLOTS",
     "ModulePoseHead",
+    "checkpoint_matches_sha256",
+    "checkpoint_sha256",
     "load_pose_head",
 ]

@@ -57,6 +57,16 @@ INSERTION_SUCCESS_CONDITION_NAMES = (
     "hold_duration",
 )
 
+#: The geometric and dynamic envelope used by every insertion success
+#: predicate.  The workflow hand-off imports these values as well: a staged
+#: module must not be handed to a policy in a state that the policy's own
+#: success contract would already reject for alignment or motion.
+INSERTION_AXIAL_DEPTH_TOLERANCE_M = 0.012
+INSERTION_LATERAL_TOLERANCE_M = 0.0025
+INSERTION_ORIENTATION_TOLERANCE_RAD = 0.0523599
+INSERTION_LINEAR_VELOCITY_LIMIT_MPS = 0.030
+INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS = 0.080
+
 
 def attached_blade_pose_world(env) -> tuple[torch.Tensor, torch.Tensor]:
     """Return the dynamic blade pose constrained to the physical tool frame."""
@@ -562,11 +572,15 @@ def insertion_success_conditions(
     grasp_position, grasp_orientation = secured_blade_error_metrics(env)
     velocity = attached_blade_velocity(env)
     return {
-        "axial_depth": axial <= 0.012,
-        "lateral_alignment": lateral <= 0.0025,
-        "orientation": orientation <= 0.0523599,
-        "linear_velocity": torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= 0.030,
-        "angular_velocity": torch.linalg.vector_norm(velocity[:, 3:], dim=-1) <= 0.080,
+        "axial_depth": axial <= INSERTION_AXIAL_DEPTH_TOLERANCE_M,
+        "lateral_alignment": lateral <= INSERTION_LATERAL_TOLERANCE_M,
+        "orientation": orientation <= INSERTION_ORIENTATION_TOLERANCE_RAD,
+        "linear_velocity": (
+            torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= INSERTION_LINEAR_VELOCITY_LIMIT_MPS
+        ),
+        "angular_velocity": (
+            torch.linalg.vector_norm(velocity[:, 3:], dim=-1) <= INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS
+        ),
         "grasp_position": grasp_position <= grasp_position_tolerance,
         "grasp_orientation": grasp_orientation <= grasp_orientation_tolerance,
     }
@@ -956,6 +970,11 @@ class InsertionSuccessRateCurriculum(ManagerTermBase):
 
 __all__ = [
     "BladeContactWrenchObservation",
+    "INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS",
+    "INSERTION_AXIAL_DEPTH_TOLERANCE_M",
+    "INSERTION_LATERAL_TOLERANCE_M",
+    "INSERTION_LINEAR_VELOCITY_LIMIT_MPS",
+    "INSERTION_ORIENTATION_TOLERANCE_RAD",
     "InsertionGoalCommand",
     "InsertionGoalCommandCfg",
     "InsertionSuccessRateCurriculum",

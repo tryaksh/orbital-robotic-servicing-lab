@@ -26,7 +26,6 @@ from __future__ import annotations
 
 from isaaclab.utils import configclass
 
-from .contact_insertion_env_cfg import ZeroGBladeContactInsertionEnvCfg
 from .rigid_grasp_insertion_env_cfg import ZeroGBladeRigidGraspInsertionEnvCfg
 from .robust_insertion_env_cfg import configure_insertion_play_presentation
 from .scene_cfg import ZeroGGuidedSlotSceneCfg

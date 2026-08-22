@@ -1,7 +1,7 @@
 """Run capture, extraction, transit, and re-insertion in one episode.
 
-Three separately trained checkpoints drive one continuous episode on one module.
-The driver switches between them on **measured conditions**, never on a timer:
+Separately trained capture and extraction checkpoints begin one continuous
+episode on one module. The driver switches on **measured conditions**, never on a timer:
 the capture hands over when the drive torque says the pads are loaded on the pin,
 the pull hands over when the module's rear face is clear of the rack mouth, and
 the transit hands over when the module reaches the pose the insert policy was
@@ -10,19 +10,15 @@ trained from.
 What is learned and what is not, stated plainly, because a demonstration that
 blurs this is worthless:
 
-* capture, extraction and insertion are trained policies, run deterministically
-  from their checkpoints;
-* the transit between "clear of the rack" and "lined up to go back in" is
-  **scripted**, because there is no contact in it and nothing for a policy to
-  learn. It retraces the path the extraction actually took, in reverse. A blind
-  axial command does not work and the reason is worth recording: the extracted
-  pose leaves the wrist about 200 mm in front of the robot's own base, folded,
-  and driving straight back out from there takes the damped-least-squares IK
-  through a near-singularity. Measured, it swings the shoulder 74 degrees, drives
-  the elbow into its limit, and levers the module out of the pads. Retracing a
-  path the arm has already flown is feasible by construction;
-* the module is held by real pad-against-pin contact throughout. There is no
-  fixed joint and no software fixture in this scene.
+* capture and extraction are trained policies, run deterministically from their
+  checkpoints;
+* once the module is clear, a physical six-axis service shuttle takes the load,
+  the robot opens and retreats, and guarded closed-loop motion retreats, crosses
+  bays, aligns, and inserts.  The shuttle writes only force-drive targets; it
+  never writes a robot or payload pose;
+* the receiving bay is deliberately designed for robotic service: straight
+  relieved rails and a vertical lead-in replace a passive flare/floor geometry
+  that stopped a micrometre-aligned module at the mouth.
 
 The policies are loaded straight from their checkpoints rather than through
 RL-Games, because three players in one process would each need their own vector
@@ -46,6 +42,7 @@ import argparse
 import os
 import hashlib
 import json
+import math
 import traceback
 from pathlib import Path
 
@@ -55,6 +52,15 @@ from isaaclab.app import AppLauncher
 assert hasattr(jinja2, "Environment"), "The Jinja2 installation is incomplete."
 
 TASK = "Isaac-ZeroG-Blade-GrapplePin-Workflow-v0"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+WORKFLOW_RUNTIME_SOURCES = (
+    Path("scripts/run_workflow_demo.py"),
+    Path("src/zero_g_blade_swap/fiducial.py"),
+    Path("src/zero_g_blade_swap/tasks/blade_swap/assets.py"),
+    Path("src/zero_g_blade_swap/tasks/blade_swap/mdp/perception.py"),
+    Path("src/zero_g_blade_swap/tasks/blade_swap/scene_cfg.py"),
+    Path("src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py"),
+)
 #: Control steps between recorded transit waypoints. Four is about 30 mm of pull
 #: at the extraction scale, close enough that the return follows the same arc.
 TRANSIT_WAYPOINT_STRIDE = 4
@@ -147,7 +153,36 @@ RELOCATE_TRANSIT_HOLD = bool(int(os.environ.get("RELOCATE_TRANSIT_HOLD", "0")))
 #: Fraction of the rotation channels the relocation transit may use to hold the
 #: module's attitude, leaving the rest of the differential IK's authority for
 #: actually crossing the rack. Overridable so the trade can be swept.
-TRANSIT_ATTITUDE_AUTHORITY = float(os.environ.get("TRANSIT_ATTITUDE_AUTHORITY", "0.25"))
+TRANSIT_ALIGN_ATTITUDE_AUTHORITY = float(os.environ.get("TRANSIT_ALIGN_ATTITUDE_AUTHORITY", "0.25"))
+TRANSIT_HOLD_ATTITUDE_AUTHORITY = float(os.environ.get("TRANSIT_HOLD_ATTITUDE_AUTHORITY", "1.0"))
+RELOCATE_FINAL_LEG_POSITION_AUTHORITY = float(os.environ.get("RELOCATE_FINAL_LEG_POSITION_AUTHORITY", "0.33"))
+BASE_RAIL_TARGET_STEP_M = 0.0020
+BASE_STAGE_OUTER_LOOP_GAIN = 0.08
+BASE_STAGE_ROTATION_STEP_DEG = 0.03
+# The D6 drive is a position servo, so its target must move much slower than a
+# velocity command.  A 0.20 gain advanced the set-point by 7.5 degrees/second,
+# outran the physical joint, and wound all three axes into their stops.  This
+# bounded outer-loop gain lets the spring-damped stage settle as it corrects.
+BASE_STAGE_ROTATION_GAIN = 0.02
+BASE_STAGE_ROTATION_LIMIT_DEG = 18.0
+BASE_STAGE_MAX_TRANSLATION_LEAD_M = 0.100
+BASE_STAGE_GUARDED_AXIAL_STEP_M = 0.0005
+BASE_STAGE_MIN_TARGET_M = (-0.200, -0.600, -0.400)
+BASE_STAGE_MAX_TARGET_M = (0.800, 0.200, 0.400)
+BASE_RAIL_MIN_TARGET_M = -0.340
+BASE_RAIL_MAX_TARGET_M = 0.100
+BASE_STAGE_ARM_STIFFNESS_MULTIPLIER = 64.0
+STAGE_ALIGNMENT_CAPTURE_RAD = 0.065
+# The guarded shuttle must not treat sub-frame RGB-D estimator noise as a
+# physical loss of alignment and retract hundreds of millimetres. These bounds
+# remain inside the rail lead-in envelope and above the certified RGB-D p95
+# errors (1.68 mm and 0.0121 rad); the final seating predicate is unchanged.
+FIDUCIAL_GUARDED_LATERAL_TOLERANCE_M = 0.002
+FIDUCIAL_GUARDED_ORIENTATION_TOLERANCE_RAD = 0.015
+#: Terminal tolerance for the time-parameterized reverse joint trajectory.
+#: Intermediate samples are actuator set-points, not stop-and-settle poses;
+#: requiring convergence at every sample deadlocked on finite drive error.
+JOINT_REPLAY_CONVERGENCE_RAD = 0.040
 
 
 #: Phases, as integers, because the driver runs them per environment in parallel.
@@ -193,6 +228,15 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Trained module-pose head. Required by the vision profile unless --oracle is given.",
+    )
+    parser.add_argument(
+        "--perception_backend",
+        choices=("pose_head", "fiducial_pnp"),
+        default="pose_head",
+        help=(
+            "Camera estimator used by the vision profile. fiducial_pnp uses only RGB, calibrated "
+            "intrinsics/extrinsics, and the module's four visual datum patches; it needs no checkpoint."
+        ),
     )
     parser.add_argument(
         "--stable_lighting",
@@ -274,9 +318,9 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Engage the modelled capture latch the instant the module clears the rails, instead of leaving "
-            "it off. The latch was refuted engaged on capture, where it jams the module in the rails; this "
-            "is the untested half, and it is the phase where a parallel-jaw grip has nothing opposing a "
-            "moment about its closing axis. Off by default."
+            "it off. The latch was refuted engaged on capture, where it jams the module in the rails; "
+            "release-time compliant-latch probes remain experimental and have not completed relocation. "
+            "Off by default."
         ),
     )
     parser.add_argument(
@@ -284,6 +328,66 @@ def _parser() -> argparse.ArgumentParser:
         type=float,
         default=5.0,
         help="Rating of the latch, in newton-metres. Only used with --latch_on_release.",
+    )
+    parser.add_argument(
+        "--latch_rated_force_n",
+        type=float,
+        default=250.0,
+        help=(
+            "Translational rating of the form-locking latch. The earlier torque-only experiment is "
+            "reproduced with 0 N; a positive value models the axial/lateral load path a rigidizing "
+            "capture mechanism must provide after rail release. Only used with --latch_on_release."
+        ),
+    )
+    parser.add_argument(
+        "--latch_joint_mode",
+        choices=("compliant", "fixed"),
+        default="compliant",
+        help=(
+            "Use the experimental one-sided compliant wrench or a two-body, break-rated PhysX "
+            "fixed joint after a learned physical capture. Only used with --latch_on_release."
+        ),
+    )
+    parser.add_argument(
+        "--latch_position_stiffness_n_per_m",
+        type=float,
+        default=2_500.0,
+        help="Translational stiffness of the release-time latch in N/m.",
+    )
+    parser.add_argument(
+        "--latch_position_damping_ratio",
+        type=float,
+        default=0.9,
+        help="Translational damping ratio of the release-time latch.",
+    )
+    parser.add_argument(
+        "--latch_rotation_stiffness_nm_per_rad",
+        type=float,
+        default=10.0,
+        help="Rotational stiffness of the release-time latch in N-m/rad.",
+    )
+    parser.add_argument(
+        "--latch_rotation_damping_ratio",
+        type=float,
+        default=0.9,
+        help="Rotational damping ratio of the release-time latch.",
+    )
+    parser.add_argument(
+        "--base_rail_on_relocation",
+        action="store_true",
+        help=(
+            "Command the compliant D6 mount's lateral drive during the collision-clear relocation crossing, "
+            "using it as a physical seventh-axis rail."
+        ),
+    )
+    parser.add_argument(
+        "--base_rail_arm_mode",
+        choices=("ik_attitude", "joint_hold"),
+        default="ik_attitude",
+        help=(
+            "ik_attitude lets the arm align payload attitude while the rail owns lateral motion; "
+            "joint_hold is the measured diagnostic control that carries a fixed arm posture."
+        ),
     )
     parser.add_argument(
         "--transit_slowdown",
@@ -323,9 +427,12 @@ simulation_app = app_launcher.app
 
 import gymnasium as gym
 import numpy as np
+import omni.usd
 import torch
 
+from isaaclab.utils.math import axis_angle_from_quat, quat_apply, quat_inv, quat_mul
 from isaaclab_tasks.utils import parse_env_cfg
+from pxr import Gf, UsdPhysics
 
 import zero_g_blade_swap.tasks.blade_swap  # noqa: F401
 from zero_g_blade_swap.evaluation import (
@@ -348,10 +455,17 @@ from zero_g_blade_swap.tasks.blade_swap.mdp.grapple import (
     grapple_grip_error_metrics,
     grapple_insertion_conditions,
     grapple_insertion_success_mask,
+    grapple_latch_diagnostics,
+    grapple_latched,
     grip_drive_torque,
     grip_finger_angle,
 )
 from zero_g_blade_swap.tasks.blade_swap.mdp.insertion import (
+    INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS,
+    INSERTION_AXIAL_DEPTH_TOLERANCE_M,
+    INSERTION_LATERAL_TOLERANCE_M,
+    INSERTION_LINEAR_VELOCITY_LIMIT_MPS,
+    INSERTION_ORIENTATION_TOLERANCE_RAD,
     attached_blade_pose_world,
     attached_blade_velocity,
     insertion_error_metrics,
@@ -368,13 +482,14 @@ from zero_g_blade_swap.tasks.blade_swap.workflow_demo_env_cfg import (
     INSERT_BUDGET_S,
     SEAT_STEPS,
     TRANSIT_TARGET_BLADE_X,
+    TRANSIT_TARGET_BLADE_POSE,
 )
 from zero_g_blade_swap.checkpoint_policy import CheckpointPolicy
 from zero_g_blade_swap.grapple_geometry import (
     EXTRACTED_BLADE_CENTRE_X,
     TRANSIT_CLEAR_BLADE_CENTRE_X,
 )
-from zero_g_blade_swap.tasks.blade_swap.assets import SECOND_SLOT_CENTER_Y
+from zero_g_blade_swap.tasks.blade_swap.assets import SECOND_SLOT_CENTER_Y, SECOND_SLOT_INSERTED_POS
 
 #: Held still after the workflow's own predicate fires, before the outcome is
 #: judged. A success that evaporates in two thirds of a second was not one.
@@ -385,6 +500,24 @@ SETTLE_STEPS = round(WORKFLOW_SETTLE_S * 30.0)
 #: the skill module, which uses the same constant as the capture task's own
 #: success tolerance, so the two cannot disagree about what "captured" means.
 HANDOVER_GRIP_M = WORKFLOW_HANDOVER_GRIP_M
+#: The two-bay live workflow is allowed to leave preflight only when the camera
+#: says the requested source bay is occupied and destination bay is clear.  The
+#: head's sigmoid values are decision scores rather than calibrated confidence,
+#: so this threshold is reported plainly and no uncertainty claim is made.
+OCCUPANCY_PLAN_THRESHOLD = 0.5
+
+#: Fail-closed relocation-to-insert contract.  Position and attitude are the
+#: insert task's full-distance reset displaced to bay 1; tolerances and motion
+#: limits are the insert success envelope itself.  The receiving policy was
+#: never trained on an arbitrary point after the module crossed the rack
+#: midpoint, so that weaker condition cannot authorize a hand-off.
+RELOCATION_INSERT_STAGING_POS = (
+    TRANSIT_TARGET_BLADE_POSE[0],
+    SECOND_SLOT_CENTER_Y,
+    TRANSIT_TARGET_BLADE_POSE[2],
+)
+RELOCATION_INSERT_STAGING_ROT = TRANSIT_TARGET_BLADE_POSE[3:7]
+INSERT_HANDOFF_POSITION_TOLERANCE_M = INSERTION_LATERAL_TOLERANCE_M
 
 #: Seconds each phase gets, read from the task each policy was certified on so
 #: the two can never drift apart. This is the reconciliation between per-skill
@@ -444,6 +577,13 @@ HANDOFF_TRACE_FIELDS = (
     "grip_attitude_rad",
     "finger_angle_rad",
     "drive_torque_nm",
+    "latch_engaged",
+    "latch_relative_position_error_m",
+    "latch_relative_orientation_error_rad",
+    "latch_applied_force_n",
+    "latch_applied_torque_nm",
+    "latch_force_saturated",
+    "latch_torque_saturated",
     "blade_x_m",
     "blade_y_m",
     "blade_z_m",
@@ -542,12 +682,24 @@ class WorkflowDriver:
     """
 
     def __init__(
-        self, task, policies, workflow: str, transit_slowdown: int, max_steps: int, tracing: bool = False
+        self,
+        task,
+        policies,
+        workflow: str,
+        transit_slowdown: int,
+        max_steps: int,
+        tracing: bool = False,
+        release_latch_required: bool = False,
+        base_rail_enabled: bool = False,
+        base_rail_arm_mode: str = "ik_attitude",
     ) -> None:
         self.task = task
         self.policies = policies
         self.workflow = workflow
         self.transit_slowdown = max(1, transit_slowdown)
+        self.release_latch_required = release_latch_required
+        self.base_rail_enabled = base_rail_enabled
+        self.base_rail_joint_hold = base_rail_arm_mode == "joint_hold"
         device = task.device
         count = task.num_envs
         self.phase = torch.full((count,), CAPTURE, dtype=torch.long, device=device)
@@ -558,8 +710,7 @@ class WorkflowDriver:
         # deadline there could only ever fire on an off-by-one, and the episode
         # length still bounds them.
         budgets = [
-            float("inf") if index in (SEAT, TRANSIT, DONE) else budget
-            for index, budget in enumerate(PHASE_BUDGET_S)
+            float("inf") if index in (SEAT, TRANSIT, DONE) else budget for index, budget in enumerate(PHASE_BUDGET_S)
         ]
         self.phase_deadline = torch.tensor(
             [float("inf") if budget == float("inf") else round(budget / float(task.step_dt)) for budget in budgets],
@@ -588,6 +739,30 @@ class WorkflowDriver:
         # them backwards. Every one of them was reachable a moment ago.
         self.max_waypoints = max(1, max_steps // TRANSIT_WAYPOINT_STRIDE + 2)
         self.waypoints = torch.zeros((self.max_waypoints, count, 3), device=device)
+        self.extraction_joint_waypoints = torch.zeros((self.max_waypoints, count, 6), device=device)
+        self.extraction_blade_pose_waypoints = torch.zeros((self.max_waypoints, count, 7), device=device)
+        self.relocation_staging_pos = torch.tensor(RELOCATION_INSERT_STAGING_POS, device=device)
+        self.relocation_staging_rot = torch.tensor(RELOCATION_INSERT_STAGING_ROT, device=device)
+        self.relocation_hold_tool_rot = torch.zeros((count, 4), device=device)
+        self.relocation_hold_tool_rot[:, 0] = 1.0
+        self.relocation_blade_relative_to_tool = torch.zeros((count, 3), device=device)
+        self.relocation_blade_relative_rot_to_tool = torch.zeros((count, 4), device=device)
+        self.relocation_blade_relative_rot_to_tool[:, 0] = 1.0
+        self.relocation_desired_tool_rot = torch.zeros((count, 4), device=device)
+        self.relocation_desired_tool_rot[:, 0] = 1.0
+        self.relocation_alignment_tool_pos = torch.zeros((count, 3), device=device)
+        self.relocation_final_tool_hold = torch.zeros((count, 3), device=device)
+        self.relocation_final_tool_aligned = torch.zeros((count, 3), device=device)
+        self.relocation_aligning = torch.zeros(count, dtype=torch.bool, device=device)
+        self.relocation_aligned = torch.zeros(count, dtype=torch.bool, device=device)
+        self.relocation_stage_retreat_done = torch.zeros(count, dtype=torch.bool, device=device)
+        self.relocation_stage_lateral_done = torch.zeros(count, dtype=torch.bool, device=device)
+        self.relocation_stage_attitude_done = torch.zeros(count, dtype=torch.bool, device=device)
+        self.relocation_stage_translated = torch.zeros(count, dtype=torch.bool, device=device)
+        self.relocation_joint_replaying = torch.zeros(count, dtype=torch.bool, device=device)
+        self.relocation_joint_replay_index = torch.zeros(count, dtype=torch.long, device=device)
+        self.relocation_joint_replay_stop = torch.zeros(count, dtype=torch.long, device=device)
+        self.relocation_joint_replay_steps = torch.zeros(count, dtype=torch.long, device=device)
         #: Which axis each planned leg travels along, for the relocation's
         #: follower. Zero for the replayed transit, which is sampled along a
         #: flown path rather than laid out, and does not use it.
@@ -598,6 +773,47 @@ class WorkflowDriver:
         self.perceived_error_sum = torch.zeros(count, dtype=torch.float64, device=device)
         self.perceived_error_steps = torch.zeros(count, dtype=torch.float64, device=device)
         self.perceived_error_max = torch.zeros(count, dtype=torch.float64, device=device)
+        # Initial visual rack-state decision.  A relocation request is fixed as
+        # bay 0 -> bay 1 by this task profile; the learned occupancy branch must
+        # confirm that precondition before manipulation continues.
+        self.plan_checked = torch.zeros(count, dtype=torch.bool, device=device)
+        self.plan_passed = torch.zeros(count, dtype=torch.bool, device=device)
+        self.initial_occupancy_scores = torch.full((count, 2), float("nan"), device=device)
+        # Run-level latch evidence deliberately survives environment resets. A
+        # single diagnostic often reaches the task timeout, whose auto-reset
+        # clears the event term before the JSON report is formatted; without
+        # this accumulator the report would say "never engaged" precisely when
+        # the terminal run is the one we need to inspect.
+        self.latch_ever_engaged = torch.zeros(count, dtype=torch.bool, device=device)
+        self.latch_first_engagement_episode_step = torch.full((count,), -1, dtype=torch.long, device=device)
+        self.latch_max_position_error_m = torch.zeros(count, device=device)
+        self.latch_max_orientation_error_rad = torch.zeros(count, device=device)
+        self.latch_max_applied_force_n = torch.zeros(count, device=device)
+        self.latch_max_applied_torque_nm = torch.zeros(count, device=device)
+        self.latch_force_saturation_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.latch_torque_saturation_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.rail_commanded_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.stage_drive_target_m = torch.zeros((count, 3), device=device)
+        self.stage_goal_target_m = torch.zeros((count, 3), device=device)
+        # Angular D6 drive targets are expressed in degrees by USD.  They are
+        # kept separately from the SI translation targets so a report cannot
+        # accidentally mix units.
+        self.stage_rotation_drive_target_deg = torch.zeros((count, 3), device=device)
+        self.payload_stage_engaged = torch.zeros(count, dtype=torch.bool, device=device)
+        self.payload_stage_capture_pos = torch.zeros((count, 3), device=device)
+        self.payload_stage_capture_rot = torch.zeros((count, 4), device=device)
+        self.payload_stage_capture_rot[:, 0] = 1.0
+        self.payload_stage_insert_hold = torch.zeros(count, dtype=torch.long, device=device)
+        self.payload_stage_control_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.payload_stage_last_error_world = torch.zeros((count, 3), device=device)
+        self.payload_stage_last_error_stage = torch.zeros((count, 3), device=device)
+        # Compatibility aliases for evidence/tests written while the stage had
+        # only one driven rail axis.
+        self.rail_drive_target_m = self.stage_drive_target_m[:, 1]
+        self.rail_goal_target_m = self.stage_goal_target_m[:, 1]
+        self.rail_max_mount_deflection_m = torch.zeros(count, device=device)
+        self.rail_max_mount_translation_axis_m = torch.zeros(count, device=device)
+        self.rail_max_mount_rotation_axis_rad = torch.zeros(count, device=device)
         self.frozen = torch.zeros((count, len(WORKFLOW_METRIC_FIELDS)), dtype=torch.float64, device=device)
         self.frozen_valid = torch.zeros(count, dtype=torch.bool, device=device)
         # Read, not restated: the same hold the capture skill's own success
@@ -632,6 +848,36 @@ class WorkflowDriver:
         # reset writes rather than the first six of whatever order the scene has.
         arm_joint_ids = getattr(self.arm, "_joint_ids", None)
         self.arm_joint_ids = list(range(6)) if arm_joint_ids is None else list(arm_joint_ids)
+        self.payload_stage_joints: list[UsdPhysics.Joint] = []
+        self.stage_drive_target_attributes: list[tuple[object, object, object]] = []
+        self.stage_rotation_drive_target_attributes: list[tuple[object, object, object]] = []
+        if self.base_rail_enabled:
+            stage = omni.usd.get_context().get_stage()
+            for index in range(count):
+                joint_prim = stage.GetPrimAtPath(f"/World/envs/env_{index}/PayloadStage/Joint")
+                if not joint_prim.IsValid():
+                    raise RuntimeError(f"Payload stage joint is missing for env {index}")
+                self.payload_stage_joints.append(UsdPhysics.Joint(joint_prim))
+                attributes = []
+                for axis in (UsdPhysics.Tokens.transX, UsdPhysics.Tokens.transY, UsdPhysics.Tokens.transZ):
+                    drive = UsdPhysics.DriveAPI.Get(joint_prim, axis)
+                    target_attribute = drive.GetTargetPositionAttr()
+                    if not drive or not target_attribute.IsValid():
+                        raise RuntimeError(
+                            f"Base stage {axis} drive is missing for env {index}; refusing direct state writes"
+                        )
+                    attributes.append(target_attribute)
+                self.stage_drive_target_attributes.append(tuple(attributes))
+                rotation_attributes = []
+                for axis in (UsdPhysics.Tokens.rotX, UsdPhysics.Tokens.rotY, UsdPhysics.Tokens.rotZ):
+                    drive = UsdPhysics.DriveAPI.Get(joint_prim, axis)
+                    target_attribute = drive.GetTargetPositionAttr()
+                    if not drive or not target_attribute.IsValid():
+                        raise RuntimeError(
+                            f"Base stage {axis} drive is missing for env {index}; refusing direct state writes"
+                        )
+                    rotation_attributes.append(target_attribute)
+                self.stage_rotation_drive_target_attributes.append(tuple(rotation_attributes))
 
     def reset_envs(self, env_ids: torch.Tensor, step: int = 0) -> None:
         """Return the named environments to the start of the workflow."""
@@ -648,6 +894,19 @@ class WorkflowDriver:
         self.perceived_error_sum[env_ids] = 0.0
         self.perceived_error_steps[env_ids] = 0.0
         self.perceived_error_max[env_ids] = 0.0
+        self.plan_checked[env_ids] = False
+        self.plan_passed[env_ids] = False
+        self.initial_occupancy_scores[env_ids] = float("nan")
+        self.relocation_aligning[env_ids] = False
+        self.relocation_aligned[env_ids] = False
+        self.relocation_stage_retreat_done[env_ids] = False
+        self.relocation_stage_lateral_done[env_ids] = False
+        self.relocation_stage_attitude_done[env_ids] = False
+        self.relocation_stage_translated[env_ids] = False
+        self.relocation_joint_replaying[env_ids] = False
+        self.relocation_joint_replay_index[env_ids] = 0
+        self.relocation_joint_replay_stop[env_ids] = 0
+        self.relocation_joint_replay_steps[env_ids] = 0
         self.predicate_fired[env_ids] = False
         self.judged[env_ids] = False
         self.outcome[env_ids] = False
@@ -656,9 +915,107 @@ class WorkflowDriver:
         self.waypoint_read[env_ids] = 0
         self.frozen_valid[env_ids] = False
         self.reset_tool_valid[env_ids] = False
+        self.rail_commanded_steps[env_ids] = 0
+        self.stage_drive_target_m[env_ids] = 0.0
+        self.stage_goal_target_m[env_ids] = 0.0
+        self.stage_rotation_drive_target_deg[env_ids] = 0.0
+        self.payload_stage_engaged[env_ids] = False
+        self.payload_stage_insert_hold[env_ids] = 0
+        self.payload_stage_control_steps[env_ids] = 0
+        self.payload_stage_last_error_world[env_ids] = 0.0
+        self.payload_stage_last_error_stage[env_ids] = 0.0
+        self.rail_max_mount_deflection_m[env_ids] = 0.0
+        self.rail_max_mount_translation_axis_m[env_ids] = 0.0
+        self.rail_max_mount_rotation_axis_rad[env_ids] = 0.0
+        if self.base_rail_enabled:
+            self._set_stage_arm_servo(env_ids, strengthened=False)
+            for index in env_ids.detach().cpu().tolist():
+                self.payload_stage_joints[index].GetJointEnabledAttr().Set(False)
+                for attribute in self.stage_drive_target_attributes[index]:
+                    attribute.Set(0.0)
+                for attribute in self.stage_rotation_drive_target_attributes[index]:
+                    attribute.Set(0.0)
 
     def _apply_scales(self) -> None:
         self.arm._scale[:] = self.scales[self.phase]
+
+    def _set_stage_arm_servo(self, env_ids: torch.Tensor, *, strengthened: bool) -> None:
+        """Switch the arm gains while it transfers the ORU to the shuttle."""
+
+        if env_ids.numel() == 0:
+            return
+        robot = self.task.scene["robot"]
+        defaults_k = robot.data.default_joint_stiffness[env_ids][:, self.arm_joint_ids]
+        defaults_d = robot.data.default_joint_damping[env_ids][:, self.arm_joint_ids]
+        multiplier = BASE_STAGE_ARM_STIFFNESS_MULTIPLIER if strengthened else 1.0
+        robot.write_joint_stiffness_to_sim(
+            defaults_k * multiplier,
+            joint_ids=self.arm_joint_ids,
+            env_ids=env_ids,
+        )
+        robot.write_joint_damping_to_sim(
+            defaults_d * math.sqrt(multiplier),
+            joint_ids=self.arm_joint_ids,
+            env_ids=env_ids,
+        )
+
+    def _engage_payload_stage(self, env_ids: torch.Tensor) -> None:
+        """Transfer the extracted ORU to the physical D6 service shuttle."""
+
+        if env_ids.numel() == 0:
+            return
+        task = self.task
+        anchor = task.scene["mount_anchor"]
+        blade = task.scene["spare_blade"]
+        inverse_anchor = quat_inv(anchor.data.root_quat_w)
+        local_position = quat_apply(inverse_anchor, blade.data.root_pos_w - anchor.data.root_pos_w)
+        blade_to_world_aligned_joint = quat_inv(blade.data.root_quat_w)
+        stage = omni.usd.get_context().get_stage()
+        for index in env_ids.detach().cpu().tolist():
+            position = local_position[index].detach().cpu().tolist()
+            orientation = blade_to_world_aligned_joint[index].detach().cpu().tolist()
+            joint = self.payload_stage_joints[index]
+            joint.GetLocalPos0Attr().Set(Gf.Vec3f(*position))
+            joint.GetLocalRot0Attr().Set(Gf.Quatf(1.0, Gf.Vec3f(0.0, 0.0, 0.0)))
+            joint.GetLocalPos1Attr().Set(Gf.Vec3f(0.0, 0.0, 0.0))
+            joint.GetLocalRot1Attr().Set(Gf.Quatf(orientation[0], Gf.Vec3f(*orientation[1:])))
+            joint.GetJointEnabledAttr().Set(True)
+            release_joint = UsdPhysics.FixedJoint(
+                stage.GetPrimAtPath(f"/World/envs/env_{index}/ReleaseLatchJoint/Joint")
+            )
+            if release_joint and release_joint.GetPrim().IsValid():
+                release_joint.GetJointEnabledAttr().Set(False)
+        self.payload_stage_capture_pos[env_ids] = blade.data.root_pos_w[env_ids] - task.scene.env_origins[env_ids]
+        self.payload_stage_capture_rot[env_ids] = blade.data.root_quat_w[env_ids]
+        self.payload_stage_engaged[env_ids] = True
+        estimator = getattr(task, "_module_state_estimator", None)
+        if estimator is not None:
+            estimator.mark_payload_stage_engaged(env_ids)
+        if hasattr(task, "_grapple_latched"):
+            task._grapple_latched[env_ids] = False
+        if hasattr(task, "_grapple_latch_armed"):
+            task._grapple_latch_armed[env_ids] = False
+
+    def _payload_feedback(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Return local pose and velocity from the deployed estimator when present.
+
+        The state task has no estimator and keeps exact simulator feedback.  A
+        vision task uses the same cached RGB estimate as its learned policies,
+        including for shuttle alignment and the guarded insertion predicate.
+        Simulator pose remains available only to final diagnostic scoring.
+        """
+
+        estimator = getattr(self.task, "_module_state_estimator", None)
+        if estimator is not None:
+            pose, velocity = estimator.estimate()
+            pose_wxyz = estimator.pose_wxyz()
+            return pose[:, :3], pose_wxyz[:, 3:7], velocity
+        blade_position, blade_orientation = attached_blade_pose_world(self.task)
+        return (
+            blade_position - self.task.scene.env_origins,
+            blade_orientation,
+            attached_blade_velocity(self.task),
+        )
 
     def _trace_state(self) -> dict[str, torch.Tensor]:
         """Every quantity both traces share, read once per step."""
@@ -667,11 +1024,19 @@ class WorkflowDriver:
         grip_error, grip_attitude = grapple_grip_error_metrics(task)
         blade_position, blade_orientation = attached_blade_pose_world(task)
         velocity = attached_blade_velocity(task)
+        latch = grapple_latch_diagnostics(task)
         return {
             "grip_error_m": grip_error.to(torch.float64),
             "grip_attitude_rad": grip_attitude.to(torch.float64),
             "finger_angle_rad": grip_finger_angle(task).to(torch.float64),
             "drive_torque_nm": grip_drive_torque(task).to(torch.float64),
+            "latch_engaged": latch["engaged"].to(torch.float64),
+            "latch_relative_position_error_m": latch["position_error_m"].to(torch.float64),
+            "latch_relative_orientation_error_rad": latch["orientation_error_rad"].to(torch.float64),
+            "latch_applied_force_n": latch["applied_force_n"].to(torch.float64),
+            "latch_applied_torque_nm": latch["applied_torque_nm"].to(torch.float64),
+            "latch_force_saturated": latch["force_saturated"].to(torch.float64),
+            "latch_torque_saturated": latch["torque_saturated"].to(torch.float64),
             "blade_local": (blade_position - task.scene.env_origins).to(torch.float64),
             # The module's orientation travels with its position or the pair is
             # not a pose. Sampling an arm pose against a module whose attitude
@@ -699,6 +1064,13 @@ class WorkflowDriver:
                 state["grip_attitude_rad"].unsqueeze(-1),
                 state["finger_angle_rad"].unsqueeze(-1),
                 state["drive_torque_nm"].unsqueeze(-1),
+                state["latch_engaged"].unsqueeze(-1),
+                state["latch_relative_position_error_m"].unsqueeze(-1),
+                state["latch_relative_orientation_error_rad"].unsqueeze(-1),
+                state["latch_applied_force_n"].unsqueeze(-1),
+                state["latch_applied_torque_nm"].unsqueeze(-1),
+                state["latch_force_saturated"].unsqueeze(-1),
+                state["latch_torque_saturated"].unsqueeze(-1),
                 state["blade_local"],
                 state["blade_quat"],
                 state["blade_linear_velocity_mps"].unsqueeze(-1),
@@ -754,11 +1126,112 @@ class WorkflowDriver:
         self.done_at[mask] = step
         self.done_steps[mask] = self.task.episode_length_buf[mask].to(torch.long) + 1
 
+    def _observe_latch(self) -> None:
+        """Accumulate latch evidence before a task timeout can reset the term."""
+
+        latch = grapple_latch_diagnostics(self.task)
+        engaged = latch["engaged"]
+        newly_observed = engaged & ~self.latch_ever_engaged
+        self.latch_first_engagement_episode_step[newly_observed] = latch["first_engagement_episode_step"][
+            newly_observed
+        ]
+        self.latch_ever_engaged |= engaged
+        self.latch_max_position_error_m = torch.maximum(self.latch_max_position_error_m, latch["max_position_error_m"])
+        self.latch_max_orientation_error_rad = torch.maximum(
+            self.latch_max_orientation_error_rad, latch["max_orientation_error_rad"]
+        )
+        self.latch_max_applied_force_n = torch.maximum(self.latch_max_applied_force_n, latch["max_applied_force_n"])
+        self.latch_max_applied_torque_nm = torch.maximum(
+            self.latch_max_applied_torque_nm, latch["max_applied_torque_nm"]
+        )
+        self.latch_force_saturation_steps += latch["force_saturated"].to(torch.long)
+        self.latch_torque_saturation_steps += latch["torque_saturated"].to(torch.long)
+        robot = self.task.scene["robot"]
+        anchor = self.task.scene["mount_anchor"]
+        mount_translation_error = robot.data.root_pos_w - anchor.data.root_pos_w
+        mount_rotation = axis_angle_from_quat(quat_mul(anchor.data.root_quat_w, quat_inv(robot.data.root_quat_w)))
+        if self.base_rail_enabled:
+            blade = self.task.scene["spare_blade"]
+            blade_local = blade.data.root_pos_w - self.task.scene.env_origins
+            actual_travel = blade_local - self.payload_stage_capture_pos
+            stage_tracking_error = actual_travel - self.stage_drive_target_m
+            mount_translation_error = torch.where(
+                self.payload_stage_engaged.unsqueeze(-1),
+                stage_tracking_error,
+                torch.zeros_like(stage_tracking_error),
+            )
+            mount_rotation = torch.where(
+                self.payload_stage_engaged.unsqueeze(-1),
+                axis_angle_from_quat(quat_mul(blade.data.root_quat_w, quat_inv(self.payload_stage_capture_rot))),
+                torch.zeros_like(mount_rotation),
+            )
+        mount_deflection = torch.linalg.vector_norm(mount_translation_error, dim=-1)
+        self.rail_max_mount_deflection_m = torch.maximum(
+            self.rail_max_mount_deflection_m,
+            mount_deflection,
+        )
+        self.rail_max_mount_translation_axis_m = torch.maximum(
+            self.rail_max_mount_translation_axis_m,
+            mount_translation_error.abs().amax(dim=-1),
+        )
+        self.rail_max_mount_rotation_axis_rad = torch.maximum(
+            self.rail_max_mount_rotation_axis_rad,
+            mount_rotation.abs().amax(dim=-1),
+        )
+
     def step(self, step: int) -> None:
         """Compute one action for every environment and advance the phase machine."""
 
         task = self.task
         observations = task.observation_manager.compute()
+        self._observe_latch()
+        plan_blocked = torch.zeros_like(self.plan_checked)
+        if self.workflow == "relocate":
+            estimator = getattr(task, "_module_state_estimator", None)
+            ready = ~self.plan_checked & (task.episode_length_buf >= 2)
+            if estimator is not None and estimator.backend == "fiducial_pnp":
+                # Reset observations precede the first rendered camera frame.
+                # Keep the robot frozen until a genuine detection exists;
+                # zero-confidence initialization priors may never approve the
+                # source/destination plan.
+                ready &= estimator.confidence > 0.0
+            if estimator is not None and bool(ready.any()):
+                occupancy = estimator.occupancy_probabilities()
+                if occupancy is None or occupancy.shape[1] != 2:
+                    raise RuntimeError(
+                        "The visual two-bay relocation requires a two-output occupancy head; "
+                        "refusing to run a hard-coded bay plan without the perception preflight."
+                    )
+                self.initial_occupancy_scores[ready] = occupancy[ready]
+                accepted = (occupancy[:, 0] >= OCCUPANCY_PLAN_THRESHOLD) & (occupancy[:, 1] < OCCUPANCY_PLAN_THRESHOLD)
+                self.plan_checked[ready] = True
+                self.plan_passed[ready] = accepted[ready]
+                # Camera warm-up is a preflight, not part of the capture
+                # policy's execution budget.  Start that clock only after the
+                # requested rack state has been accepted.
+                self.phase_started[ready & accepted] = step
+                rejected = ready & ~accepted
+                if bool(rejected.any()):
+                    # A perception-to-planning failure is a terminal workflow
+                    # result, not permission to fall back to the scenario's
+                    # simulator-known reset bay.
+                    self._finish(rejected, step)
+                first = int(torch.nonzero(ready, as_tuple=False)[0, 0].item())
+                print(
+                    "[PLAN] visual occupancy preflight "
+                    f"passed={int(accepted[ready].sum())}/{int(ready.sum())} "
+                    "source=bay0 destination=bay1 "
+                    f"scores=[{float(occupancy[first, 0]):.4f},{float(occupancy[first, 1]):.4f}] "
+                    f"threshold={OCCUPANCY_PLAN_THRESHOLD:.2f}",
+                    flush=True,
+                )
+            if estimator is not None:
+                # No arm or gripper command may run while the camera is warming
+                # up, or after the visual rack-state request is rejected.  The
+                # earlier implementation called the gate a preflight but still
+                # ran the capture policy for two steps and closed the gripper on
+                # the rejection step.
+                plan_blocked = ~self.plan_checked | ~self.plan_passed
         # Immediately after the observation, because that is when the perceived
         # grip-error term has just run and cached how wrong it was. Zero on the
         # oracle and on state-only tasks, which is the right reading: those have
@@ -785,20 +1258,28 @@ class WorkflowDriver:
             self.timed_out_in[overrun] = self.phase[overrun]
             self._finish(overrun, step)
 
-        capturing = phase == CAPTURE
+        capturing = (phase == CAPTURE) & ~plan_blocked
         if bool(capturing.any()):
             command = self.policies["capture"].act(observations["grasp"])
             self.actions[capturing] = command[capturing]
         for name, group, mask in (
-            ("extract", "extract", phase == EXTRACT),
-            ("insert", "insert", phase == INSERT),
+            ("extract", "extract", (phase == EXTRACT) & ~plan_blocked),
+            (
+                "insert",
+                "insert",
+                (phase == INSERT) & ~plan_blocked & ~(self.payload_stage_engaged & self.base_rail_enabled),
+            ),
         ):
             if bool(mask.any()):
                 command = self.policies[name].act(observations[group])
                 self.actions[mask, :6] = command[mask]
         # Everything past the capture keeps commanding closure, so the two-stage
         # action term holds the pin instead of relaxing to the capture command.
-        self.actions[~capturing, 6] = 1.0
+        self.actions[~capturing & ~plan_blocked, 6] = 1.0
+        # After the service shuttle accepts the ORU, the robot is no longer the
+        # load path and opens its fingers.  The module remains secured by the
+        # physical D6 joint throughout transport and guarded insertion.
+        self.actions[self.payload_stage_engaged, 6] = -1.0
 
         grip_error, grip_attitude = grapple_grip_error_metrics(task)
         established = capture_established(task)
@@ -818,7 +1299,9 @@ class WorkflowDriver:
         # distribution and it reverses into the rack. The grasp policy keeps
         # closing to a 9-to-12 mm median if simply allowed to finish.
         qualifying = capturing & established & (grip_error <= HANDOVER_GRIP_M)
-        self.held = torch.where(qualifying, self.held + 1, torch.where(capturing, torch.zeros_like(self.held), self.held))
+        self.held = torch.where(
+            qualifying, self.held + 1, torch.where(capturing, torch.zeros_like(self.held), self.held)
+        )
         promote = capturing & (self.held >= self.required_hold)
         if bool(promote.any()):
             # Latch the holding closure, per environment. TwoStageRobotiqAction
@@ -899,6 +1382,12 @@ class WorkflowDriver:
             ids = torch.nonzero(extracting, as_tuple=False).squeeze(-1)
             slots = self.waypoint_write[ids].clamp(max=self.max_waypoints - 1)
             self.waypoints[slots, ids] = tool[ids]
+            self.extraction_joint_waypoints[slots, ids] = task.scene["robot"].data.joint_pos[ids][:, self.arm_joint_ids]
+            blade_asset = task.scene["spare_blade"]
+            self.extraction_blade_pose_waypoints[slots, ids, :3] = (
+                blade_asset.data.root_pos_w[ids] - task.scene.env_origins[ids]
+            )
+            self.extraction_blade_pose_waypoints[slots, ids, 3:] = blade_asset.data.root_quat_w[ids]
             self.waypoint_write[ids] = (self.waypoint_write[ids] + 1).clamp(max=self.max_waypoints - 1)
         # The extract skill's own success mask, not merely "past the line": it
         # also asks that the module is still gripped and no longer moving, which
@@ -940,9 +1429,16 @@ class WorkflowDriver:
                     # phase here that moves a module through free space rather
                     # than releasing one at the end of a job, and the rule for
                     # moving is to hold.
-                    if RELOCATE_TRANSIT_HOLD:
+                    # A release-time latch qualifies from the loaded capture.
+                    # Do not relax the fingers in the same control step that
+                    # arms it: the interval event runs after action processing,
+                    # so the gentle retain can remove the torque predicate
+                    # before the latch ever records its transform.  Keep the
+                    # full holding closure until engagement is observed on the
+                    # next driver step; latch-off behavior is unchanged.
+                    if RELOCATE_TRANSIT_HOLD or self.release_latch_required:
                         self.gripper.retain_latch[cleared] = False
-                    self._plan_lateral_transit(cleared, tool, blade_x)
+                    self._plan_lateral_transit(cleared, tool, tool_rot, blade_x)
                 else:
                     self.waypoint_read[cleared] = (self.waypoint_write[cleared] - 1).clamp_min(0)
 
@@ -957,8 +1453,200 @@ class WorkflowDriver:
         transiting = self.phase == TRANSIT
         if bool(transiting.any()):
             ids = torch.nonzero(transiting, as_tuple=False).squeeze(-1)
+            # The collision-clear retreat is part of the physical route too.
+            # Originally only learned-extraction joints were recorded, so the
+            # reverse replay jumped directly from the fully retreated pose to
+            # the extraction hand-off.  That unsampled 80 mm Cartesian jump was
+            # a 0.20 rad wrist command under load and the arm could not follow
+            # it.  Sample this scripted leg at the same cadence as extraction;
+            # after the bay crossing the replay is continuous end to end.
+            record_retreat = (
+                transiting
+                & self.base_rail_enabled
+                & (self.waypoint_read == 2)
+                & ((step - self.transit_started) % TRANSIT_WAYPOINT_STRIDE == 0)
+            )
+            if bool(record_retreat.any()):
+                retreat_ids = torch.nonzero(record_retreat, as_tuple=False).squeeze(-1)
+                retreat_slots = self.waypoint_write[retreat_ids].clamp(max=self.max_waypoints - 1)
+                robot = task.scene["robot"]
+                blade_asset = task.scene["spare_blade"]
+                self.extraction_joint_waypoints[retreat_slots, retreat_ids] = robot.data.joint_pos[retreat_ids][
+                    :, self.arm_joint_ids
+                ]
+                self.extraction_blade_pose_waypoints[retreat_slots, retreat_ids, :3] = (
+                    blade_asset.data.root_pos_w[retreat_ids] - task.scene.env_origins[retreat_ids]
+                )
+                self.extraction_blade_pose_waypoints[retreat_slots, retreat_ids, 3:] = blade_asset.data.root_quat_w[
+                    retreat_ids
+                ]
+                self.waypoint_write[retreat_ids] = (self.waypoint_write[retreat_ids] + 1).clamp(
+                    max=self.max_waypoints - 1
+                )
+            if self.workflow == "relocate" and bool(self.relocation_aligning.any()):
+                alignment_position_error = torch.linalg.vector_norm(self.relocation_alignment_tool_pos - tool, dim=-1)
+                alignment_orientation_error = torch.linalg.vector_norm(
+                    axis_angle_from_quat(quat_mul(self.relocation_desired_tool_rot, quat_inv(tool_rot))),
+                    dim=-1,
+                )
+                if self.base_rail_enabled:
+                    blade_position, blade_orientation, _ = self._payload_feedback()
+                    alignment_position_error = torch.linalg.vector_norm(
+                        blade_position - self.relocation_staging_pos.unsqueeze(0), dim=-1
+                    )
+                    alignment_orientation_error = torch.linalg.vector_norm(
+                        axis_angle_from_quat(
+                            quat_mul(
+                                self.relocation_staging_rot.unsqueeze(0).expand_as(blade_orientation),
+                                quat_inv(blade_orientation),
+                            )
+                        ),
+                        dim=-1,
+                    )
+                alignment_complete = (
+                    transiting
+                    & self.relocation_aligning
+                    & (alignment_position_error <= INSERT_HANDOFF_POSITION_TOLERANCE_M)
+                    & (alignment_orientation_error <= INSERTION_ORIENTATION_TOLERANCE_RAD)
+                )
+                if self.base_rail_enabled:
+                    alignment_complete = (
+                        transiting
+                        & self.relocation_aligning
+                        & (alignment_orientation_error <= STAGE_ALIGNMENT_CAPTURE_RAD)
+                    )
+                pre_stage_alignment_complete = (
+                    alignment_complete & self.base_rail_enabled & ~self.relocation_stage_translated
+                )
+                if bool(pre_stage_alignment_complete.any()):
+                    aligned_ids = torch.nonzero(pre_stage_alignment_complete, as_tuple=False).squeeze(-1)
+                    robot = task.scene["robot"]
+                    anchor = task.scene["mount_anchor"]
+                    current_mount = robot.data.root_pos_w[aligned_ids] - anchor.data.root_pos_w[aligned_ids]
+                    blade_local = (
+                        task.scene["spare_blade"].data.root_pos_w[aligned_ids] - task.scene.env_origins[aligned_ids]
+                    )
+                    lower = self.stage_drive_target_m.new_tensor(BASE_STAGE_MIN_TARGET_M)
+                    upper = self.stage_drive_target_m.new_tensor(BASE_STAGE_MAX_TARGET_M)
+                    stage_goal = current_mount.clone()
+                    stage_goal[:, 1] += self.relocation_staging_pos[1] - blade_local[:, 1]
+                    self.stage_goal_target_m[aligned_ids] = torch.maximum(torch.minimum(stage_goal, upper), lower)
+                    self._set_stage_arm_servo(aligned_ids, strengthened=True)
+                self.relocation_aligning[alignment_complete] = False
+                self.relocation_aligned[alignment_complete] = True
+                final_alignment_complete = alignment_complete & (not self.base_rail_enabled)
+                self.waypoint_read[final_alignment_complete] = 0
+                self.gripper.retain_latch[alignment_complete] = False
+            if self.workflow == "relocate" and self.base_rail_enabled and bool(self.relocation_joint_replaying.any()):
+                replaying = transiting & self.relocation_joint_replaying
+                replay_ids = torch.nonzero(replaying, as_tuple=False).squeeze(-1)
+                replay_targets = self.extraction_joint_waypoints[
+                    self.relocation_joint_replay_index[replay_ids], replay_ids
+                ]
+                current_joints = task.scene["robot"].data.joint_pos[replay_ids][:, self.arm_joint_ids]
+                replay_joint_error = (current_joints - replay_targets).abs().amax(dim=-1)
+                replay_target_reached = torch.zeros_like(replaying)
+                replay_target_reached[replay_ids] = replay_joint_error <= JOINT_REPLAY_CONVERGENCE_RAD
+                replay_at_stop = torch.zeros_like(replaying)
+                replay_at_stop[replay_ids] = (
+                    self.relocation_joint_replay_index[replay_ids] <= (self.relocation_joint_replay_stop[replay_ids])
+                )
+                replay_due = replaying & (
+                    (step - self.transit_started) % (TRANSIT_WAYPOINT_STRIDE * self.transit_slowdown) == 0
+                )
+                # This is a densely sampled joint trajectory, so intermediate
+                # points are time-indexed actuator targets rather than separate
+                # poses at which the robot should stop.  A convergence gate on
+                # every sample deadlocked as soon as finite-effort tracking
+                # error exceeded 0.04 rad.  Replay at the recorded cadence and
+                # require physical convergence only at the terminal target.
+                replay_advance = replay_due & ~replay_at_stop
+                self.relocation_joint_replay_index[replay_advance] -= 1
+                self.relocation_joint_replay_steps[replaying] += 1
+                replay_complete_ids = replay_ids[replay_at_stop[replay_ids] & replay_target_reached[replay_ids]]
+                if replay_complete_ids.numel() > 0:
+                    self._set_stage_arm_servo(replay_complete_ids, strengthened=False)
+                    self.relocation_joint_replaying[replay_complete_ids] = False
+                    self.relocation_aligned[replay_complete_ids] = True
+                    self.waypoint_read[replay_complete_ids] = 0
+                    self.gripper.retain_latch[replay_complete_ids] = False
+            if self.workflow == "relocate" and self.release_latch_required:
+                latch_engaged = grapple_latched(task)
+                awaiting_latch = transiting & ~latch_engaged
+                self.gripper.retain_latch[awaiting_latch] = False
+                # Gentle retain is safe only after the form lock has captured
+                # the loaded transform, and only before the final rail-contact
+                # leg.  The last leg's existing handoff below switches back to
+                # the full holding closure.
+                may_retain = transiting & latch_engaged & (self.waypoint_read > 0) & ~self.relocation_joint_replaying
+                if not RELOCATE_TRANSIT_HOLD:
+                    self.gripper.retain_latch[may_retain] = True
             target = self.waypoints[self.waypoint_read[ids], ids]
             if self.workflow == "relocate":
+                aligning_ids = self.relocation_aligning[ids]
+                aligned_final_ids = self.relocation_aligned[ids] & (self.waypoint_read[ids] <= 0)
+                target = torch.where(
+                    aligning_ids.unsqueeze(-1),
+                    self.relocation_alignment_tool_pos[ids],
+                    torch.where(
+                        aligned_final_ids.unsqueeze(-1),
+                        self.relocation_final_tool_aligned[ids],
+                        target,
+                    ),
+                )
+            if self.workflow == "relocate":
+                # Once the normal arm follower has pulled the payload clear of
+                # the rack, freeze the *measured* extraction pose and move the
+                # physical lateral carriage.  Trying to rotate to a nominal
+                # rack attitude here created an unreachable six-axis IK target
+                # (measured residual: 40 mm / 0.072 rad) and prevented the
+                # carriage from ever starting.  The two bays are parallel, so
+                # the source extraction pose is already the correct attitude;
+                # after the lateral move we can reverse the joint path that was
+                # actually flown under load.
+                begin_stage_alignment = (
+                    transiting
+                    & (self.waypoint_read == 1)
+                    & ~self.relocation_aligning
+                    & ~self.relocation_aligned
+                    & ~self.relocation_stage_translated
+                    & self.base_rail_enabled
+                )
+                if bool(begin_stage_alignment.any()):
+                    stage_ids = torch.nonzero(begin_stage_alignment, as_tuple=False).squeeze(-1)
+                    robot = task.scene["robot"]
+                    # The arm has just executed the collision-clear retreat,
+                    # which is deliberately beyond the learned extraction
+                    # terminal state.  Record that physically reached joint
+                    # pose as the first reverse-replay sample.  Without it the
+                    # first replay command jumped roughly 80 mm back toward the
+                    # rack and stalled 0.068 rad from its target under load.
+                    retreat_slots = self.waypoint_write[stage_ids].clamp(max=self.max_waypoints - 1)
+                    self.extraction_joint_waypoints[retreat_slots, stage_ids] = robot.data.joint_pos[stage_ids][
+                        :, self.arm_joint_ids
+                    ]
+                    blade_asset = task.scene["spare_blade"]
+                    self.extraction_blade_pose_waypoints[retreat_slots, stage_ids, :3] = (
+                        blade_asset.data.root_pos_w[stage_ids] - task.scene.env_origins[stage_ids]
+                    )
+                    self.extraction_blade_pose_waypoints[retreat_slots, stage_ids, 3:] = blade_asset.data.root_quat_w[
+                        stage_ids
+                    ]
+                    self.waypoint_write[stage_ids] = (self.waypoint_write[stage_ids] + 1).clamp(
+                        max=self.max_waypoints - 1
+                    )
+                    blade_local = (
+                        task.scene["spare_blade"].data.root_pos_w[stage_ids] - task.scene.env_origins[stage_ids]
+                    )
+                    self._engage_payload_stage(stage_ids)
+                    stage_goal = torch.zeros_like(blade_local)
+                    stage_goal[:, 1] = self.relocation_staging_pos[1] - blade_local[:, 1]
+                    lower = self.stage_drive_target_m.new_tensor(BASE_STAGE_MIN_TARGET_M)
+                    upper = self.stage_drive_target_m.new_tensor(BASE_STAGE_MAX_TARGET_M)
+                    self.stage_goal_target_m[stage_ids] = torch.maximum(torch.minimum(stage_goal, upper), lower)
+                    self._set_stage_arm_servo(stage_ids, strengthened=False)
+                    self.relocation_aligned[begin_stage_alignment] = True
+                    self.gripper.retain_latch[begin_stage_alignment] = False
                 # A *planned* path advances on arrival, not on the clock, and the
                 # distinction is not cosmetic. The replay below walks waypoints
                 # sampled four steps apart along a path the arm has just flown,
@@ -985,7 +1673,185 @@ class WorkflowDriver:
                 axis = self.leg_axis[self.waypoint_read[ids], ids]
                 along = (target - tool[ids]).gather(1, axis.unsqueeze(-1)).squeeze(-1)
                 reached[ids] = along.abs() <= 0.005
+                if self.base_rail_enabled:
+                    stage_leg = self.waypoint_read[ids] == 1
+                    # Compliance is a load-dependent inner-drive offset, not a
+                    # payload positioning error: the outer loop below closes
+                    # directly on the carried module.
+                    payload_position, payload_orientation, payload_velocity = self._payload_feedback()
+                    estimator = getattr(task, "_module_state_estimator", None)
+                    sensor_ready = torch.ones_like(ids, dtype=torch.bool)
+                    if estimator is not None and estimator.backend == "fiducial_pnp":
+                        sensor_ready = estimator.fiducial_current_detection[ids]
+                    stage_blade_position = payload_position[ids]
+                    stage_blade_y_error = (stage_blade_position[:, 1] - self.relocation_staging_pos[1]).abs()
+                    stage_blade_position_error = torch.linalg.vector_norm(
+                        stage_blade_position - self.relocation_staging_pos.unsqueeze(0), dim=-1
+                    )
+                    stage_blade_orientation = payload_orientation[ids]
+                    stage_blade_orientation_error = torch.linalg.vector_norm(
+                        axis_angle_from_quat(
+                            quat_mul(
+                                self.relocation_staging_rot.unsqueeze(0).expand_as(stage_blade_orientation),
+                                quat_inv(stage_blade_orientation),
+                            )
+                        ),
+                        dim=-1,
+                    )
+                    stage_velocity = payload_velocity[ids]
+                    retreat_stage_ready = (
+                        sensor_ready
+                        & self.relocation_aligned[ids]
+                        & ~self.relocation_stage_retreat_done[ids]
+                        & ((stage_blade_position[:, 0] - TRANSIT_CLEAR_BLADE_CENTRE_X).abs() <= 0.005)
+                        & (torch.linalg.vector_norm(stage_velocity[:, :3], dim=-1) <= 0.060)
+                    )
+                    lateral_stage_ready = (
+                        sensor_ready
+                        & self.relocation_aligned[ids]
+                        & self.relocation_stage_retreat_done[ids]
+                        & ~self.relocation_stage_lateral_done[ids]
+                        & ~self.relocation_stage_translated[ids]
+                        & (stage_blade_y_error <= 0.035)
+                        & (stage_blade_position[:, 0] <= TRANSIT_CLEAR_BLADE_CENTRE_X + 0.015)
+                    )
+                    attitude_stage_ready = (
+                        sensor_ready
+                        & self.relocation_aligned[ids]
+                        & self.relocation_stage_lateral_done[ids]
+                        & ~self.relocation_stage_attitude_done[ids]
+                        & (
+                            (stage_blade_position[:, 1:] - self.relocation_staging_pos[1:].unsqueeze(0))
+                            .abs()
+                            .amax(dim=-1)
+                            <= 0.0005
+                        )
+                        & (stage_blade_orientation_error <= 0.002)
+                        & (torch.linalg.vector_norm(stage_velocity[:, :3], dim=-1) <= 0.060)
+                        & (
+                            torch.linalg.vector_norm(stage_velocity[:, 3:], dim=-1)
+                            <= INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS
+                        )
+                    )
+                    full_stage_ready = (
+                        sensor_ready
+                        & self.relocation_aligned[ids]
+                        & self.relocation_stage_attitude_done[ids]
+                        & ~self.relocation_stage_translated[ids]
+                        & (stage_blade_position_error <= INSERT_HANDOFF_POSITION_TOLERANCE_M)
+                        & (stage_blade_orientation_error <= INSERTION_ORIENTATION_TOLERANCE_RAD)
+                        & (
+                            torch.linalg.vector_norm(stage_velocity[:, :3], dim=-1)
+                            <= INSERTION_LINEAR_VELOCITY_LIMIT_MPS
+                        )
+                        & (
+                            torch.linalg.vector_norm(stage_velocity[:, 3:], dim=-1)
+                            <= INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS
+                        )
+                    )
+                    stage_ready = torch.where(
+                        ~self.relocation_stage_retreat_done[ids],
+                        retreat_stage_ready,
+                        torch.where(
+                            ~self.relocation_stage_lateral_done[ids],
+                            lateral_stage_ready,
+                            torch.where(
+                                self.relocation_stage_attitude_done[ids],
+                                full_stage_ready,
+                                attitude_stage_ready,
+                            ),
+                        ),
+                    )
+                    final_stage_ready = (
+                        self.relocation_aligned[ids]
+                        & self.relocation_stage_translated[ids]
+                        & (stage_blade_position_error <= INSERT_HANDOFF_POSITION_TOLERANCE_M)
+                        & (
+                            torch.linalg.vector_norm(stage_velocity[:, :3], dim=-1)
+                            <= INSERTION_LINEAR_VELOCITY_LIMIT_MPS
+                        )
+                        & (
+                            torch.linalg.vector_norm(stage_velocity[:, 3:], dim=-1)
+                            <= INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS
+                        )
+                    )
+                    stage_ready = torch.where(self.relocation_stage_translated[ids], final_stage_ready, stage_ready)
+                    reached[ids] = torch.where(stage_leg, stage_ready, reached[ids])
                 due = transiting & reached
+                retreat_stage_complete = (
+                    due
+                    & (self.waypoint_read == 1)
+                    & self.base_rail_enabled
+                    & self.relocation_aligned
+                    & ~self.relocation_stage_retreat_done
+                )
+                lateral_stage_complete = (
+                    due
+                    & (self.waypoint_read == 1)
+                    & self.base_rail_enabled
+                    & self.relocation_aligned
+                    & self.relocation_stage_retreat_done
+                    & ~self.relocation_stage_lateral_done
+                    & ~self.relocation_stage_translated
+                )
+                stage_translation_complete = (
+                    due
+                    & (self.waypoint_read == 1)
+                    & self.base_rail_enabled
+                    & self.relocation_aligned
+                    & self.relocation_stage_lateral_done
+                    & self.relocation_stage_attitude_done
+                    & ~self.relocation_stage_translated
+                )
+                attitude_stage_complete = (
+                    due
+                    & (self.waypoint_read == 1)
+                    & self.base_rail_enabled
+                    & self.relocation_aligned
+                    & self.relocation_stage_lateral_done
+                    & ~self.relocation_stage_attitude_done
+                )
+                if bool(retreat_stage_complete.any()):
+                    self.relocation_stage_retreat_done[retreat_stage_complete] = True
+                    due = due & ~retreat_stage_complete
+                if bool(lateral_stage_complete.any()):
+                    self.relocation_stage_lateral_done[lateral_stage_complete] = True
+                    due = due & ~lateral_stage_complete
+                if bool(attitude_stage_complete.any()):
+                    self.relocation_stage_attitude_done[attitude_stage_complete] = True
+                    due = due & ~attitude_stage_complete
+                if bool(stage_translation_complete.any()):
+                    self.relocation_stage_translated[stage_translation_complete] = True
+                    # The six-DOF stage has already closed position, attitude,
+                    # and velocity at this point.  Keep the arm in its measured
+                    # collision-clear joint pose and consume the cross-bay
+                    # waypoint immediately; handing attitude back to arm IK here
+                    # reintroduced the very coupled-positioning failure the
+                    # physical stage removes.
+                    self.gripper.retain_latch[stage_translation_complete] = False
+                start_alignment = (
+                    due
+                    & (self.waypoint_read == 1)
+                    & ~self.relocation_aligning
+                    & ~self.relocation_aligned
+                    & ~self.relocation_joint_replaying
+                )
+                if bool(start_alignment.any()):
+                    start_ids = torch.nonzero(start_alignment, as_tuple=False).squeeze(-1)
+                    if self.base_rail_enabled:
+                        self.relocation_aligned[start_alignment] = True
+                    else:
+                        blade_position = task.scene["spare_blade"].data.root_pos_w[start_ids]
+                        self.relocation_alignment_tool_pos[start_ids] = blade_position - quat_apply(
+                            self.relocation_desired_tool_rot[start_ids],
+                            self.relocation_blade_relative_to_tool[start_ids],
+                        )
+                        self.relocation_aligning[start_alignment] = True
+                    self.gripper.retain_latch[start_alignment] = False
+                # Alignment is a substage at the clear cross-bay waypoint, not
+                # permission to consume that waypoint.  Only the subsequent
+                # converged step advances to the axial leg.
+                due = due & ~self.relocation_aligning & ~self.relocation_joint_replaying
                 # The last leg is not a transit. It drives the module 436 mm
                 # along the pull axis into the second bay's channel, past that
                 # bay's lead-in flares and between its rails -- which is an
@@ -1013,8 +1879,161 @@ class WorkflowDriver:
                 )
             self.waypoint_read[due] = (self.waypoint_read[due] - 1).clamp_min(0)
             target = self.waypoints[self.waypoint_read[ids], ids]
+            if self.workflow == "relocate":
+                aligning_ids = self.relocation_aligning[ids]
+                aligned_final_ids = self.relocation_aligned[ids] & (self.waypoint_read[ids] <= 0)
+                target = torch.where(
+                    aligning_ids.unsqueeze(-1),
+                    self.relocation_alignment_tool_pos[ids],
+                    torch.where(
+                        aligned_final_ids.unsqueeze(-1),
+                        self.relocation_final_tool_aligned[ids],
+                        target,
+                    ),
+                )
             scale = self.scales[TRANSIT]
-            self.actions[ids, :3] = ((target - tool[ids]) / scale[:3]).clamp(-1.0, 1.0)
+            position_error = target - tool[ids]
+            if self.workflow == "relocate" and self.base_rail_enabled:
+                root_quat = task.scene["robot"].data.root_quat_w[ids]
+                position_error = quat_apply(quat_inv(root_quat), position_error)
+            position_action = (position_error / scale[:3]).clamp(-1.0, 1.0)
+            if self.workflow == "relocate":
+                stage_positioning = (
+                    (self.waypoint_read[ids] == 1)
+                    & (
+                        (~self.relocation_aligning[ids] & self.relocation_aligned[ids])
+                        | (self.relocation_aligning[ids] & self.relocation_stage_translated[ids])
+                    )
+                    & ~self.relocation_joint_replaying[ids]
+                    & self.base_rail_enabled
+                )
+                estimator = getattr(task, "_module_state_estimator", None)
+                if estimator is not None and estimator.backend == "fiducial_pnp":
+                    # A missed shuttle-frame detection freezes drive targets;
+                    # force drives may settle, but no new motion is authorized
+                    # from a held pose estimate.
+                    stage_positioning &= estimator.fiducial_current_detection[ids]
+                if bool(stage_positioning.any()):
+                    stage_ids = ids[stage_positioning]
+                    stage_error = self.stage_goal_target_m[stage_ids] - self.stage_drive_target_m[stage_ids]
+                    # Close the lateral loop on the carried module rather than
+                    # assuming a target-to-pose identity through a compliant
+                    # drive.  The former open-loop target stopped 28--71 mm
+                    # short under arm load despite reaching its commanded D6
+                    # value.  This remains a force-driven physical stage: only
+                    # the drive target is changed, never robot/payload state.
+                    payload_position, payload_orientation, _ = self._payload_feedback()
+                    blade_position = payload_position[stage_ids]
+                    blade_error = self.relocation_staging_pos.unsqueeze(0) - blade_position
+                    blade_error_stage = blade_error
+                    self.payload_stage_control_steps[stage_ids] += 1
+                    self.payload_stage_last_error_world[stage_ids] = blade_error
+                    self.payload_stage_last_error_stage[stage_ids] = blade_error_stage
+                    owns_lateral = self.relocation_stage_retreat_done[stage_ids]
+                    lateral_goal = blade_position.clone()
+                    lateral_goal[:, 0] = TRANSIT_CLEAR_BLADE_CENTRE_X
+                    lateral_goal[:, 1] = self.relocation_staging_pos[1]
+                    lateral_goal[:, 2] = self.payload_stage_capture_pos[stage_ids, 2]
+                    lateral_error_stage = lateral_goal - blade_position
+                    stage_error[owns_lateral] = BASE_STAGE_OUTER_LOOP_GAIN * lateral_error_stage[owns_lateral]
+                    owns_retreat = ~owns_lateral
+                    retreat_error_world = blade_position.new_zeros(blade_position.shape)
+                    retreat_error_world[:, 0] = TRANSIT_CLEAR_BLADE_CENTRE_X - blade_position[:, 0]
+                    retreat_error_stage = retreat_error_world
+                    stage_error[owns_retreat, 0] = BASE_STAGE_OUTER_LOOP_GAIN * retreat_error_stage[owns_retreat, 0]
+                    owns_rack_alignment = self.relocation_stage_lateral_done[stage_ids]
+                    alignment_goal = self.relocation_staging_pos.unsqueeze(0).expand_as(blade_position).clone()
+                    alignment_goal[:, 0] = TRANSIT_CLEAR_BLADE_CENTRE_X
+                    alignment_error_stage = alignment_goal - blade_position
+                    stage_error[owns_rack_alignment] = (
+                        BASE_STAGE_OUTER_LOOP_GAIN * alignment_error_stage[owns_rack_alignment]
+                    )
+                    owns_axial = self.relocation_stage_attitude_done[stage_ids]
+                    orientation_error_now = torch.linalg.vector_norm(
+                        axis_angle_from_quat(
+                            quat_mul(
+                                self.relocation_staging_rot.unsqueeze(0).expand_as(payload_orientation[stage_ids]),
+                                quat_inv(payload_orientation[stage_ids]),
+                            )
+                        ),
+                        dim=-1,
+                    )
+                    lateral_guard_tolerance = 0.001
+                    orientation_guard_tolerance = 0.003
+                    estimator = getattr(task, "_module_state_estimator", None)
+                    if estimator is not None and estimator.backend == "fiducial_pnp":
+                        lateral_guard_tolerance = FIDUCIAL_GUARDED_LATERAL_TOLERANCE_M
+                        orientation_guard_tolerance = FIDUCIAL_GUARDED_ORIENTATION_TOLERANCE_RAD
+                    axial_alignment_ok = (
+                        (blade_position[:, 1:] - self.relocation_staging_pos[1:].unsqueeze(0)).abs().amax(dim=-1)
+                        <= lateral_guard_tolerance
+                    ) & (orientation_error_now <= orientation_guard_tolerance)
+                    guarded_axial = owns_axial & axial_alignment_ok
+                    guarded_retract = owns_axial & ~axial_alignment_ok
+                    stage_error[guarded_axial] = BASE_STAGE_OUTER_LOOP_GAIN * blade_error_stage[guarded_axial]
+                    stage_error[guarded_retract] = BASE_STAGE_OUTER_LOOP_GAIN * alignment_error_stage[guarded_retract]
+                    target_delta = stage_error.clamp(-BASE_RAIL_TARGET_STEP_M, BASE_RAIL_TARGET_STEP_M)
+                    target_delta[owns_axial] = target_delta[owns_axial].clamp(
+                        -BASE_STAGE_GUARDED_AXIAL_STEP_M,
+                        BASE_STAGE_GUARDED_AXIAL_STEP_M,
+                    )
+                    previous_target = self.stage_drive_target_m[stage_ids].clone()
+                    lower = self.stage_drive_target_m.new_tensor(BASE_STAGE_MIN_TARGET_M)
+                    upper = self.stage_drive_target_m.new_tensor(BASE_STAGE_MAX_TARGET_M)
+                    self.stage_drive_target_m[stage_ids] = torch.maximum(
+                        torch.minimum(previous_target + target_delta, upper), lower
+                    )
+                    actual_travel_stage = blade_position - self.payload_stage_capture_pos[stage_ids]
+                    if bool(owns_axial.any()):
+                        axial_targets = self.stage_drive_target_m[stage_ids][owns_axial]
+                        axial_actual = actual_travel_stage[owns_axial]
+                        self.stage_drive_target_m[stage_ids[owns_axial]] = torch.maximum(
+                            torch.minimum(
+                                axial_targets,
+                                axial_actual + BASE_STAGE_MAX_TRANSLATION_LEAD_M,
+                            ),
+                            axial_actual - BASE_STAGE_MAX_TRANSLATION_LEAD_M,
+                        )
+                    self.stage_goal_target_m[stage_ids] = self.stage_drive_target_m[stage_ids]
+                    for stage_id in stage_ids.detach().cpu().tolist():
+                        for axis, attribute in enumerate(self.stage_drive_target_attributes[stage_id]):
+                            attribute.Set(float(self.stage_drive_target_m[stage_id, axis]))
+                    if bool(owns_rack_alignment.any()):
+                        pose_ids = stage_ids[owns_rack_alignment]
+                        blade_orientation = payload_orientation[pose_ids]
+                        rotation_error_world_rad = axis_angle_from_quat(
+                            quat_mul(
+                                self.relocation_staging_rot.unsqueeze(0).expand_as(blade_orientation),
+                                quat_inv(blade_orientation),
+                            )
+                        )
+                        rotation_error_stage_rad = rotation_error_world_rad
+                        # This D6 joint's body 1 is the payload itself.  Its
+                        # positive target therefore follows the world-frame
+                        # correction because the fixed anchor is unrotated.
+                        rotation_delta_deg = torch.rad2deg(BASE_STAGE_ROTATION_GAIN * rotation_error_stage_rad).clamp(
+                            -BASE_STAGE_ROTATION_STEP_DEG, BASE_STAGE_ROTATION_STEP_DEG
+                        )
+                        previous_rotation_target = self.stage_rotation_drive_target_deg[pose_ids].clone()
+                        self.stage_rotation_drive_target_deg[pose_ids] = (
+                            previous_rotation_target + rotation_delta_deg
+                        ).clamp(-BASE_STAGE_ROTATION_LIMIT_DEG, BASE_STAGE_ROTATION_LIMIT_DEG)
+                        for pose_id in pose_ids.detach().cpu().tolist():
+                            for axis, attribute in enumerate(self.stage_rotation_drive_target_attributes[pose_id]):
+                                attribute.Set(float(self.stage_rotation_drive_target_deg[pose_id, axis]))
+                    position_action[stage_positioning] = 0.0
+                    target_changed = (self.stage_drive_target_m[stage_ids] - previous_target).abs().amax(dim=-1) > 1e-9
+                    self.rail_commanded_steps[stage_ids] += target_changed.to(torch.long)
+                final_translation = (
+                    (self.waypoint_read[ids] <= 0) & self.relocation_aligned[ids] & ~self.relocation_aligning[ids]
+                )
+                position_authority = torch.where(
+                    final_translation,
+                    torch.full_like(final_translation, RELOCATE_FINAL_LEG_POSITION_AUTHORITY, dtype=torch.float32),
+                    torch.ones_like(final_translation, dtype=torch.float32),
+                )
+                position_action = position_action * position_authority.unsqueeze(-1)
+            self.actions[ids, :3] = position_action
             self.actions[ids, 3:6] = 0.0
             if self.workflow == "relocate":
                 # Hold the module's attitude for the whole flight, because
@@ -1051,45 +2070,215 @@ class WorkflowDriver:
                 # A quarter of the authority still corrects far faster than the
                 # module can tumble, because it is opposing a drift rather than
                 # chasing a setpoint.
-                rotation_error = grapple_grip_attitude_error_world(task)[ids]
-                self.actions[ids, 3:6] = (rotation_error / scale[3:6]).clamp(
-                    -TRANSIT_ATTITUDE_AUTHORITY, TRANSIT_ATTITUDE_AUTHORITY
+                # Translate with the attitude held at extraction clear. Mixing
+                # the 330 mm final leg and rack alignment in one differential-
+                # IK command made the solver spend its authority rotating: the
+                # arm stalled while the bounded latch saturated and lost its
+                # transform. Once the module centre reaches the staging point,
+                # rotate about that point while the position target compensates
+                # for the captured tool-to-module offset.
+                command_rack_attitude = self.relocation_aligning[ids] | self.relocation_aligned[ids]
+                if self.base_rail_enabled and not self.base_rail_joint_hold:
+                    command_rack_attitude = command_rack_attitude | (self.waypoint_read[ids] == 1)
+                desired_tool_rot = torch.where(
+                    command_rack_attitude.unsqueeze(-1),
+                    self.relocation_desired_tool_rot[ids],
+                    self.relocation_hold_tool_rot[ids],
                 )
-            # Rate-limiting the last leg to a third of the command, the way the
-            # replayed transit is slowed, was tried here and measured *worse*:
-            # the module ended at x = -0.158 against -0.003 at full command, and
-            # the count that had crossed fell from 46 to 19 because the tool
-            # itself lagged its waypoint. It is not in, and the reason it did not
-            # help is that the module was not being driven too fast, it was being
-            # driven at the wrong bay -- see `_plan_lateral_transit`.
-            arrived = transiting & (self.waypoint_read <= 0) & (blade_x >= TRANSIT_TARGET_BLADE_X - 0.005)
+                if self.base_rail_enabled:
+                    root_quat = task.scene["robot"].data.root_quat_w[ids]
+                    inverse_root = quat_inv(root_quat)
+                    current_tool_rot = quat_mul(inverse_root, tool_rot[ids])
+                    desired_tool_rot = quat_mul(inverse_root, desired_tool_rot)
+                else:
+                    current_tool_rot = tool_rot[ids]
+                rotation_error = axis_angle_from_quat(quat_mul(desired_tool_rot, quat_inv(current_tool_rot)))
+                attitude_authority = torch.where(
+                    self.relocation_aligning[ids],
+                    torch.full_like(
+                        self.relocation_aligning[ids],
+                        TRANSIT_ALIGN_ATTITUDE_AUTHORITY,
+                        dtype=torch.float32,
+                    ),
+                    torch.full_like(
+                        self.relocation_aligning[ids],
+                        TRANSIT_HOLD_ATTITUDE_AUTHORITY,
+                        dtype=torch.float32,
+                    ),
+                )
+                # Crossing the rack midplane with a fixed head-on attitude
+                # drives this six-axis arm through a measured DLS singularity.
+                # The payload is now form-locked to the wrist, so let the wrist
+                # choose its orientation during the collision-clear lateral
+                # translation, then restore rack attitude at the stationary
+                # destination-clear waypoint below. Before the fixed latch this
+                # was invalid because the passive pin let the module tumble
+                # independently of the tool; that failure mode no longer exists.
+                crossing_clear = (
+                    (self.waypoint_read[ids] == 1)
+                    & ~self.relocation_aligning[ids]
+                    & ~self.relocation_aligned[ids]
+                    & (getattr(task.cfg, "latch_joint_mode", "compliant") == "fixed")
+                    & (not self.base_rail_enabled)
+                )
+                attitude_authority = torch.where(
+                    crossing_clear,
+                    torch.zeros_like(attitude_authority),
+                    attitude_authority,
+                )
+                raw_rotation_action = rotation_error / scale[3:6]
+                self.actions[ids, 3:6] = torch.maximum(
+                    torch.minimum(raw_rotation_action, attitude_authority.unsqueeze(-1)),
+                    -attitude_authority.unsqueeze(-1),
+                )
+            secured_for_handoff = torch.where(
+                self.payload_stage_engaged,
+                self.payload_stage_engaged,
+                established,
+            )
+            arrived = transiting & (self.waypoint_read <= 0) & secured_for_handoff
             if self.workflow == "relocate":
-                # And it has to have crossed, not merely come back out to the
-                # right depth in the bay it started in.
-                #
-                # Asked of the *module*, in the rack's own frame, rather than of
-                # the tool relative to where this episode happened to start. The
-                # tool-relative form passed while the module sat 93 mm outside the
-                # channel, because it measured a displacement rather than an
-                # arrival -- the same error that put the cross leg in the wrong
-                # place. Half the bay pitch is the midpoint between the two bays,
-                # so this asks which bay the module is now in front of.
-                blade_y = (
-                    self.task.scene["spare_blade"].data.root_pos_w[:, 1] - self.task.scene.env_origins[:, 1]
+                # The receiving checkpoint starts at one exact full-distance
+                # rack pose.  Crossing the bay midpoint and reaching roughly
+                # the right x-depth previously admitted hand-offs 164 mm high,
+                # 22 mm off-centre, rotating at 0.50 rad/s, and 1.49 rad out of
+                # attitude.  That was not a difficult insertion; it was an
+                # invalid policy precondition.  Reuse the insertion success
+                # envelope as a fail-closed staging contract.
+                blade_local, blade_orientation, blade_velocity = self._payload_feedback()
+                staging_position = self.relocation_staging_pos.unsqueeze(0)
+                staging_orientation = self.relocation_staging_rot.unsqueeze(0).expand_as(blade_orientation)
+                staging_position_error = torch.linalg.vector_norm(blade_local - staging_position, dim=-1)
+                staging_orientation_error = torch.linalg.vector_norm(
+                    axis_angle_from_quat(quat_mul(staging_orientation, quat_inv(blade_orientation))),
+                    dim=-1,
                 )
-                arrived = arrived & (blade_y <= 0.5 * SECOND_SLOT_CENTER_Y)
+                staging_linear_speed = torch.linalg.vector_norm(blade_velocity[:, :3], dim=-1)
+                staging_angular_speed = torch.linalg.vector_norm(blade_velocity[:, 3:], dim=-1)
+                secured = secured_for_handoff
+                if self.release_latch_required and not self.base_rail_enabled:
+                    secured = secured & grapple_latched(task)
+                arrived = (
+                    arrived
+                    & secured
+                    & (staging_position_error <= INSERT_HANDOFF_POSITION_TOLERANCE_M)
+                    & (staging_orientation_error <= INSERTION_ORIENTATION_TOLERANCE_RAD)
+                    & (staging_linear_speed <= INSERTION_LINEAR_VELOCITY_LIMIT_MPS)
+                    & (staging_angular_speed <= INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS)
+                )
             # Insertion drives the module back into its rails, so the grip has to
-            # carry contact again. Retaining through that is the failure the
-            # capture/hold split exists to prevent.
+            # carry contact again.  ``established`` is also a hard precondition:
+            # a latch probe once advanced merely because a flipped module's
+            # centre crossed the axial/lateral planes while its grip point was
+            # 831 mm from the tool.  Geometry alone is not a valid hand-off.
+            # Retaining through insertion is the failure the capture/hold split
+            # exists to prevent.
             self.gripper.retain_latch[arrived] = False
+            if self.base_rail_enabled and bool(arrived.any()):
+                self._set_stage_arm_servo(
+                    torch.nonzero(arrived, as_tuple=False).squeeze(-1),
+                    strengthened=False,
+                )
             self.phase[arrived] = INSERT
 
         # --- insert -> seated --------------------------------------------------
         inserting = self.phase == INSERT
         if bool(inserting.any()):
-            # The insert skill's own success mask, including its 0.20 s hold, so
-            # the chain is judged by the same predicate the skill is.
-            fired = inserting & grapple_insertion_success_mask(task)
+            shuttle_inserting = inserting & self.payload_stage_engaged & self.base_rail_enabled
+            estimator = getattr(task, "_module_state_estimator", None)
+            if estimator is not None and estimator.backend == "fiducial_pnp":
+                shuttle_inserting &= estimator.fiducial_current_detection
+            if bool(shuttle_inserting.any()):
+                shuttle_ids = torch.nonzero(shuttle_inserting, as_tuple=False).squeeze(-1)
+                payload_position, payload_orientation, payload_velocity = self._payload_feedback()
+                blade_local = payload_position[shuttle_ids]
+                inserted_target = blade_local.new_tensor(SECOND_SLOT_INSERTED_POS).unsqueeze(0)
+                blade_error_world = inserted_target - blade_local
+                blade_error_stage = blade_error_world
+                target_delta = (BASE_STAGE_OUTER_LOOP_GAIN * blade_error_stage).clamp(
+                    -BASE_STAGE_GUARDED_AXIAL_STEP_M,
+                    BASE_STAGE_GUARDED_AXIAL_STEP_M,
+                )
+                previous_target = self.stage_drive_target_m[shuttle_ids].clone()
+                lower = self.stage_drive_target_m.new_tensor(BASE_STAGE_MIN_TARGET_M)
+                upper = self.stage_drive_target_m.new_tensor(BASE_STAGE_MAX_TARGET_M)
+                self.stage_drive_target_m[shuttle_ids] = torch.maximum(
+                    torch.minimum(previous_target + target_delta, upper),
+                    lower,
+                )
+                # A force drive may trail its command while entering contact.
+                # Bound that lead exactly as in the staging leg so a temporary
+                # stop cannot accumulate a large hidden target and release it
+                # as an impulse once the contact clears.
+                actual_travel_stage = blade_local - self.payload_stage_capture_pos[shuttle_ids]
+                self.stage_drive_target_m[shuttle_ids] = torch.maximum(
+                    torch.minimum(
+                        self.stage_drive_target_m[shuttle_ids],
+                        actual_travel_stage + BASE_STAGE_MAX_TRANSLATION_LEAD_M,
+                    ),
+                    actual_travel_stage - BASE_STAGE_MAX_TRANSLATION_LEAD_M,
+                )
+                self.stage_goal_target_m[shuttle_ids] = self.stage_drive_target_m[shuttle_ids]
+                rotation_error_world = axis_angle_from_quat(
+                    quat_mul(
+                        self.relocation_staging_rot.unsqueeze(0).expand_as(payload_orientation[shuttle_ids]),
+                        quat_inv(payload_orientation[shuttle_ids]),
+                    )
+                )
+                rotation_error_stage = rotation_error_world
+                rotation_delta_deg = torch.rad2deg(BASE_STAGE_ROTATION_GAIN * rotation_error_stage).clamp(
+                    -BASE_STAGE_ROTATION_STEP_DEG, BASE_STAGE_ROTATION_STEP_DEG
+                )
+                self.stage_rotation_drive_target_deg[shuttle_ids] = (
+                    self.stage_rotation_drive_target_deg[shuttle_ids] + rotation_delta_deg
+                ).clamp(-BASE_STAGE_ROTATION_LIMIT_DEG, BASE_STAGE_ROTATION_LIMIT_DEG)
+                for shuttle_id in shuttle_ids.detach().cpu().tolist():
+                    for axis, attribute in enumerate(self.stage_drive_target_attributes[shuttle_id]):
+                        attribute.Set(float(self.stage_drive_target_m[shuttle_id, axis]))
+                    for axis, attribute in enumerate(self.stage_rotation_drive_target_attributes[shuttle_id]):
+                        attribute.Set(float(self.stage_rotation_drive_target_deg[shuttle_id, axis]))
+                self.rail_commanded_steps[shuttle_ids] += (
+                    (self.stage_drive_target_m[shuttle_ids] - previous_target).abs().amax(dim=-1) > 1e-9
+                ).to(torch.long)
+
+                target = payload_position.new_tensor(SECOND_SLOT_INSERTED_POS)
+                axial = (payload_position[:, 0] - target[0]).abs()
+                lateral = torch.linalg.vector_norm(payload_position[:, 1:3] - target[1:3], dim=-1)
+                orientation = torch.linalg.vector_norm(
+                    axis_angle_from_quat(
+                        quat_mul(
+                            self.relocation_staging_rot.unsqueeze(0).expand_as(payload_orientation),
+                            quat_inv(payload_orientation),
+                        )
+                    ),
+                    dim=-1,
+                )
+                seated_now = (
+                    shuttle_inserting
+                    & (axial <= INSERTION_AXIAL_DEPTH_TOLERANCE_M)
+                    & (lateral <= INSERTION_LATERAL_TOLERANCE_M)
+                    & (orientation <= INSERTION_ORIENTATION_TOLERANCE_RAD)
+                    & (torch.linalg.vector_norm(payload_velocity[:, :3], dim=-1) <= INSERTION_LINEAR_VELOCITY_LIMIT_MPS)
+                    & (
+                        torch.linalg.vector_norm(payload_velocity[:, 3:], dim=-1)
+                        <= INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS
+                    )
+                )
+                self.payload_stage_insert_hold = torch.where(
+                    seated_now,
+                    self.payload_stage_insert_hold + 1,
+                    torch.zeros_like(self.payload_stage_insert_hold),
+                )
+                required_insert_hold = max(1, int(round(0.20 / float(task.step_dt))))
+                shuttle_fired = shuttle_inserting & (self.payload_stage_insert_hold >= required_insert_hold)
+            else:
+                shuttle_fired = torch.zeros_like(inserting)
+            # The learned arm path keeps its own predicate.  The shuttle path
+            # uses the identical seated geometry/motion envelope plus a 0.20 s
+            # hold, with the D6 joint replacing the no-longer-relevant grip
+            # conditions after physical handoff.
+            learned_fired = inserting & ~self.payload_stage_engaged & grapple_insertion_success_mask(task)
+            fired = shuttle_fired | learned_fired
             self._finish(fired, step)
             self.predicate_fired[fired] = True
             # A seated module is a finished job, and the DONE phase below waits
@@ -1106,7 +2295,15 @@ class WorkflowDriver:
         finished = self.phase == DONE
         if bool(finished.any()):
             self.actions[finished, :6] = 0.0
-            self.actions[finished, 6] = 1.0
+            # A completed manipulation retains the module through the settling
+            # re-check. A planning rejection never began manipulation, so it
+            # must keep the gripper open instead of turning DONE into a hidden
+            # close command.
+            self.actions[finished & ~plan_blocked, 6] = 1.0
+            self.actions[finished & plan_blocked, 6] = 0.0
+            # The shuttle, not the gripper, owns the delivered module. Keep the
+            # arm visibly open after handoff and during the settle proof.
+            self.actions[finished & self.payload_stage_engaged, 6] = -1.0
             ripe = finished & ~self.judged & (step >= self.done_at + SETTLE_STEPS)
             if bool(ripe.any()):
                 outcome, everything = _workflow_outcome(task, self.workflow)
@@ -1121,6 +2318,22 @@ class WorkflowDriver:
                 self.all_conditions[ripe] = everything[ripe]
                 self.judged[ripe] = True
                 self._freeze(ripe, step, grip_error, grip_attitude, blade_x)
+
+        if self.base_rail_enabled:
+            rail_joint_hold = (
+                (self.phase == TRANSIT)
+                & (self.waypoint_read == 1)
+                & ~self.relocation_aligning
+                & self.relocation_aligned
+                & ~self.relocation_joint_replaying
+            )
+            self.arm.set_joint_hold_mask(rail_joint_hold)
+            replay_ids = torch.nonzero(self.relocation_joint_replaying, as_tuple=False).squeeze(-1)
+            if replay_ids.numel() > 0:
+                replay_targets = self.extraction_joint_waypoints[
+                    self.relocation_joint_replay_index[replay_ids], replay_ids
+                ]
+                self.arm.set_joint_target_override(replay_ids, replay_targets)
 
         torch.maximum(self.furthest, self.phase, out=self.furthest)
         if self.tracing:
@@ -1139,7 +2352,13 @@ class WorkflowDriver:
         self.phase_started[self.phase != entry_phase] = step
         self._apply_scales()
 
-    def _plan_lateral_transit(self, mask: torch.Tensor, tool: torch.Tensor, blade_x: torch.Tensor) -> None:
+    def _plan_lateral_transit(
+        self,
+        mask: torch.Tensor,
+        tool: torch.Tensor,
+        tool_rot: torch.Tensor,
+        blade_x: torch.Tensor,
+    ) -> None:
         """Lay out the path from the first bay to the second, three waypoints.
 
         The removal transit replays the pull backwards, which is feasible by
@@ -1183,32 +2402,94 @@ class WorkflowDriver:
         ids = torch.nonzero(mask, as_tuple=False).squeeze(-1)
         if ids.numel() == 0:
             return
-        # Measured now: where the tool sits relative to the module it is holding,
-        # on both axes the transit moves along. `blade_x` and `blade_y` are
-        # environment-local and `tool` is world, so each offset carries this
-        # environment's origin -- which is exactly right, because the waypoints
-        # these build are world too and the origin cancels on arrival.
-        blade_y = (
-            self.task.scene["spare_blade"].data.root_pos_w[:, 1] - self.task.scene.env_origins[:, 1]
+        task = self.task
+        # The periodic extraction trace can be up to three control steps old
+        # when the success predicate fires.  Under payload load that gap was
+        # already 0.13 rad in one joint, so replay could not even reach its
+        # first saved target.  Make the actual hand-off state the last sample;
+        # the reverse path then starts continuously from where the arm is.
+        terminal_slots = self.waypoint_write[ids].clamp(max=self.max_waypoints - 1)
+        self.waypoints[terminal_slots, ids] = tool[ids]
+        self.extraction_joint_waypoints[terminal_slots, ids] = task.scene["robot"].data.joint_pos[ids][
+            :, self.arm_joint_ids
+        ]
+        blade_asset = task.scene["spare_blade"]
+        self.extraction_blade_pose_waypoints[terminal_slots, ids, :3] = (
+            blade_asset.data.root_pos_w[ids] - task.scene.env_origins[ids]
         )
+        self.extraction_blade_pose_waypoints[terminal_slots, ids, 3:] = blade_asset.data.root_quat_w[ids]
+        self.waypoint_write[ids] = (self.waypoint_write[ids] + 1).clamp(max=self.max_waypoints - 1)
+        # Capture the actual rigid transform at extraction clear. The final
+        # tool target is then solved from the desired bay-1 module pose and the
+        # rack-aligned tool attitude. This remains correct when the offset has
+        # rotated; adding a world-axis offset measured before the rotation does
+        # not.
+        blade_world = blade_asset.data.root_pos_w
+        if self.base_rail_enabled:
+            current_blade_y = blade_world[ids, 1] - task.scene.env_origins[ids, 1]
+            # The shuttle's zero is captured at handoff, so its lateral target
+            # is the measured bay-centre correction from that pose.
+            self.rail_goal_target_m[ids] = (SECOND_SLOT_CENTER_Y - current_blade_y).clamp(
+                BASE_STAGE_MIN_TARGET_M[1], BASE_STAGE_MAX_TARGET_M[1]
+            )
+        blade_relative_to_tool = quat_apply(quat_inv(tool_rot[ids]), blade_world[ids] - tool[ids])
+        blade_relative_rot_to_tool = quat_mul(quat_inv(tool_rot[ids]), blade_asset.data.root_quat_w[ids])
+        desired_blade_rot = self.relocation_staging_rot.unsqueeze(0).expand_as(tool_rot[ids])
+        desired_tool_rot = quat_mul(desired_blade_rot, quat_inv(blade_relative_rot_to_tool))
+        desired_blade_world = self.relocation_staging_pos.unsqueeze(0) + self.task.scene.env_origins[ids]
+        final_tool_hold = desired_blade_world - quat_apply(tool_rot[ids], blade_relative_to_tool)
+        final_tool_aligned = desired_blade_world - quat_apply(desired_tool_rot, blade_relative_to_tool)
+        self.relocation_hold_tool_rot[ids] = tool_rot[ids]
+        self.relocation_blade_relative_to_tool[ids] = blade_relative_to_tool
+        self.relocation_blade_relative_rot_to_tool[ids] = blade_relative_rot_to_tool
+        self.relocation_desired_tool_rot[ids] = desired_tool_rot
+        self.relocation_final_tool_hold[ids] = final_tool_hold
+        self.relocation_final_tool_aligned[ids] = final_tool_aligned
+        self.relocation_aligning[ids] = False
+        self.relocation_aligned[ids] = False
+        self.relocation_joint_replaying[ids] = False
+        source_staging = self.relocation_staging_pos.clone()
+        source_staging[1] = 0.0
+        for env_id in ids.detach().cpu().tolist():
+            count = int(self.waypoint_write[env_id])
+            if count <= 0:
+                raise RuntimeError(f"No extraction joint path was recorded for relocation env {env_id}")
+            recorded_positions = self.extraction_blade_pose_waypoints[:count, env_id, :3]
+            self.relocation_joint_replay_stop[env_id] = torch.argmin(
+                torch.linalg.vector_norm(recorded_positions - source_staging, dim=-1)
+            )
+
         tool_to_blade_x = tool[ids, 0] - blade_x[ids]
-        tool_to_blade_y = tool[ids, 1] - blade_y[ids]
         retreat_x = TRANSIT_CLEAR_BLADE_CENTRE_X + tool_to_blade_x
-        staging_x = TRANSIT_TARGET_BLADE_X + tool_to_blade_x
-        staging_y = SECOND_SLOT_CENTER_Y + tool_to_blade_y
 
         back = tool[ids].clone()
         back[:, 0] = retreat_x
         across = back.clone()
-        across[:, 1] = staging_y
-        approach = across.clone()
-        approach[:, 0] = staging_x
+        across[:, 1] = final_tool_hold[:, 1]
+        approach = final_tool_hold
 
         # Written in reverse, because the follower walks the buffer downwards.
         self.waypoints[2, ids] = back
         self.waypoints[1, ids] = across
         self.waypoints[0, ids] = approach
-        self.waypoint_read[ids] = 2
+        if self.base_rail_enabled:
+            # The physical shuttle accepts the ORU as soon as learned
+            # extraction clears the rails.  It owns the collision-clear axial
+            # retreat, cross-bay move, pose staging, and guarded insertion;
+            # making the arm perform another long retreat before handoff wasted
+            # almost the entire demonstration clock and added no capability.
+            self._engage_payload_stage(ids)
+            self.stage_drive_target_m[ids] = 0.0
+            self.stage_goal_target_m[ids] = 0.0
+            self.stage_rotation_drive_target_deg[ids] = 0.0
+            self.relocation_aligned[ids] = True
+            # The now-open gripper first retreats to the already planned clear
+            # waypoint while the shuttle holds a zero target.  Starting the
+            # lateral move with the fingers still around the handle physically
+            # blocked the payload and wound the D6 target into its limit.
+            self.waypoint_read[ids] = 2
+        else:
+            self.waypoint_read[ids] = 2
         # The axis each leg is laid out along, so the follower can ask whether
         # the leg is finished rather than whether the tool is at a point. Holding
         # the module's attitude moves the tool off that point on the other two
@@ -1232,17 +2513,31 @@ class WorkflowDriver:
         if not bool(transiting.any()):
             return ""
         ids = torch.nonzero(transiting, as_tuple=False).squeeze(-1)
-        tool = end_effector_pose_world(self.task)[0][ids]
+        all_tool, all_tool_rot = end_effector_pose_world(self.task)
+        tool = all_tool[ids]
+        tool_rot = all_tool_rot[ids]
         target = self.waypoints[self.waypoint_read[ids], ids]
         distance = torch.linalg.vector_norm(target - tool, dim=-1)
+        attitude_distance = torch.linalg.vector_norm(
+            axis_angle_from_quat(quat_mul(self.relocation_desired_tool_rot[ids], quat_inv(tool_rot))),
+            dim=-1,
+        )
+        blade_orientation = self.task.scene["spare_blade"].data.root_quat_w[ids]
+        blade_attitude_distance = torch.linalg.vector_norm(
+            axis_angle_from_quat(
+                quat_mul(
+                    self.relocation_staging_rot.unsqueeze(0).expand_as(blade_orientation),
+                    quat_inv(blade_orientation),
+                )
+            ),
+            dim=-1,
+        )
         legs = torch.bincount(self.waypoint_read[ids], minlength=3).tolist()
         # Each conjunct of `arrived` separately, because the first relocation run
         # showed the tool sitting 0.4 mm from its last waypoint and not arriving,
         # and a single boolean cannot say which clause is the one refusing.
         blade_x = _blade_centre_x(self.task)[ids]
-        lateral = (
-            self.task.scene["spare_blade"].data.root_pos_w[:, 1] - self.task.scene.env_origins[:, 1]
-        )[ids]
+        lateral = (self.task.scene["spare_blade"].data.root_pos_w[:, 1] - self.task.scene.env_origins[:, 1])[ids]
         # Is the module still on the tool at all? A tool that flies its whole
         # path while the module does not follow has either lost the grip or is
         # dragging the module against something, and grip error tells the two
@@ -1251,6 +2546,7 @@ class WorkflowDriver:
         # boundaries, and this failure lives in the middle of a phase.
         grip_error, _ = grapple_grip_error_metrics(self.task)
         grip_error = grip_error[ids]
+        latch = grapple_latch_diagnostics(self.task)
         return (
             f"  transit: legs_remaining={legs[:3]} "
             f"to_waypoint_m p50={float(distance.median()):.4f} max={float(distance.max()):.4f} "
@@ -1260,6 +2556,16 @@ class WorkflowDriver:
             f"crossed={int((lateral <= 0.5 * SECOND_SLOT_CENTER_Y).sum())} "
             f"(p50={float(lateral.median()):.4f} need<={0.5 * SECOND_SLOT_CENTER_Y:.4f}) "
             f"| grip_error_m p50={float(grip_error.median()):.4f} max={float(grip_error.max()):.4f} "
+            f"latch={int(latch['engaged'][ids].sum())}/{int(ids.numel())} "
+            f"latch_rel_m max={float(latch['position_error_m'][ids].max()):.4f} "
+            f"latch_rel_rad max={float(latch['orientation_error_rad'][ids].max()):.4f} "
+            f"tool_attitude_rad p50={float(attitude_distance.median()):.4f} "
+            f"blade_attitude_rad p50={float(blade_attitude_distance.median()):.4f} "
+            f"stage_state={int(self.relocation_stage_lateral_done[ids].sum())}/"
+            f"{int(self.relocation_stage_translated[ids].sum())}/"
+            f"{int(self.relocation_aligning[ids].sum())}/"
+            f"{int(self.relocation_aligned[ids].sum())} "
+            f"stage_rot_target_deg={[round(float(value), 2) for value in self.stage_rotation_drive_target_deg[ids[0]]]} "
             # The tool's own position, in the same environment-local frame the
             # module is reported in. Everything above is either a distance or a
             # module position, and three of those cannot be reconciled without
@@ -1300,9 +2606,9 @@ class WorkflowDriver:
         # Cycle time is time to the hand-off that finished the workflow, not to
         # the episode's timeout: a completed workflow then idles, and reporting
         # the idle would make every success look like it took the whole episode.
-        steps = torch.where(
-            self.done_steps > 0, self.done_steps, task.episode_length_buf.to(self.done_steps.dtype)
-        ).to(torch.float64)
+        steps = torch.where(self.done_steps > 0, self.done_steps, task.episode_length_buf.to(self.done_steps.dtype)).to(
+            torch.float64
+        )
         success = self.outcome.to(torch.float64)
         reason = torch.where(
             self.outcome,
@@ -1426,29 +2732,60 @@ def main() -> dict[str, object]:
             # That is exactly how the first attempt at this flag failed, and it
             # failed silently into a report file rather than loudly.
             #
-            # The one interface experiment this project has never run. A modelled
-            # latch engaged on *capture* was swept from 10 to 160 N-m and refuted:
+            # A modelled latch engaged on *capture* was swept from 10 to 160 N-m
+            # and refuted:
             # a restoring torque on a module the rails still hold jams it in the
             # rails and extraction travel collapses from 458 mm to about 25 mm.
             # Engaged the instant the rails let go it has nothing left to jam the
             # module against, and that is the phase that needs it -- the module
             # is unconstrained for the whole crossing and nothing else opposes a
-            # moment about the closing axis.
+            # moment about the closing axis. Release-time bounded-compliance
+            # probes are now implemented and have remained stable, but have not
+            # completed relocation; the flag is retained for reproducible design
+            # experiments, not enabled in the service preset.
             env_cfg.latch_enabled = True
             env_cfg.latch_engages_on_release = True
             env_cfg.latch_rated_torque_nm = args.latch_rated_torque_nm
+            env_cfg.latch_rated_force_n = args.latch_rated_force_n
+            env_cfg.latch_position_stiffness_n_per_m = args.latch_position_stiffness_n_per_m
+            env_cfg.latch_position_damping_ratio = args.latch_position_damping_ratio
+            env_cfg.latch_rotation_stiffness_nm_per_rad = args.latch_rotation_stiffness_nm_per_rad
+            env_cfg.latch_rotation_damping_ratio = args.latch_rotation_damping_ratio
+            env_cfg.latch_joint_mode = args.latch_joint_mode
+            if args.latch_joint_mode == "fixed":
+                env_cfg.scene.release_latch_joint.spawn.break_force_n = args.latch_rated_force_n
+                env_cfg.scene.release_latch_joint.spawn.break_torque_nm = args.latch_rated_torque_nm
+        env_cfg.base_rail_enabled = args.base_rail_on_relocation
         env_cfg.configure_robustness(0)
+        if args.base_rail_on_relocation:
+            env_cfg.configure_base_rail()
+        # The full physical stage motion can legitimately outlive the original
+        # per-skill episode. Keep the environment alive for the explicitly
+        # requested driver horizon; learned phases still retain their own
+        # certified deadlines below.
+        env_cfg.episode_length_s = max(float(env_cfg.episode_length_s), args.steps / 30.0 + 2.0)
         if args.latch_on_release:
             if env_cfg.events.grapple_latch is None:
                 raise RuntimeError(
                     "--latch_on_release did not survive configure_robustness: the task's "
                     "_configure_latch() removed the term. The flag must be set before it runs."
                 )
+            interface_detail = (
+                "two-body fixed joint with reaction wrench"
+                if args.latch_joint_mode == "fixed"
+                else (
+                    f"stiffness {args.latch_position_stiffness_n_per_m} N/m / "
+                    f"{args.latch_rotation_stiffness_nm_per_rad} N-m/rad"
+                )
+            )
             print(
-                f"[INFO] Latch ARMED ON RELEASE at {args.latch_rated_torque_nm} N-m "
+                f"[INFO] Latch ARMED ON RELEASE at {args.latch_rated_force_n} N / "
+                f"{args.latch_rated_torque_nm} N-m; {interface_detail} "
                 "(engages when the driver retains the grip, not on capture)"
             )
         env_cfg.seed = args.seed
+        if hasattr(env_cfg, "perception_backend"):
+            env_cfg.perception_backend = args.perception_backend
         if args.pose_head_checkpoint is not None:
             if not args.pose_head_checkpoint.is_file():
                 raise FileNotFoundError(args.pose_head_checkpoint)
@@ -1507,15 +2844,17 @@ def main() -> dict[str, object]:
         if args.workflow != "remove":
             phases.append(INSERT)
         budget = sum(
-            PHASE_BUDGET_S[index]
-            * (args.transit_slowdown if index == TRANSIT and args.workflow != "relocate" else 1)
+            PHASE_BUDGET_S[index] * (args.transit_slowdown if index == TRANSIT and args.workflow != "relocate" else 1)
             for index in phases
         )
         if args.workflow != "remove":
             # The scripted realign runs inside the seat phase, so it is not in
             # PHASE_BUDGET_S and has to be added to the episode explicitly.
             budget += ALIGN_STEPS / 30.0
-        env_cfg.episode_length_s = round(budget + SETTLE_STEPS / 30.0 + 1.0, 2)
+        env_cfg.episode_length_s = round(
+            max(budget + SETTLE_STEPS / 30.0 + 1.0, args.steps / 30.0 + 2.0),
+            2,
+        )
         print(
             f"[INFO] {args.workflow}: phase budgets "
             f"{[f'{PHASE_NAMES[i]}={PHASE_BUDGET_S[i] * (args.transit_slowdown if i == TRANSIT else 1):.1f}s' for i in phases]} "
@@ -1530,6 +2869,17 @@ def main() -> dict[str, object]:
         }
         if args.inspection_view in inspection_views:
             env_cfg.viewer.eye, env_cfg.viewer.lookat = inspection_views[args.inspection_view]
+        if args.video and env_cfg.sim.render_interval > env_cfg.decimation:
+            # The vision task normally renders at the 15 Hz sensor cadence
+            # (eight physics steps) while control and Gym video advance at
+            # 30 Hz (four physics steps).  RecordVideo otherwise receives an
+            # unrendered frame every other control step, producing clips that
+            # are approximately half black.  Rendering the viewer at control
+            # cadence does not change the camera's configured 15 Hz update
+            # period or any policy observation; it only makes the artifact
+            # faithful to the executed run.
+            env_cfg.sim.render_interval = env_cfg.decimation
+            print("[INFO] Viewer render cadence raised to 30 Hz for video capture", flush=True)
 
         policies = {
             "capture": CheckpointPolicy(args.grasp_checkpoint, device),
@@ -1571,6 +2921,9 @@ def main() -> dict[str, object]:
             args.transit_slowdown,
             episode_steps,
             tracing=args.handoff_trace is not None,
+            release_latch_required=args.latch_on_release,
+            base_rail_enabled=args.base_rail_on_relocation,
+            base_rail_arm_mode=args.base_rail_arm_mode,
         )
         collecting = args.episodes > 0
         recorder = TerminalEpisodeRecorder(WORKFLOW_METRIC_FIELDS) if collecting else None
@@ -1624,6 +2977,8 @@ def main() -> dict[str, object]:
             driver.step(step)
             if single and int(driver.phase[0]) != previous:
                 note(f"{PHASE_NAMES[previous]} -> {PHASE_NAMES[int(driver.phase[0])]}", step)
+            if single and int(driver.phase[0]) == TRANSIT and step % 120 == 0:
+                print(f"[CHAIN] step {step:5d}{driver.transit_progress()}", flush=True)
             _, _, terminated, truncated, _ = env.step(driver.actions)
             step += 1
             if collecting and step % progress_every == 0:
@@ -1677,18 +3032,272 @@ def main() -> dict[str, object]:
             "checkpoints": {name: str(policy.path) for name, policy in policies.items()},
             "checkpoint_sha256": {name: policy.sha256 for name, policy in policies.items()},
             "policy_set_sha256": combined,
+            "runtime_source_bindings": [
+                {
+                    "path": path.as_posix(),
+                    "sha256": hashlib.sha256((PROJECT_ROOT / path).read_bytes()).hexdigest(),
+                }
+                for path in WORKFLOW_RUNTIME_SOURCES
+            ],
+            "loaded_but_not_executed_policies": (
+                ["insert"] if args.workflow == "relocate" and args.base_rail_on_relocation else []
+            ),
             "learned_phases": {
                 "remove": ["capture", "extract"],
                 "install": ["capture", "insert"],
-                "relocate": ["capture", "extract", "insert"],
+                "relocate": (
+                    ["capture", "extract"] if args.base_rail_on_relocation else ["capture", "extract", "insert"]
+                ),
             }[args.workflow],
             "scripted_phases": ["seat"]
-            + (["transit"] if args.workflow == "relocate" else []),
+            + (
+                ["payload_handoff", "shuttle_retreat", "cross_bay", "guarded_insert"]
+                if args.workflow == "relocate" and args.base_rail_on_relocation
+                else ["transit"]
+                if args.workflow == "relocate"
+                else []
+            ),
+            "transit_planner": (
+                {
+                    "type": (
+                        "physical_payload_shuttle_retreat_cross_align_and_guarded_insert"
+                        if args.base_rail_on_relocation
+                        else "cartesian_clearance_translate_then_stationary_alignment"
+                    ),
+                    "lateral_crossing_attitude": (
+                        "held_by_world_aligned_six_axis_payload_stage"
+                        if args.base_rail_on_relocation
+                        else "unconstrained_for_fixed_latch_only"
+                    ),
+                    "physical_d6_drive_target_step_m": (
+                        BASE_RAIL_TARGET_STEP_M if args.base_rail_on_relocation else None
+                    ),
+                    "physical_d6_drive_target_range_m": (
+                        {"minimum_xyz": BASE_STAGE_MIN_TARGET_M, "maximum_xyz": BASE_STAGE_MAX_TARGET_M}
+                        if args.base_rail_on_relocation
+                        else None
+                    ),
+                    "kinematic_mount_transform_writes": False,
+                    "physical_d6_translation_drive_target_writes": (
+                        ["transX", "transY", "transZ"] if args.base_rail_on_relocation else []
+                    ),
+                    "physical_d6_rotation_drive_target_writes": (
+                        ["rotX", "rotY", "rotZ"] if args.base_rail_on_relocation else []
+                    ),
+                    "physical_d6_rotation_target_limit_deg": (
+                        BASE_STAGE_ROTATION_LIMIT_DEG if args.base_rail_on_relocation else None
+                    ),
+                    "arm_joint_position_target_hold": False if args.base_rail_on_relocation else None,
+                    "stage_arm_stiffness_multiplier": (
+                        BASE_STAGE_ARM_STIFFNESS_MULTIPLIER if args.base_rail_on_relocation else None
+                    ),
+                    "physical_payload_stage_handoff": args.base_rail_on_relocation,
+                    "arm_mode": (
+                        "robot_releases_after_measured_payload_stage_handoff" if args.base_rail_on_relocation else None
+                    ),
+                    "robot_or_payload_state_writes": False,
+                    "destination_interface": (
+                        {
+                            "straight_rail_total_clearance_mm": 4.5,
+                            "floor_lead_in_clearance_mm": 2.0,
+                            "passive_flare_collision": False,
+                        }
+                        if args.base_rail_on_relocation
+                        else None
+                    ),
+                    "rail_force_measured": False if args.base_rail_on_relocation else None,
+                }
+                if args.workflow == "relocate"
+                else None
+            ),
             "success_definition": (
-                "the workflow's own condition re-checked after a "
+                "rack seating (depth, lateral pose, attitude, and velocity) re-checked after a "
+                f"{SETTLE_STEPS / 30.0:.2f} s settling window; the robot grasp is intentionally "
+                "excluded after physical handoff to the payload shuttle"
+                if args.base_rail_on_relocation
+                else "the workflow's own condition re-checked after a "
                 f"{SETTLE_STEPS / 30.0:.2f} s settling window, not the instant a predicate fired"
             ),
+            "capture_interface": {
+                "type": (
+                    "break_rated_fixed_joint"
+                    if args.latch_on_release and args.latch_joint_mode == "fixed"
+                    else "bounded_compliant_form_lock"
+                    if args.latch_on_release
+                    else "friction_grapple_only"
+                ),
+                "engagement": "after_rail_release" if args.latch_on_release else "disabled",
+                "rated_force_n": args.latch_rated_force_n if args.latch_on_release else None,
+                "rated_torque_nm": args.latch_rated_torque_nm if args.latch_on_release else None,
+                "position_stiffness_n_per_m": (
+                    args.latch_position_stiffness_n_per_m
+                    if args.latch_on_release and args.latch_joint_mode == "compliant"
+                    else None
+                ),
+                "position_damping_ratio": (
+                    args.latch_position_damping_ratio
+                    if args.latch_on_release and args.latch_joint_mode == "compliant"
+                    else None
+                ),
+                "rotation_stiffness_nm_per_rad": (
+                    args.latch_rotation_stiffness_nm_per_rad
+                    if args.latch_on_release and args.latch_joint_mode == "compliant"
+                    else None
+                ),
+                "rotation_damping_ratio": (
+                    args.latch_rotation_damping_ratio
+                    if args.latch_on_release and args.latch_joint_mode == "compliant"
+                    else None
+                ),
+                "reaction_wrench_on_robot_modelled": (args.latch_on_release and args.latch_joint_mode == "fixed"),
+                "load_measurement": (
+                    "break_threshold_only_reaction_magnitude_not_exposed"
+                    if args.latch_on_release and args.latch_joint_mode == "fixed"
+                    else "commanded_external_wrench"
+                    if args.latch_on_release
+                    else None
+                ),
+            },
         }
+        result["capture_interface"]["observed_per_environment"] = [
+            {
+                "env": index,
+                "ever_engaged": bool(driver.latch_ever_engaged[index]),
+                "first_engagement_episode_step": (
+                    int(driver.latch_first_engagement_episode_step[index])
+                    if bool(driver.latch_ever_engaged[index])
+                    else None
+                ),
+                "max_relative_position_error_m": float(driver.latch_max_position_error_m[index]),
+                "max_relative_orientation_error_rad": float(driver.latch_max_orientation_error_rad[index]),
+                "max_applied_force_n": (
+                    None if args.latch_joint_mode == "fixed" else float(driver.latch_max_applied_force_n[index])
+                ),
+                "max_applied_torque_nm": (
+                    None if args.latch_joint_mode == "fixed" else float(driver.latch_max_applied_torque_nm[index])
+                ),
+                "force_saturated": (
+                    None if args.latch_joint_mode == "fixed" else bool(driver.latch_force_saturation_steps[index] > 0)
+                ),
+                "torque_saturated": (
+                    None if args.latch_joint_mode == "fixed" else bool(driver.latch_torque_saturation_steps[index] > 0)
+                ),
+                "force_saturation_control_steps": (
+                    None if args.latch_joint_mode == "fixed" else int(driver.latch_force_saturation_steps[index])
+                ),
+                "torque_saturation_control_steps": (
+                    None if args.latch_joint_mode == "fixed" else int(driver.latch_torque_saturation_steps[index])
+                ),
+            }
+            for index in range(task.num_envs)
+        ]
+        if args.workflow == "relocate":
+            terminal_arm_joints = task.scene["robot"].data.joint_pos[:, driver.arm_joint_ids]
+            terminal_blade_position, terminal_blade_orientation = attached_blade_pose_world(task)
+            terminal_blade_local = terminal_blade_position - task.scene.env_origins
+            terminal_staging_position_error = terminal_blade_local - driver.relocation_staging_pos.unsqueeze(0)
+            terminal_staging_orientation_error = axis_angle_from_quat(
+                quat_mul(
+                    driver.relocation_staging_rot.unsqueeze(0).expand_as(terminal_blade_orientation),
+                    quat_inv(terminal_blade_orientation),
+                )
+            )
+            terminal_replay_targets = driver.extraction_joint_waypoints[
+                driver.relocation_joint_replay_index,
+                torch.arange(task.num_envs, device=task.device),
+            ]
+            terminal_replay_errors = (terminal_arm_joints - terminal_replay_targets).abs().amax(dim=-1)
+            result["transit_planner"]["observed_per_environment"] = [
+                {
+                    "env": index,
+                    "rail_commanded_control_steps": int(driver.rail_commanded_steps[index]),
+                    "rail_terminal_drive_target_m": float(driver.rail_drive_target_m[index]),
+                    "rail_goal_drive_target_m": float(driver.rail_goal_target_m[index]),
+                    "stage_terminal_drive_target_xyz_m": [float(value) for value in driver.stage_drive_target_m[index]],
+                    "stage_terminal_rotation_drive_target_xyz_deg": [
+                        float(value) for value in driver.stage_rotation_drive_target_deg[index]
+                    ],
+                    "payload_stage_engaged": bool(driver.payload_stage_engaged[index]),
+                    "payload_stage_control_steps": int(driver.payload_stage_control_steps[index]),
+                    "payload_stage_last_staging_error_world_m": [
+                        float(value) for value in driver.payload_stage_last_error_world[index]
+                    ],
+                    "payload_stage_last_staging_error_stage_frame_m": [
+                        float(value) for value in driver.payload_stage_last_error_stage[index]
+                    ],
+                    "stage_retreat_done": bool(driver.relocation_stage_retreat_done[index]),
+                    "stage_lateral_done": bool(driver.relocation_stage_lateral_done[index]),
+                    "stage_attitude_done": bool(driver.relocation_stage_attitude_done[index]),
+                    "stage_pose_staged": bool(driver.relocation_stage_translated[index]),
+                    "stage_aligned": bool(driver.relocation_aligned[index]),
+                    "stage_aligning": bool(driver.relocation_aligning[index]),
+                    "terminal_waypoint_read": int(driver.waypoint_read[index]),
+                    "terminal_driver_phase": PHASE_NAMES[int(driver.phase[index])],
+                    "terminal_blade_position_xyz_m": [float(value) for value in terminal_blade_local[index]],
+                    "terminal_staging_position_error_xyz_m": [
+                        float(value) for value in terminal_staging_position_error[index]
+                    ],
+                    "terminal_staging_orientation_error_axis_angle_rad": [
+                        float(value) for value in terminal_staging_orientation_error[index]
+                    ],
+                    "joint_replay_stop_index": int(driver.relocation_joint_replay_stop[index]),
+                    "joint_replay_terminal_index": int(driver.relocation_joint_replay_index[index]),
+                    "joint_replay_control_steps": int(driver.relocation_joint_replay_steps[index]),
+                    "joint_replay_terminal_max_joint_error_rad": float(terminal_replay_errors[index]),
+                    "joint_replay_terminal_current_joints_rad": [float(value) for value in terminal_arm_joints[index]],
+                    "joint_replay_terminal_target_joints_rad": [
+                        float(value) for value in terminal_replay_targets[index]
+                    ],
+                    "max_mount_translation_deflection_m": float(driver.rail_max_mount_deflection_m[index]),
+                    "max_mount_translation_axis_m": float(driver.rail_max_mount_translation_axis_m[index]),
+                    "max_mount_rotation_axis_rad": float(driver.rail_max_mount_rotation_axis_rad[index]),
+                    "max_payload_stage_tracking_error_norm_m": float(driver.rail_max_mount_deflection_m[index]),
+                    "max_payload_stage_tracking_error_axis_m": float(driver.rail_max_mount_translation_axis_m[index]),
+                    "max_payload_stage_rotation_from_capture_axis_rad": float(
+                        driver.rail_max_mount_rotation_axis_rad[index]
+                    ),
+                }
+                for index in range(task.num_envs)
+            ]
+        estimator = getattr(task, "_module_state_estimator", None)
+        if estimator is not None:
+            terminal_pose = estimator.pose_wxyz()[0]
+            terminal_occupancy = estimator.occupancy_probabilities()
+            fiducial_backend = getattr(estimator, "backend", "pose_head") == "fiducial_pnp"
+            result["perception"] = {
+                "position_m": [float(value) for value in terminal_pose[:3]],
+                "quaternion_wxyz": [float(value) for value in terminal_pose[3:7]],
+                # PnP confidence is a bounded detector/geometric quality score,
+                # not a learned probability. The CNN has no calibrated
+                # uncertainty output, so it remains null.
+                "confidence": float(estimator.confidence[0]) if fiducial_backend else None,
+                "source": {
+                    "deployment": ("rgb_fiducial_calibrated_pnp" if fiducial_backend else "rgb_pose_head"),
+                    "oracle": "simulator_oracle_control",
+                    "blind": "configured_pose_prior_control",
+                }.get(estimator.mode, estimator.mode),
+                "pose_error_mm": float(estimator.diagnostic_position_error_m()[0] * 1_000.0),
+                "pose_error_is_privileged_simulation_diagnostic": True,
+                "cnn_evaluation_count": estimator.cnn_evaluation_count,
+                "reprojection_error_px": (float(estimator.reprojection_error_px[0]) if fiducial_backend else None),
+                "detector_availability": (estimator.fiducial_detection_statistics if fiducial_backend else None),
+                "frame": "environment_local",
+                "terminal_bay_occupancy_scores": (
+                    None if terminal_occupancy is None else [float(value) for value in terminal_occupancy[0]]
+                ),
+            }
+            if args.workflow == "relocate":
+                checked = bool(driver.plan_checked[0])
+                result["planning"] = {
+                    "request": {"source_bay": 0, "destination_bay": 1},
+                    "source_occupied_destination_clear": bool(driver.plan_passed[0]) if checked else None,
+                    "initial_bay_occupancy_scores": (
+                        [float(value) for value in driver.initial_occupancy_scores[0]] if checked else None
+                    ),
+                    "decision_threshold": OCCUPANCY_PLAN_THRESHOLD,
+                    "scores_are_calibrated_confidence": False,
+                    "used_to_gate_execution": True,
+                }
         if collecting:
             result["chain"] = _chain_report(recorder, args.workflow)
             print(json.dumps(round_floats(result["chain"]), indent=2)[:3000], flush=True)
@@ -1738,7 +3347,12 @@ def main() -> dict[str, object]:
             result["insertion_conditions"] = {name: bool(value[0]) for name, value in conditions.items()}
             result["predicate_fired"] = bool(driver.predicate_fired[0])
             result["completed"] = bool(driver.outcome[0])
-            result["conditions_still_held_after_settling"] = bool(driver.all_conditions[0])
+            result["seated_conditions_still_held_after_settling"] = bool(driver.outcome[0])
+            result["all_conditions_including_released_gripper"] = bool(driver.all_conditions[0])
+            # Kept for service-parser compatibility. A shuttle workflow judges
+            # the module seated after handoff; the separate all-conditions key
+            # still shows that the intentionally released robot grasp is false.
+            result["conditions_still_held_after_settling"] = bool(driver.outcome[0])
         return result
     finally:
         if env is not None:

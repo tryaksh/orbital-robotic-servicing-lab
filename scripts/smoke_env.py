@@ -274,7 +274,7 @@ def _vision_smoke() -> dict[str, object]:
     cfg = parse_env_cfg(VISION_TASK, device=args.device or "cuda:0", num_envs=8)
     _assert(tuple(cfg.sim.gravity) == (0.0, 0.0, 0.0), f"Gravity is not zero: {cfg.sim.gravity}")
     _assert(cfg.scene.camera is not None, "Vision config has no tiled camera")
-    _assert(cfg.scene.camera.width == 64 and cfg.scene.camera.height == 64, "Camera is not 64x64")
+    _assert(cfg.scene.camera.width == 256 and cfg.scene.camera.height == 256, "Camera is not 256x256")
     _assert(cfg.sim.render_interval == 8, f"Expected render_interval=8, got {cfg.sim.render_interval}")
     # Both Replicator randomizers address one prim per environment and refuse to
     # construct against replicated physics.
@@ -285,7 +285,7 @@ def _vision_smoke() -> dict[str, object]:
         required = {"proprio", "rgb", "critic", "blade_pose"}
         _assert(required.issubset(observations), f"Missing vision groups: {required - set(observations)}")
         rgb = observations["rgb"]
-        _assert(tuple(rgb.shape) == (8, 64, 64, 3), f"Unexpected RGB shape: {tuple(rgb.shape)}")
+        _assert(tuple(rgb.shape) == (8, 256, 256, 3), f"Unexpected RGB shape: {tuple(rgb.shape)}")
         _assert_finite(observations, "vision observations")
         _assert(float(rgb.min()) >= 0.0 and float(rgb.max()) <= 1.0, "RGB is not normalized to [0,1]")
 
