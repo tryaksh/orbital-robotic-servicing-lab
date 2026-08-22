@@ -350,12 +350,11 @@ Three things this requirement is not:
   is *worse* than its force-blind control, by up to 8.2 points, at roughly twice
   the peak contact force. Under a position-controlled action space a policy has
   no action that yields to a force it can read.
-- **It is not yet achievable with the camera this project owns.** The authored
-  64x64 camera resolves 4 mm as **0.13 pixels**, which is an absent signal rather
-  than a hard regression problem. `docs/perception_plan.md` derives the fix — a
-  narrower field of view rather than more pixels, 180 mm focal length putting
-  4 mm at 1.3 px — and requires a rendered frame before anything is trained on
-  it.
+- **The original camera could not meet it; the replacement can.** The former
+  64x64 view resolved 4 mm as only 0.13 pixels. The current 384x384 RGB-D
+  fiducial system measures 1.682 mm position-error p95 and 99.854% detection at
+  critical rack poses over 1,024 rendered frames. See
+  `evidence/fiducial_rgbd_service_plate.json`.
 
 ---
 

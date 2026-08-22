@@ -22,19 +22,13 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-#: Documents a stranger is expected to read. Session prompts are excluded: they
-#: are dated historical records and may name files that were later renamed.
+#: Documents a stranger or the next implementation agent is expected to read.
 DOCUMENTS = (
     "README.md",
     "CLAUDE.md",
-    "docs/claim_vs_evidence.md",
-    "docs/status.md",
-    "docs/roadmap.md",
-    "docs/architecture.md",
+    "docs/claude_opus_5_handoff.md",
+    "docs/compute_service_demo.md",
     "docs/service_interface_spec.md",
-    "docs/sim2real_matrix.md",
-    "docs/perception_plan.md",
-    "docs/portfolio.html",
     "evidence/RETRACTED.md",
 )
 #: A bare report name with no directory, e.g. ``grapple_extract_v14reset_certification.json``.
