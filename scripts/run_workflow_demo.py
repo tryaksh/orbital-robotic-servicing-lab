@@ -243,7 +243,13 @@ RIGID_TRANSIT_LEGS = 5
 #: a leg with one turns it into a number, per leg, in the report.
 RIGID_TRANSIT_LEG_TIMEOUT_STEPS = int(os.environ.get("RIGID_TRANSIT_LEG_TIMEOUT_STEPS", "400"))
 GUARDED_INSERT_AXIAL_STEP_M = 0.0010
-GUARDED_INSERT_MAX_LEAD_M = 0.010
+#: How far the commanded seating depth may get in front of the measured module
+#: before the advance holds. It is the mating stroke rather than a chosen
+#: number: inside the stroke the lead is spring travel, and past it the joint is
+#: at its hard stop and the lead is only arm deflection.
+#: (The task module that owns the stroke is imported after the simulator starts,
+#: so the two are tied together by an assertion below rather than by name.)
+GUARDED_INSERT_MAX_LEAD_M = 0.025
 #: Margin on the derived depth at which an engaged latch jaw would enter the
 #: slot mouth. Five millimetres, against a 17 mm interlock at zero seek.
 GUARDED_INSERT_RELEASE_MARGIN_M = 0.005
@@ -656,6 +662,11 @@ RELOCATION_INSERT_STAGING_POS = (
     TRANSIT_TARGET_BLADE_POSE[2],
 )
 RELOCATION_INSERT_STAGING_ROT = TRANSIT_TARGET_BLADE_POSE[3:7]
+
+# The guarded advance's stall bound is the mating stroke. The stroke lives in the
+# task module, which cannot be imported until the simulator is up, so the two are
+# written separately and tied together here rather than left to drift.
+assert GUARDED_INSERT_MAX_LEAD_M == MATING_TRAVEL_LIMIT_M
 INSERT_HANDOFF_POSITION_TOLERANCE_M = INSERTION_LATERAL_TOLERANCE_M
 
 #: What "the robot carried it" has to mean numerically, **derived** from the
@@ -945,6 +956,8 @@ class WorkflowDriver:
         self.guarded_insert_release_x = torch.zeros(count, device=device)
         self.guarded_insert_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.guarded_insert_holds = torch.zeros(count, dtype=torch.long, device=device)
+        self.guarded_insert_stalls = torch.zeros(count, dtype=torch.long, device=device)
+        self.guarded_insert_attitude = torch.zeros(count, 3, device=device)
         #: What the retreat was actually laid out for, and why.
         self.transit_clear_centre_x = torch.zeros(count, device=device)
         self.transit_front_overhang_m = torch.zeros(count, device=device)
@@ -1167,6 +1180,8 @@ class WorkflowDriver:
         self.guarded_insert_release_x[env_ids] = 0.0
         self.guarded_insert_steps[env_ids] = 0
         self.guarded_insert_holds[env_ids] = 0
+        self.guarded_insert_stalls[env_ids] = 0
+        self.guarded_insert_attitude[env_ids] = 0.0
         self.latch_released[env_ids] = False
         self.latch_released_at[env_ids] = -1
         self.latch_softened[env_ids] = False
@@ -2863,13 +2878,21 @@ class WorkflowDriver:
         target_pos: torch.Tensor,
         target_rot: torch.Tensor,
         scale: torch.Tensor,
-        attitude_authority: float,
+        attitude_authority: float | torch.Tensor,
     ) -> None:
-        """Command one bounded Cartesian correction toward a tool pose."""
+        """Command one bounded Cartesian correction toward a tool pose.
+
+        ``attitude_authority`` may be per environment, because the last transit
+        leg needs a different one from the legs that cross.
+        """
 
         self.actions[ids, :3] = ((target_pos - tool[ids]) / scale[:3]).clamp(-1.0, 1.0)
         rotation_error = axis_angle_from_quat(quat_mul(target_rot, quat_inv(tool_rot[ids])))
-        self.actions[ids, 3:6] = (rotation_error / scale[3:6]).clamp(-attitude_authority, attitude_authority)
+        if not isinstance(attitude_authority, torch.Tensor):
+            attitude_authority = rotation_error.new_tensor(attitude_authority)
+        self.actions[ids, 3:6] = torch.clamp(
+            rotation_error / scale[3:6], -attitude_authority, attitude_authority
+        )
 
     def _step_rigid_transit(self, transiting: torch.Tensor, step: int, tool: torch.Tensor, tool_rot: torch.Tensor) -> torch.Tensor:
         """Fly the carried module through three waypoints, in module space.
@@ -2928,6 +2951,16 @@ class WorkflowDriver:
         # position instead, which stalls a leg rather than losing the module --
         # a failure that is visible in the report and recoverable, against one
         # that is neither.
+        # **Giving the last leg its attitude back does not help, and that is
+        # measured.** The reasoning is sound -- the last leg does not cross, so
+        # the wrist has nothing to wind against, and a damped least-squares
+        # solver asked for a 363 mm advance and a 67 mrad correction in one 6-D
+        # command will take the rotation and drop the advance. Run at the quarter
+        # the pad-held follower uses, the module does start moving and then
+        # decelerates into the lead-in and stops: 0.1736 m to 0.1890 m over 240
+        # control steps against the 0.5779 m it needs. Full authority reaches the
+        # staging pose; a quarter of it does not reach the mouth. The trade is
+        # recorded and the authority stays where the crossing legs need it.
         authority = RIGID_TRANSIT_ATTITUDE_AUTHORITY
         target_tool_pos, target_tool_rot = self._rigid_tool_command(
             ids,
@@ -3112,9 +3145,13 @@ class WorkflowDriver:
         staging_rot = self.relocation_staging_rot.unsqueeze(0).expand_as(module_rot)
 
         lateral_error = torch.linalg.vector_norm(module_pos[:, 1:3] - seated[1:3].unsqueeze(0), dim=-1)
-        orientation_error = torch.linalg.vector_norm(
-            axis_angle_from_quat(quat_mul(staging_rot, quat_inv(module_rot))), dim=-1
-        )
+        # Kept as a vector as well as a norm. Which axis the module is off about
+        # decides which lead-in is the one in the way -- a tilt about y is the
+        # vertical ramps' problem and a tilt about z is the lateral flares' --
+        # and a norm cannot answer that.
+        attitude = axis_angle_from_quat(quat_mul(staging_rot, quat_inv(module_rot)))
+        self.guarded_insert_attitude[ids] = attitude
+        orientation_error = torch.linalg.vector_norm(attitude, dim=-1)
         lateral_tolerance = GUARDED_INSERT_LATERAL_TOLERANCE_M
         orientation_tolerance = GUARDED_INSERT_ORIENTATION_TOLERANCE_RAD
         sensor_ready = torch.ones_like(ids, dtype=torch.bool)
@@ -3127,16 +3164,23 @@ class WorkflowDriver:
         self.guarded_insert_steps[ids] += clear_to_advance.to(torch.long)
         self.guarded_insert_holds[ids] += (~clear_to_advance).to(torch.long)
 
-        # The axial target leads the measured module by a bounded amount, so a
-        # step the arm cannot take does not accumulate into a lunge.
-        lead = (self.guarded_insert_target_x[ids] - module_pos[:, 0]).clamp(
-            -GUARDED_INSERT_MAX_LEAD_M, GUARDED_INSERT_MAX_LEAD_M
-        )
-        advanced = torch.where(
-            clear_to_advance,
-            module_pos[:, 0] + lead + GUARDED_INSERT_AXIAL_STEP_M,
-            module_pos[:, 0] + lead,
-        )
+        # The axial target advances on its own clock. It used to be rebuilt each
+        # step as ``module_x + clamp(target - module_x)``, which reads like a
+        # bounded lead and is in fact a deadlock: a command anchored to the part
+        # it is pushing can never push it. Measured, that held the commanded
+        # target a fixed 10 mm in front of a module that never moved, so every
+        # mating experiment ran at one standing command error no matter what the
+        # stiffness, the force cap or the channel clearance was set to.
+        #
+        # The lead bound stays, as the thing it should always have been: a stall
+        # detector. Past the mating stroke the compliance is at its hard stop and
+        # is rigid again, so a module that has fallen a full stroke behind is not
+        # lagging, it is refusing, and the advance holds and says so.
+        proposed = self.guarded_insert_target_x[ids] + GUARDED_INSERT_AXIAL_STEP_M
+        following = (proposed - module_pos[:, 0]) <= GUARDED_INSERT_MAX_LEAD_M
+        advancing = clear_to_advance & following
+        self.guarded_insert_stalls[ids] += (clear_to_advance & ~following).to(torch.long)
+        advanced = torch.where(advancing, proposed, self.guarded_insert_target_x[ids])
         self.guarded_insert_target_x[ids] = torch.minimum(advanced, seated[0].expand_as(advanced))
         target_module_pos = torch.stack(
             (
@@ -4318,6 +4362,17 @@ def main() -> dict[str, object]:
                     int(driver.latch_released_at[index]) if bool(driver.latch_released[index]) else None
                 ),
                 "carriage_seek_travel_m": float(driver.latch_seek_travel_m[index]),
+                # Did the guarded advance ever actually advance? A seating that
+                # does not move is either a controller that never commanded one
+                # or a module that could not follow, and only these separate
+                # the two.
+                "guarded_advance_steps": int(driver.guarded_insert_steps[index]),
+                "guarded_hold_steps": int(driver.guarded_insert_holds[index]),
+                "guarded_stall_steps": int(driver.guarded_insert_stalls[index]),
+                "guarded_terminal_attitude_axis_angle_rad": [
+                    float(value) for value in driver.guarded_insert_attitude[index]
+                ],
+                "guarded_terminal_target_x_m": float(driver.guarded_insert_target_x[index]),
                 "engagements_refused_out_of_seek_travel": int(driver.latch_seek_refusals[index]),
                 "max_relative_position_error_m": float(driver.latch_max_position_error_m[index]),
                 "max_relative_orientation_error_rad": float(driver.latch_max_orientation_error_rad[index]),

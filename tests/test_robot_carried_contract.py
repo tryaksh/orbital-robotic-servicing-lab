@@ -13,6 +13,8 @@ source without a simulator:
 
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 DRIVER = ROOT / "scripts/run_workflow_demo.py"
 PRESETS = ROOT / "src/zero_g_blade_swap/service/presets.py"
@@ -156,3 +158,23 @@ def test_the_live_preset_does_not_use_the_world_mounted_payload_stage() -> None:
     assert '"--base_rail_on_relocation"' not in argv
     assert '"--latch_on_release"' in argv
     assert '"--latch_joint_mode"' in argv
+
+
+def test_the_preset_relief_is_the_geometry_the_task_derives_it_from() -> None:
+    """The bay's clearance is stated in two places and must not drift.
+
+    ``presets`` cannot import the task's asset module, which needs Isaac, so it
+    re-derives the relief from the same simulator-free geometry. Checking the
+    derivation here is what keeps the dashboard running the bay that was
+    measured rather than one that used to be.
+    """
+
+    from zero_g_blade_swap.grapple_geometry import BLADE_LENGTH_M
+    from zero_g_blade_swap.service import presets
+
+    assert pytest.approx(
+        0.5 * BLADE_LENGTH_M * presets.SETTLED_ATTITUDE_RAD
+    ) == presets.DESTINATION_CHANNEL_RELIEF_M
+    # And the cap is the stiffness times the stroke, not a round number: past
+    # the stroke the compliance is at its hard stop and the cap does nothing.
+    assert pytest.approx(40_000.0 * 0.025) == presets.MATING_FORCE_CAP_N

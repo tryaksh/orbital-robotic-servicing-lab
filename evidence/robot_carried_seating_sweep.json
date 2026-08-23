@@ -1,0 +1,159 @@
+{
+  "title": "Destination-bay clearance sweep: why the robot-carried seating does not close",
+  "generated_utc": "2026-08-23T11:25:39.027766+00:00",
+  "evidence_type": "simulation_only",
+  "status": "failed",
+  "question": "With the guarded advance's deadlock fixed and the destination bay assembled consistently, is there a channel clearance at which a robot-carried module seats?",
+  "answer": "No. The advance grows about 1.2 mm per millimetre of per-side relief while the attitude the module settles at grows about 3.5 mrad per millimetre, because the channel is what squares it. The seating check's 0.05236 rad orientation limit is crossed near 12.5 mm of relief, where the module has travelled about 15 mm of the 163 mm it needs. At 16 mm the module settles at the attitude the arm delivers unaided, so the channel has stopped correcting it at all.",
+  "seated_module_centre_x_m": 0.75,
+  "travel_required_m": 0.163,
+  "seating_orientation_limit_rad": 0.05236,
+  "arm_unaided_delivered_attitude_rad": 0.0628,
+  "points": [
+    {
+      "run": "lead_fix",
+      "channel_relief_per_side_m": 0.004,
+      "mating_force_cap_n": 1000.0,
+      "guarded_steps_advancing": 900,
+      "guarded_steps_held_by_the_guard": 0,
+      "guarded_steps_stalled_at_full_mating_stroke": 875,
+      "terminal_module_centre_x_m": 0.587189,
+      "terminal_axial_error_m": 0.162811,
+      "terminal_orientation_error_rad": 0.020501,
+      "terminal_attitude_axis_angle_rad": null,
+      "seated": false,
+      "source": "lead_fix_report.json"
+    },
+    {
+      "run": "push4k",
+      "channel_relief_per_side_m": 0.004,
+      "mating_force_cap_n": 4000.0,
+      "guarded_steps_advancing": 900,
+      "guarded_steps_held_by_the_guard": 0,
+      "guarded_steps_stalled_at_full_mating_stroke": 875,
+      "terminal_module_centre_x_m": 0.588137,
+      "terminal_axial_error_m": 0.161863,
+      "terminal_orientation_error_rad": 0.020447,
+      "terminal_attitude_axis_angle_rad": [
+        0.000105,
+        -0.013749,
+        -0.015134
+      ],
+      "seated": false,
+      "source": "push4k_report.json"
+    },
+    {
+      "run": "relief6",
+      "channel_relief_per_side_m": 0.006,
+      "mating_force_cap_n": 1000.0,
+      "guarded_steps_advancing": 900,
+      "guarded_steps_held_by_the_guard": 0,
+      "guarded_steps_stalled_at_full_mating_stroke": 871,
+      "terminal_module_centre_x_m": 0.591786,
+      "terminal_axial_error_m": 0.158214,
+      "terminal_orientation_error_rad": 0.027933,
+      "terminal_attitude_axis_angle_rad": [
+        0.000195,
+        -0.019049,
+        -0.020429
+      ],
+      "seated": false,
+      "source": "relief6_report.json"
+    },
+    {
+      "run": "both",
+      "channel_relief_per_side_m": 0.008,
+      "mating_force_cap_n": 4000.0,
+      "guarded_steps_advancing": 900,
+      "guarded_steps_held_by_the_guard": 0,
+      "guarded_steps_stalled_at_full_mating_stroke": 865,
+      "terminal_module_centre_x_m": 0.596008,
+      "terminal_axial_error_m": 0.153992,
+      "terminal_orientation_error_rad": 0.035215,
+      "terminal_attitude_axis_angle_rad": [
+        0.00031,
+        -0.024203,
+        -0.025578
+      ],
+      "seated": false,
+      "source": "both_report.json"
+    },
+    {
+      "run": "r10",
+      "channel_relief_per_side_m": 0.01,
+      "mating_force_cap_n": 4000.0,
+      "guarded_steps_advancing": 900,
+      "guarded_steps_held_by_the_guard": 0,
+      "guarded_steps_stalled_at_full_mating_stroke": 863,
+      "terminal_module_centre_x_m": 0.59806,
+      "terminal_axial_error_m": 0.15194,
+      "terminal_orientation_error_rad": 0.042576,
+      "terminal_attitude_axis_angle_rad": [
+        0.000452,
+        -0.029405,
+        -0.030789
+      ],
+      "seated": false,
+      "source": "r10_report.json"
+    },
+    {
+      "run": "r12",
+      "channel_relief_per_side_m": 0.012,
+      "mating_force_cap_n": 4000.0,
+      "guarded_steps_advancing": 900,
+      "guarded_steps_held_by_the_guard": 0,
+      "guarded_steps_stalled_at_full_mating_stroke": 861,
+      "terminal_module_centre_x_m": 0.60057,
+      "terminal_axial_error_m": 0.14943,
+      "terminal_orientation_error_rad": 0.049791,
+      "terminal_attitude_axis_angle_rad": [
+        0.000619,
+        -0.034502,
+        -0.035895
+      ],
+      "seated": false,
+      "source": "r12_report.json"
+    },
+    {
+      "run": "r142",
+      "channel_relief_per_side_m": 0.0142,
+      "mating_force_cap_n": 4000.0,
+      "guarded_steps_advancing": 900,
+      "guarded_steps_held_by_the_guard": 0,
+      "guarded_steps_stalled_at_full_mating_stroke": 859,
+      "terminal_module_centre_x_m": 0.60377,
+      "terminal_axial_error_m": 0.14623,
+      "terminal_orientation_error_rad": 0.057547,
+      "terminal_attitude_axis_angle_rad": [
+        0.000826,
+        -0.039978,
+        -0.041386
+      ],
+      "seated": false,
+      "source": "r142_report.json"
+    },
+    {
+      "run": "r16",
+      "channel_relief_per_side_m": 0.016,
+      "mating_force_cap_n": 4000.0,
+      "guarded_steps_advancing": 900,
+      "guarded_steps_held_by_the_guard": 0,
+      "guarded_steps_stalled_at_full_mating_stroke": 857,
+      "terminal_module_centre_x_m": 0.607862,
+      "terminal_axial_error_m": 0.142138,
+      "terminal_orientation_error_rad": 0.063546,
+      "terminal_attitude_axis_angle_rad": [
+        0.001009,
+        -0.044216,
+        -0.04563
+      ],
+      "seated": false,
+      "source": "r16_report.json"
+    }
+  ],
+  "limits": [
+    "Single environment per point, one seed (4070), scripted guarded insertion.",
+    "The relief is applied to the destination bay only and the lead-ins are left at the nominal channel surfaces, which is measured to be the better of the two assemblies.",
+    "The form lock's load path in simulation is a joint between the wrist and the module; the latch jaws carry no collider."
+  ]
+}

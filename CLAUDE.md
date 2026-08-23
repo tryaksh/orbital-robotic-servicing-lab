@@ -13,11 +13,21 @@ produced it and is kept for the reasoning it records.
 - **The robot carries the module.** A parallel-jaw grip on the passive pin loses
   it entirely across a bay-to-bay flight — 0 of 16 environments retained the
   planned tool-to-module transform, median drift 808 mm and 3.14 rad — and a
-  visible robot-side form lock holds it to 2.3 mm and 6.2 mrad.
-- **The seating is not closed.** The module reaches the destination bay and does
-  not finish entering the channel. This is a measured conflict, not a tuning
-  gap: carrying needs rigidity, mating needs compliance, and the current design
-  gives the lock three states to resolve it. See the handoff.
+  visible robot-side form lock holds it to 2.6 mm across 32 environments, 11 of
+  which held the transform inside tolerance for the whole flight.
+- **The seating is not closed**, and the reason is *not* the carry-versus-mate
+  conflict this file used to state. Four faults in the chain were found and
+  fixed; three published conclusions were retracted. The corrected chain drives
+  the module 362 mm into the destination channel and stops 163 mm short, with
+  the guarded advance holding a commanded depth a full mating stroke ahead for
+  875 of 900 steps and the guard never firing. The blocker is the delivered
+  attitude — 47 to 67 mrad, split 13.8 mrad pitch and 15.1 mrad yaw — which is
+  upstream of anything the mating interface can do. Section 4 of the handoff has
+  the measurements and the redesign.
+- **Before believing a mating measurement, check the controller.** The guarded
+  advance's axial target used to be rebuilt each step from the module it was
+  pushing, which reads as a bounded lead and behaves as a deadlock. Every
+  stiffness, force cap and clearance in the old grid was measured through it.
 - The world-mounted payload stage behind `--base_rail_on_relocation` is retained
   **only** as a labelled historical baseline. It is not reachable from the live
   preset, and `tests/test_robot_carried_contract.py` keeps it out.

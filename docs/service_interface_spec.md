@@ -224,6 +224,81 @@ directions.**
 
 ---
 
+### 6.1 The other axis, and why nothing had ever asked about it
+
+Everything above is about **y**. The rack also has a **z**, and until a robot
+carried a module between bays nothing in this project had ever entered the mouth
+from outside it: both insertion skills *reset* with the module already inside its
+channel, so the only motion they ever performed was along a channel that was
+already holding them.
+
+A relocation enters from outside. And a six-axis arm carrying a 450 mm module
+through free space delivers it to the mouth off square -- measured at the
+destination hand-off, **0.063 to 0.067 rad**, which swings the module's
+leading corner **14 to 15 mm** off the channel's centre plane. The channel
+leaves 0.5 mm per side between the floor plate and the upper lips. The module
+cannot enter, and no controller gain fixes a geometric interference. Measured,
+it fails in one of two places depending on how the bay's lead-ins are assembled:
+with the module's nose on the mouth plane at 0.225 m, or 362 mm inside the
+channel at 0.588 m against the 0.750 m it needs. Both times the arm pushes
+against it until the episode ends.
+
+| Feature | Requirement | Why |
+| --- | --- | --- |
+| **Entry ramp**, vertical catch | 16.6 mm per side | Accepts 0.074 rad of delivered attitude error on a 450 mm module, against the 0.066 rad an arm was measured to deliver. |
+| **Entry ramp**, plate length | 80 mm | The lateral flare's, unchanged. |
+| **Entry ramp**, half-angle | 12 degrees | The lateral flare's, unchanged. |
+| **Entry ramp**, width | 60 mm | Narrower than the module, deliberately: the latch carriage follows the module to the mouth, and at 160 mm the ramps and the stowed carriage occupy the same volume. Sixty millimetres catches the middle of the leading edge and leaves the carriage 16.5 mm outside the ramps, checked by `scripts/check_service_latch_clearance.py`. |
+| **Entry ramp**, surface | Lowest friction in the slot | A lead-in must guide, not grab. The flare's own values. |
+
+### 6.2 A rigidly delivered module needs a channel that admits its attitude
+
+The lead-in above gets the module's nose into the mouth. It does not get the
+module *in*, and the reason is a property of how a lead-in works: it pushes a
+module square. A module rigidly held by a robot will not be pushed.
+
+That is not hypothetical either: section 9.6 measures it a dozen ways, and every
+lock state that carries the module refuses to let the channel align it.
+
+So a rack that accepts a robot-delivered module has to admit the attitude that
+robot delivers it at. A straight channel of clearance *c* admits a rigid module
+of length *L* at a tilt of at most 2*c*/*L*, which gives the requirement
+directly:
+
+> **Requirement.** Channel clearance per side ≥ *L* · θ / 2, where θ is the
+> manipulator's delivered attitude accuracy at the mouth.
+
+| Quantity | Value |
+| --- | ---: |
+| Module length *L* | 450 mm |
+| Delivered attitude θ, measured at the destination hand-off | 0.063 to 0.067 rad |
+| Required clearance per side | **14.2 mm** |
+| The unmodified channel's clearance per side | 0.5 mm vertical, 0.75 mm lateral |
+
+A designer has three ways to satisfy it, and widening the channel is the last of
+them: hold the module compliantly for the final approach — which this workcell
+cannot, because the pads do not resist lateral load; stand the arm outside the
+reach boundary of section 6a, which is what sets the delivered attitude in the
+first place; or open the channel. This
+implementation opens the channel, on the destination bay only, and reports the
+attitude each run actually delivered so a run outside the envelope fails its
+seating check rather than being quietly accommodated.
+
+---
+
+This is section 6's finding a second time, on the axis it did not look at, and
+it was found the same way: by removing the assumption that something else was
+holding the module. There, a policy could not align into a 0.75 mm channel
+because the flares had always done it. Here, a controller could not enter one
+because the *rack* had always been holding the module before insertion began.
+
+Fitted to the destination bay only, and only on the robot-carried path
+(`configure_service_destination()`), because the source bay is never entered from
+outside and adding geometry to it would change a scene four certifications
+describe. Dimensions in `src/zero_g_blade_swap/tasks/blade_swap/assets.py`.
+
+---
+
 ## 6a. Required workcell geometry: where the arm stands is an interface requirement
 
 Sections 3 and 6 specify the module and the rack. This one specifies **where the
@@ -556,6 +631,440 @@ improve on it both failed because they needed volume the hand occupies.
 `scripts/measure_pin_design_window.py` derive both, from
 `evidence/gripper_collision_envelope.json` and no simulator. Run the first with no
 arguments to check the shipped pin; it passes.
+
+## 9. The lock is on the robot, it has three states, and this is it
+
+Section 8.4 ends with a rule, derived by sweeping the gripped section's
+half-height against the measured hand:
+
+> On a stock parallel-jaw gripper, a serviceable module **cannot carry a
+> positive axial stop forward of the pads**. […] An axial lock therefore has to
+> come from the *end-effector*: V-grooved fingers, or a powered latch. It cannot
+> come from the module.
+
+Two module-side features were built and refuted before that rule existed. This
+section is the first design on the correct side of the interface, and it is here
+because a measurement demanded it rather than because the scope grew.
+
+---
+
+### 9.1 The measurement that demands it
+
+Everything above about holding capacity is **static**: the arm is held still and
+a force is applied. The operation this project is for is not static. It carries
+a module from one bay to another through free space, and whether a parallel-jaw
+grip survives that had never been asked as its own experiment.
+
+Asked, with nothing changed but the interface — one arm carries the module on
+the finger pads alone, the other adds the lock. Same policies, same planned
+route. The quantity is the **tool-to-module transform**, recorded every second
+control step of the transit and compared against the transform the route was
+planned from:
+
+| Carried by | Environments retaining the planned transform | Position drift, p50 | Attitude drift, p50 | Tool travel, p50 | Module travel, p50 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| **Finger pads alone** | **0 of 16** | **808.0 mm** | **3.139 rad** | 167.9 mm | 913.0 mm |
+| **Robot-side form lock** | **11 of 32** | **2.6 mm** | **0.007 rad** | 296.6 mm | 773.1 mm |
+
+Read the travel columns on the passive row before anything else. The tool travels
+168 mm and the module travels 913 mm: the module is not being carried, it is
+being *released* — and 3.139 rad is π, a module that has turned end-for-end.
+Retention is lost at control step 303 at the median, about ten seconds in, and
+every one of the 16 workflows then times out in the transit with the module a
+median of 677 mm from the tool.
+
+The latched row is pooled over 32 environments and 21 of them also lost the
+transform at this rating, so its travel columns average keepers and losers
+together and should not be read as a flight profile. Its **drift** median is the
+comparison that matters — 2.6 mm against 808 mm — and *11 of 32* is the honest
+rate at which the lock held a whole flight. A single demonstration run holds
+2.3 mm and 6.2 mrad with the module travelling 433 mm against the tool's 454 mm,
+which is what one successful flight looks like.
+
+This is section 8's finding taken on a moving arm, and it is stronger: **a
+parallel-jaw grip on this pin does not carry this module between bays at all.**
+No controller change addresses it. The controller is doing what it was told and
+the module is leaving anyway.
+
+Report: `evidence/robot_carried_interface.json`, arm `passive_parallel_jaw_only`.
+
+---
+
+### 9.2 Where the latch is allowed to be
+
+The same envelope measurement that forbids a module-side stop grants the
+end-effector one, and the window is generous:
+
+| Quantity | Measured | Source |
+| --- | ---: | --- |
+| Deepest point of any gripper body, from the flange | 162.11 mm | `evidence/gripper_collision_envelope.json` |
+| Widest half-extent of the hand on the third axis | 37.5 mm | same |
+| Half-extent of an inner finger, the only body past 124.5 mm | 13.5 mm | same |
+| Collar's proximal shoulder, from the flange, at the seated grip | 168 mm | derived from section 3 |
+| Module's own face, from the flange | 248 mm | derived from section 3 |
+
+So there is an **80 mm length of 30 × 30 mm shaft, immediately behind the
+collar, that no part of the hand can ever occupy.** That is where the latch
+lives, and it is why this design costs the module nothing: the pin in section 3
+is unchanged, so every certification taken against it still describes the part
+that is built.
+
+---
+
+### 9.3 What it is
+
+A two-jaw powered latch on a carriage, bolted beside the hand. The jaws extend
+along the approach axis, then close on the shaft's flanks with lips that drop
+behind the collar's proximal shoulder.
+
+```
+                        collar          shaft
+   pads ====]         |‾‾‾‾‾‾|      
+             \        |      |___________________  module
+              wedge   |      |
+   pads ====]         |______|
+                          ^
+                     lips drop in here, above and below the shaft,
+                     and bear on the shoulder the collar presents
+```
+
+| Feature | Requirement | Why |
+| --- | --- | --- |
+| **Window**, from the flange | 168 to 248 mm | The only volume the hand cannot reach. Everything below fits inside it. |
+| **Jaw** length | 22 mm | Short: the load path is the lip on the shoulder, not a long clamp, and a shorter jaw leaves more carriage seek. |
+| **Jaw** half-height | 40 mm | Inside the collar's own 45 mm, so the lip is backed by shoulder rather than overhanging its rim. |
+| **Web** inner half-gap, closed | 15.5 mm | Half a millimetre per side on the 30 mm shaft. A clamp, not a capture: the pads have already located the module. |
+| **Lip** thickness | 2.5 mm | Sits immediately behind the shoulder. |
+| **Lip** inner reach | 4 mm from the centre line | 11 mm of shoulder engaged per side. The two opposing lips stop 8 mm apart because nothing guarantees they arrive together. |
+| **Lip** band | 18 to 40 mm from the pin axis | Above and below the shaft, which is the only part of the collar's proximal face that is not the shaft's own root. |
+| **Lip** bearing area, total | 968 mm² | 0.62 MPa at 600 N. The lip is not the limit; if it were, the rating below would be a fiction. |
+| **Close stroke** | 31 mm | Sized by the *fingers*, not the collar: released, the lip has to park clear of a 13.5 mm inner finger, and that is the tighter of the two. |
+| **Extend stroke** | 25 mm | Sized by the rack. Stowed, the deepest latch body stops 8 mm short of the slot mouth with the module fully seated. |
+| **Carriage seek** | −5 to +40 mm | See 9.5. |
+| **Mating compliance stroke** | 25 mm | See 9.6. |
+
+Every clearance is derived from the measured envelope and this table by
+`scripts/check_service_latch_clearance.py`, which runs with no simulator and
+refuses to pass if any of them closes. The tightest are **+3.0 mm** (the lip
+clearing the shaft it sits above) and **+5.9 mm** (the engaged jaw beginning past
+the deepest gripper body). Report: `evidence/service_latch_clearance.json`.
+
+The load path in simulation is a **break-rated PhysX fixed joint between
+`wrist_3_link` and the module** while rigid, and a bounded spring-damper on the
+same pair while compliant. The hardware above is authored on the wrist as visual
+geometry with no collider, so the jaws' contact with the pin is *not* simulated
+and the joint is not a second, hidden load path beside it — it is the only one,
+and this paragraph is the disclosure the rest of the specification is written
+against.
+
+---
+
+### 9.4 The rating is not a preference
+
+A PhysX break threshold is permanent: a lock rated below the load it actually
+sees is present for the first second of the flight and absent for the rest of
+it, while still reporting that it engaged. That is exactly what the first run
+did.
+
+| Rated at | What happened |
+| --- | --- |
+| 600 N / 30 N·m | Broke during the flight. The lock reported engaged and the tool-to-module transform still moved 435 mm at the median across 16 environments, which a fixed joint cannot do unless it is no longer there. A PhysX break threshold is permanent: a lock rated under its load is present for the first second and absent for the rest, while still reporting that it engaged. |
+| 20 kN / 1 kN·m | Held. 2.3 mm and 6.2 mrad on a single environment, 2.6 mm across 32. |
+
+The number that matters is not the payload's inertia. **The latch is preloaded
+by the gripper it works beside.** The 2F-85's drive saturates at 10 N·m against a
+measured 106.2 mm/rad transmission, about 94 N of pad force, and a 24.2-degree
+wedge turns that into hundreds of newtons along the pull axis whether or not the
+arm is moving. A form lock that holds the module against the hand's own wedge
+thrust is rated for that thrust first and for the flight second — which is not
+what a reader would guess from section 5, where the same wedge is the thing
+providing 69 N of capacity.
+
+---
+
+### 9.5 The carriage seeks the collar; it does not assume it
+
+A tapered wedge does not seat a module at one depth. Where the pin sits along
+the approach axis is set by where its thickness equals the pad opening, so it
+moves with the closure command — section 4 measures about 12.5 mm of self-seating
+travel on every capture, and seated grip offsets between 12 and 19 mm. A latch
+authored at the nominal collar depth would close on the collar's rim, or on air.
+
+So the carriage drives along the approach axis until it finds the shoulder, and
+**both ends of its travel are derived**:
+
+| End | Value | Set by |
+| --- | ---: | --- |
+| Near | −5 mm | An engaged jaw may not come back inside the hand: the pad leading edge is at 162 mm and the jaw's near face stops 1 mm past it. |
+| Far | +40 mm | An engaged jaw may not reach the module's own face at 248 mm, or it is clamping the chassis instead of the shaft. |
+
+An engagement whose measured shoulder falls outside that travel is **refused**
+and the refusal is counted in the report. A mechanism that cannot reach a part
+should say so rather than be modelled as though it had. The travel this workflow
+actually used, measured: **12.0 mm** — which is the self-seating distance section
+4 predicts, arrived at from the other direction.
+
+---
+
+### 9.6 One state is not enough: rigid to carry, compliant to mate
+
+This is the part that was not obvious, and it cost three measured failures to
+find.
+
+**Rigid, it carries and cannot mate.** A lead-in aligns a part by pushing it
+square, and a part welded to a stiff arm will not be pushed. Section 6 already
+established that this rack's lead-in does not assist the insertion, it performs
+it. So the mechanism that makes the flight possible makes the mating impossible.
+
+**Released, it mates and cannot carry.** The pads do not resist lateral load,
+which section 8 measures and which this section's own control run demonstrates.
+
+Measured, in one session, three ways:
+
+| Lock state during mating | What the seating did |
+| --- | --- |
+| rigid throughout | module advanced **0.3 mm** in a 30-second budget |
+| released at the phase boundary | module advanced **15.6 mm**, then wedged: already inside the channel, already crooked |
+| released before the mouth | module slid **laterally out of the bay** |
+
+Those three are sound: they are about which *state* the lock is in, and the
+faults in 9.6.1 do not reach them. The stiffness and clearance sweep that
+followed them is the part that has to be retracted.
+
+Four faults were found and fixed during this grid, and 9.6.1 records them
+because most of the rows above were measuring those rather than the interface.
+Below is what the corrected chain does. The configuration is the same
+throughout: 40 kN/m translational, 20 kN·m/rad rotational, a 1 kN force cap set
+so that the joint reaches its 25 mm stroke before the cap binds, and 4 mm of
+channel relief on the destination bay only.
+
+| Compliance centre | Guarded steps advancing | Steps stalled at full stroke | Module advanced, of 163 mm |
+| --- | ---: | ---: | ---: |
+| At the module's leading face (remote centre) | 900 | 875 | **0.3 mm** |
+| At the wrist (plain spring) | 900 | 875 | **0.7 mm** |
+
+Read the middle column first, because it is the one that could not be read
+before. The guarded advance is never blocked by its own guard -- the estimator
+says the module is inside the bay's catch on every one of the 900 steps -- and
+it spends 875 of them holding a commanded depth that is a **full mating stroke**
+in front of a module that will not follow. The interface has run out of
+compliance and is rigid again, and the module still does not move.
+
+That is the measured blocker, and it is not any of the things it looked like:
+
+* it is not the guard, which never fires;
+* it is not the force cap, which the stroke reaches first;
+* it is not the channel clearance, which is four times the requirement for the
+  attitude the module actually arrives at;
+* it is not the compliance centre, which moves the answer by 0.4 mm across the
+  whole range from wrist to tip.
+
+**What it is, in one number.** The module arrives at the mouth 47 to 67 mrad off
+square -- the arm's own accuracy inside the reach boundary of section 6a -- and
+that error is *not about one axis*. Measured as an axis-angle at the terminal
+pose: 0.1 mrad of roll, **13.8 mrad of pitch, 15.1 mrad of yaw**. A 450 mm
+module tilted in both planes at once has to be walked square by two lead-ins
+simultaneously, in a channel whose vertical and lateral clearances were designed
+one axis at a time, and every configuration that lets one lead-in do its work
+takes authority away from the other.
+
+So the lock has three states, and switching between them is the design:
+
+| State | When | What it is |
+| --- | --- | --- |
+| **Rigid** | from rail release to the end of the squaring leg | break-rated fixed joint; carries the module through free space |
+| **Compliant** | from there until the module is seated | bounded spring-damper with a finite stroke; still the load path, no longer a refusal to yield |
+| **Released** | once the seating predicate fires | nothing; the 0.70 s settling re-check is taken on a module held by its own rails and the pads |
+
+This is not an invention. Assembly compliance devices have done exactly this
+since the 1970s, and flight servicing hardware does it too: the SSRMS latching
+end effector snares a grapple fixture, *rigidizes* it to carry, and gives that
+rigidity up to berth.
+
+**Compliant in translation, stiff in rotation, and that split is the design.**
+The rack aligns a module by pushing it, so the interface has to yield in
+translation or the lead-in cannot work. It must not yield in rotation: a lead-in
+cannot straighten a 450 mm module inside a 1 mm channel, and measured at
+160 N·m/rad the module rotated 0.309 rad against the compliance and jammed
+crooked. An assembly compliance device is specified the same way, with its
+lateral and angular stiffnesses chosen separately.
+
+**And it is a joint, not an applied wrench, for a reason worth stating.** The
+first implementation applied a spring-damper wrench to the module at the 30 Hz
+control rate. That is stable while it is soft and unusable when it is not:
+raising the angular gain to hold the module square put the spring's own period
+inside the command interval and the module left the cell at 1.5 m in a quarter
+of a second — and with no cap at all, at 15 km. A solver-side joint drive is
+integrated implicitly and is stable at any gain, which is the only way to be
+soft on one axis and stiff on another at the same time.
+
+**Its centre is a design parameter, and this workcell wants both ends of it.**
+An assembly compliance device puts the centre at the part's own contact point so
+that a contact force there *translates* the part instead of rotating it into the
+wall it has just touched, which is the jamming mode of a clearance fit. That is
+right for seating a part that arrives square. This one does not: it arrives 47
+to 67 mrad off, and the only thing that can take that out is the lead-in
+producing exactly the moment a remote centre is specified to cancel. Swept from
+the wrist to the leading face with everything else fixed, the whole range moves
+the seating by 0.4 mm, so neither end of it is the answer -- but the parameter
+is real and it is exposed as ``MATING_COMPLIANCE_CENTRE`` rather than welded
+into the code at one end.
+
+**It has a stroke, and running out of it is recorded as what it is** — the
+interface losing the module — rather than smoothed away.
+
+| Quantity | Value | Set by |
+| --- | ---: | --- |
+| Mating stroke | 25 mm | The lead-in has to push the module about 3 mm off the tool's line, and the module lags the tool a few millimetres under the insertion's own contact reaction |
+| Mating rotation limit | 3 degrees | A spring rather than a weld, and far inside the 0.052 rad the seating envelope allows |
+| Mating translational stiffness | 40 kN/m | Swept. Softer pushes the module outside the lead-in's own catch; stiffer reproduces the weld |
+| Mating rotational stiffness | 20 kN·m/rad | Stiff, because attitude is the one thing a lead-in cannot correct |
+| Mating force cap | 1 kN | Measured: more is not better. 400 N walks the module in, 1 kN wedges it at a third of its travel |
+
+---
+
+### 9.6.1 Three faults, and a grid that has to be read as their consequence
+
+The table above was measured over one session and most of it is now known to
+have been measuring the same three faults rather than the mating interface.
+They are recorded here because a swept grid that turned out to be sweeping a bug
+is a result about the method, and deleting it would leave the conclusions it
+produced standing with nothing under them.
+
+**The guarded advance was anchored to the module it was pushing.** The axial
+target was rebuilt every control step as `module_x + clamp(target - module_x,
++/-10 mm)`, which reads as a bounded lead and behaves as a deadlock: a module
+that does not move holds the target a fixed ten millimetres in front of itself
+forever. Measured directly -- 900 advancing steps, no guard holds, and a
+commanded depth that moved 11 mm. Every stiffness, every force cap and every
+channel clearance in the grid was therefore applied at one standing command
+error of 10 mm, which is why raising the force cap tenfold moved the module
+0.1 mm: the cap was never what limited the push.
+
+**The vertical lead-in did not move with the channel relief.** The ramps are
+authored from the nominal lip and floor surfaces. Opening the channel moved the
+lips, the floor and the guides and left the ramps where they were, so the relief
+opened a channel behind a throat that stayed at 0.5 mm per side. That is why
+fifteen millimetres per side -- thirty times the production clearance -- bought
+16.5 mm of a 163 mm travel, and why the measurement read as a refutation of the
+clearance requirement rather than as a bay assembled inconsistently.
+
+**The lateral flares did not move either**, for the same reason and by the same
+rule: section 6 places each flare so its inner face meets the rail face exactly
+at the mouth, which makes the flare a function of the rail's position.
+
+The retracted rows are kept because two conclusions had already been written down
+from them, and re-measuring both on the corrected chain is what a retraction is
+for. **"Opening the channel barely helps" was wrong** -- it was measured behind a
+lead-in that had not moved with the relief, and opening the bay consistently
+changes the outcome completely, though not in the direction that was expected.
+**"More force is not the lever" turns out to be right**, and only now for a
+reason that can be defended: at 160 kN/m against a 4 kN cap, four times the
+push that the retracted grid could actually deliver, the module advances 0.8 mm
+instead of 0.7 mm.
+
+**And the last transit leg was asking for both of its jobs at once.** The rigid
+transit gives every leg full attitude authority, for a reason that is right about
+the legs that cross: the module is the wrist, so a wrist that winds carries the
+module round with it, and at quarter authority the crossing leg wound the module
+from 0.12 to 2.85 rad. The last leg does not cross -- it pushes the module 450 mm
+along the rack axis into a lead-in. Asked for a 363 mm advance and a 67 mrad
+correction in the same 6-D command, a damped least-squares solver takes the
+rotation and drops the advance, and the module parks with its nose on the mouth
+plane while the tool sits 360 mm behind its own target. The residual tilt on that
+leg is the rack's to take out, which is what section 6 says a lead-in is for.
+
+---
+
+**The relief is bounded above as well as below, and the upper bound is the
+surprise.** Opened to 20 mm per side -- with the ramps and flares moved to match,
+so the whole bay is consistent -- the module never reaches its hand-off at all.
+The transit's last leg parks 53 mm short and stays there, and the reason is in
+the same log line: the tool is 62.7 mrad off square and the module is 62.8 mrad
+off with it, the lock holding the two to 0.2 mm and 0.1 mrad throughout.
+
+That is the arm's *own* attitude at that pose, and it is three times the 20.5 mrad
+the same arm delivered into a 4 mm channel. The channel was doing the squaring.
+Open it far enough that it no longer touches the module and the manipulator's
+reach-boundary error appears in full -- past the 52.4 mrad the seating check
+allows, so a wider bay does not buy a crooked seat, it buys no seat.
+
+Which makes the requirement two-sided:
+
+> **Requirement.** Channel clearance per side ≥ *L* · θ_entry / 2, and
+> ≤ *L* · θ_seated / 2, with θ_entry the attitude the manipulator delivers
+> unaided and θ_seated the attitude the seating check allows. Below the first the
+> module cannot enter; above the second the channel stops correcting it and the
+> manipulator's own error is what seats.
+
+---
+
+### 9.6.2 The clearance sweep, which is what settles it
+
+Every row below is the corrected chain -- deadlock fixed, bay assembled
+consistently, guard never firing -- with nothing changed but the destination
+bay's per-side relief and the push available to the mating compliance.
+
+| Channel relief, per side | Push available | Module advanced, of 163 mm | Attitude it stopped at |
+| ---: | ---: | ---: | ---: |
+| 4 mm | 1 kN | 0.7 mm | 20.5 mrad |
+| 4 mm | 4 kN | 0.8 mm | 20.4 mrad |
+| 6 mm | 1 kN | 5.0 mm | 27.9 mrad |
+| 8 mm | 4 kN | 10.1 mm | 35.2 mrad |
+| 10 mm | 4 kN | 12.2 mm | 42.6 mrad |
+| 12 mm | 4 kN | 14.6 mm | 49.8 mrad |
+| 14.2 mm | 4 kN | 16.5 mm | **57.5 mrad** |
+| 16 mm | 4 kN | 20.6 mm | **63.5 mrad** |
+
+Report: `evidence/robot_carried_seating_sweep.json`.
+
+Two monotone curves, and they are the whole answer.
+The last row closes it. At 16 mm per side the module settles at 63.5 mrad, which
+is the attitude the arm delivers with nothing touching it at all: the channel has
+stopped correcting the module entirely, and it has bought 20.6 mm of the 163.
+
+
+**The advance grows about 1.2 mm for every extra millimetre of clearance.**
+Extrapolated, closing the remaining 163 mm needs something near 140 mm of relief
+per side on a 36 mm channel, which is not a channel.
+
+**The attitude it settles at grows about 3.5 mrad per millimetre**, because the
+channel is what was squaring the module and every millimetre of relief is a
+millimetre it no longer does that in. At 12 mm the module is at 49.8 mrad
+against the 52.4 mrad the seating check allows; by 14.2 mm it is at 57.5 mrad and
+**outside it**.
+
+So the two requirements cross at about 12.5 mm per side, and at the crossing the
+module has travelled 15 mm of the 163 it needs -- an order of magnitude short.
+There is no channel width for this workcell. That is not a tuning result and it
+is not a controller result: it is the geometry of a 450 mm rigid part delivered
+63 mrad off square into a 36 mm channel, and it is the finding this branch was
+built to produce.
+
+Also settled, in the same table: **push is not a lever anywhere on it.** At 4 mm
+of relief, four times the force moves the module 0.1 mm further. The retracted
+grid said so for the wrong reason; the corrected one says so for the right one.
+
+---
+
+### 9.7 It has to be out of the rack before the module is home
+
+The jaws sit behind the collar, and section 3.1 puts the collar 5 mm *outside*
+the slot mouth when the module is fully seated. An engaged jaw therefore enters
+the rack before the module does. Derived:
+
+| | |
+| --- | ---: |
+| Module centre at which an engaged jaw reaches the slot mouth, at zero seek | 0.733 m |
+| The same at the far end of the carriage seek | 0.693 m |
+| Module centre when seated | 0.750 m |
+
+> **Requirement.** The carriage must be stowed before the module centre passes
+> that depth, and the stowed carriage must clear the mouth at the seated pose —
+> it does, by 8 mm. This is the same rule section 3.1 applies to the gripper,
+> applied to the mechanism bolted beside it.
+
+---
 
 ## 10. What this specification does not cover
 

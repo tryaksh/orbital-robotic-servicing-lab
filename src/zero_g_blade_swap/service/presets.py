@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from zero_g_blade_swap import __version__
+from zero_g_blade_swap.grapple_geometry import BLADE_LENGTH_M
 
 from .config import ServiceSettings
 from .models import BackendKind, Capabilities, InputProvenance, JobProvenance, PresetCapability
@@ -51,13 +52,26 @@ LATCH_SOURCE = Path("src/zero_g_blade_swap/service_latch.py")
 LATCH_RATED_FORCE_N = 20_000.0
 LATCH_RATED_TORQUE_NM = 1_000.0
 #: Force the mating compliance may apply, and the clearance the destination bay
-#: is opened to. Both are measured rather than chosen: more push wedges the
-#: module at a third of its travel, and the clearance is L*theta/2 for the
-#: attitude this arm actually delivers. See
-#: ``evidence/mating_compliance.json`` and section 6.2 of the interface
-#: specification.
-MATING_FORCE_CAP_N = 400.0
-DESTINATION_CHANNEL_RELIEF_M = 0.00315
+#: is opened to. Both are measured rather than chosen, and both are measured
+#: *not* to close the seating -- see ``evidence/robot_carried_seating_sweep.json``
+#: and section 9.6.2 of the interface specification.
+#:
+#: The cap is 1 kN because that is where the compliance reaches its own 25 mm
+#: stroke at 40 kN/m; past the stroke the interface is rigid and the cap means
+#: nothing. Raised to 4 kN with a stiffness to match, the module advances 0.1 mm
+#: further. Force is not a lever here.
+#:
+#: The relief is ``L * theta / 2`` for the attitude the module *settles* at, and
+#: is bounded above as well as below: every extra millimetre buys about 1.2 mm
+#: of travel and costs about 3.5 mrad of squareness, because the channel is what
+#: squares the module.
+#:
+#: Derived here from the same simulator-free geometry the task derives it from,
+#: rather than imported, because this module must stay importable without Isaac.
+#: ``tests/test_robot_carried_contract.py`` checks the two agree.
+MATING_FORCE_CAP_N = 1_000.0
+SETTLED_ATTITUDE_RAD = 0.0205
+DESTINATION_CHANNEL_RELIEF_M = 0.5 * BLADE_LENGTH_M * SETTLED_ATTITUDE_RAD
 LIVE_TASK_ID = "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0"
 COLLECTION_TASK_ID = "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Collect-v0"
 OVERVIEW_IMAGE_SHAPE_HWC = [384, 384, 3]

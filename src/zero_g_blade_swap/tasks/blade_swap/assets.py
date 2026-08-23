@@ -1596,15 +1596,24 @@ def _slot_entry_ramp_cfg(name: str, z_center: float, rotation: tuple[float, floa
 
 SLOT_ENTRY_UPPER_RAMP_CFG = _slot_entry_ramp_cfg("BladeSlotEntryUpperRamp", _RAMP_CENTER_Z_UPPER, _RAMP_QUAT_UPPER)
 SLOT_ENTRY_LOWER_RAMP_CFG = _slot_entry_ramp_cfg("BladeSlotEntryLowerRamp", _RAMP_CENTER_Z_LOWER, _RAMP_QUAT_LOWER)
-#: Attitude accuracy a six-axis arm was measured to deliver a carried module
-#: with, at the destination bay's retreat pose, after its squaring leg has
-#: converged. Between 0.013 and 0.066 rad depending on how much of the
-#: workcell's reach boundary the arm is standing in; this is the good end,
-#: because that is the pose the workflow actually hands over from.
-SERVICE_DELIVERED_ATTITUDE_RAD = 0.014
+#: Attitude a carried module was measured to *settle* at inside the destination
+#: channel, which is not the attitude the arm delivers. The arm delivers 0.063
+#: rad at that pose -- measured with the channel opened far enough not to touch
+#: the module -- and the bay's lead-ins take most of it out on the way in. This
+#: is the residue they cannot, and it is what the channel has to admit.
+SERVICE_DELIVERED_ATTITUDE_RAD = 0.0205
 #: Per-side channel clearance a rigidly delivered module needs, from
 #: ``c >= L * theta / 2``. A rigid module cannot be straightened by the channel
 #: it is entering, so the channel has to admit the attitude it arrives at.
+#:
+#: **And it is bounded above as well as below**, which the sweep in
+#: ``evidence/robot_carried_seating_sweep.json`` measures: every extra
+#: millimetre buys about 1.2 mm of seating travel and costs about 3.5 mrad of
+#: squareness, because the channel is what squares the module. Past about
+#: 12.5 mm per side the module settles outside the seating check's own
+#: orientation limit, and at 16 mm it settles at the attitude the arm delivers
+#: with nothing touching it. Neither end of that range seats the module: the
+#: crossing point is 15 mm into a 163 mm travel.
 SERVICE_DESTINATION_CHANNEL_RELIEF_M = 0.5 * BLADE_LENGTH_M * SERVICE_DELIVERED_ATTITUDE_RAD
 
 

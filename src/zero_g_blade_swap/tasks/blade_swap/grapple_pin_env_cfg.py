@@ -358,6 +358,18 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
             position = list(lip.init_state.pos)
             position[2] += relief
             lip.init_state.pos = tuple(position)
+        # **The lead-ins stay where they are, and that is measured rather than
+        # tidy.** The obvious rule is that a lead-in continues a channel surface,
+        # so moving the surface should move the lead-in -- the ramps are authored
+        # from ``SLOT_LIP_BOTTOM_Z`` and ``SLOT_FLOOR_TOP_Z``, and section 6
+        # places each flare so its inner face meets the rail face exactly at the
+        # mouth. Built that way and measured, the module stops dead on the mouth
+        # plane at 0.2249 m: the lead-ins at the *nominal* surfaces are what
+        # squares a module the arm delivers 67 mrad off, and a lead-in moved out
+        # with the relief stops touching it in time to do that. Left in place
+        # they present a narrower throat and a longer correcting run, and the
+        # module goes in. Recorded here because it is the opposite of what the
+        # geometry suggests.
 
     def configure_base_rail(self) -> None:
         """Install the physical payload shuttle after task setup.

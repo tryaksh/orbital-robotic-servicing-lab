@@ -1,0 +1,414 @@
+{
+  "title": "Robot-carried bay-to-bay transit, with and without a form lock",
+  "generated_utc": "2026-08-23T10:57:10.687210+00:00",
+  "evidence_type": "simulation_only",
+  "status": "passed",
+  "policy": {
+    "checkpoint_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
+    "per_phase_checkpoint_sha256": {
+      "capture": "D5506848D6C63E00DF2D5A9397109D7913B57542B163E15574C7F0B9D69C4612",
+      "extract": "5391CD416EC900E07872BF758B54F661A2C141ECF3A1E1D920D9A15AF769B300",
+      "insert": "9159DE38F659A2ED47C56D7E873F1C580A98420340B8FB799C080F4D93A173C0"
+    },
+    "grasp_model": "physical_finger_pad_contact_plus_robot_side_form_lock"
+  },
+  "question": "Can the six-axis robot itself carry the compute module from bay 0 to bay 1, with a bounded tool-to-module transform, and what interface does that require?",
+  "protocol": {
+    "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
+    "workflow": "relocate",
+    "seed": 4070,
+    "gravity": "zero",
+    "policy_rate_hz": 30,
+    "physics_rate_hz": 120,
+    "learned_phases": [
+      "capture",
+      "extract",
+      "insert"
+    ],
+    "scripted_phases": [
+      "seat",
+      "transit"
+    ],
+    "retention_limit_position_m": 0.0025,
+    "retention_limit_orientation_rad": 0.05236,
+    "retention_limit_derivation": "the insert hand-off envelope, read backwards: the transit is planned from the tool-to-module transform measured at rail release, so drift in it lands on the staging pose one for one",
+    "reference_frame": "tool frame at the instant extraction cleared the rails",
+    "no_world_payload_stage": true,
+    "no_robot_or_payload_state_writes": true
+  },
+  "arms": [
+    {
+      "arm": "passive_parallel_jaw_only",
+      "capture_interface": "friction_grapple_only",
+      "latch_rated_force_n": null,
+      "latch_rated_torque_nm": null,
+      "latch_states": null,
+      "mating_compliance_n_per_m": null,
+      "destination_channel_relief_m": null,
+      "carrier": "six_axis_robot",
+      "episodes": 16,
+      "successes": 0,
+      "success_rate": 0.0,
+      "furthest_phase_reached": {
+        "transit": 16
+      },
+      "environments_that_entered_transit": 16,
+      "environments_retaining_the_planned_transform_throughout": 0,
+      "latch_engagements": 0,
+      "latch_softened_for_mating": 0,
+      "latch_released_after_seating": 0,
+      "hands_opened_after_settling_verification": 0,
+      "engagements_refused_out_of_seek_travel": 0,
+      "max_tool_to_module_position_drift_m": {
+        "count": 16,
+        "mean": 0.875486,
+        "p50": 0.807954,
+        "p95": 1.499773,
+        "max": 1.874364,
+        "min": 0.15685
+      },
+      "max_tool_to_module_orientation_drift_rad": {
+        "count": 16,
+        "mean": 2.768252,
+        "p50": 3.139193,
+        "p95": 3.141419,
+        "max": 3.141514,
+        "min": 0.427326
+      },
+      "max_grip_error_m": {
+        "count": 16,
+        "mean": 0.727411,
+        "p50": 0.636233,
+        "p95": 1.668276,
+        "max": 2.099319,
+        "min": 0.016235
+      },
+      "tool_travel_m": {
+        "count": 16,
+        "mean": 0.171204,
+        "p50": 0.167906,
+        "p95": 0.185241,
+        "max": 0.207354,
+        "min": 0.163425
+      },
+      "module_travel_m": {
+        "count": 16,
+        "mean": 0.985497,
+        "p50": 0.913046,
+        "p95": 1.804684,
+        "max": 2.502956,
+        "min": 0.177872
+      },
+      "control_steps_before_retention_was_lost": {
+        "count": 16,
+        "mean": 316.5,
+        "p50": 303.0,
+        "p95": 380.0,
+        "max": 430.0,
+        "min": 282.0
+      },
+      "measured_front_overhang_m": null,
+      "retreat_clear_blade_centre_x_m": null,
+      "terminal_tool_to_handle_error_m": {
+        "count": 16,
+        "non_finite": 0,
+        "mean": 0.697213,
+        "p50": 0.676757,
+        "p95": 1.644612,
+        "max": 1.915298,
+        "min": 0.016194
+      },
+      "policy_set_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
+      "checkpoint_sha256": {
+        "capture": "D5506848D6C63E00DF2D5A9397109D7913B57542B163E15574C7F0B9D69C4612",
+        "extract": "5391CD416EC900E07872BF758B54F661A2C141ECF3A1E1D920D9A15AF769B300",
+        "insert": "9159DE38F659A2ED47C56D7E873F1C580A98420340B8FB799C080F4D93A173C0"
+      }
+    },
+    {
+      "arm": "robot_side_form_lock",
+      "capture_interface": "break_rated_fixed_joint",
+      "latch_rated_force_n": 20000.0,
+      "latch_rated_torque_nm": 1000.0,
+      "latch_states": null,
+      "mating_compliance_n_per_m": null,
+      "destination_channel_relief_m": null,
+      "carrier": "six_axis_robot",
+      "episodes": 32,
+      "successes": 0,
+      "success_rate": 0.0,
+      "furthest_phase_reached": {
+        "transit": 32
+      },
+      "environments_that_entered_transit": 32,
+      "environments_retaining_the_planned_transform_throughout": 11,
+      "latch_engagements": 32,
+      "latch_softened_for_mating": 0,
+      "latch_released_after_seating": 0,
+      "hands_opened_after_settling_verification": 0,
+      "engagements_refused_out_of_seek_travel": 0,
+      "max_tool_to_module_position_drift_m": {
+        "count": 32,
+        "mean": 0.00256,
+        "p50": 0.002583,
+        "p95": 0.002731,
+        "max": 0.00279,
+        "min": 0.002252
+      },
+      "max_tool_to_module_orientation_drift_rad": {
+        "count": 32,
+        "mean": 0.006756,
+        "p50": 0.006741,
+        "p95": 0.007263,
+        "max": 0.007493,
+        "min": 0.005884
+      },
+      "max_grip_error_m": {
+        "count": 32,
+        "mean": 0.012683,
+        "p50": 0.01261,
+        "p95": 0.013122,
+        "max": 0.013444,
+        "min": 0.012357
+      },
+      "tool_travel_m": {
+        "count": 32,
+        "mean": 0.297697,
+        "p50": 0.296595,
+        "p95": 0.302296,
+        "max": 0.310527,
+        "min": 0.292677
+      },
+      "module_travel_m": {
+        "count": 32,
+        "mean": 0.774099,
+        "p50": 0.773139,
+        "p95": 0.778385,
+        "max": 0.778468,
+        "min": 0.772249
+      },
+      "control_steps_before_retention_was_lost": {
+        "count": 21,
+        "mean": 381.333333,
+        "p50": 343.0,
+        "p95": 445.0,
+        "max": 1136.0,
+        "min": 275.0
+      },
+      "measured_front_overhang_m": {
+        "count": 32,
+        "mean": 0.232607,
+        "p50": 0.232525,
+        "p95": 0.233159,
+        "max": 0.233657,
+        "min": 0.232127
+      },
+      "retreat_clear_blade_centre_x_m": {
+        "count": 32,
+        "mean": 0.129145,
+        "p50": 0.129222,
+        "p95": 0.129577,
+        "max": 0.129626,
+        "min": 0.128096
+      },
+      "terminal_tool_to_handle_error_m": {
+        "count": 32,
+        "non_finite": 0,
+        "mean": 0.012662,
+        "p50": 0.012609,
+        "p95": 0.013169,
+        "max": 0.013423,
+        "min": 0.012342
+      },
+      "policy_set_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
+      "checkpoint_sha256": {
+        "capture": "D5506848D6C63E00DF2D5A9397109D7913B57542B163E15574C7F0B9D69C4612",
+        "extract": "5391CD416EC900E07872BF758B54F661A2C141ECF3A1E1D920D9A15AF769B300",
+        "insert": "9159DE38F659A2ED47C56D7E873F1C580A98420340B8FB799C080F4D93A173C0"
+      }
+    }
+  ],
+  "rating_sweep": [
+    {
+      "arm": "robot_side_form_lock",
+      "capture_interface": "break_rated_fixed_joint",
+      "latch_rated_force_n": 600.0,
+      "latch_rated_torque_nm": 30.0,
+      "latch_states": null,
+      "mating_compliance_n_per_m": null,
+      "destination_channel_relief_m": null,
+      "carrier": "six_axis_robot",
+      "episodes": 16,
+      "successes": 0,
+      "success_rate": 0.0,
+      "furthest_phase_reached": {
+        "transit": 16
+      },
+      "environments_that_entered_transit": 16,
+      "environments_retaining_the_planned_transform_throughout": 0,
+      "latch_engagements": 16,
+      "latch_softened_for_mating": 0,
+      "latch_released_after_seating": 0,
+      "hands_opened_after_settling_verification": 0,
+      "engagements_refused_out_of_seek_travel": 0,
+      "max_tool_to_module_position_drift_m": {
+        "count": 16,
+        "mean": 0.426481,
+        "p50": 0.434834,
+        "p95": 0.528489,
+        "max": 0.627411,
+        "min": 0.308465
+      },
+      "max_tool_to_module_orientation_drift_rad": {
+        "count": 16,
+        "mean": 1.63227,
+        "p50": 1.298217,
+        "p95": 3.135502,
+        "max": 3.136049,
+        "min": 0.842811
+      },
+      "max_grip_error_m": {
+        "count": 16,
+        "mean": 0.256537,
+        "p50": 0.039116,
+        "p95": 0.986822,
+        "max": 1.02269,
+        "min": 0.025756
+      },
+      "tool_travel_m": {
+        "count": 16,
+        "mean": 0.929936,
+        "p50": 0.856424,
+        "p95": 1.400402,
+        "max": 1.46184,
+        "min": 0.489296
+      },
+      "module_travel_m": {
+        "count": 16,
+        "mean": 1.020394,
+        "p50": 0.913927,
+        "p95": 1.551862,
+        "max": 1.553927,
+        "min": 0.519641
+      },
+      "control_steps_before_retention_was_lost": {
+        "count": 16,
+        "mean": 324.875,
+        "p50": 306.0,
+        "p95": 363.0,
+        "max": 406.0,
+        "min": 295.0
+      },
+      "measured_front_overhang_m": null,
+      "retreat_clear_blade_centre_x_m": null,
+      "terminal_tool_to_handle_error_m": {
+        "count": 16,
+        "non_finite": 0,
+        "mean": 0.223022,
+        "p50": 0.039542,
+        "p95": 0.811181,
+        "max": 0.85157,
+        "min": 0.02574
+      },
+      "policy_set_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
+      "checkpoint_sha256": {
+        "capture": "D5506848D6C63E00DF2D5A9397109D7913B57542B163E15574C7F0B9D69C4612",
+        "extract": "5391CD416EC900E07872BF758B54F661A2C141ECF3A1E1D920D9A15AF769B300",
+        "insert": "9159DE38F659A2ED47C56D7E873F1C580A98420340B8FB799C080F4D93A173C0"
+      },
+      "source": "latched_report.json"
+    },
+    {
+      "arm": "robot_side_form_lock",
+      "capture_interface": "break_rated_fixed_joint",
+      "latch_rated_force_n": 1000000.0,
+      "latch_rated_torque_nm": 1000000.0,
+      "latch_states": null,
+      "mating_compliance_n_per_m": null,
+      "destination_channel_relief_m": null,
+      "carrier": "six_axis_robot",
+      "episodes": null,
+      "successes": null,
+      "success_rate": null,
+      "furthest_phase_reached": null,
+      "environments_that_entered_transit": 1,
+      "environments_retaining_the_planned_transform_throughout": 1,
+      "latch_engagements": 1,
+      "latch_softened_for_mating": 0,
+      "latch_released_after_seating": 0,
+      "hands_opened_after_settling_verification": 0,
+      "engagements_refused_out_of_seek_travel": 0,
+      "max_tool_to_module_position_drift_m": {
+        "count": 1,
+        "mean": 0.002341,
+        "p50": 0.002341,
+        "p95": 0.002341,
+        "max": 0.002341,
+        "min": 0.002341
+      },
+      "max_tool_to_module_orientation_drift_rad": {
+        "count": 1,
+        "mean": 0.006239,
+        "p50": 0.006239,
+        "p95": 0.006239,
+        "max": 0.006239,
+        "min": 0.006239
+      },
+      "max_grip_error_m": {
+        "count": 1,
+        "mean": 0.012452,
+        "p50": 0.012452,
+        "p95": 0.012452,
+        "max": 0.012452,
+        "min": 0.012452
+      },
+      "tool_travel_m": {
+        "count": 1,
+        "mean": 0.459578,
+        "p50": 0.459578,
+        "p95": 0.459578,
+        "max": 0.459578,
+        "min": 0.459578
+      },
+      "module_travel_m": {
+        "count": 1,
+        "mean": 0.437563,
+        "p50": 0.437563,
+        "p95": 0.437563,
+        "max": 0.437563,
+        "min": 0.437563
+      },
+      "control_steps_before_retention_was_lost": null,
+      "measured_front_overhang_m": {
+        "count": 1,
+        "mean": 0.232604,
+        "p50": 0.232604,
+        "p95": 0.232604,
+        "max": 0.232604,
+        "min": 0.232604
+      },
+      "retreat_clear_blade_centre_x_m": {
+        "count": 1,
+        "mean": 0.129149,
+        "p50": 0.129149,
+        "p95": 0.129149,
+        "max": 0.129149,
+        "min": 0.129149
+      },
+      "terminal_tool_to_handle_error_m": null,
+      "policy_set_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
+      "checkpoint_sha256": {
+        "capture": "D5506848D6C63E00DF2D5A9397109D7913B57542B163E15574C7F0B9D69C4612",
+        "extract": "5391CD416EC900E07872BF758B54F661A2C141ECF3A1E1D920D9A15AF769B300",
+        "insert": "9159DE38F659A2ED47C56D7E873F1C580A98420340B8FB799C080F4D93A173C0"
+      },
+      "source": "smoke_latched_report.json"
+    }
+  ],
+  "scope_and_limitations": [
+    "Simulation only. No result here was produced on real hardware.",
+    "The form lock's load path is a break-rated PhysX fixed joint between wrist_3_link and the module, engaged only after learned extraction clears the rails and released before insertion. Its visible hardware is authored on the wrist and its clearances are derived in evidence/service_latch_clearance.json; the hardware carries no collider, so contact between the jaws and the pin is not simulated.",
+    "The passive arm is the control and is expected to fail. It is published as a measured interface limitation, not as a failed policy.",
+    "Wrist reaction to the lock is carried by the joint; the arm's joint torques under that reaction are not separately measured."
+  ]
+}

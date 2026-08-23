@@ -59,10 +59,10 @@ case "$stage" in
         --latch_on_release --latch_joint_mode fixed \
         --latch_rated_force_n "${LATCH_N:-600}" --latch_rated_torque_nm "${LATCH_NM:-30}" \
         --latch_position_stiffness_n_per_m "${MATING_K:-40000}" \
-        --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-160}" \
-        --destination_channel_relief_m "${RELIEF:-0.00315}" \
+        --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-20000}" \
+        --destination_channel_relief_m "${RELIEF:-0.0046125}" \
         --mating_mode "${MATING_MODE:-compliant}" \
-        --mating_force_cap_n "${MATING_CAP:-400}" \
+        --mating_force_cap_n "${MATING_CAP:-1000}" \
         --report "$OUT/latched_report.json" \
         --episode_metrics "$OUT/latched.npz" \
         --handoff_trace "$OUT/latched_trace.npz" \
@@ -104,10 +104,10 @@ case "$stage" in
         --latch_on_release --latch_joint_mode fixed \
         --latch_rated_force_n "${LATCH_N:-1000000}" --latch_rated_torque_nm "${LATCH_NM:-1000000}" \
         --latch_position_stiffness_n_per_m "${MATING_K:-40000}" \
-        --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-160}" \
-        --destination_channel_relief_m "${RELIEF:-0.00315}" \
+        --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-20000}" \
+        --destination_channel_relief_m "${RELIEF:-0.0046125}" \
         --mating_mode "${MATING_MODE:-compliant}" \
-        --mating_force_cap_n "${MATING_CAP:-400}" \
+        --mating_force_cap_n "${MATING_CAP:-1000}" \
         --report "${REPORT:-$OUT/smoke_latched_report.json}" \
         --handoff_trace "${TRACE:-$OUT/smoke_latched_trace.npz}" \
         > "${LOG:-$OUT/smoke_latched.log}" 2>&1
@@ -119,7 +119,7 @@ case "$stage" in
     # widen the rack? Two questions, one grid, because they trade against each
     # other: a stiffer lock needs a wider channel and a softer one does not.
     for stiffness in ${MATING_K:-500 2500 10000}; do
-      for relief in ${MATING_RELIEF:-0.0 0.00315}; do
+      for relief in ${MATING_RELIEF:-0.004 0.008 0.012 0.016}; do
         tag="k${stiffness}_r${relief}"
         echo "[$(date +%H:%M:%S)] MATING stiffness=${stiffness} N/m relief=${relief} m"
         chain --num_envs "${ENVS:-8}" --episodes "${EPISODES:-8}" --seed "${SEED:-4070}"             --latch_on_release --latch_joint_mode fixed             --latch_rated_force_n "${LATCH_N:-20000}" --latch_rated_torque_nm "${LATCH_NM:-1000}"             --latch_position_stiffness_n_per_m "$stiffness"             --destination_channel_relief_m "$relief"             --report "$OUT/mating_${tag}_report.json"             --episode_metrics "$OUT/mating_${tag}.npz"             > "$OUT/mating_${tag}.log" 2>&1
@@ -140,10 +140,10 @@ case "$stage" in
           --latch_on_release --latch_joint_mode fixed \
           --latch_rated_force_n "${LATCH_N:-20000}" --latch_rated_torque_nm "${LATCH_NM:-1000}" \
         --latch_position_stiffness_n_per_m "${MATING_K:-40000}" \
-        --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-160}" \
-        --destination_channel_relief_m "${RELIEF:-0.00315}" \
+        --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-20000}" \
+        --destination_channel_relief_m "${RELIEF:-0.0046125}" \
         --mating_mode "${MATING_MODE:-compliant}" \
-        --mating_force_cap_n "${MATING_CAP:-400}" \
+        --mating_force_cap_n "${MATING_CAP:-1000}" \
           --report "${out}_report.json" --episode_metrics "${out}.npz" \
           > "${out}.log" 2>&1
       echo "[$(date +%H:%M:%S)]   exit=$?"
@@ -171,10 +171,10 @@ case "$stage" in
         --latch_on_release --latch_joint_mode fixed \
         --latch_rated_force_n "${LATCH_N:-20000}" --latch_rated_torque_nm "${LATCH_NM:-1000}" \
         --latch_position_stiffness_n_per_m "${MATING_K:-40000}" \
-        --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-160}" \
-        --destination_channel_relief_m "${RELIEF:-0.00315}" \
+        --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-20000}" \
+        --destination_channel_relief_m "${RELIEF:-0.0046125}" \
         --mating_mode "${MATING_MODE:-compliant}" \
-        --mating_force_cap_n "${MATING_CAP:-400}" \
+        --mating_force_cap_n "${MATING_CAP:-1000}" \
         --stable_lighting --inspection_view workcell \
         --video --video_dir "$OUT/video" --settle_steps 30 \
         --report "$OUT/rgbd_report.json" \

@@ -21,6 +21,7 @@ extraction ends. Extraction therefore carries its own bounds.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 
 import torch
@@ -91,6 +92,10 @@ MATING_TRAVEL_LIMIT_M = 0.025
 #: The same, in rotation. 0.2 rad is the attitude tolerance section 8 of the
 #: interface specification requires the interface to hold through a pull, so a
 #: compliance that gave up more than that would be giving up the requirement.
+#: Where the mating compliance's centre sits, as a fraction of the distance from
+#: the wrist to the module's leading face. 0 is a plain spring at the tool, 1 is
+#: a remote centre at the part's own contact point. See ``GrappleLatch.soften``.
+MATING_COMPLIANCE_CENTRE = float(os.environ.get("MATING_COMPLIANCE_CENTRE", "0.0"))
 MATING_ROTATION_LIMIT_RAD = 0.2
 
 #: Grip attitude a capture is allowed, and the margin an extraction has to hand
@@ -654,6 +659,20 @@ class GrappleLatch(ManagerTermBase):
             # assembly compliance devices are built with a remote centre, and
             # the distance is not a parameter to tune: it is where the part
             # touches the hole.
+            #
+            # **That is right for seating a square part and wrong for
+            # straightening a crooked one, and this workcell has to do both.**
+            # An RCC at the tip is specified so that a tip contact produces no
+            # moment. The module here arrives 47 to 67 mrad off square -- the
+            # arm's own accuracy inside the reach boundary of section 6a -- and
+            # the only thing that can take that out is the lead-in, by producing
+            # exactly the moment the tip centre is designed to cancel. Measured
+            # with the centre at the tip, the module grinds into the lead-in and
+            # stops: 0.1736 m to 0.1890 m over 240 control steps, decelerating.
+            # ``MATING_COMPLIANCE_CENTRE`` is therefore where the centre sits
+            # between the wrist and the tip, and it is a real design parameter
+            # rather than a constant, because the two jobs want opposite ends of
+            # it.
             robot = env.scene["robot"]
             wrist_position = robot.data.body_pos_w[:, self._wrist_body_id]
             wrist_orientation = robot.data.body_quat_w[:, self._wrist_body_id]
@@ -662,7 +681,13 @@ class GrappleLatch(ManagerTermBase):
                 env.num_envs, -1
             )
             tip_world = blade.data.root_pos_w + quat_apply(blade.data.root_quat_w, tip_in_blade)
-            local_position = quat_apply(inverse_wrist, tip_world - wrist_position)
+            centre_world = torch.lerp(wrist_position, tip_world, MATING_COMPLIANCE_CENTRE)
+            centre_in_blade = torch.lerp(
+                quat_apply(quat_inv(blade.data.root_quat_w), wrist_position - blade.data.root_pos_w),
+                tip_in_blade,
+                MATING_COMPLIANCE_CENTRE,
+            )
+            local_position = quat_apply(inverse_wrist, centre_world - wrist_position)
             local_orientation = quat_mul(inverse_wrist, blade.data.root_quat_w)
             for index in ids.detach().cpu().tolist():
                 position = local_position[index].detach().cpu().tolist()
@@ -670,7 +695,7 @@ class GrappleLatch(ManagerTermBase):
                 joint = self._mating_joints[index]
                 joint.GetLocalPos0Attr().Set(Gf.Vec3f(*position))
                 joint.GetLocalRot0Attr().Set(Gf.Quatf(orientation[0], Gf.Vec3f(*orientation[1:])))
-                joint.GetLocalPos1Attr().Set(Gf.Vec3f(0.5 * BLADE_LENGTH_M, 0.0, 0.0))
+                joint.GetLocalPos1Attr().Set(Gf.Vec3f(*centre_in_blade[index].detach().cpu().tolist()))
                 joint.GetLocalRot1Attr().Set(Gf.Quatf(1.0, Gf.Vec3f(0.0, 0.0, 0.0)))
                 joint.GetJointEnabledAttr().Set(True)
 
