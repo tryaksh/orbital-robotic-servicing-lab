@@ -533,7 +533,7 @@ class MatingComplianceJointCfg(CompliantD6JointCfg):
     translation_limit: float = 0.025
     #: Three degrees. Enough that the joint is a spring rather than a weld, far
     #: less than the 0.052 rad the seating envelope allows.
-    rotation_limit_deg: float = 3.0
+    rotation_limit_deg: float = 8.0
     translation_stiffness: float = 40_000.0
     translation_damping: float = 2_400.0
     rotation_stiffness: float = 20_000.0

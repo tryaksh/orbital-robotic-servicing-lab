@@ -1,0 +1,89 @@
+{
+  "title": "Mating compliance for a robot-carried module",
+  "generated_utc": "2026-08-23T06:48:28.749990+00:00",
+  "evidence_type": "simulation_only",
+  "status": "failed",
+  "question": "How compliant does the robot-side form lock have to become for the rack's own lead-in to seat a module the robot carried to it?",
+  "rows": [
+    {
+      "source": "mate_k10000_report.json",
+      "mating_mode": null,
+      "stiffness_n_per_m": 10000.0,
+      "stiffness_nm_per_rad": 40.0,
+      "stroke_m": null,
+      "force_cap_n": null,
+      "destination_channel_relief_m": 0.0,
+      "reached_phase": "transit",
+      "seated": false,
+      "predicate_fired": false,
+      "success_rate": null,
+      "max_tool_to_module_drift_m": 0.151969,
+      "terminal_module_x_m": 0.254976
+    },
+    {
+      "source": "mate_full_report.json",
+      "mating_mode": "compliant",
+      "stiffness_n_per_m": 2500.0,
+      "stiffness_nm_per_rad": 10.0,
+      "stroke_m": 0.025,
+      "force_cap_n": 400.0,
+      "destination_channel_relief_m": 0.00315,
+      "reached_phase": "done",
+      "seated": false,
+      "predicate_fired": false,
+      "success_rate": null,
+      "max_tool_to_module_drift_m": 0.002341,
+      "terminal_module_x_m": 0.437079
+    },
+    {
+      "source": "mate_rcc_report.json",
+      "mating_mode": "compliant",
+      "stiffness_n_per_m": 40000.0,
+      "stiffness_nm_per_rad": 160.0,
+      "stroke_m": 0.025,
+      "force_cap_n": 400.0,
+      "destination_channel_relief_m": 0.00315,
+      "reached_phase": "done",
+      "seated": false,
+      "predicate_fired": false,
+      "success_rate": null,
+      "max_tool_to_module_drift_m": 0.002341,
+      "terminal_module_x_m": 0.437091
+    },
+    {
+      "source": "mate_relief45_report.json",
+      "mating_mode": "compliant",
+      "stiffness_n_per_m": 40000.0,
+      "stiffness_nm_per_rad": 10.0,
+      "stroke_m": 0.025,
+      "force_cap_n": 400.0,
+      "destination_channel_relief_m": 0.0045,
+      "reached_phase": "done",
+      "seated": false,
+      "predicate_fired": false,
+      "success_rate": null,
+      "max_tool_to_module_drift_m": 0.002341,
+      "terminal_module_x_m": 0.436894
+    },
+    {
+      "source": "diag_wide_report.json",
+      "mating_mode": "compliant",
+      "stiffness_n_per_m": 40000.0,
+      "stiffness_nm_per_rad": 160.0,
+      "stroke_m": 0.025,
+      "force_cap_n": 400.0,
+      "destination_channel_relief_m": 0.015,
+      "reached_phase": "done",
+      "seated": false,
+      "predicate_fired": false,
+      "success_rate": null,
+      "max_tool_to_module_drift_m": 0.002341,
+      "terminal_module_x_m": 0.435606
+    }
+  ],
+  "scope_and_limitations": [
+    "Simulation only. No result here was produced on real hardware.",
+    "One environment per row: this is a mechanism sweep, not a reliability rate.",
+    "The compliance is a bounded spring-damper between wrist_3_link and the module with a finite stroke; its hardware is authored on the wrist without colliders, so the jaws' contact with the pin is not simulated."
+  ]
+}

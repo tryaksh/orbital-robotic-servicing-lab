@@ -217,6 +217,8 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
     #: rack's lead-in can push the module off the tool's line, which is the only
     #: way a lead-in aligns anything.
     mating_translation_stiffness_n_per_m: float = 40_000.0
+    #: Angular stiffness of the mating compliance, about the module's tip.
+    mating_rotation_stiffness_nm_per_rad: float = 200.0
     mating_torque_cap_nm: float = 40.0
     base_rail_enabled: bool = False
     #: Engage the latch only once a driver says the module is free of the rails,
@@ -268,6 +270,18 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
             mating_joint.spawn.translation_stiffness = self.mating_translation_stiffness_n_per_m
             mating_joint.spawn.translation_damping = 2.0 * 0.9 * (
                 self.mating_translation_stiffness_n_per_m * 10.0
+            ) ** 0.5
+            # **Soft in rotation, now that the centre is at the tip.** With the
+            # centre at the wrist a soft angular gain let the module flop, so
+            # the first fix was to stiffen it -- and a stiff one cannot be
+            # reoriented by the channel it is entering, which is the other half
+            # of the jam. A remote centre at the part's own tip is what makes
+            # softness safe: a lateral force there translates the module, and a
+            # moment there rotates it about the point that is touching. That is
+            # the property the device is named for.
+            mating_joint.spawn.rotation_stiffness = self.mating_rotation_stiffness_nm_per_rad
+            mating_joint.spawn.rotation_damping = 2.0 * 0.9 * (
+                self.mating_rotation_stiffness_nm_per_rad * 0.2
             ) ** 0.5
         self.events.grapple_latch.params["mating_torque_cap_nm"] = self.mating_torque_cap_nm
         self.events.grapple_latch.params["require_armed"] = self.latch_engages_on_release
