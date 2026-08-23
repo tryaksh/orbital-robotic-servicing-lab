@@ -39,6 +39,7 @@ from pxr import Gf, UsdGeom, UsdPhysics
 
 from zero_g_blade_swap import service_latch
 from zero_g_blade_swap.grapple_geometry import (
+    BLADE_LENGTH_M,
     EXTRACTED_BLADE_CENTRE_X,
     GRAPPLE_HEAD_ON_TOOL_ROT,
     GRAPPLE_PIN_COLLAR_X,
@@ -289,6 +290,17 @@ class GrappleLatch(ManagerTermBase):
             raise RuntimeError(f"GrappleLatch expected wrist_3_link, resolved {body_names}")
         self._wrist_body_id = int(body_ids[0])
         self._fixed_joints: list[UsdPhysics.FixedJoint] = []
+        #: The compliant state's joint, one per environment. Absent on tasks
+        #: that do not declare it, in which case softening falls back to the
+        #: explicit wrench and says so by leaving this empty.
+        self._mating_joints: list[UsdPhysics.Joint] = []
+        stage_for_mating = get_current_stage()
+        for env_path in env.scene.env_prim_paths:
+            prim = stage_for_mating.GetPrimAtPath(f"{env_path}/MatingComplianceJoint/Joint")
+            if not prim.IsValid():
+                self._mating_joints = []
+                break
+            self._mating_joints.append(UsdPhysics.Joint(prim))
         # Translate ops of the visible jaw carriages, when the scene carries the
         # latch hardware. Empty on tasks that do not, so every task that existed
         # before the mechanism did behaves exactly as it did.
@@ -359,6 +371,9 @@ class GrappleLatch(ManagerTermBase):
         if self._fixed_joints:
             for index in ids.detach().cpu().tolist():
                 self._fixed_joints[index].GetJointEnabledAttr().Set(False)
+        if self._mating_joints:
+            for index in ids.detach().cpu().tolist():
+                self._mating_joints[index].GetJointEnabledAttr().Set(False)
         self._set_jaw_pose(ids, engaged=False)
         zeros = torch.zeros((len(ids), 1, 3), device=self._env.device)
         self._env.scene["spare_blade"].permanent_wrench_composer.set_forces_and_torques(
@@ -479,6 +494,11 @@ class GrappleLatch(ManagerTermBase):
         # that is all of them; on a fixed task it is the ones the driver has
         # softened, and for the rest the joint is the load path and applying the
         # wrench as well would double-count it.
+        # When the compliant state is a joint, the joint is the load path and
+        # the wrench would double-count it -- the same rule the fixed state
+        # already follows.
+        if self._mating_joints and joint_mode != "compliant":
+            return
         spring = latched if joint_mode == "compliant" else (latched & env._grapple_latch_compliant)
         if not bool(spring.any()):
             return
@@ -610,6 +630,49 @@ class GrappleLatch(ManagerTermBase):
         )
         env._grapple_latch_relative_quat[ids] = quat_mul(inverse_tool, blade.data.root_quat_w[ids])
         env._grapple_latch_compliant[ids] = True
+        if self._mating_joints:
+            # The spring's rest pose is the wrist-to-module transform *now*, so
+            # switching states stores no energy and moves nothing. Written to
+            # the joint's own frames rather than commanded, because a drive
+            # target would have to chase a moving wrist.
+            # **The compliance centre goes at the module's leading face, not at
+            # the wrist, and that is what makes it a *remote* centre of
+            # compliance rather than a spring.**
+            #
+            # With the centre at the tool, a contact force on the entering tip
+            # acts through a 225 mm arm and rotates the module *into* the wall
+            # it just touched. That is the jamming mode of a clearance fit, and
+            # it is what the measurements show: pushed at 20 kN the module moved
+            # 0.1 mm, pushed at 400 N into a channel opened to 4.5 mm it moved
+            # 2.4 mm and rotated further off square as it went, 17.2 mrad to
+            # 22.3 mrad. Opening the channel does not fix it and neither does
+            # pushing harder, because the jam condition is a ratio of moment to
+            # force rather than a clearance.
+            #
+            # Put the centre at the tip and the same contact force translates
+            # the module instead of rotating it. This is the entire reason
+            # assembly compliance devices are built with a remote centre, and
+            # the distance is not a parameter to tune: it is where the part
+            # touches the hole.
+            robot = env.scene["robot"]
+            wrist_position = robot.data.body_pos_w[:, self._wrist_body_id]
+            wrist_orientation = robot.data.body_quat_w[:, self._wrist_body_id]
+            inverse_wrist = quat_inv(wrist_orientation)
+            tip_in_blade = blade.data.root_pos_w.new_tensor((0.5 * BLADE_LENGTH_M, 0.0, 0.0)).expand(
+                env.num_envs, -1
+            )
+            tip_world = blade.data.root_pos_w + quat_apply(blade.data.root_quat_w, tip_in_blade)
+            local_position = quat_apply(inverse_wrist, tip_world - wrist_position)
+            local_orientation = quat_mul(inverse_wrist, blade.data.root_quat_w)
+            for index in ids.detach().cpu().tolist():
+                position = local_position[index].detach().cpu().tolist()
+                orientation = local_orientation[index].detach().cpu().tolist()
+                joint = self._mating_joints[index]
+                joint.GetLocalPos0Attr().Set(Gf.Vec3f(*position))
+                joint.GetLocalRot0Attr().Set(Gf.Quatf(orientation[0], Gf.Vec3f(*orientation[1:])))
+                joint.GetLocalPos1Attr().Set(Gf.Vec3f(0.5 * BLADE_LENGTH_M, 0.0, 0.0))
+                joint.GetLocalRot1Attr().Set(Gf.Quatf(1.0, Gf.Vec3f(0.0, 0.0, 0.0)))
+                joint.GetJointEnabledAttr().Set(True)
 
     def release(self, mask: torch.Tensor) -> None:
         """Let the module go: disable the joint, drop the wrench, stow the jaws.
@@ -633,6 +696,9 @@ class GrappleLatch(ManagerTermBase):
         env._grapple_latched[ids] = False
         env._grapple_latch_armed[ids] = False
         env._grapple_latch_compliant[ids] = False
+        if self._mating_joints:
+            for index in ids.detach().cpu().tolist():
+                self._mating_joints[index].GetJointEnabledAttr().Set(False)
         if self._fixed_joints:
             for index in ids.detach().cpu().tolist():
                 self._fixed_joints[index].GetJointEnabledAttr().Set(False)

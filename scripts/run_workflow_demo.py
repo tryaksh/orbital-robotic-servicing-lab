@@ -3799,6 +3799,7 @@ def main() -> dict[str, object]:
                 args.latch_position_stiffness_n_per_m * MATING_TRAVEL_LIMIT_M
             )
             env_cfg.mating_torque_cap_nm = args.latch_rotation_stiffness_nm_per_rad * MATING_ROTATION_LIMIT_RAD
+            env_cfg.mating_translation_stiffness_n_per_m = args.latch_position_stiffness_n_per_m
             if args.latch_joint_mode == "fixed":
                 env_cfg.scene.release_latch_joint.spawn.break_force_n = args.latch_rated_force_n
                 env_cfg.scene.release_latch_joint.spawn.break_torque_nm = args.latch_rated_torque_nm

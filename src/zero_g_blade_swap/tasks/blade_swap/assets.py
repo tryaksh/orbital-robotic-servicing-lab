@@ -501,6 +501,47 @@ class FixedGraspJointCfg(SpawnerCfg):
 
 
 @configclass
+class MatingComplianceJointCfg(CompliantD6JointCfg):
+    """The form lock's compliant state, as a joint rather than a wrench.
+
+    **Why a joint.** The first version of this applied a spring-damper wrench to
+    the module at the 30 Hz control rate. That is stable while it is soft and
+    unusable when it is not: raising the rotational gain to hold the module
+    square put the spring's own period inside the command interval and the
+    module left the cell at 1.5 m in a quarter of a second. An explicit spring
+    cannot be stiff, and rotation is the axis this mechanism must be stiff on.
+
+    PhysX solves a joint drive implicitly, so the same physical device is stable
+    at any gain. That is the whole reason this class exists.
+
+    **Compliant in translation, stiff in rotation, and that split is the
+    design.** The rack aligns a module by pushing it -- section 6 of the
+    interface specification measures the lead-in doing exactly that -- so the
+    interface has to yield in translation or the lead-in cannot work. It must
+    *not* yield in rotation: a lead-in cannot straighten a 450 mm module inside
+    a 1 mm channel, and measured at 160 N-m/rad the module rotated 0.309 rad
+    against the compliance and jammed crooked. A remote-centre-of-compliance
+    device is specified the same way, with its lateral and angular stiffnesses
+    chosen separately for the task.
+    """
+
+    body0_relative_path: str = "Robot/wrist_3_link"
+    body1_relative_path: str = "SpareBlade"
+    relocate_robot_articulation_root: bool = False
+    enabled: bool = False
+    #: The stroke, which is what makes it a device rather than a formula.
+    translation_limit: float = 0.025
+    #: Three degrees. Enough that the joint is a spring rather than a weld, far
+    #: less than the 0.052 rad the seating envelope allows.
+    rotation_limit_deg: float = 3.0
+    translation_stiffness: float = 40_000.0
+    translation_damping: float = 2_400.0
+    rotation_stiffness: float = 20_000.0
+    rotation_damping: float = 600.0
+    max_force: float = 20_000.0
+
+
+@configclass
 class ReleaseLatchJointCfg(FixedGraspJointCfg):
     """Disabled fixed joint armed only after a physical grapple-pin capture.
 
@@ -1753,6 +1794,7 @@ __all__ = [
     "BLADE_SIZE",
     "CompliantD6JointCfg",
     "FixedGraspJointCfg",
+    "MatingComplianceJointCfg",
     "ReleaseLatchJointCfg",
     "SERVICE_LATCH_JAWS",
     "SERVICE_LATCH_PRIM",

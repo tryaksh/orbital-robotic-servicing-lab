@@ -50,6 +50,14 @@ LATCH_SOURCE = Path("src/zero_g_blade_swap/service_latch.py")
 #: present for the first second of the flight and absent for the rest of it.
 LATCH_RATED_FORCE_N = 20_000.0
 LATCH_RATED_TORQUE_NM = 1_000.0
+#: Force the mating compliance may apply, and the clearance the destination bay
+#: is opened to. Both are measured rather than chosen: more push wedges the
+#: module at a third of its travel, and the clearance is L*theta/2 for the
+#: attitude this arm actually delivers. See
+#: ``evidence/mating_compliance.json`` and section 6.2 of the interface
+#: specification.
+MATING_FORCE_CAP_N = 400.0
+DESTINATION_CHANNEL_RELIEF_M = 0.00315
 LIVE_TASK_ID = "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0"
 COLLECTION_TASK_ID = "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Collect-v0"
 OVERVIEW_IMAGE_SHAPE_HWC = [384, 384, 3]
@@ -620,6 +628,12 @@ class PresetRegistry:
                 str(LATCH_RATED_FORCE_N),
                 "--latch_rated_torque_nm",
                 str(LATCH_RATED_TORQUE_NM),
+                "--mating_mode",
+                "compliant",
+                "--mating_force_cap_n",
+                str(MATING_FORCE_CAP_N),
+                "--destination_channel_relief_m",
+                str(DESTINATION_CHANNEL_RELIEF_M),
                 "--num_envs",
                 "1",
                 "--seed",

@@ -105,13 +105,20 @@ Carrying and mating want opposite things from the same mechanism.
 | released before the mouth | slid **laterally out of the bay**: the pads do not resist lateral load, which section 8 measures |
 | compliant at 2.5 kN/m | the lead-in pushed it 19 mm off centre, outside its own 16.6 mm catch |
 | compliant at 10 kN/m | 7.7 mm off centre, entered 46 mm, jammed |
+| compliant at 40 kN/m | reached 0.5804 m, 0.07 mm outside the hand-off gate |
+| compliant, 1 kN of push | wedged at a third of its travel, with and without channel relief |
+| compliant, soft in rotation | module rotated 0.309 rad against the spring and jammed crooked |
+| compliant, stiff in rotation, as a wrench | unstable at 30 Hz: module left the cell at 1.5 m |
+| compliant, stiff in rotation, as a joint | stable, and jams at the mouth: 14 mrad will not enter a 1 mm channel |
 
 The current design gives the lock three states — rigid to carry, a bounded
 compliance with a finite stroke to mate, released once seated — which is what
 assembly compliance devices have done since the 1970s and what the SSRMS
-latching end effector does when it berths. The compliance needs a stroke and a
-rating or it is a formula rather than a mechanism: without a cap it fed itself
-and the module left the cell at 15 km.
+latching end effector does when it berths. Two things about that middle state
+are requirements rather than tuning. It is **a joint, not an applied wrench**,
+because an explicit spring at the 30 Hz command rate is stable only while it is
+soft. And it is **soft in translation and stiff in rotation**, because the rack
+aligns a module by pushing it and cannot straighten it.
 
 **The underlying number is the one to argue with.** A 450 mm module, a channel
 with 0.5 mm per side, and an arm that delivers 14 mrad of attitude — which is

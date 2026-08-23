@@ -40,6 +40,7 @@ from .assets import (
     SLOT_UPPER_RIGHT_LIP_CFG,
     CompliantD6JointCfg,
     FixedGraspJointCfg,
+    MatingComplianceJointCfg,
     ReleaseLatchJointCfg,
     ServiceLatchCfg,
     make_contact_insertion_robot_cfg,
@@ -145,6 +146,12 @@ class ZeroGGrapplePinSceneCfg(ZeroGContactInsertionSceneCfg):
     release_latch_joint = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/ReleaseLatchJoint",
         spawn=ReleaseLatchJointCfg(),
+    )
+    # The same mechanism's second state. Disabled until the driver says the
+    # module has reached the rack; see ``MatingComplianceJointCfg``.
+    mating_compliance_joint = AssetBaseCfg(
+        prim_path="{ENV_REGEX_NS}/MatingComplianceJoint",
+        spawn=MatingComplianceJointCfg(),
     )
     # The hardware that joint represents. Visual geometry on the wrist, with no
     # collider and no rigid body: the load path is the joint, and this is what

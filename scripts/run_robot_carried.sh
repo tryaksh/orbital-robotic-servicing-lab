@@ -60,9 +60,9 @@ case "$stage" in
         --latch_rated_force_n "${LATCH_N:-600}" --latch_rated_torque_nm "${LATCH_NM:-30}" \
         --latch_position_stiffness_n_per_m "${MATING_K:-40000}" \
         --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-160}" \
-        --destination_channel_relief_m "${RELIEF:-0.0}" \
+        --destination_channel_relief_m "${RELIEF:-0.00315}" \
         --mating_mode "${MATING_MODE:-compliant}" \
-        --mating_force_cap_n "${MATING_CAP:-0}" \
+        --mating_force_cap_n "${MATING_CAP:-400}" \
         --report "$OUT/latched_report.json" \
         --episode_metrics "$OUT/latched.npz" \
         --handoff_trace "$OUT/latched_trace.npz" \
@@ -103,11 +103,11 @@ case "$stage" in
     chain --num_envs 1 --steps "${STEPS:-3000}" --seed "${SEED:-4070}" \
         --latch_on_release --latch_joint_mode fixed \
         --latch_rated_force_n "${LATCH_N:-1000000}" --latch_rated_torque_nm "${LATCH_NM:-1000000}" \
-        --latch_position_stiffness_n_per_m "${MATING_K:-2500}" \
-        --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-10}" \
-        --destination_channel_relief_m "${RELIEF:-0.0}" \
+        --latch_position_stiffness_n_per_m "${MATING_K:-40000}" \
+        --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-160}" \
+        --destination_channel_relief_m "${RELIEF:-0.00315}" \
         --mating_mode "${MATING_MODE:-compliant}" \
-        --mating_force_cap_n "${MATING_CAP:-0}" \
+        --mating_force_cap_n "${MATING_CAP:-400}" \
         --report "${REPORT:-$OUT/smoke_latched_report.json}" \
         --handoff_trace "${TRACE:-$OUT/smoke_latched_trace.npz}" \
         > "${LOG:-$OUT/smoke_latched.log}" 2>&1
@@ -141,9 +141,9 @@ case "$stage" in
           --latch_rated_force_n "${LATCH_N:-20000}" --latch_rated_torque_nm "${LATCH_NM:-1000}" \
         --latch_position_stiffness_n_per_m "${MATING_K:-40000}" \
         --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-160}" \
-        --destination_channel_relief_m "${RELIEF:-0.0}" \
+        --destination_channel_relief_m "${RELIEF:-0.00315}" \
         --mating_mode "${MATING_MODE:-compliant}" \
-        --mating_force_cap_n "${MATING_CAP:-0}" \
+        --mating_force_cap_n "${MATING_CAP:-400}" \
           --report "${out}_report.json" --episode_metrics "${out}.npz" \
           > "${out}.log" 2>&1
       echo "[$(date +%H:%M:%S)]   exit=$?"
@@ -172,9 +172,9 @@ case "$stage" in
         --latch_rated_force_n "${LATCH_N:-20000}" --latch_rated_torque_nm "${LATCH_NM:-1000}" \
         --latch_position_stiffness_n_per_m "${MATING_K:-40000}" \
         --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-160}" \
-        --destination_channel_relief_m "${RELIEF:-0.0}" \
+        --destination_channel_relief_m "${RELIEF:-0.00315}" \
         --mating_mode "${MATING_MODE:-compliant}" \
-        --mating_force_cap_n "${MATING_CAP:-0}" \
+        --mating_force_cap_n "${MATING_CAP:-400}" \
         --stable_lighting --inspection_view workcell \
         --video --video_dir "$OUT/video" --settle_steps 30 \
         --report "$OUT/rgbd_report.json" \

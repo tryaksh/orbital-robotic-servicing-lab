@@ -213,6 +213,10 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
     #: preload, thousands of newtons, while the spring has to be gentle enough
     #: that a lead-in plate can still push the module off the tool's line.
     mating_force_cap_n: float = 400.0
+    #: Translational stiffness of the mating compliance. Soft enough that the
+    #: rack's lead-in can push the module off the tool's line, which is the only
+    #: way a lead-in aligns anything.
+    mating_translation_stiffness_n_per_m: float = 40_000.0
     mating_torque_cap_nm: float = 40.0
     base_rail_enabled: bool = False
     #: Engage the latch only once a driver says the module is free of the rails,
@@ -254,6 +258,17 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
         self.events.grapple_latch.params["rotation_damping_ratio"] = self.latch_rotation_damping_ratio
         self.events.grapple_latch.params["joint_mode"] = self.latch_joint_mode
         self.events.grapple_latch.params["mating_force_cap_n"] = self.mating_force_cap_n
+        # The same number has to reach the *joint*, or the cap that was measured
+        # on the wrench silently stops applying when the mechanism became a
+        # joint -- which is exactly what happened: the drive pushed at its own
+        # 20 kN default and wedged the module where 400 N walks it in.
+        mating_joint = getattr(self.scene, "mating_compliance_joint", None)
+        if mating_joint is not None:
+            mating_joint.spawn.max_force = self.mating_force_cap_n
+            mating_joint.spawn.translation_stiffness = self.mating_translation_stiffness_n_per_m
+            mating_joint.spawn.translation_damping = 2.0 * 0.9 * (
+                self.mating_translation_stiffness_n_per_m * 10.0
+            ) ** 0.5
         self.events.grapple_latch.params["mating_torque_cap_nm"] = self.mating_torque_cap_nm
         self.events.grapple_latch.params["require_armed"] = self.latch_engages_on_release
 
