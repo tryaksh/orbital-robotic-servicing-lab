@@ -165,6 +165,12 @@ case "$stage" in
 
   rgbd)
     # One full RGB-D end-to-end run, with the video the showcase needs.
+    #
+    # Lighting randomization and video recording are exclusive: the recorder
+    # needs a stable exposure and the evidence needs the randomization the
+    # perception was certified under. Both are switches, so the showcase runs
+    # this stage twice -- once with ``STABLE_LIGHTING= VIDEO=`` for the
+    # evidence, and once with the defaults for the video.
     echo "[$(date +%H:%M:%S)] RGBD robot-carried relocation with video"
     chain --num_envs 1 --seed "${SEED:-4070}" --steps "${STEPS:-3600}" \
         --task "$VISION_TASK" --perception_backend fiducial_pnp \
@@ -175,11 +181,11 @@ case "$stage" in
         --destination_channel_relief_m "${RELIEF:-0.0046125}" \
         --mating_mode "${MATING_MODE:-compliant}" \
         --mating_force_cap_n "${MATING_CAP:-1000}" \
-        --stable_lighting --inspection_view workcell \
-        --video --video_dir "$OUT/video" --settle_steps 30 \
-        --report "$OUT/rgbd_report.json" \
-        --handoff_trace "$OUT/rgbd_trace.npz" \
-        > "$OUT/rgbd.log" 2>&1
+        ${STABLE_LIGHTING---stable_lighting} --inspection_view workcell \
+        ${VIDEO---video --video_dir "$OUT/video"} --settle_steps 30 \
+        --report "${REPORT:-$OUT/rgbd_report.json}" \
+        --handoff_trace "${TRACE:-$OUT/rgbd_trace.npz}" \
+        > "${LOG:-$OUT/rgbd.log}" 2>&1
     echo "[$(date +%H:%M:%S)] rgbd exit=$?"
     ;;
 

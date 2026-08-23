@@ -97,7 +97,9 @@ entered the mouth from outside.
 A relocation enters from outside. Section 6.1 is the requirement that follows,
 and section 6.2 is the one after it: a module delivered *rigidly* cannot be
 straightened by the channel it is entering, so the channel has to admit the
-attitude the manipulator delivers — clearance ≥ L·θ/2.
+attitude the manipulator delivers — clearance ≥ L·θ/2. Section 4 below adds the
+half of that requirement this session measured: it is bounded **above** as well,
+because opening the channel is also what stops it correcting the module.
 
 ## 4. What is open, and why it is hard
 
@@ -119,13 +121,19 @@ wrong.
 Measured directly: **900 advancing steps, no guard holds, and a commanded depth
 that moved 11 mm.**
 
-Two of those turned out to be worth keeping in their original form, and that is
-its own result. Moving the lead-ins out with the relief is the tidy rule and it
-makes the entry *worse* -- the module stops dead on the mouth plane at 0.2249 m,
-because the lead-ins at the nominal surfaces are what square a module the arm
-delivers 67 mrad off. Giving the last leg its attitude back is the correct
-reasoning and it also makes things worse -- the module starts moving and
+**Only the first of the four fixes survived measurement, and the three that did
+not are results in their own right.** Moving the lead-ins out with the relief is
+the tidy rule -- a lead-in continues a channel surface, so it should move when
+the surface does -- and it makes the entry *worse*: the module stops dead on the
+mouth plane at 0.2249 m, because the lead-ins at the nominal surfaces are what
+square a module the arm delivers 67 mrad off. Giving the last transit leg its
+attitude authority back is the correct reasoning about a damped least-squares
+solver and it also makes things worse: the module starts moving and then
 decelerates into the lead-in, 0.1736 m to 0.1890 m over 240 steps.
+
+All three reverts are recorded where they were made, with the number that
+reverted them, because a rule that is right in general and wrong here is worth
+more written down than deleted.
 
 ### What the corrected chain measures
 
@@ -261,6 +269,39 @@ already done all they can about.
 Do not read the 0.3 mm and 0.7 mm rows as a tuning gap. They are what an arm
 pushing a rigid link into a hole it is not aligned with looks like, and the
 alignment is upstream of everything the mating interface can do.
+
+## 5. The RGB-D end-to-end run
+
+One full chain on the vision task, calibrated RGB-D fiducial perception driving
+every phase, `visual_randomization: "on"`:
+
+| | |
+| --- | ---: |
+| Report | `evidence/robot_carried_rgbd_seed6070.json` |
+| Phases reached | capture, seat, extract, transit, insert, done |
+| Tool-to-module drift across the flight, p50 | **2.95 mm / 7.9 mrad** |
+| Module centre reached | 0.5887 m of the 0.750 m seated pose |
+| Seating conditions met | lateral, orientation, linear velocity, angular velocity, grasp position, grasp orientation |
+| Seating condition **not** met | axial depth |
+
+Read the last two rows together. The module arrives in the destination bay
+inside every part of the seating envelope except how deep it is, which is the
+same blocker section 4 measures, reached through the deployed estimator rather
+than through simulator truth.
+
+A second run of the same seed with the lighting held stable produces the video
+(`artifacts/robotcarried/video/`, and
+`evidence/robot_carried_rgbd_video_seed6070.json` for its report). The two are
+separate runs because the recorder needs a fixed exposure and the evidence needs
+the randomization the perception was certified under; the stage takes both as
+switches so neither is quietly standing in for the other.
+
+**One honest caveat about seeds.** Seed 4070, which the state-space runs use,
+does not get through capture on the vision task: the tool ends 137 mrad off the
+pin axis and the extraction never moves the module. That is the vision task's
+own capture variance and it is not something this session's changes caused, but
+it means the RGB-D chain is demonstrated on one seed rather than certified
+across several.
 
 ## Where the work is
 

@@ -28,6 +28,14 @@ produced it and is kept for the reasoning it records.
   advance's axial target used to be rebuilt each step from the module it was
   pushing, which reads as a bounded lead and behaves as a deadlock. Every
   stiffness, force cap and clearance in the old grid was measured through it.
+- One full RGB-D chain runs end to end on seed 6070 with randomization on:
+  `evidence/robot_carried_rgbd_seed6070.json`. It meets every seating condition
+  except axial depth. Seed 4070 does not get through capture on the vision task.
+- The clearance sweep is the result to quote:
+  `evidence/robot_carried_seating_sweep.json`. Every extra millimetre of
+  per-side channel relief buys about 1.2 mm of seating travel and costs about
+  3.5 mrad of squareness, so the two requirements cross 15 mm into a 163 mm
+  travel. There is no channel width for this workcell.
 - The world-mounted payload stage behind `--base_rail_on_relocation` is retained
   **only** as a labelled historical baseline. It is not reachable from the live
   preset, and `tests/test_robot_carried_contract.py` keeps it out.
