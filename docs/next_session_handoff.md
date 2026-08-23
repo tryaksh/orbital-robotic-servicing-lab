@@ -112,10 +112,30 @@ want both a clean video and evidence with randomisation on.
 - **Plain English.** Short sentences, no jargon, no buzzwords. If a number
   matters, give the number.
 - **Work quietly.** Do the work and report once at the end, not step by step.
-- **Do not leave background tasks running.** This is a real problem from the
-  last session: every wait-for-a-run timer that gets started must be stopped
-  when the run finishes. Check with `tasklist` for `kit.exe` *and* check for
-  leftover shell processes before saying you are done.
+- **Do not leave background tasks running.** Every wait-for-a-run timer that
+  gets started must be stopped when the run finishes. Before saying you are
+  done, check `tasklist` for `kit.exe` *and* check for leftover shell processes.
+
+## Token budget: this is a hard requirement
+
+The last session wasted most of its budget on one habit: checking a log file
+every few seconds while waiting for a simulation. Hundreds of round trips that
+each returned the same line. Do not do this.
+
+- **Never poll.** Start a run in the background with a command that exits when
+  it is finished, then wait for the notification. One check, not fifty. If you
+  find yourself reading the same log twice, stop.
+- **Batch the runs.** Put a whole sweep in one background command that loops
+  and prints one line per result. Not one run per turn.
+- **Cheap checks before expensive ones.** Geometry and reachability run on the
+  CPU in seconds. Do all of them before starting the simulator. A policy cannot
+  make a crooked part fit a straight slot — check the shape first.
+- **Read once.** Do not re-read a file you have already read, and do not
+  re-derive a number that is already in this document or in `evidence/`.
+- **Short output.** Print the two or three numbers that decide the next step,
+  not the whole report. `head`/`tail`/`cut` your way to the answer.
+- **One report at the end.** No progress narration, no restating the plan, no
+  summarising what you just did before doing the next thing.
 
 ## Where things are
 
