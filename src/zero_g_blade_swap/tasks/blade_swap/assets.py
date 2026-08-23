@@ -43,6 +43,9 @@ from zero_g_blade_swap.grapple_geometry import (
     GRAPPLE_PIN_WEDGE_X,
     GRAPPLE_TOOL_OFFSET_POS,
     RATED_GRIP_FORCE_N,
+    SLOT_ENTRY_RAMP_LENGTH_M,
+    SLOT_ENTRY_RAMP_THICKNESS_M,
+    SLOT_ENTRY_RAMP_WIDTH_M,
     SLOT_FLOOR_TOP_Z,
     SLOT_LIP_BOTTOM_Z,
     drive_torque_for_grip_force_nm,
@@ -1512,15 +1515,23 @@ _RAMP_CENTER_Z_LOWER = SLOT_FLOOR_TOP_Z - _RAMP_SURFACE_OFFSET
 def _slot_entry_ramp_cfg(name: str, z_center: float, rotation: tuple[float, float, float, float]) -> RigidObjectCfg:
     """Create one angled lead-in plate above or below the slot mouth.
 
-    The lateral flare's plate, turned onto the other axis and widened to the
-    module's own width so the whole leading edge is caught rather than its
-    middle third.
+    The lateral flare's plate, turned onto the other axis.
+
+    **Sixty millimetres wide, not the module's own 160.** The obvious choice is
+    to span the module so its whole leading edge is caught. It cannot be: the
+    latch's stowed carriage runs beside the hand at 46 to 77 mm off the tool
+    axis and follows the module to the mouth, and a ramp that spans the module
+    spans the carriage too. A vertical lead-in only has to catch the leading
+    *edge* to start correcting a tilt, so the ramp is narrow enough for the
+    carriage to pass outside it. ``scripts/check_service_latch_clearance.py``
+    checks that, because this was found by drawing it rather than by the check
+    that was supposed to prevent it.
     """
 
     return RigidObjectCfg(
         prim_path=f"{{ENV_REGEX_NS}}/{name}",
         spawn=sim_utils.CuboidCfg(
-            size=(0.080, 0.160, 0.018),
+            size=(SLOT_ENTRY_RAMP_LENGTH_M, SLOT_ENTRY_RAMP_WIDTH_M, SLOT_ENTRY_RAMP_THICKNESS_M),
             rigid_props=_rigid_props(kinematic=True),
             mass_props=sim_utils.MassPropertiesCfg(mass=10.0),
             collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.0001, rest_offset=0.0),
@@ -1544,8 +1555,6 @@ def _slot_entry_ramp_cfg(name: str, z_center: float, rotation: tuple[float, floa
 
 SLOT_ENTRY_UPPER_RAMP_CFG = _slot_entry_ramp_cfg("BladeSlotEntryUpperRamp", _RAMP_CENTER_Z_UPPER, _RAMP_QUAT_UPPER)
 SLOT_ENTRY_LOWER_RAMP_CFG = _slot_entry_ramp_cfg("BladeSlotEntryLowerRamp", _RAMP_CENTER_Z_LOWER, _RAMP_QUAT_LOWER)
-#: Vertical catch each ramp provides, from its own geometry.
-SLOT_ENTRY_RAMP_CATCH_M = 0.040 * 2.0 * 0.2079117
 #: Attitude accuracy a six-axis arm was measured to deliver a carried module
 #: with, at the destination bay's retreat pose, after its squaring leg has
 #: converged. Between 0.013 and 0.066 rad depending on how much of the
@@ -1792,7 +1801,6 @@ __all__ = [
     "SLOT_ENTRY_FLARE_DEG",
     "SLOT_ENTRY_LEFT_FLARE_CFG",
     "SLOT_ENTRY_LOWER_RAMP_CFG",
-    "SLOT_ENTRY_RAMP_CATCH_M",
     "SLOT_ENTRY_RIGHT_FLARE_CFG",
     "SLOT_ENTRY_UPPER_RAMP_CFG",
     "offset_slot_asset",

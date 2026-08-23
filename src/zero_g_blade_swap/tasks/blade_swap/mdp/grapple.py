@@ -87,6 +87,10 @@ WORKFLOW_SETTLE_S = 0.70
 #: tool by a few millimetres under the insertion's own contact reaction -- with
 #: room left over rather than a limit sized at the measurement.
 MATING_TRAVEL_LIMIT_M = 0.025
+#: The same, in rotation. 0.2 rad is the attitude tolerance section 8 of the
+#: interface specification requires the interface to hold through a pull, so a
+#: compliance that gave up more than that would be giving up the requirement.
+MATING_ROTATION_LIMIT_RAD = 0.2
 
 #: Grip attitude a capture is allowed, and the margin an extraction has to hand
 #: over inside it. ``capture_established`` keys on the first.

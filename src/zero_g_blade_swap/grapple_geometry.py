@@ -104,6 +104,18 @@ FLARE_HALF_EXTENT_X = 0.5 * (
 FLARE_LEADING_X = FLARE_CENTER_X - FLARE_HALF_EXTENT_X
 #: Module centre at which its front face sits on that plane.
 TRANSIT_CLEAR_BLADE_CENTRE_X = FLARE_LEADING_X - 0.5 * BLADE_LENGTH_M
+#: The destination bay's vertical lead-in, which exists because a relocation
+#: enters the rack mouth from outside and no skill in this project ever had to.
+#: Same plate and same angle as the lateral flare, so the two cannot drift
+#: apart; the width is narrower than the module because the latch carriage runs
+#: beside it. See ``docs/service_interface_spec.md`` section 6.1.
+SLOT_ENTRY_RAMP_LENGTH_M = 0.080
+SLOT_ENTRY_RAMP_WIDTH_M = 0.060
+SLOT_ENTRY_RAMP_THICKNESS_M = 0.018
+SLOT_ENTRY_RAMP_DEG = 12.0
+#: Vertical catch it provides, per side, from its own geometry.
+SLOT_ENTRY_RAMP_CATCH_M = SLOT_ENTRY_RAMP_LENGTH_M * 0.2079117
+
 #: How much further back than the extraction target the module has to come
 #: before a lateral move is free of the rack. Positive, and about 80 mm.
 TRANSIT_RETREAT_M = EXTRACTED_BLADE_CENTRE_X - TRANSIT_CLEAR_BLADE_CENTRE_X
@@ -187,6 +199,11 @@ __all__ = [
     "PAD_SPAN_FROM_FLANGE_M",
     "PALM_FACE_FROM_FLANGE_M",
     "RATED_GRIP_FORCE_N",
+    "SLOT_ENTRY_RAMP_CATCH_M",
+    "SLOT_ENTRY_RAMP_DEG",
+    "SLOT_ENTRY_RAMP_LENGTH_M",
+    "SLOT_ENTRY_RAMP_THICKNESS_M",
+    "SLOT_ENTRY_RAMP_WIDTH_M",
     "SLOT_FLOOR_TOP_Z",
     "SLOT_LIP_BOTTOM_Z",
     "SLOT_MOUTH_X",

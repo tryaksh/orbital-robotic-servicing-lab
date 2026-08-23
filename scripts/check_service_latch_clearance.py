@@ -31,6 +31,7 @@ from zero_g_blade_swap.grapple_geometry import (
     GRAPPLE_PIN_HALF_WIDTH_Y,
     GRAPPLE_PIN_SHAFT_HALF_HEIGHT,
     PAD_HALF_WIDTH_M,
+    SLOT_ENTRY_RAMP_WIDTH_M,
     SLOT_FLOOR_TOP_Z,
     SLOT_LIP_BOTTOM_Z,
     SLOT_MOUTH_X,
@@ -148,6 +149,19 @@ def check() -> dict[str, object]:
     #    this is the release condition the driver has to honour.
     release_before_blade_x = latch.release_before_blade_centre_x_m(
         SLOT_MOUTH_X, 0.5 * BLADE_LENGTH_M, latch.AXIAL_SEEK_RANGE_M[1]
+    )
+
+    # 3b. The destination bay's vertical lead-in is new geometry at exactly the
+    #     carriage's own height, and the carriage follows the module to the
+    #     mouth. A ramp that spans the module spans the carriage.
+    stowed_outer = latch.WEB_OUTER_HALF_GAP_M + latch.CLOSE_STROKE_M
+    stowed_inner = latch.WEB_INNER_HALF_GAP_M + latch.CLOSE_STROKE_M
+    record(
+        "stowed_carriage_passes_outside_the_entry_ramps",
+        stowed_inner - 0.5 * SLOT_ENTRY_RAMP_WIDTH_M,
+        "the stowed jaw's inner face is outboard of the vertical lead-in's half-width",
+        f"stowed jaw from {stowed_inner:.4f} m to {stowed_outer:.4f} m against a ramp half-width "
+        f"of {0.5 * SLOT_ENTRY_RAMP_WIDTH_M:.4f} m",
     )
 
     # 4. The rails follow the module toward the mouth, so they have to fit the

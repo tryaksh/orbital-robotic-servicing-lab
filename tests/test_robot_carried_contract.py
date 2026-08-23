@@ -81,7 +81,10 @@ def test_the_form_lock_has_three_states_and_ends_in_none_of_them() -> None:
     assert "soften_grapple_latch(task, mating)" in transit
     # The seating re-check is taken on a module the lock is no longer holding.
     assert "release_grapple_latch(task, fired)" in body
-    assert "grapple_insertion_success_mask(task) & ~grapple_latch_rigid(task)" in body
+    # Rigid mating is a measured alternative, so the gate is on the mode
+    # rather than on the lock unconditionally.
+    assert "~grapple_latch_rigid(task)" in body
+    assert 'MATING_MODE == "rigid"' in body
     # And the geometric interlock still forces a *rigid* lock off.
     assert "release_grapple_latch(task, due_to_release)" in body
     assert "GUARDED_INSERT_RELEASE_MARGIN_M" in source

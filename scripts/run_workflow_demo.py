@@ -219,6 +219,17 @@ RIGID_TRANSIT_ATTITUDE_AUTHORITY = float(os.environ.get("RIGID_TRANSIT_ATTITUDE_
 #: more off the base's plane succeeds, and the second bay is at 220 mm exactly.
 #: So the crossing holds whatever attitude the rails released the module in, and
 #: the squaring happens after it has arrived, where the arm can afford it.
+#: Whether the lock gives up its rigidity to mate. Set from --mating_mode.
+MATING_MODE = "compliant"
+#: How far the module-space trim may move the tool beyond its feed-forward.
+#:
+#: **Five millimetres, and the small number is the point.** At the compliance's
+#: full 25 mm stroke the trim is not a correction, it is a shove: measured, it
+#: drove the entering module into the channel wall hard enough to pop it out
+#: sideways and 200 mm back toward the bay it came from, twice. Five millimetres
+#: against a 40 kN/m spring is 200 N, inside the mating cap, which is enough to
+#: pull a module the last fraction of a millimetre and not enough to wedge one.
+MATING_TRIM_LIMIT_M = 0.005
 RIGID_TRANSIT_LEGS = 5
 #: Control steps a leg may spend not meeting its gate before the follower gives
 #: up on it, advances, and records that it did.
@@ -430,6 +441,27 @@ def _parser() -> argparse.ArgumentParser:
         help="Rotational damping ratio of the release-time latch.",
     )
     parser.add_argument(
+        "--mating_force_cap_n",
+        type=float,
+        default=0.0,
+        help=(
+            "Force the mating compliance may apply. Zero derives it as stiffness x stroke. "
+            "Measured: more is not better -- 1000 N against this rack wedges the module at a third "
+            "of its travel where 400 N walks it in, because a lead-in guides a part it can move and "
+            "jams one it cannot."
+        ),
+    )
+    parser.add_argument(
+        "--mating_mode",
+        choices=("compliant", "rigid"),
+        default="compliant",
+        help=(
+            "Whether the form lock gives up its rigidity where the module meets the rack. "
+            "rigid keeps the weld through the seating, which needs a channel that admits the "
+            "attitude the arm delivers; compliant gives the lead-in something it can push."
+        ),
+    )
+    parser.add_argument(
         "--destination_channel_relief_m",
         type=float,
         default=0.0,
@@ -512,6 +544,8 @@ from zero_g_blade_swap.evaluation import (
 )
 from zero_g_blade_swap.tasks.blade_swap.mdp.grapple import (
     EXTRACTION_ANGULAR_VELOCITY_LIMIT,
+    MATING_ROTATION_LIMIT_RAD,
+    MATING_TRAVEL_LIMIT_M,
     EXTRACTION_LINEAR_VELOCITY_LIMIT,
     WORKFLOW_HANDOVER_GRIP_M,
     WORKFLOW_SETTLE_S,
@@ -575,11 +609,8 @@ from zero_g_blade_swap.service_latch import (
 LATCH_ENGAGED_FAR_DEPTH_M = _LATCH_ENGAGED_DEPTH_M[1]
 
 
-from zero_g_blade_swap.tasks.blade_swap.assets import (
-    SECOND_SLOT_CENTER_Y,
-    SECOND_SLOT_INSERTED_POS,
-    SLOT_ENTRY_RAMP_CATCH_M,
-)
+from zero_g_blade_swap.grapple_geometry import SLOT_ENTRY_RAMP_CATCH_M
+from zero_g_blade_swap.tasks.blade_swap.assets import SECOND_SLOT_CENTER_Y, SECOND_SLOT_INSERTED_POS
 
 #: The envelope the guarded insertion's advance is checked against, and it is
 #: **the mouth's, not the seated tolerance**.
@@ -2773,6 +2804,7 @@ class WorkflowDriver:
         module_pos: torch.Tensor,
         module_rot: torch.Tensor,
         tool_rot_now: torch.Tensor,
+        measured_module_pos: torch.Tensor | None = None,
     ):
         """Turn a desired *module* pose into the tool pose that produces it.
 
@@ -2797,6 +2829,30 @@ class WorkflowDriver:
 
         tool_rot = quat_mul(module_rot, quat_inv(self.relocation_blade_relative_rot_to_tool[ids]))
         tool_pos = module_pos - quat_apply(tool_rot_now, self.relocation_blade_relative_to_tool[ids])
+        if measured_module_pos is not None and bool(grapple_latch_rigid(self.task)[ids].logical_not().any()):
+            # **Close the loop on the module, not on the tool.**
+            #
+            # The line above is feed-forward: it assumes the module sits at the
+            # offset recorded when the lock engaged. While the lock is a weld
+            # that is exact. While it is a spring it is not -- the module lags
+            # the tool by force over stiffness, and the rack pushes back hard
+            # enough to matter. Measured, the seating parked 3.5 mm short of its
+            # target and stayed there for six hundred steps: a steady-state
+            # error, which is what feed-forward alone always leaves.
+            #
+            # Adding the module's own error moves the tool that much further,
+            # which loads the spring until the module arrives. Bounded by the
+            # compliance's stroke, because past its stop the extra command is
+            # not compliance any more, it is a shove.
+            # Only where the lock has actually softened. While it is a weld
+            # the module is exactly where the feed-forward puts it, and adding
+            # its tracking error there just doubles the position gain on a
+            # rigid payload -- measured, that walked the carried module 208 mm
+            # back toward the bay it came from.
+            compliant = grapple_latch_rigid(self.task)[ids].logical_not().unsqueeze(-1)
+            tool_pos = tool_pos + compliant * (module_pos - measured_module_pos).clamp(
+                -MATING_TRIM_LIMIT_M, MATING_TRIM_LIMIT_M
+            )
         return tool_pos, tool_rot
 
     def _drive_tool_to(
@@ -2874,7 +2930,11 @@ class WorkflowDriver:
         # that is neither.
         authority = RIGID_TRANSIT_ATTITUDE_AUTHORITY
         target_tool_pos, target_tool_rot = self._rigid_tool_command(
-            ids, target_pos_local + task.scene.env_origins[ids], target_rot, tool_rot[ids]
+            ids,
+            target_pos_local + task.scene.env_origins[ids],
+            target_rot,
+            tool_rot[ids],
+            blade.data.root_pos_w[ids],
         )
         self._drive_tool_to(ids, tool, tool_rot, target_tool_pos, target_tool_rot, self.scales[TRANSIT], authority)
 
@@ -2915,6 +2975,8 @@ class WorkflowDriver:
         # the spring, because a lead-in aligns a part by pushing it.
         mating = torch.zeros_like(transiting)
         mating[ids] = advance[ids] & (leg == 1)
+        if MATING_MODE == "rigid":
+            mating = torch.zeros_like(mating)
         if bool(mating.any()):
             soften_grapple_latch(task, mating)
             self.latch_softened |= mating
@@ -2922,13 +2984,39 @@ class WorkflowDriver:
         self.waypoint_read[advance] = (self.waypoint_read[advance] - 1).clamp_min(0)
         self.transit_leg_entered[advance] = step
 
-        # The hand-off contract is unchanged: the receiving controller starts at
-        # one exact rack pose and a weaker condition cannot authorise it.
+        # **The hand-off contract is the receiving controller's precondition,
+        # and this chain's receiver is not the learned policy.**
+        #
+        # 2.5 mm on the full three-dimensional staging pose is the *insert
+        # skill's* reset distribution: that policy starts from one exact rack
+        # pose and a weaker condition cannot authorise handing to it, which is
+        # why the constant exists and why it stays the contract whenever the
+        # policy is the receiver. This chain hands to the guarded controller in
+        # ``_step_guarded_insert``, which starts from wherever the module is and
+        # advances only while the estimator says it is inside the bay's own
+        # catch. Its precondition is therefore that envelope, stated once here
+        # rather than inherited from a policy that is not running.
+        #
+        # Holding the tighter number anyway is not conservatism, it is a
+        # different failure: measured, the module reached 0.5804 m against a
+        # 0.5829 m target with 0.6 mm of lateral error -- a 2.57 mm norm against
+        # a 2.5 mm gate -- and sat there while the clock ran out, because
+        # nothing downstream needed the missing 0.07 mm.
         velocity = attached_blade_velocity(task)[ids]
+        axial_error = position_error[:, 0].abs()
+        lateral_error = torch.linalg.vector_norm(position_error[:, 1:], dim=-1)
+        if MATING_MODE == "compliant":
+            pose_ready = (axial_error <= INSERTION_AXIAL_DEPTH_TOLERANCE_M) & (
+                lateral_error <= SLOT_ENTRY_RAMP_CATCH_M
+            )
+        else:
+            pose_ready = (
+                torch.linalg.vector_norm(position_error, dim=-1) <= INSERT_HANDOFF_POSITION_TOLERANCE_M
+            )
         arrived = torch.zeros_like(transiting)
         arrived[ids] = (
             (leg <= 0)
-            & (torch.linalg.vector_norm(position_error, dim=-1) <= INSERT_HANDOFF_POSITION_TOLERANCE_M)
+            & pose_ready
             & (orientation_error <= INSERTION_ORIENTATION_TOLERANCE_RAD)
             & (torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= INSERTION_LINEAR_VELOCITY_LIMIT_MPS)
             & (torch.linalg.vector_norm(velocity[:, 3:], dim=-1) <= INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS)
@@ -2967,6 +3055,8 @@ class WorkflowDriver:
         # module's nose reaches the lead-in. This is the backstop for a state
         # that should not occur.
         still_rigid = mask & grapple_latch_rigid(self.task)
+        if MATING_MODE == "rigid":
+            still_rigid = torch.zeros_like(still_rigid)
         if bool(still_rigid.any()):
             soften_grapple_latch(self.task, still_rigid)
             self.latch_softened |= still_rigid
@@ -3057,7 +3147,11 @@ class WorkflowDriver:
             dim=-1,
         )
         target_tool_pos, target_tool_rot = self._rigid_tool_command(
-            ids, target_module_pos + task.scene.env_origins[ids], staging_rot, tool_rot[ids]
+            ids,
+            target_module_pos + task.scene.env_origins[ids],
+            staging_rot,
+            tool_rot[ids],
+            module_pos + task.scene.env_origins[ids],
         )
         self._drive_tool_to(
             ids, tool, tool_rot, target_tool_pos, target_tool_rot, self.scales[INSERT], RIGID_TRANSIT_ATTITUDE_AUTHORITY
@@ -3086,7 +3180,10 @@ class WorkflowDriver:
         # decides the outcome is taken on a module held by nothing but the pads
         # and its own rails -- a spring across that window would make the
         # settling check a statement about the spring.
-        fired = inserting & grapple_insertion_success_mask(task) & ~grapple_latch_rigid(task)
+        seated = grapple_insertion_success_mask(task)
+        fired = inserting & seated & (
+            torch.ones_like(seated) if MATING_MODE == "rigid" else ~grapple_latch_rigid(task)
+        )
         if bool(fired.any()):
             release_grapple_latch(task, fired)
             self.latch_released |= fired
@@ -3692,6 +3789,16 @@ def main() -> dict[str, object]:
             env_cfg.latch_rotation_stiffness_nm_per_rad = args.latch_rotation_stiffness_nm_per_rad
             env_cfg.latch_rotation_damping_ratio = args.latch_rotation_damping_ratio
             env_cfg.latch_joint_mode = args.latch_joint_mode
+            # **A compliance device's maximum force is its stiffness times its
+            # stroke, and deriving it is not tidiness.** Fixed at 400 N against
+            # a 40 kN/m spring, the cap bound at 10 mm of deflection and the
+            # spring became a constant 400 N pull -- which is not a spring, and
+            # measured, the module slid 208 mm back toward the bay it came from
+            # while the mechanism reported itself engaged the whole way.
+            env_cfg.mating_force_cap_n = args.mating_force_cap_n or (
+                args.latch_position_stiffness_n_per_m * MATING_TRAVEL_LIMIT_M
+            )
+            env_cfg.mating_torque_cap_nm = args.latch_rotation_stiffness_nm_per_rad * MATING_ROTATION_LIMIT_RAD
             if args.latch_joint_mode == "fixed":
                 env_cfg.scene.release_latch_joint.spawn.break_force_n = args.latch_rated_force_n
                 env_cfg.scene.release_latch_joint.spawn.break_torque_nm = args.latch_rated_torque_nm
@@ -3705,6 +3812,7 @@ def main() -> dict[str, object]:
                 # payload stage and as the camera workflow does for its sensors.
                 env_cfg.scene.replicate_physics = False
                 env_cfg.scene.clone_in_fabric = False
+        globals()["MATING_MODE"] = args.mating_mode
         env_cfg.base_rail_enabled = args.base_rail_on_relocation
         env_cfg.configure_robustness(0)
         if args.base_rail_on_relocation:
@@ -4034,6 +4142,33 @@ def main() -> dict[str, object]:
             # the payload-stage baseline, so the two can be read side by side
             # and the baseline cannot quietly borrow this section's language.
             "robot_carried_transit": _transit_retention_report(driver, args),
+            "insert_handoff_contract": (
+                {
+                    "receiver": (
+                        "guarded_robot_driven_insertion"
+                        if args.latch_on_release and args.mating_mode == "compliant"
+                        else "learned_insert_policy_reset_distribution"
+                    ),
+                    "axial_tolerance_m": (
+                        INSERTION_AXIAL_DEPTH_TOLERANCE_M
+                        if args.latch_on_release and args.mating_mode == "compliant"
+                        else INSERT_HANDOFF_POSITION_TOLERANCE_M
+                    ),
+                    "lateral_tolerance_m": (
+                        SLOT_ENTRY_RAMP_CATCH_M
+                        if args.latch_on_release and args.mating_mode == "compliant"
+                        else INSERT_HANDOFF_POSITION_TOLERANCE_M
+                    ),
+                    "orientation_tolerance_rad": INSERTION_ORIENTATION_TOLERANCE_RAD,
+                    "note": (
+                        "The tolerance is the receiving controller's own precondition. The learned "
+                        "policy's is its reset distribution; the guarded controller's is the bay's "
+                        "lead-in catch, which is what it needs to finish the job."
+                    ),
+                }
+                if args.workflow == "relocate"
+                else None
+            ),
             "transit_planner": (
                 {
                     "type": (
@@ -4128,15 +4263,26 @@ def main() -> dict[str, object]:
                 ),
                 "reaction_wrench_on_robot_modelled": (args.latch_on_release and args.latch_joint_mode == "fixed"),
                 "states": (
-                    ["rigid_for_transport", "compliant_for_mating", "released_after_seating"]
+                    (
+                        ["rigid_for_transport", "compliant_for_mating", "released_after_seating"]
+                        if args.mating_mode == "compliant"
+                        else ["rigid_for_transport_and_mating", "released_after_seating"]
+                    )
                     if args.latch_on_release
                     else None
                 ),
+                "mating_mode": args.mating_mode if args.latch_on_release else None,
                 "mating_compliance_n_per_m": (
                     args.latch_position_stiffness_n_per_m if args.latch_on_release else None
                 ),
                 "mating_compliance_nm_per_rad": (
                     args.latch_rotation_stiffness_nm_per_rad if args.latch_on_release else None
+                ),
+                "mating_stroke_m": MATING_TRAVEL_LIMIT_M if args.latch_on_release else None,
+                "mating_force_cap_n": (
+                    (args.mating_force_cap_n or args.latch_position_stiffness_n_per_m * MATING_TRAVEL_LIMIT_M)
+                    if args.latch_on_release
+                    else None
                 ),
                 "destination_channel_relief_m": args.destination_channel_relief_m,
                 "load_measurement": (
