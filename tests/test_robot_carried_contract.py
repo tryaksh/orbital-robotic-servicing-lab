@@ -69,14 +69,34 @@ def test_the_guarded_insertion_advances_only_on_the_deployed_estimate() -> None:
     assert "root_state" not in body
 
 
-def test_the_form_lock_is_released_before_the_module_is_judged() -> None:
+def test_the_form_lock_has_three_states_and_ends_in_none_of_them() -> None:
+    """Rigid to carry, compliant to mate, released before the module is judged."""
+
     source = DRIVER.read_text(encoding="utf-8")
+    transit = source.split("def _step_rigid_transit(")[1].split("def _front_overhang_x(")[0]
     body = source.split("def _step_guarded_insert(")[1].split("def _front_overhang_x(")[0]
+    # Transport ends and mating begins where the module meets the rack: the end
+    # of the squaring leg, not the phase boundary two legs later.
+    assert "mating[ids] = advance[ids] & (leg == 1)" in transit
+    assert "soften_grapple_latch(task, mating)" in transit
+    # The seating re-check is taken on a module the lock is no longer holding.
+    assert "release_grapple_latch(task, fired)" in body
+    assert "grapple_insertion_success_mask(task) & ~grapple_latch_rigid(task)" in body
+    # And the geometric interlock still forces a *rigid* lock off.
     assert "release_grapple_latch(task, due_to_release)" in body
-    assert "return fired & ~grapple_latched(task)" in body
-    assert "def _begin_guarded_insert(" in source
     assert "GUARDED_INSERT_RELEASE_MARGIN_M" in source
     assert "LATCH_MODULE_FACE_DEPTH_M" in source
+
+
+def test_softening_keeps_the_load_path_and_stores_no_energy() -> None:
+    source = GRAPPLE.read_text(encoding="utf-8")
+    body = source.split("def soften(self, mask")[1].split("def release(self, mask")[0]
+    # The joint goes away, the spring takes over from where the module *is*.
+    assert "GetJointEnabledAttr().Set(False)" in body
+    assert "env._grapple_latch_relative_pos[ids] = quat_apply(" in body
+    assert "env._grapple_latch_compliant[ids] = True" in body
+    # Still engaged: softening is not releasing.
+    assert "_grapple_latched" not in body
 
 
 def test_the_hand_opens_only_after_the_settling_recheck() -> None:

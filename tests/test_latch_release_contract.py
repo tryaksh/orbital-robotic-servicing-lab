@@ -83,6 +83,8 @@ def test_fixed_release_latch_is_physical_break_rated_and_capture_gated() -> None
     assert 'prim_path="{ENV_REGEX_NS}/ReleaseLatchJoint"' in scene
     assert "newly_latched = qualified & ~latched" in implementation
     assert 'if joint_mode == "fixed":' in implementation
-    assert "self._engage_fixed_joints(env, blade, newly_latched)" in implementation
+    # Not on an environment the driver has already softened for mating: that
+    # one gave its joint up on purpose and must not have it re-armed.
+    assert "self._engage_fixed_joints(env, blade, newly_latched & ~env._grapple_latch_compliant)" in implementation
     assert "joint.GetJointEnabledAttr().Set(True)" in implementation
     assert "blade.data.root_pos_w - wrist_position" in implementation

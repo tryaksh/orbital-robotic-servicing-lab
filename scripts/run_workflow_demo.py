@@ -430,6 +430,16 @@ def _parser() -> argparse.ArgumentParser:
         help="Rotational damping ratio of the release-time latch.",
     )
     parser.add_argument(
+        "--destination_channel_relief_m",
+        type=float,
+        default=0.0,
+        help=(
+            "Per-side clearance added to the destination bay's channel. Zero is the rack as built. "
+            "A module delivered rigidly needs L*theta/2 of it; one delivered compliantly should not, "
+            "and that difference is the experiment."
+        ),
+    )
+    parser.add_argument(
         "--base_rail_on_relocation",
         action="store_true",
         help=(
@@ -513,8 +523,10 @@ from zero_g_blade_swap.tasks.blade_swap.mdp.grapple import (
     grapple_insertion_conditions,
     grapple_insertion_success_mask,
     grapple_latch_diagnostics,
+    grapple_latch_rigid,
     grapple_latched,
     release_grapple_latch,
+    soften_grapple_latch,
     grip_drive_torque,
     grip_finger_angle,
 )
@@ -993,6 +1005,10 @@ class WorkflowDriver:
         #: to tell the two apart.
         self.latch_released = torch.zeros(count, dtype=torch.bool, device=device)
         self.latch_released_at = torch.full((count,), -1, dtype=torch.long, device=device)
+        #: And when it stopped being a weld and became a spring, which is a
+        #: different event from letting go and has to be in the record as one.
+        self.latch_softened = torch.zeros(count, dtype=torch.bool, device=device)
+        self.latch_softened_at = torch.full((count,), -1, dtype=torch.long, device=device)
         #: And whether the *hand* let go, which is a different event and the one
         #: the acceptance rule is written about: the fingers open only after the
         #: module has passed depth, lateral, attitude, velocity, and the 0.70 s
@@ -1122,6 +1138,8 @@ class WorkflowDriver:
         self.guarded_insert_holds[env_ids] = 0
         self.latch_released[env_ids] = False
         self.latch_released_at[env_ids] = -1
+        self.latch_softened[env_ids] = False
+        self.latch_softened_at[env_ids] = -1
         self.gripper_released[env_ids] = False
         self.gripper_released_at[env_ids] = -1
         self.transit_reference_pos_tool[env_ids] = 0.0
@@ -2882,6 +2900,25 @@ class WorkflowDriver:
             )
         advance = torch.zeros_like(transiting)
         advance[ids] = met | stalled
+        # **Rigid becomes compliant here, at the end of the squaring leg, and
+        # the reason is that this is where the rack takes over.**
+        #
+        # The last leg is not a transit. It drives the module 450 mm along the
+        # rack axis, and its nose reaches the lead-in about 10 mm in -- so the
+        # mating starts here, not at the phase boundary two legs later. Softened
+        # at the phase boundary instead, the module has to enter the channel
+        # rigid first, which is the thing that does not work: measured, it jams
+        # on the mouth and the arm pushes against it until the clock runs out.
+        #
+        # Everything before this point wants the weld: 2.3 mm of drift across a
+        # 450 mm flight against 808 mm on the pads alone. Everything after wants
+        # the spring, because a lead-in aligns a part by pushing it.
+        mating = torch.zeros_like(transiting)
+        mating[ids] = advance[ids] & (leg == 1)
+        if bool(mating.any()):
+            soften_grapple_latch(task, mating)
+            self.latch_softened |= mating
+            self.latch_softened_at[mating & (self.latch_softened_at < 0)] = step
         self.waypoint_read[advance] = (self.waypoint_read[advance] - 1).clamp_min(0)
         self.transit_leg_entered[advance] = step
 
@@ -2896,7 +2933,7 @@ class WorkflowDriver:
             & (torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= INSERTION_LINEAR_VELOCITY_LIMIT_MPS)
             & (torch.linalg.vector_norm(velocity[:, 3:], dim=-1) <= INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS)
         )
-        return arrived & grapple_latched(task)
+        return arrived & grapple_latched(task)  # softened counts: it is still the load path
 
     def _begin_guarded_insert(self, mask: torch.Tensor, _step: int) -> None:
         """Let the form lock go, and set the axial target the seating will use.
@@ -2926,6 +2963,14 @@ class WorkflowDriver:
         """
 
         ids = torch.nonzero(mask, as_tuple=False).squeeze(-1)
+        # The lock was softened at the end of the squaring leg, where the
+        # module's nose reaches the lead-in. This is the backstop for a state
+        # that should not occur.
+        still_rigid = mask & grapple_latch_rigid(self.task)
+        if bool(still_rigid.any()):
+            soften_grapple_latch(self.task, still_rigid)
+            self.latch_softened |= still_rigid
+            self.latch_softened_at[still_rigid & (self.latch_softened_at < 0)] = _step
         self.guarded_insert_target_x[ids] = _blade_centre_x(self.task)[ids]
         engaged_far = LATCH_ENGAGED_FAR_DEPTH_M + self.latch_seek_travel_m[ids]
         self.guarded_insert_release_x[ids] = (
@@ -3031,17 +3076,22 @@ class WorkflowDriver:
         release_depth = self.guarded_insert_release_x[ids]
         due_to_release = inserting.clone()
         due_to_release[:] = False
-        due_to_release[ids] = (true_blade_x >= release_depth) & grapple_latched(task)[ids]
+        due_to_release[ids] = (true_blade_x >= release_depth) & grapple_latch_rigid(task)[ids]
         if bool(due_to_release.any()):
             release_grapple_latch(task, due_to_release)
             self.latch_released |= due_to_release
             self.latch_released_at[due_to_release & (self.latch_released_at < 0)] = step
 
-        fired = inserting & grapple_insertion_success_mask(task)
-        # A lock still engaged at the moment of judgement would make the seating
-        # check a statement about a joint. Fail closed rather than quietly
-        # accepting it.
-        return fired & ~grapple_latched(task)
+        # Seated. The lock lets go completely now, so the 0.70 s re-check that
+        # decides the outcome is taken on a module held by nothing but the pads
+        # and its own rails -- a spring across that window would make the
+        # settling check a statement about the spring.
+        fired = inserting & grapple_insertion_success_mask(task) & ~grapple_latch_rigid(task)
+        if bool(fired.any()):
+            release_grapple_latch(task, fired)
+            self.latch_released |= fired
+            self.latch_released_at[fired & (self.latch_released_at < 0)] = step
+        return fired
 
     def _front_overhang_x(self, ids: torch.Tensor) -> torch.Tensor:
         """Distance from the module centre to its furthest-forward corner, now.
@@ -3672,10 +3722,12 @@ def main() -> dict[str, object]:
             # lateral one, sized by the attitude a six-axis arm can actually
             # deliver through free space. Installed only on this path, so every
             # task an existing certification describes is unchanged.
+            env_cfg.service_destination_channel_relief_m = args.destination_channel_relief_m
             env_cfg.configure_service_destination()
             print(
                 "[INFO] Destination bay fitted with its vertical lead-in "
-                "(16.6 mm per side, accepting 0.074 rad of delivered attitude error)",
+                "(16.6 mm per side, accepting 0.074 rad of delivered attitude error); "
+                f"channel relief {args.destination_channel_relief_m * 1000.0:.2f} mm per side",
                 flush=True,
             )
         # The full physical stage motion can legitimately outlive the original
@@ -4075,6 +4127,18 @@ def main() -> dict[str, object]:
                     else None
                 ),
                 "reaction_wrench_on_robot_modelled": (args.latch_on_release and args.latch_joint_mode == "fixed"),
+                "states": (
+                    ["rigid_for_transport", "compliant_for_mating", "released_after_seating"]
+                    if args.latch_on_release
+                    else None
+                ),
+                "mating_compliance_n_per_m": (
+                    args.latch_position_stiffness_n_per_m if args.latch_on_release else None
+                ),
+                "mating_compliance_nm_per_rad": (
+                    args.latch_rotation_stiffness_nm_per_rad if args.latch_on_release else None
+                ),
+                "destination_channel_relief_m": args.destination_channel_relief_m,
                 "load_measurement": (
                     "break_threshold_only_reaction_magnitude_not_exposed"
                     if args.latch_on_release and args.latch_joint_mode == "fixed"
@@ -4093,7 +4157,11 @@ def main() -> dict[str, object]:
                     if bool(driver.latch_ever_engaged[index])
                     else None
                 ),
-                "released_before_insertion": bool(driver.latch_released[index]),
+                "softened_for_mating": bool(driver.latch_softened[index]),
+                "softened_at_driver_step": (
+                    int(driver.latch_softened_at[index]) if bool(driver.latch_softened[index]) else None
+                ),
+                "released_after_seating": bool(driver.latch_released[index]),
                 "hand_opened_after_settling_verification": bool(driver.gripper_released[index]),
                 "hand_opened_at_driver_step": (
                     int(driver.gripper_released_at[index]) if bool(driver.gripper_released[index]) else None

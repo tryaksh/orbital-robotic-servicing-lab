@@ -79,6 +79,15 @@ GRIP_TORQUE_THRESHOLD_NM = 0.05
 #: Seconds the chained workflow holds still before re-checking that a phase
 #: really succeeded. ``run_workflow_demo.SETTLE_STEPS`` is this at 30 Hz.
 WORKFLOW_SETTLE_S = 0.70
+#: Stroke of the modelled mating compliance, in metres.
+#:
+#: An assembly compliance device is a spring *and a hard stop*. 25 mm is what
+#: this one needs to do its job -- the rack's lead-in has to be able to push the
+#: module about 3 mm off the tool's line to square it, and the module lags the
+#: tool by a few millimetres under the insertion's own contact reaction -- with
+#: room left over rather than a limit sized at the measurement.
+MATING_TRAVEL_LIMIT_M = 0.025
+
 #: Grip attitude a capture is allowed, and the margin an extraction has to hand
 #: over inside it. ``capture_established`` keys on the first.
 CAPTURE_ATTITUDE_TOLERANCE_RAD = 0.20
@@ -225,6 +234,30 @@ class GrappleLatch(ManagerTermBase):
         env._grapple_latch_seek_refusals = torch.zeros(
             env.num_envs, dtype=torch.long, device=env.device
         )
+        #: Whether this environment's lock has been **softened**: still engaged,
+        #: still the load path, but a spring instead of a weld.
+        #:
+        #: A one-state lock cannot do this job. Rigid, it carries the module
+        #: through free space -- 2.3 mm of drift against 808 mm on the pads
+        #: alone -- and then cannot mate, because a lead-in aligns a part by
+        #: pushing it and a part welded to a stiff arm will not be pushed:
+        #: measured, 0.3 mm of advance in a thirty-second seating budget.
+        #: Released instead, the module slides out of the bay sideways, because
+        #: the pads do not resist lateral load. Both are measured in this
+        #: repository and neither is a controller problem.
+        #:
+        #: Industrial assembly has had the answer since the 1970s and flight
+        #: servicing uses it too: rigidize to carry, de-rigidize to mate. The
+        #: SSRMS latching end effector snares, rigidizes, and releases rigidity
+        #: to berth. This flag is that second state.
+        env._grapple_latch_compliant = torch.zeros(
+            env.num_envs, dtype=torch.bool, device=env.device
+        )
+        #: Whether the compliance ever ran out of stroke, which is this
+        #: interface's version of dropping the module.
+        env._grapple_latch_overtravel = torch.zeros(
+            env.num_envs, dtype=torch.bool, device=env.device
+        )
         # So a driver can ask the term to let go without reaching into it.
         env._grapple_latch_term = self
         env._grapple_latch_position_error_m = torch.zeros(env.num_envs, device=env.device)
@@ -305,6 +338,8 @@ class GrappleLatch(ManagerTermBase):
         self._env._grapple_latch_release_step[ids] = -1
         self._env._grapple_latch_seek_travel_m[ids] = 0.0
         self._env._grapple_latch_seek_refusals[ids] = 0
+        self._env._grapple_latch_compliant[ids] = False
+        self._env._grapple_latch_overtravel[ids] = False
         self._env._grapple_latch_position_error_m[ids] = 0.0
         self._env._grapple_latch_orientation_error_rad[ids] = 0.0
         self._env._grapple_latch_applied_force_n[ids] = 0.0
@@ -339,6 +374,8 @@ class GrappleLatch(ManagerTermBase):
         position_damping_ratio: float = 0.9,
         joint_mode: str = "compliant",
         require_armed: bool = False,
+        mating_force_cap_n: float = 400.0,
+        mating_torque_cap_nm: float = 40.0,
     ) -> None:
         del env_ids
         if joint_mode not in ("compliant", "fixed"):
@@ -397,7 +434,9 @@ class GrappleLatch(ManagerTermBase):
                 newly_latched
             ].to(torch.long)
             if joint_mode == "fixed":
-                self._engage_fixed_joints(env, blade, newly_latched)
+                # A softened environment has already given its joint up; do not
+                # re-arm it behind the driver's back.
+                self._engage_fixed_joints(env, blade, newly_latched & ~env._grapple_latch_compliant)
         latched |= qualified
 
         desired_position = tool_position + quat_apply(tool_orientation, env._grapple_latch_relative_pos)
@@ -432,11 +471,29 @@ class GrappleLatch(ManagerTermBase):
                 env._grapple_latch_orientation_error_rad,
             )
         )
-        if joint_mode == "fixed":
-            # The fixed joint is the load path; applying the old one-sided
-            # external wrench as well would double-count it and erase the
-            # equal-and-opposite reaction that motivated this model.
+        # Which environments the spring is responsible for. On a compliant task
+        # that is all of them; on a fixed task it is the ones the driver has
+        # softened, and for the rest the joint is the load path and applying the
+        # wrench as well would double-count it.
+        spring = latched if joint_mode == "compliant" else (latched & env._grapple_latch_compliant)
+        if not bool(spring.any()):
             return
+        latched = spring
+        # **Finite travel, and it is not a numerical guard.**
+        #
+        # A compliance device has a stroke. Past it there is a hard stop, and
+        # past *that* the part is no longer held. Without the limit the spring
+        # is a formula rather than a mechanism, and a formula with no cap feeds
+        # itself: measured, the module left the cell at 15 km when a contact
+        # transient outran the damping at the 30 Hz command rate.
+        #
+        # Exceeding it is recorded as what it is -- the interface losing the
+        # module -- rather than smoothed away.
+        overtravelled = latched & (position_error_norm > MATING_TRAVEL_LIMIT_M)
+        env._grapple_latch_overtravel |= overtravelled
+        position_error = position_error.clamp(-MATING_TRAVEL_LIMIT_M, MATING_TRAVEL_LIMIT_M)
+        rated_force_n = min(rated_force_n, mating_force_cap_n)
+        rated_torque_nm = min(rated_torque_nm, mating_torque_cap_nm)
         robot = env.scene["robot"]
         wrist_position = robot.data.body_pos_w[:, self._wrist_body_id]
         wrist_linear_velocity = robot.data.body_lin_vel_w[:, self._wrist_body_id]
@@ -524,6 +581,32 @@ class GrappleLatch(ManagerTermBase):
             is_global=False,
         )
 
+    def soften(self, mask: torch.Tensor) -> None:
+        """Rigid to compliant, without letting go and without a snap.
+
+        The fixed joint is disabled and the spring takes over from the transform
+        the module is in **at this instant**, not the one recorded at
+        engagement, so the change of state stores no energy and moves nothing.
+        The lock is still the load path and still resists the lateral load the
+        pads cannot; what it stops doing is refusing to yield to the rack.
+        """
+
+        env = self._env
+        ids = mask.nonzero(as_tuple=False).flatten()
+        if ids.numel() == 0:
+            return
+        if self._fixed_joints:
+            for index in ids.detach().cpu().tolist():
+                self._fixed_joints[index].GetJointEnabledAttr().Set(False)
+        tool_position, tool_orientation = end_effector_pose_world(env)
+        blade = env.scene["spare_blade"]
+        inverse_tool = quat_inv(tool_orientation[ids])
+        env._grapple_latch_relative_pos[ids] = quat_apply(
+            inverse_tool, blade.data.root_pos_w[ids] - tool_position[ids]
+        )
+        env._grapple_latch_relative_quat[ids] = quat_mul(inverse_tool, blade.data.root_quat_w[ids])
+        env._grapple_latch_compliant[ids] = True
+
     def release(self, mask: torch.Tensor) -> None:
         """Let the module go: disable the joint, drop the wrench, stow the jaws.
 
@@ -545,6 +628,7 @@ class GrappleLatch(ManagerTermBase):
         )
         env._grapple_latched[ids] = False
         env._grapple_latch_armed[ids] = False
+        env._grapple_latch_compliant[ids] = False
         if self._fixed_joints:
             for index in ids.detach().cpu().tolist():
                 self._fixed_joints[index].GetJointEnabledAttr().Set(False)
@@ -658,6 +742,25 @@ def _collar_shoulder_seek_m(env, blade) -> torch.Tensor:
     return depth - service_latch.COLLAR_SHOULDER_FROM_FLANGE_M
 
 
+def soften_grapple_latch(env, mask: torch.Tensor) -> None:
+    """Switch the form lock from rigid to compliant. No-op where none is fitted."""
+
+    term = getattr(env, "_grapple_latch_term", None)
+    if term is None:
+        return
+    term.soften(mask)
+
+
+def grapple_latch_rigid(env) -> torch.Tensor:
+    """Per environment: is the lock currently a weld rather than a spring."""
+
+    latched = getattr(env, "_grapple_latched", None)
+    if latched is None:
+        return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+    compliant = getattr(env, "_grapple_latch_compliant", None)
+    return latched if compliant is None else (latched & ~compliant)
+
+
 def release_grapple_latch(env, mask: torch.Tensor) -> None:
     """Tell the form lock to let the module go. A no-op where none is fitted."""
 
@@ -715,6 +818,8 @@ def grapple_latch_diagnostics(env) -> dict[str, torch.Tensor]:
         "release_episode_step": read("_grapple_latch_release_step", first),
         "seek_travel_m": read("_grapple_latch_seek_travel_m", zeros),
         "seek_refusals": read("_grapple_latch_seek_refusals", counts),
+        "compliant": read("_grapple_latch_compliant", false),
+        "overtravel": read("_grapple_latch_overtravel", false),
         "position_error_m": read("_grapple_latch_position_error_m", zeros),
         "orientation_error_rad": read("_grapple_latch_orientation_error_rad", zeros),
         "applied_force_n": read("_grapple_latch_applied_force_n", zeros),

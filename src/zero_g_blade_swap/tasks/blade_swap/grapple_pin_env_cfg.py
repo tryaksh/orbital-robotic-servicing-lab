@@ -47,7 +47,6 @@ from .assets import (
     GRAPPLE_TOOL_OFFSET_POS,
     SECOND_SLOT_ENTRY_LOWER_RAMP_CFG,
     SECOND_SLOT_ENTRY_UPPER_RAMP_CFG,
-    SERVICE_DESTINATION_CHANNEL_RELIEF_M,
     CompliantD6JointCfg,
     make_grapple_pin_robot_cfg,
 )
@@ -208,6 +207,13 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
     latch_rotation_stiffness_nm_per_rad: float = 10.0
     latch_rotation_damping_ratio: float = 0.9
     latch_joint_mode: str = "compliant"
+    #: Load the *mating* compliance is allowed to apply. Separate from
+    #: ``latch_rated_*`` because the two states of this mechanism are rated for
+    #: different things: the weld has to survive the gripper's own wedge
+    #: preload, thousands of newtons, while the spring has to be gentle enough
+    #: that a lead-in plate can still push the module off the tool's line.
+    mating_force_cap_n: float = 400.0
+    mating_torque_cap_nm: float = 40.0
     base_rail_enabled: bool = False
     #: Engage the latch only once a driver says the module is free of the rails,
     #: instead of the instant a capture qualifies. The sweep that refuted the
@@ -215,6 +221,19 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
     #: a restoring torque jams it; the transit is where the lock is needed and it
     #: has never been tested there. See ``mdp.GrappleLatch``.
     latch_engages_on_release: bool = False
+    #: Per-side clearance added to the destination bay's channel, in metres.
+    #:
+    #: **Zero, which is the production channel, and that is deliberate.** A
+    #: rigidly delivered module needs ``L * theta / 2`` of clearance because it
+    #: cannot be straightened by the channel it is entering -- 3.15 mm on this
+    #: module at the 0.014 rad the arm delivers. Widening the rack to that is a
+    #: real answer and the wrong one to reach for first: the module can instead
+    #: be delivered *compliantly*, and then the lead-in aligns it exactly as
+    #: section 6 of the interface specification measures it doing. Running with
+    #: the relief on by default would let the compliance take credit for the
+    #: relief's work, so the default is the rack as built and the relief is
+    #: something a run has to ask for.
+    service_destination_channel_relief_m: float = 0.0
 
     def _configure_latch(self) -> None:
         """Apply the latch settings to whichever event set is currently installed.
@@ -234,6 +253,8 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
         self.events.grapple_latch.params["rotation_stiffness"] = self.latch_rotation_stiffness_nm_per_rad
         self.events.grapple_latch.params["rotation_damping_ratio"] = self.latch_rotation_damping_ratio
         self.events.grapple_latch.params["joint_mode"] = self.latch_joint_mode
+        self.events.grapple_latch.params["mating_force_cap_n"] = self.mating_force_cap_n
+        self.events.grapple_latch.params["mating_torque_cap_nm"] = self.mating_torque_cap_nm
         self.events.grapple_latch.params["require_armed"] = self.latch_engages_on_release
 
     def configure_service_destination(self) -> None:
@@ -264,8 +285,9 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
         self.scene.blade_slot_two_entry_upper_ramp = SECOND_SLOT_ENTRY_UPPER_RAMP_CFG
         self.scene.blade_slot_two_entry_lower_ramp = SECOND_SLOT_ENTRY_LOWER_RAMP_CFG
 
-        # **And the channel behind it has to be wider, for a reason that is a
-        # general rule rather than a fudge.**
+        # **And the channel behind it may have to be wider, for a reason that
+        # is a general rule rather than a fudge -- but only for a module that
+        # arrives rigid.**
         #
         # A module delivered by a manipulator arrives with that manipulator's
         # attitude accuracy, and if it is *rigidly* held it cannot be
@@ -288,7 +310,9 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
         # preference: hold the module compliantly for the last 10 mm (this
         # project cannot -- the pads do not resist lateral load, measured), move
         # the arm out of its reach boundary (section 6a), or widen the channel.
-        relief = SERVICE_DESTINATION_CHANNEL_RELIEF_M
+        relief = self.service_destination_channel_relief_m
+        if relief <= 0.0:
+            return
         left_guide = list(self.scene.blade_slot_two_left_guide.init_state.pos)
         right_guide = list(self.scene.blade_slot_two_right_guide.init_state.pos)
         left_guide[1] += relief

@@ -97,11 +97,28 @@ case "$stage" in
     echo "[$(date +%H:%M:%S)] SMOKE the latch hardware and its release"
     chain --num_envs 1 --steps "${STEPS:-3000}" --seed "${SEED:-4070}" \
         --latch_on_release --latch_joint_mode fixed \
-        --latch_rated_force_n 1000000 --latch_rated_torque_nm 1000000 \
-        --report "$OUT/smoke_latched_report.json" \
-        --handoff_trace "$OUT/smoke_latched_trace.npz" \
-        > "$OUT/smoke_latched.log" 2>&1
+        --latch_rated_force_n "${LATCH_N:-1000000}" --latch_rated_torque_nm "${LATCH_NM:-1000000}" \
+        --latch_position_stiffness_n_per_m "${MATING_K:-2500}" \
+        --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-10}" \
+        --destination_channel_relief_m "${RELIEF:-0.0}" \
+        --report "${REPORT:-$OUT/smoke_latched_report.json}" \
+        --handoff_trace "${TRACE:-$OUT/smoke_latched_trace.npz}" \
+        > "${LOG:-$OUT/smoke_latched.log}" 2>&1
     echo "[$(date +%H:%M:%S)] smoke exit=$?"
+    ;;
+
+  mating)
+    # What compliance does the mating need, and does it remove the need to
+    # widen the rack? Two questions, one grid, because they trade against each
+    # other: a stiffer lock needs a wider channel and a softer one does not.
+    for stiffness in ${MATING_K:-500 2500 10000}; do
+      for relief in ${MATING_RELIEF:-0.0 0.00315}; do
+        tag="k${stiffness}_r${relief}"
+        echo "[$(date +%H:%M:%S)] MATING stiffness=${stiffness} N/m relief=${relief} m"
+        chain --num_envs "${ENVS:-8}" --episodes "${EPISODES:-8}" --seed "${SEED:-4070}"             --latch_on_release --latch_joint_mode fixed             --latch_rated_force_n "${LATCH_N:-20000}" --latch_rated_torque_nm "${LATCH_NM:-1000}"             --latch_position_stiffness_n_per_m "$stiffness"             --destination_channel_relief_m "$relief"             --report "$OUT/mating_${tag}_report.json"             --episode_metrics "$OUT/mating_${tag}.npz"             > "$OUT/mating_${tag}.log" 2>&1
+        echo "[$(date +%H:%M:%S)]   exit=$?"
+      done
+    done
     ;;
 
   certify)
@@ -150,7 +167,7 @@ case "$stage" in
     ;;
 
   *)
-    echo "usage: scripts/run_robot_carried.sh {passive|latched|sweep|smoke|certify|rgbd}"
+    echo "usage: scripts/run_robot_carried.sh {passive|latched|sweep|smoke|mating|certify|rgbd}"
     exit 2
     ;;
 esac

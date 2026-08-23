@@ -39,6 +39,9 @@ def _arm(report: dict, label: str) -> dict:
         "capture_interface": interface.get("type"),
         "latch_rated_force_n": interface.get("rated_force_n"),
         "latch_rated_torque_nm": interface.get("rated_torque_nm"),
+        "latch_states": interface.get("states"),
+        "mating_compliance_n_per_m": interface.get("mating_compliance_n_per_m"),
+        "destination_channel_relief_m": interface.get("destination_channel_relief_m"),
         "carrier": transit.get("carrier"),
         "episodes": chain.get("episodes"),
         "successes": chain.get("successes"),
@@ -49,9 +52,8 @@ def _arm(report: dict, label: str) -> dict:
             "environments_retaining_the_planned_transform_throughout"
         ),
         "latch_engagements": sum(1 for row in latch_rows if row.get("ever_engaged")),
-        "latch_releases_before_insertion": sum(
-            1 for row in latch_rows if row.get("released_before_insertion")
-        ),
+        "latch_softened_for_mating": sum(1 for row in latch_rows if row.get("softened_for_mating")),
+        "latch_released_after_seating": sum(1 for row in latch_rows if row.get("released_after_seating")),
         "hands_opened_after_settling_verification": sum(
             1 for row in latch_rows if row.get("hand_opened_after_settling_verification")
         ),
