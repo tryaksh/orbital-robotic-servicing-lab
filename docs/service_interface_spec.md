@@ -557,7 +557,7 @@ improve on it both failed because they needed volume the hand occupies.
 `evidence/gripper_collision_envelope.json` and no simulator. Run the first with no
 arguments to check the shipped pin; it passes.
 
-## 9. What this specification does not cover
+## 10. What this specification does not cover
 
 - Simulation only. PhysX Coulomb friction between primitive geometry, not a
   measured pad compound on a machined fixture.

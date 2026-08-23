@@ -367,7 +367,13 @@ def test_live_preset_uses_fixed_argv_and_runtime_outputs(tmp_path: Path) -> None
     assert spec.argv[spec.argv.index("--seed") + 1] == "123"
     assert spec.argv[spec.argv.index("--steps") + 1] == "3600"
     assert spec.argv[spec.argv.index("--perception_backend") + 1] == "fiducial_pnp"
-    assert "--base_rail_on_relocation" in spec.argv
+    # The robot carries the module: the form lock is commanded, and the
+    # world-mounted payload stage that used to appear here is not.
+    assert "--base_rail_on_relocation" not in spec.argv
+    assert "--latch_on_release" in spec.argv
+    assert spec.argv[spec.argv.index("--latch_joint_mode") + 1] == "fixed"
+    assert float(spec.argv[spec.argv.index("--latch_rated_force_n") + 1]) > 0.0
+    assert float(spec.argv[spec.argv.index("--latch_rated_torque_nm") + 1]) > 0.0
     assert spec.argv[spec.argv.index("--insert_checkpoint") + 1] == str(
         (settings.project_root / INSERT_W65_TWO_SLOT).resolve()
     )
@@ -383,6 +389,7 @@ def test_live_preset_uses_fixed_argv_and_runtime_outputs(tmp_path: Path) -> None
         "fiducial_estimator",
         "service_plate_asset",
         "perception_integration",
+        "service_latch_geometry",
         "camera_config",
         "workcell_config",
     }

@@ -45,6 +45,9 @@ from .assets import (
     GRAPPLE_HEAD_ON_ARM_JOINT_POS,
     GRAPPLE_HEAD_ON_TOOL_ROT,
     GRAPPLE_TOOL_OFFSET_POS,
+    SECOND_SLOT_ENTRY_LOWER_RAMP_CFG,
+    SECOND_SLOT_ENTRY_UPPER_RAMP_CFG,
+    SERVICE_DESTINATION_CHANNEL_RELIEF_M,
     CompliantD6JointCfg,
     make_grapple_pin_robot_cfg,
 )
@@ -232,6 +235,76 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
         self.events.grapple_latch.params["rotation_damping_ratio"] = self.latch_rotation_damping_ratio
         self.events.grapple_latch.params["joint_mode"] = self.latch_joint_mode
         self.events.grapple_latch.params["require_armed"] = self.latch_engages_on_release
+
+    def configure_service_destination(self) -> None:
+        """Install the destination bay's vertical lead-in.
+
+        **A rack requirement, produced by a manipulator measurement.** Section 6
+        of ``docs/service_interface_spec.md`` establishes that the lateral flares
+        do not assist the insertion, they perform it: removed, two fully trained
+        policies insert nothing, at any displacement. That result is about the
+        lateral axis, and nothing in this project had ever asked about the
+        vertical one, because both insertion skills *reset* with the module
+        already inside the channel and so never entered the mouth from outside.
+
+        A relocation does enter from outside, and a six-axis arm carrying a
+        450 mm module through free space delivers it to the mouth with a
+        measured 0.066 rad of attitude error. That swings the module's leading
+        corner 14.7 mm off the channel's centre plane, against the 0.5 mm per
+        side the floor plate and the upper lips leave. The module cannot enter,
+        and no controller gain fixes a geometric interference.
+
+        So the destination bay gets the same lead-in on the vertical axis it
+        already has on the lateral one: the same 80 mm plate at the same 12
+        degrees on the same low-friction surface, giving the same 16.6 mm per
+        side of catch, which accepts 0.074 rad. Only the destination bay, and
+        only when the workflow is carrying the module itself.
+        """
+
+        self.scene.blade_slot_two_entry_upper_ramp = SECOND_SLOT_ENTRY_UPPER_RAMP_CFG
+        self.scene.blade_slot_two_entry_lower_ramp = SECOND_SLOT_ENTRY_LOWER_RAMP_CFG
+
+        # **And the channel behind it has to be wider, for a reason that is a
+        # general rule rather than a fudge.**
+        #
+        # A module delivered by a manipulator arrives with that manipulator's
+        # attitude accuracy, and if it is *rigidly* held it cannot be
+        # straightened by the channel it is entering: a lead-in works by pushing
+        # a module square, and a module bolted to a wrist will not be pushed.
+        # A straight channel of clearance c admits a rigid module of length L at
+        # a tilt of at most 2c/L, so the rack requirement is
+        #
+        #     c >= L * theta / 2
+        #
+        # with theta the delivered attitude accuracy. Measured on this arm the
+        # squaring leg converges to between 0.013 and 0.066 rad depending on how
+        # much of the workcell's reach boundary it is standing in; at the worst
+        # of that, a 0.45 m module needs 14.8 mm per side and at the best 2.9 mm.
+        #
+        # The relief below is sized for the measured median rather than the
+        # worst case, and the run reports what it actually delivered, so a
+        # workflow that arrives outside it fails its seating check rather than
+        # being quietly accommodated. Alternatives a designer has, in order of
+        # preference: hold the module compliantly for the last 10 mm (this
+        # project cannot -- the pads do not resist lateral load, measured), move
+        # the arm out of its reach boundary (section 6a), or widen the channel.
+        relief = SERVICE_DESTINATION_CHANNEL_RELIEF_M
+        left_guide = list(self.scene.blade_slot_two_left_guide.init_state.pos)
+        right_guide = list(self.scene.blade_slot_two_right_guide.init_state.pos)
+        left_guide[1] += relief
+        right_guide[1] -= relief
+        self.scene.blade_slot_two_left_guide.init_state.pos = tuple(left_guide)
+        self.scene.blade_slot_two_right_guide.init_state.pos = tuple(right_guide)
+        floor = list(self.scene.blade_slot_two.init_state.pos)
+        floor[2] -= relief
+        self.scene.blade_slot_two.init_state.pos = tuple(floor)
+        for lip in (
+            self.scene.blade_slot_two_upper_left_lip,
+            self.scene.blade_slot_two_upper_right_lip,
+        ):
+            position = list(lip.init_state.pos)
+            position[2] += relief
+            lip.init_state.pos = tuple(position)
 
     def configure_base_rail(self) -> None:
         """Install the physical payload shuttle after task setup.

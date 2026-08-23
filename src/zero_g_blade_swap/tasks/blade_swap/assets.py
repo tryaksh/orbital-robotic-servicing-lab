@@ -20,6 +20,7 @@ from isaaclab.utils import configclass
 from isaaclab_assets.robots.universal_robots import UR10e_ROBOTIQ_2F_85_CFG
 from pxr import Gf, PhysxSchema, Sdf, Usd, UsdGeom, UsdPhysics
 
+from zero_g_blade_swap import service_latch
 from zero_g_blade_swap.fiducial import (
     FIDUCIAL_QUIET_ZONE_SIZE_M,
     FIDUCIAL_TAG_BASIS_MODULE,
@@ -29,6 +30,7 @@ from zero_g_blade_swap.fiducial import (
     FIDUCIAL_TAG_SIZE_M,
 )
 from zero_g_blade_swap.grapple_geometry import (
+    BLADE_LENGTH_M,
     CLOSING_RATE_M_PER_RAD,
     GRAPPLE_HEAD_ON_TOOL_ROT,
     GRAPPLE_PIN_COLLAR_HALF_HEIGHT,
@@ -41,6 +43,8 @@ from zero_g_blade_swap.grapple_geometry import (
     GRAPPLE_PIN_WEDGE_X,
     GRAPPLE_TOOL_OFFSET_POS,
     RATED_GRIP_FORCE_N,
+    SLOT_FLOOR_TOP_Z,
+    SLOT_LIP_BOTTOM_Z,
     drive_torque_for_grip_force_nm,
     wedge_taper_deg,
 )
@@ -509,6 +513,128 @@ class ReleaseLatchJointCfg(FixedGraspJointCfg):
     enabled: bool = False
     break_force_n: float = 600.0
     break_torque_nm: float = 30.0
+
+
+#: Prim name of the visible service latch, under each environment's wrist link.
+SERVICE_LATCH_PRIM = "ServiceLatch"
+#: Sub-path of each jaw carriage, mirrored on the third axis.
+SERVICE_LATCH_JAWS = ("JawLeft", "JawRight")
+
+
+def service_latch_jaw_translation(*, engaged: bool, seek_m: float, sign: float) -> tuple[float, float, float]:
+    """Where a jaw carriage sits, as an offset from its authored engaged pose.
+
+    The geometry itself is authored once, in the engaged pose, and the carriage
+    is moved. That is the same relationship the hardware would have: one set of
+    machined parts, two commanded positions, and a seek travel between them.
+    """
+
+    if engaged:
+        return (0.0, 0.0, seek_m)
+    return (0.0, sign * service_latch.CLOSE_STROKE_M, -service_latch.EXTEND_STROKE_M)
+
+
+def spawn_service_latch(
+    prim_path: str,
+    cfg: ServiceLatchCfg,
+    translation: tuple[float, float, float] | None = None,
+    orientation: tuple[float, float, float, float] | None = None,
+    **_: object,
+) -> Usd.Prim:
+    """Author the visible robot-side service latch on each environment's wrist.
+
+    The latch is **visual geometry with no collider and no rigid body**, and
+    that is a deliberate, disclosed simplification rather than an oversight.
+    Its load path is the break-rated fixed joint the workflow engages between
+    ``wrist_3_link`` and the module; these prims are the hardware that joint
+    represents, and they are here so the mechanism is visible in the recording
+    and so its clearances are checkable rather than asserted.
+    ``scripts/check_service_latch_clearance.py`` derives every clearance from
+    the same dimensions this function reads, with no simulator.
+
+    Parented under the wrist link so it follows the arm without a per-step pose
+    write. Only the two jaw carriages ever move, and only between the two poses
+    ``service_latch_jaw_translation`` returns.
+    """
+
+    if translation not in (None, (0.0, 0.0, 0.0)) or orientation not in (
+        None,
+        (1.0, 0.0, 0.0, 0.0),
+    ):
+        raise ValueError("ServiceLatchCfg must be spawned at the identity pose.")
+    root_path, leaf = str(prim_path).rsplit("/", 1)
+    is_regex = re.match(r"^[a-zA-Z0-9/_]+$", root_path) is None
+    parent_paths = find_matching_prim_paths(root_path) if is_regex else [root_path]
+    if not parent_paths:
+        raise RuntimeError(f"No environment parents matched service-latch path '{prim_path}'.")
+
+    stage = get_current_stage()
+    source_prim: Usd.Prim | None = None
+    for parent_path in parent_paths:
+        wrist_path = f"{parent_path}/{cfg.wrist_relative_path}"
+        if not stage.GetPrimAtPath(wrist_path).IsValid():
+            raise RuntimeError(f"Service latch expected a wrist link at '{wrist_path}'.")
+        latch_path = f"{wrist_path}/{leaf}"
+        if stage.GetPrimAtPath(latch_path).IsValid():
+            source_prim = source_prim or stage.GetPrimAtPath(latch_path)
+            continue
+        container = UsdGeom.Xform.Define(stage, latch_path)
+        sim_utils.standardize_xform_ops(container.GetPrim())
+        material_path = f"{latch_path}/LatchMaterial"
+        material_cfg = sim_utils.PreviewSurfaceCfg(
+            diffuse_color=cfg.diffuse_color,
+            metallic=0.85,
+            roughness=0.35,
+        )
+        material_cfg.func(material_path, material_cfg)
+
+        for sign, jaw_name in ((1.0, SERVICE_LATCH_JAWS[0]), (-1.0, SERVICE_LATCH_JAWS[1])):
+            jaw_path = f"{latch_path}/{jaw_name}"
+            jaw = UsdGeom.Xform.Define(stage, jaw_path)
+            sim_utils.standardize_xform_ops(
+                jaw.GetPrim(),
+                translation=service_latch_jaw_translation(engaged=False, seek_m=0.0, sign=sign),
+            )
+            for name, centre, size in service_latch.jaw_boxes(engaged=True):
+                box_path = f"{jaw_path}/{name}"
+                box = UsdGeom.Cube.Define(stage, box_path)
+                box.CreateSizeAttr(1.0)
+                sim_utils.standardize_xform_ops(
+                    box.GetPrim(),
+                    translation=(centre[0], sign * centre[1], centre[2]),
+                    orientation=(1.0, 0.0, 0.0, 0.0),
+                    scale=size,
+                )
+                sim_utils.bind_visual_material(box_path, material_path, stage=stage)
+            # The rail the carriage runs on. Fixed to the wrist rather than to
+            # the jaw, so it does not travel with the stroke.
+            rail_path = f"{latch_path}/Rail{jaw_name}"
+            rail = UsdGeom.Cube.Define(stage, rail_path)
+            rail.CreateSizeAttr(1.0)
+            near, far = service_latch.RAIL_DEPTH_FROM_FLANGE_M
+            inner = service_latch.RAIL_INNER_HALF_GAP_M
+            outer = service_latch.RAIL_OUTER_HALF_GAP_M
+            sim_utils.standardize_xform_ops(
+                rail.GetPrim(),
+                translation=(0.0, sign * 0.5 * (inner + outer), 0.5 * (near + far)),
+                orientation=(1.0, 0.0, 0.0, 0.0),
+                scale=(2.0 * service_latch.RAIL_HALF_HEIGHT_M, outer - inner, far - near),
+            )
+            sim_utils.bind_visual_material(rail_path, material_path, stage=stage)
+        source_prim = source_prim or container.GetPrim()
+    assert source_prim is not None
+    return source_prim
+
+
+@configclass
+class ServiceLatchCfg(SpawnerCfg):
+    """Visible hardware for the robot-side form-locking service latch."""
+
+    func: Callable[..., Usd.Prim] = spawn_service_latch
+    wrist_relative_path: str = "Robot/wrist_3_link"
+    #: Distinct from the arm and the rack, so a viewer can see which body the
+    #: mechanism belongs to without being told.
+    diffuse_color: tuple[float, float, float] = (0.85, 0.55, 0.10)
 
 
 @configclass
@@ -1349,6 +1475,88 @@ def _slot_entry_flare_cfg(name: str, y_center: float, rotation: tuple[float, flo
 SLOT_ENTRY_LEFT_FLARE_CFG = _slot_entry_flare_cfg("BladeSlotEntryLeftFlare", _FLARE_CENTER_Y, _FLARE_QUAT_LEFT)
 SLOT_ENTRY_RIGHT_FLARE_CFG = _slot_entry_flare_cfg("BladeSlotEntryRightFlare", -_FLARE_CENTER_Y, _FLARE_QUAT_RIGHT)
 
+# ---------------------------------------------------------------------------
+# The lead-in the rack was missing, on the axis nothing had ever tested.
+#
+# Section 6 of the interface specification measures the lateral flares as
+# load-bearing: remove them and two fully trained insertion policies drop to
+# zero, *including at zero displacement*, because the 16.6 mm-per-side catch was
+# performing the alignment rather than assisting it. That finding is about y.
+#
+# Nothing in this project had ever asked about z, and the reason is structural:
+# both insertion skills *reset* with the module already inside the channel, so
+# the module never had to enter the mouth from outside. A relocation does. And a
+# six-axis arm carrying a 450 mm module through free space delivers it to the
+# mouth with a measured 0.066 rad of attitude error, which swings the module's
+# leading corner 14.7 mm off the channel's centre plane against a 0.5 mm
+# per-side gap between the floor plate and the upper lips. It cannot enter, and
+# no controller gain fixes a geometric interference.
+#
+# So the destination bay gets the same lead-in on z that it already has on y:
+# the same 80 mm plate, the same 12 degrees, the same low-friction surface, the
+# same 16.6 mm-per-side catch. This is a **rack** requirement produced by a
+# manipulator measurement, which is the third time this project has arrived at
+# one from that direction.
+_RAMP_QUAT_UPPER = (0.9945219, 0.0, 0.1045285, 0.0)
+_RAMP_QUAT_LOWER = (0.9945219, 0.0, -0.1045285, 0.0)
+#: Same offset from the channel surface it continues as the lateral flares use,
+#: so the two lead-ins cannot drift apart. The flare sits 17.1 mm outside the
+#: rail *face* -- the guide centre is another 9 mm out, half the plate's own
+#: thickness -- and the ramp sits the same distance outside the lip and floor
+#: faces.
+_RAMP_SURFACE_OFFSET = _FLARE_CENTER_Y - (GUIDE_CENTER_OFFSET_Y - 0.009)
+_RAMP_CENTER_Z_UPPER = SLOT_LIP_BOTTOM_Z + _RAMP_SURFACE_OFFSET
+_RAMP_CENTER_Z_LOWER = SLOT_FLOOR_TOP_Z - _RAMP_SURFACE_OFFSET
+
+
+def _slot_entry_ramp_cfg(name: str, z_center: float, rotation: tuple[float, float, float, float]) -> RigidObjectCfg:
+    """Create one angled lead-in plate above or below the slot mouth.
+
+    The lateral flare's plate, turned onto the other axis and widened to the
+    module's own width so the whole leading edge is caught rather than its
+    middle third.
+    """
+
+    return RigidObjectCfg(
+        prim_path=f"{{ENV_REGEX_NS}}/{name}",
+        spawn=sim_utils.CuboidCfg(
+            size=(0.080, 0.160, 0.018),
+            rigid_props=_rigid_props(kinematic=True),
+            mass_props=sim_utils.MassPropertiesCfg(mass=10.0),
+            collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.0001, rest_offset=0.0),
+            physics_material=sim_utils.RigidBodyMaterialCfg(
+                # A lead-in that grabs defeats the point, so it is the
+                # slipperiest surface in the slot -- the lateral flare's own
+                # values, unchanged.
+                static_friction=0.25,
+                dynamic_friction=0.20,
+                restitution=0.0,
+                friction_combine_mode="min",
+            ),
+            visual_material=sim_utils.PreviewSurfaceCfg(
+                diffuse_color=(0.68, 0.52, 0.16), metallic=0.85, roughness=0.30
+            ),
+            activate_contact_sensors=False,
+        ),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(_FLARE_CENTER_X, 0.0, z_center), rot=rotation),
+    )
+
+
+SLOT_ENTRY_UPPER_RAMP_CFG = _slot_entry_ramp_cfg("BladeSlotEntryUpperRamp", _RAMP_CENTER_Z_UPPER, _RAMP_QUAT_UPPER)
+SLOT_ENTRY_LOWER_RAMP_CFG = _slot_entry_ramp_cfg("BladeSlotEntryLowerRamp", _RAMP_CENTER_Z_LOWER, _RAMP_QUAT_LOWER)
+#: Vertical catch each ramp provides, from its own geometry.
+SLOT_ENTRY_RAMP_CATCH_M = 0.040 * 2.0 * 0.2079117
+#: Attitude accuracy a six-axis arm was measured to deliver a carried module
+#: with, at the destination bay's retreat pose, after its squaring leg has
+#: converged. Between 0.013 and 0.066 rad depending on how much of the
+#: workcell's reach boundary the arm is standing in; this is the good end,
+#: because that is the pose the workflow actually hands over from.
+SERVICE_DELIVERED_ATTITUDE_RAD = 0.014
+#: Per-side channel clearance a rigidly delivered module needs, from
+#: ``c >= L * theta / 2``. A rigid module cannot be straightened by the channel
+#: it is entering, so the channel has to admit the attitude it arrives at.
+SERVICE_DESTINATION_CHANNEL_RELIEF_M = 0.5 * BLADE_LENGTH_M * SERVICE_DELIVERED_ATTITUDE_RAD
+
 
 # ---------------------------------------------------------------------------
 # The second slot, which is what makes a relocation a relocation.
@@ -1407,6 +1615,17 @@ SECOND_SLOT_ENTRY_LEFT_FLARE_CFG = offset_slot_asset(
 )
 SECOND_SLOT_ENTRY_RIGHT_FLARE_CFG = offset_slot_asset(
     SLOT_ENTRY_RIGHT_FLARE_CFG, "BladeSlotTwoEntryRightFlare", SECOND_SLOT_CENTER_Y
+)
+#: The second bay's vertical lead-in. Only the second bay has one, because only
+#: the second bay is ever entered from outside the rack: the first bay's module
+#: starts installed and every certified insertion resets with the module already
+#: in its channel. Adding one to the first bay would change a scene four
+#: certifications describe, for no measurement.
+SECOND_SLOT_ENTRY_UPPER_RAMP_CFG = offset_slot_asset(
+    SLOT_ENTRY_UPPER_RAMP_CFG, "BladeSlotTwoEntryUpperRamp", SECOND_SLOT_CENTER_Y
+)
+SECOND_SLOT_ENTRY_LOWER_RAMP_CFG = offset_slot_asset(
+    SLOT_ENTRY_LOWER_RAMP_CFG, "BladeSlotTwoEntryLowerRamp", SECOND_SLOT_CENTER_Y
 )
 
 #: Where a module sits when it is seated in the second slot. Derived from the
@@ -1526,6 +1745,10 @@ __all__ = [
     "CompliantD6JointCfg",
     "FixedGraspJointCfg",
     "ReleaseLatchJointCfg",
+    "SERVICE_LATCH_JAWS",
+    "SERVICE_LATCH_PRIM",
+    "ServiceLatchCfg",
+    "service_latch_jaw_translation",
     "ArmBrakeJointCfg",
     "CONTACT_BLADE_HANDLE_OFFSET",
     "CONTACT_INSERTION_STAGE_ARM_JOINT_POS",
@@ -1556,15 +1779,22 @@ __all__ = [
     "SECOND_SLOT_CENTER_Y",
     "SECOND_SLOT_CFG",
     "SECOND_SLOT_ENTRY_LEFT_FLARE_CFG",
+    "SECOND_SLOT_ENTRY_LOWER_RAMP_CFG",
     "SECOND_SLOT_ENTRY_RIGHT_FLARE_CFG",
+    "SECOND_SLOT_ENTRY_UPPER_RAMP_CFG",
     "SECOND_SLOT_INSERTED_POS",
+    "SERVICE_DELIVERED_ATTITUDE_RAD",
+    "SERVICE_DESTINATION_CHANNEL_RELIEF_M",
     "SECOND_SLOT_LEFT_GUIDE_CFG",
     "SECOND_SLOT_RIGHT_GUIDE_CFG",
     "SECOND_SLOT_UPPER_LEFT_LIP_CFG",
     "SECOND_SLOT_UPPER_RIGHT_LIP_CFG",
     "SLOT_ENTRY_FLARE_DEG",
     "SLOT_ENTRY_LEFT_FLARE_CFG",
+    "SLOT_ENTRY_LOWER_RAMP_CFG",
+    "SLOT_ENTRY_RAMP_CATCH_M",
     "SLOT_ENTRY_RIGHT_FLARE_CFG",
+    "SLOT_ENTRY_UPPER_RAMP_CFG",
     "offset_slot_asset",
     "SLOT_UPPER_LEFT_LIP_CFG",
     "SLOT_UPPER_RIGHT_LIP_CFG",

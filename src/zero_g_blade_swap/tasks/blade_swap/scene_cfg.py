@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import isaaclab.sim as sim_utils
-from isaaclab.assets import AssetBaseCfg
+from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import TiledCameraCfg
 from isaaclab.utils import configclass
@@ -33,6 +33,7 @@ from .assets import (
     SECOND_SLOT_RIGHT_GUIDE_CFG,
     SECOND_SLOT_UPPER_LEFT_LIP_CFG,
     SECOND_SLOT_UPPER_RIGHT_LIP_CFG,
+    SERVICE_LATCH_PRIM,
     SLOT_ENTRY_LEFT_FLARE_CFG,
     SLOT_ENTRY_RIGHT_FLARE_CFG,
     SLOT_UPPER_LEFT_LIP_CFG,
@@ -40,6 +41,7 @@ from .assets import (
     CompliantD6JointCfg,
     FixedGraspJointCfg,
     ReleaseLatchJointCfg,
+    ServiceLatchCfg,
     make_contact_insertion_robot_cfg,
     make_grapple_pin_robot_cfg,
     make_insertion_robot_cfg,
@@ -144,6 +146,16 @@ class ZeroGGrapplePinSceneCfg(ZeroGContactInsertionSceneCfg):
         prim_path="{ENV_REGEX_NS}/ReleaseLatchJoint",
         spawn=ReleaseLatchJointCfg(),
     )
+    # The hardware that joint represents. Visual geometry on the wrist, with no
+    # collider and no rigid body: the load path is the joint, and this is what
+    # the joint *is*, so that a viewer can see which mechanism is holding the
+    # module and so its clearances can be checked rather than asserted. See
+    # ``src/zero_g_blade_swap/service_latch.py`` and
+    # ``scripts/check_service_latch_clearance.py``.
+    service_latch = AssetBaseCfg(
+        prim_path="{ENV_REGEX_NS}/" + SERVICE_LATCH_PRIM,
+        spawn=ServiceLatchCfg(),
+    )
     # Populated only by the relocation workflow after the payload entity has
     # been declared, preserving the required spawn order.
     payload_stage: AssetBaseCfg | None = None
@@ -172,6 +184,12 @@ class ZeroGTwoSlotGrapplePinSceneCfg(ZeroGGrapplePinSceneCfg):
     blade_slot_two_upper_right_lip = SECOND_SLOT_UPPER_RIGHT_LIP_CFG
     blade_slot_two_entry_left_flare = SECOND_SLOT_ENTRY_LEFT_FLARE_CFG
     blade_slot_two_entry_right_flare = SECOND_SLOT_ENTRY_RIGHT_FLARE_CFG
+    # The destination bay's vertical lead-in, installed only by
+    # ``configure_service_destination()``. ``None`` here so every task that
+    # existed before it describes exactly the scene its certification was taken
+    # on, which is the rule this repository applies to every geometry change.
+    blade_slot_two_entry_upper_ramp: RigidObjectCfg | None = None
+    blade_slot_two_entry_lower_ramp: RigidObjectCfg | None = None
 
 
 def make_tiled_camera_cfg() -> TiledCameraCfg:

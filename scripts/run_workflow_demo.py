@@ -179,6 +179,63 @@ STAGE_ALIGNMENT_CAPTURE_RAD = 0.065
 # errors (1.68 mm and 0.0121 rad); the final seating predicate is unchanged.
 FIDUCIAL_GUARDED_LATERAL_TOLERANCE_M = 0.002
 FIDUCIAL_GUARDED_ORIENTATION_TOLERANCE_RAD = 0.015
+#: Clearance the retreat leaves between the module's real front corner and the
+#: plane the lead-in flares stand on.
+#:
+#: ``TRANSIT_CLEAR_BLADE_CENTRE_X`` is derived for a module that is square to the
+#: rack, and a module that has just been pulled out of the rails is not: measured
+#: at the extract hand-off it sits 0.12 to 0.13 rad off, which swings its front
+#: corner 7.7 mm further forward than half its length. The nominal retreat
+#: therefore stops with the corner 8 mm *inside* the flare, and the crossing leg
+#: then drags it along the flare and stalls -- 0.75 mm/step of commanded lateral
+#: motion against a plate.
+#:
+#: The retreat below is recomputed from the module's *measured* corners at the
+#: instant the rails let go. This is the margin on top of that.
+TRANSIT_FLARE_CLEARANCE_M = 0.010
+#: The guarded robot-driven insertion's axial advance per control step, and how
+#: far its target may lead the module it is pushing.
+#:
+#: 1 mm per step at 30 Hz is 30 mm/s, so the 167 mm from the staging pose to the
+#: seated pose takes about 5.6 s of a 30 s budget. The lead cap is what makes it
+#: guarded rather than merely slow: a target that keeps advancing while the arm
+#: cannot follow turns a stall into a lunge, and the module is between rails.
+#: Share of the rotation command the rigid transit and the guarded insertion
+#: may use. One, unless a sweep says otherwise: see ``_step_rigid_transit``.
+RIGID_TRANSIT_ATTITUDE_AUTHORITY = float(os.environ.get("RIGID_TRANSIT_ATTITUDE_AUTHORITY", "1.0"))
+#: Legs the rigid transit flies, and **why there are four rather than three.**
+#:
+#: The obvious plan is retreat, cross, insert, and it is what the pad-held
+#: follower does. It does not work for a carried module, and the reason is the
+#: workcell rather than the payload. ``docs/service_interface_spec.md`` section
+#: 6a measures a region around the arm's own axis in which position and the
+#: head-on attitude cannot both be held: inside it the solver trades one for the
+#: other at about 7.5 metres per radian. Bay 0 sits on that axis. So a leg that
+#: asks the arm to cross *and* square at the source depth gets a compromise, and
+#: measured here it settles at 0.164 rad of attitude error -- which, on a rigid
+#: payload, is 56 mm of module position error it cannot correct either.
+#:
+#: The same measurement says where the squaring is free: every cell 220 mm or
+#: more off the base's plane succeeds, and the second bay is at 220 mm exactly.
+#: So the crossing holds whatever attitude the rails released the module in, and
+#: the squaring happens after it has arrived, where the arm can afford it.
+RIGID_TRANSIT_LEGS = 5
+#: Control steps a leg may spend not meeting its gate before the follower gives
+#: up on it, advances, and records that it did.
+#:
+#: Not a convenience. Two of the five legs ask the arm to *square* the carried
+#: module to the rack, and whether it can is a property of where the arm is
+#: standing rather than of how long it is given: a resolved-rate controller
+#: converges to the best attitude its own branch admits and then stops, which is
+#: what this project measured as a reach boundary long before anything was being
+#: carried. A leg with no timeout turns that into a deadlock and a timeout row;
+#: a leg with one turns it into a number, per leg, in the report.
+RIGID_TRANSIT_LEG_TIMEOUT_STEPS = int(os.environ.get("RIGID_TRANSIT_LEG_TIMEOUT_STEPS", "400"))
+GUARDED_INSERT_AXIAL_STEP_M = 0.0010
+GUARDED_INSERT_MAX_LEAD_M = 0.010
+#: Margin on the derived depth at which an engaged latch jaw would enter the
+#: slot mouth. Five millimetres, against a 17 mm interlock at zero seek.
+GUARDED_INSERT_RELEASE_MARGIN_M = 0.005
 #: Terminal tolerance for the time-parameterized reverse joint trajectory.
 #: Intermediate samples are actuator set-points, not stop-and-settle poses;
 #: requiring convergence at every sample deadlocked on finite drive error.
@@ -457,6 +514,7 @@ from zero_g_blade_swap.tasks.blade_swap.mdp.grapple import (
     grapple_insertion_success_mask,
     grapple_latch_diagnostics,
     grapple_latched,
+    release_grapple_latch,
     grip_drive_torque,
     grip_finger_angle,
 )
@@ -486,10 +544,48 @@ from zero_g_blade_swap.tasks.blade_swap.workflow_demo_env_cfg import (
 )
 from zero_g_blade_swap.checkpoint_policy import CheckpointPolicy
 from zero_g_blade_swap.grapple_geometry import (
+    BLADE_LENGTH_M,
     EXTRACTED_BLADE_CENTRE_X,
+    FLARE_LEADING_X,
+    SLOT_MOUTH_X,
     TRANSIT_CLEAR_BLADE_CENTRE_X,
 )
-from zero_g_blade_swap.tasks.blade_swap.assets import SECOND_SLOT_CENTER_Y, SECOND_SLOT_INSERTED_POS
+from zero_g_blade_swap.service_latch import (
+    ENGAGED_DEPTH_FROM_FLANGE_M as _LATCH_ENGAGED_DEPTH_M,
+)
+from zero_g_blade_swap.service_latch import (
+    MODULE_FACE_FROM_FLANGE_M as LATCH_MODULE_FACE_DEPTH_M,
+)
+
+#: Depth from the flange the far face of an engaged latch jaw reaches at zero
+#: carriage seek. Named here so the release interlock below reads as one
+#: expression rather than an index into a tuple.
+LATCH_ENGAGED_FAR_DEPTH_M = _LATCH_ENGAGED_DEPTH_M[1]
+
+
+from zero_g_blade_swap.tasks.blade_swap.assets import (
+    SECOND_SLOT_CENTER_Y,
+    SECOND_SLOT_INSERTED_POS,
+    SLOT_ENTRY_RAMP_CATCH_M,
+)
+
+#: The envelope the guarded insertion's advance is checked against, and it is
+#: **the mouth's, not the seated tolerance**.
+#:
+#: The first version of this used the payload shuttle's own guard -- 1.5 mm and
+#: 3 mrad -- and that is the right number for a six-axis metrology stage and the
+#: wrong one for an arm: the transit delivers the module to the staging pose at
+#: about 13 mrad, so the guard was never satisfied and the insertion never
+#: advanced at all. A guard that no achievable state can pass is not fail-closed,
+#: it is closed.
+#:
+#: The physically meaningful condition is whether the bay can still accept the
+#: module: inside the lead-in's catch the contact geometry walks it into the
+#: channel, and outside it the module jams on a plate whatever the controller
+#: does. So the guard is the lead-in, and the tight tolerances stay where they
+#: belong -- on the seated success predicate, which is unchanged.
+GUARDED_INSERT_LATERAL_TOLERANCE_M = SLOT_ENTRY_RAMP_CATCH_M
+GUARDED_INSERT_ORIENTATION_TOLERANCE_RAD = SLOT_ENTRY_RAMP_CATCH_M / (0.5 * BLADE_LENGTH_M)
 
 #: Held still after the workflow's own predicate fires, before the outcome is
 #: judged. A success that evaporates in two thirds of a second was not one.
@@ -518,6 +614,20 @@ RELOCATION_INSERT_STAGING_POS = (
 )
 RELOCATION_INSERT_STAGING_ROT = TRANSIT_TARGET_BLADE_POSE[3:7]
 INSERT_HANDOFF_POSITION_TOLERANCE_M = INSERTION_LATERAL_TOLERANCE_M
+
+#: What "the robot carried it" has to mean numerically, **derived** from the
+#: contract above rather than chosen.
+#:
+#: ``_plan_lateral_transit`` measures the tool-to-module transform once, at the
+#: instant extraction clears the rails, and lays out every remaining waypoint
+#: from it: the final tool pose is the desired module pose in bay 1 minus that
+#: measured offset. So any change in that transform during the flight lands on
+#: the staging pose one millimetre for one millimetre, and the staging pose has
+#: to arrive inside the receiving policy's own success envelope. The retention
+#: limit is therefore not a new tolerance -- it is the hand-off tolerance, read
+#: backwards.
+TRANSIT_RETENTION_POSITION_LIMIT_M = INSERT_HANDOFF_POSITION_TOLERANCE_M
+TRANSIT_RETENTION_ORIENTATION_LIMIT_RAD = INSERTION_ORIENTATION_TOLERANCE_RAD
 
 #: Seconds each phase gets, read from the task each policy was certified on so
 #: the two can never drift apart. This is the reconciliation between per-skill
@@ -603,6 +713,48 @@ HANDOFF_TRACE_FIELDS = (
     "arm_joint_4",
     "arm_joint_5",
 )
+#: One row per environment per sampled control step of the transit, which is the
+#: only phase in this project where the robot carries an unrailed module through
+#: free space. The handoff trace records the two instants that bracket it; that
+#: cannot distinguish a grip that held from one that failed and was recovered by
+#: the destination geometry, and those are opposite results.
+#:
+#: The load-bearing columns are the ``tool_to_module_*_drift`` ones. They are the
+#: transit-entry tool-to-module transform re-expressed in the *current* tool
+#: frame and differenced against the transform recorded at entry, so a module
+#: carried rigidly reads zero however far the arm flies, and a module that slips
+#: in the pads reads the slip, regardless of where the arm happens to be.
+TRANSIT_TRACE_FIELDS = (
+    "step",
+    "env",
+    "steps_since_transit_start",
+    "waypoint_read",
+    "grip_error_m",
+    "grip_attitude_rad",
+    "finger_angle_rad",
+    "drive_torque_nm",
+    "latch_engaged",
+    "tool_to_module_drift_m",
+    "tool_to_module_drift_rad",
+    "tool_to_module_x_drift_m",
+    "tool_to_module_y_drift_m",
+    "tool_to_module_z_drift_m",
+    "tool_travel_m",
+    "module_travel_m",
+    "blade_x_m",
+    "blade_y_m",
+    "blade_z_m",
+    "tool_x_m",
+    "tool_y_m",
+    "tool_z_m",
+    "blade_linear_velocity_mps",
+    "blade_angular_velocity_radps",
+)
+#: Control steps between recorded transit-retention samples. Every second step
+#: at 30 Hz is 15 Hz, fast enough to catch the instant a grip lets go -- the
+#: measured loss on the passive interface happens inside the first two seconds --
+#: and cheap enough to leave on for a many-environment batch.
+TRANSIT_TRACE_STRIDE = 2
 #: One row per environment per step of the settling window. A pooled terminal
 #: number cannot distinguish a module that was never settled from one that was
 #: settled and then pushed, and those want opposite fixes.
@@ -698,6 +850,10 @@ class WorkflowDriver:
         self.workflow = workflow
         self.transit_slowdown = max(1, transit_slowdown)
         self.release_latch_required = release_latch_required
+        #: Whether this run carries the module on a rigid robot-side form lock.
+        #: The two transit controllers below are selected on it and nothing
+        #: else, so every previously certified path is bit-identical.
+        self.rigid_transit = release_latch_required and not base_rail_enabled and workflow == "relocate"
         self.base_rail_enabled = base_rail_enabled
         self.base_rail_joint_hold = base_rail_arm_mode == "joint_hold"
         device = task.device
@@ -731,6 +887,53 @@ class WorkflowDriver:
         #: Which phase overran its skill's own episode budget, or -1.
         self.timed_out_in = torch.full((count,), -1, dtype=torch.long, device=device)
         self.transit_started = torch.zeros(count, dtype=torch.long, device=device)
+        #: The three module poses the rigid transit drives through, and the
+        #: attitude to hold at each. Module poses rather than tool poses,
+        #: because the collision clearances that decide them are about the
+        #: module and the rack, not about the wrist.
+        self.module_leg_pos = torch.zeros((RIGID_TRANSIT_LEGS, count, 3), device=device)
+        self.module_leg_rot = torch.zeros((RIGID_TRANSIT_LEGS, count, 4), device=device)
+        self.module_leg_rot[..., 0] = 1.0
+        self.transit_leg_entered = torch.zeros(count, dtype=torch.long, device=device)
+        self.transit_leg_forced = torch.zeros((RIGID_TRANSIT_LEGS, count), dtype=torch.bool, device=device)
+        self.transit_leg_residual_rad = torch.zeros((RIGID_TRANSIT_LEGS, count), device=device)
+        self.transit_leg_residual_m = torch.zeros((RIGID_TRANSIT_LEGS, count), device=device)
+        self.guarded_insert_target_x = torch.zeros(count, device=device)
+        self.guarded_insert_release_x = torch.zeros(count, device=device)
+        self.guarded_insert_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.guarded_insert_holds = torch.zeros(count, dtype=torch.long, device=device)
+        #: What the retreat was actually laid out for, and why.
+        self.transit_clear_centre_x = torch.zeros(count, device=device)
+        self.transit_front_overhang_m = torch.zeros(count, device=device)
+        # --- robot-carried retention evidence ---------------------------------
+        # The tool-to-module transform recorded at the instant the transit
+        # begins, and the running worst deviation from it. This is the whole
+        # measurement that distinguishes a robot that carries a module from one
+        # that lets a carrier take it: if the robot is carrying, this transform
+        # is preserved, and if it is not, this is the number that says so and
+        # when.
+        self.transit_reference_valid = torch.zeros(count, dtype=torch.bool, device=device)
+        self.transit_reference_pos_tool = torch.zeros((count, 3), device=device)
+        self.transit_reference_rot_tool = torch.zeros((count, 4), device=device)
+        self.transit_reference_rot_tool[:, 0] = 1.0
+        self.transit_entry_tool_pos = torch.zeros((count, 3), device=device)
+        self.transit_entry_blade_pos = torch.zeros((count, 3), device=device)
+        self.transit_max_drift_m = torch.zeros(count, device=device)
+        self.transit_max_drift_rad = torch.zeros(count, device=device)
+        self.transit_final_drift_m = torch.zeros(count, device=device)
+        self.transit_final_drift_rad = torch.zeros(count, device=device)
+        self.transit_max_grip_error_m = torch.zeros(count, device=device)
+        self.transit_max_grip_attitude_rad = torch.zeros(count, device=device)
+        self.transit_min_drive_torque_nm = torch.full((count,), float("inf"), device=device)
+        self.transit_tool_travel_m = torch.zeros(count, device=device)
+        self.transit_module_travel_m = torch.zeros(count, device=device)
+        self.transit_samples = torch.zeros(count, dtype=torch.long, device=device)
+        #: Driver step at which the drift first exceeded the retention limit, or
+        #: -1. A pooled maximum cannot say whether a grip failed at the first
+        #: retreat or at the last millimetre of the approach, and those are
+        #: different faults with different fixes.
+        self.transit_loss_step = torch.full((count,), -1, dtype=torch.long, device=device)
+        self.transit_rows: list[np.ndarray] = []
         self.predicate_fired = torch.zeros(count, dtype=torch.bool, device=device)
         self.judged = torch.zeros(count, dtype=torch.bool, device=device)
         self.outcome = torch.zeros(count, dtype=torch.bool, device=device)
@@ -785,12 +988,27 @@ class WorkflowDriver:
         # this accumulator the report would say "never engaged" precisely when
         # the terminal run is the one we need to inspect.
         self.latch_ever_engaged = torch.zeros(count, dtype=torch.bool, device=device)
+        #: Whether the driver commanded the form lock to let go, and when. A
+        #: latch that is never released is a weld, and the report has to be able
+        #: to tell the two apart.
+        self.latch_released = torch.zeros(count, dtype=torch.bool, device=device)
+        self.latch_released_at = torch.full((count,), -1, dtype=torch.long, device=device)
+        #: And whether the *hand* let go, which is a different event and the one
+        #: the acceptance rule is written about: the fingers open only after the
+        #: module has passed depth, lateral, attitude, velocity, and the 0.70 s
+        #: settling re-check. Before this the chain simply held on for ever,
+        #: which is a defensible way to end a batch run and not a way to end a
+        #: demonstration of a servicing operation.
+        self.gripper_released = torch.zeros(count, dtype=torch.bool, device=device)
+        self.gripper_released_at = torch.full((count,), -1, dtype=torch.long, device=device)
         self.latch_first_engagement_episode_step = torch.full((count,), -1, dtype=torch.long, device=device)
         self.latch_max_position_error_m = torch.zeros(count, device=device)
         self.latch_max_orientation_error_rad = torch.zeros(count, device=device)
         self.latch_max_applied_force_n = torch.zeros(count, device=device)
         self.latch_max_applied_torque_nm = torch.zeros(count, device=device)
         self.latch_force_saturation_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.latch_seek_travel_m = torch.zeros(count, device=device)
+        self.latch_seek_refusals = torch.zeros(count, dtype=torch.long, device=device)
         self.latch_torque_saturation_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.rail_commanded_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.stage_drive_target_m = torch.zeros((count, 3), device=device)
@@ -891,6 +1109,26 @@ class WorkflowDriver:
         self.done_at[env_ids] = -1
         self.done_steps[env_ids] = 0
         self.transit_started[env_ids] = 0
+        # Only the *reference* is per-episode. The accumulators below it are
+        # deliberately left alone, for the same reason the latch evidence is:
+        # every environment is reset before the report is formatted, so a
+        # per-episode accumulator would report an empty transit on precisely
+        # the runs whose transit is the question.
+        self.transit_reference_valid[env_ids] = False
+        self.transit_leg_entered[env_ids] = 0
+        self.guarded_insert_target_x[env_ids] = 0.0
+        self.guarded_insert_release_x[env_ids] = 0.0
+        self.guarded_insert_steps[env_ids] = 0
+        self.guarded_insert_holds[env_ids] = 0
+        self.latch_released[env_ids] = False
+        self.latch_released_at[env_ids] = -1
+        self.gripper_released[env_ids] = False
+        self.gripper_released_at[env_ids] = -1
+        self.transit_reference_pos_tool[env_ids] = 0.0
+        self.transit_reference_rot_tool[env_ids] = 0.0
+        self.transit_reference_rot_tool[env_ids, 0] = 1.0
+        self.transit_entry_tool_pos[env_ids] = 0.0
+        self.transit_entry_blade_pos[env_ids] = 0.0
         self.perceived_error_sum[env_ids] = 0.0
         self.perceived_error_steps[env_ids] = 0.0
         self.perceived_error_max[env_ids] = 0.0
@@ -1110,6 +1348,8 @@ class WorkflowDriver:
             "handoff_fields": np.asarray(HANDOFF_TRACE_FIELDS),
             "settle": stack(self.settle_rows, SETTLE_TRACE_FIELDS),
             "settle_fields": np.asarray(SETTLE_TRACE_FIELDS),
+            "transit": stack(self.transit_rows, TRANSIT_TRACE_FIELDS),
+            "transit_fields": np.asarray(TRANSIT_TRACE_FIELDS),
         }
 
     def _finish(self, mask: torch.Tensor, step: int) -> None:
@@ -1136,6 +1376,8 @@ class WorkflowDriver:
             newly_observed
         ]
         self.latch_ever_engaged |= engaged
+        self.latch_seek_travel_m[newly_observed] = latch["seek_travel_m"][newly_observed]
+        self.latch_seek_refusals = torch.maximum(self.latch_seek_refusals, latch["seek_refusals"])
         self.latch_max_position_error_m = torch.maximum(self.latch_max_position_error_m, latch["max_position_error_m"])
         self.latch_max_orientation_error_rad = torch.maximum(
             self.latch_max_orientation_error_rad, latch["max_orientation_error_rad"]
@@ -1178,6 +1420,112 @@ class WorkflowDriver:
             self.rail_max_mount_rotation_axis_rad,
             mount_rotation.abs().amax(dim=-1),
         )
+
+    def _begin_transit_reference(self, mask, tool, tool_rot) -> None:
+        """Record the tool-to-module transform the transit is planned from.
+
+        This is the same transform ``_plan_lateral_transit`` measures and builds
+        every remaining waypoint out of. Recording it here, in the tool's own
+        frame, is what makes the drift below a statement about the *grip* rather
+        than about where the arm happens to be: the arm is supposed to move.
+        """
+
+        ids = torch.nonzero(mask, as_tuple=False).squeeze(-1)
+        if ids.numel() == 0:
+            return
+        blade = self.task.scene["spare_blade"]
+        inverse_tool = quat_inv(tool_rot[ids])
+        self.transit_reference_pos_tool[ids] = quat_apply(inverse_tool, blade.data.root_pos_w[ids] - tool[ids])
+        self.transit_reference_rot_tool[ids] = quat_mul(inverse_tool, blade.data.root_quat_w[ids])
+        self.transit_entry_tool_pos[ids] = tool[ids]
+        self.transit_entry_blade_pos[ids] = blade.data.root_pos_w[ids]
+        self.transit_reference_valid[ids] = True
+
+    def _observe_transit_retention(self, transiting, step: int, tool, tool_rot) -> None:
+        """Accumulate, and optionally record, the carried-module evidence.
+
+        Runs every control step of every transit whether or not a trace file was
+        asked for, because the summary it feeds is an acceptance gate, and an
+        acceptance gate that depends on a diagnostic flag being passed is not
+        one.
+        """
+
+        active = transiting & self.transit_reference_valid
+        if not bool(active.any()):
+            return
+        task = self.task
+        blade = task.scene["spare_blade"]
+        inverse_tool = quat_inv(tool_rot)
+        relative_pos = quat_apply(inverse_tool, blade.data.root_pos_w - tool)
+        relative_rot = quat_mul(inverse_tool, blade.data.root_quat_w)
+        drift_vector = relative_pos - self.transit_reference_pos_tool
+        drift_m = torch.linalg.vector_norm(drift_vector, dim=-1)
+        drift_rad = torch.linalg.vector_norm(
+            axis_angle_from_quat(quat_mul(relative_rot, quat_inv(self.transit_reference_rot_tool))),
+            dim=-1,
+        )
+        tool_travel = torch.linalg.vector_norm(tool - self.transit_entry_tool_pos, dim=-1)
+        module_travel = torch.linalg.vector_norm(blade.data.root_pos_w - self.transit_entry_blade_pos, dim=-1)
+        grip_error, grip_attitude = grapple_grip_error_metrics(task)
+        drive_torque = grip_drive_torque(task)
+        zero = torch.zeros_like(drift_m)
+        self.transit_max_drift_m = torch.maximum(self.transit_max_drift_m, torch.where(active, drift_m, zero))
+        self.transit_max_drift_rad = torch.maximum(self.transit_max_drift_rad, torch.where(active, drift_rad, zero))
+        self.transit_final_drift_m = torch.where(active, drift_m, self.transit_final_drift_m)
+        self.transit_final_drift_rad = torch.where(active, drift_rad, self.transit_final_drift_rad)
+        self.transit_max_grip_error_m = torch.maximum(
+            self.transit_max_grip_error_m, torch.where(active, grip_error, zero)
+        )
+        self.transit_max_grip_attitude_rad = torch.maximum(
+            self.transit_max_grip_attitude_rad, torch.where(active, grip_attitude, zero)
+        )
+        self.transit_min_drive_torque_nm = torch.where(
+            active,
+            torch.minimum(self.transit_min_drive_torque_nm, drive_torque),
+            self.transit_min_drive_torque_nm,
+        )
+        self.transit_tool_travel_m = torch.where(active, tool_travel, self.transit_tool_travel_m)
+        self.transit_module_travel_m = torch.where(active, module_travel, self.transit_module_travel_m)
+        self.transit_samples = torch.where(active, self.transit_samples + 1, self.transit_samples)
+        lost = (
+            active
+            & (self.transit_loss_step < 0)
+            & (
+                (drift_m > TRANSIT_RETENTION_POSITION_LIMIT_M)
+                | (drift_rad > TRANSIT_RETENTION_ORIENTATION_LIMIT_RAD)
+            )
+        )
+        self.transit_loss_step[lost] = step
+        if not self.tracing or (step % TRANSIT_TRACE_STRIDE) != 0:
+            return
+        latch = grapple_latch_diagnostics(task)
+        velocity = attached_blade_velocity(task)
+        blade_local = blade.data.root_pos_w - task.scene.env_origins
+        tool_local = tool - task.scene.env_origins
+        rows = torch.cat(
+            (
+                self._column(float(step)),
+                self.env_index.unsqueeze(-1),
+                (step - self.transit_started).to(torch.float64).unsqueeze(-1),
+                self.waypoint_read.to(torch.float64).unsqueeze(-1),
+                grip_error.to(torch.float64).unsqueeze(-1),
+                grip_attitude.to(torch.float64).unsqueeze(-1),
+                grip_finger_angle(task).to(torch.float64).unsqueeze(-1),
+                drive_torque.to(torch.float64).unsqueeze(-1),
+                latch["engaged"].to(torch.float64).unsqueeze(-1),
+                drift_m.to(torch.float64).unsqueeze(-1),
+                drift_rad.to(torch.float64).unsqueeze(-1),
+                drift_vector.to(torch.float64),
+                tool_travel.to(torch.float64).unsqueeze(-1),
+                module_travel.to(torch.float64).unsqueeze(-1),
+                blade_local.to(torch.float64),
+                tool_local.to(torch.float64),
+                torch.linalg.vector_norm(velocity[:, :3], dim=-1).to(torch.float64).unsqueeze(-1),
+                torch.linalg.vector_norm(velocity[:, 3:], dim=-1).to(torch.float64).unsqueeze(-1),
+            ),
+            dim=-1,
+        )
+        self.transit_rows.append(rows[active].cpu().numpy())
 
     def step(self, step: int) -> None:
         """Compute one action for every environment and advance the phase machine."""
@@ -1424,6 +1772,10 @@ class WorkflowDriver:
                 arm_grapple_latch(task, cleared)
                 self.phase[cleared] = TRANSIT
                 self.transit_started[cleared] = step
+                # Freeze the transform the whole flight is planned from, before
+                # anything commands the arm, so the retention record starts at
+                # the same instant the plan does.
+                self._begin_transit_reference(cleared, tool, tool_rot)
                 if self.workflow == "relocate":
                     # See RELOCATE_TRANSIT_HOLD: the relocation is the first
                     # phase here that moves a module through free space rather
@@ -1451,7 +1803,34 @@ class WorkflowDriver:
         # was sampled up to a stride before the hand-off, so the tool is already
         # past it and the follower sits there driving the module further out.
         transiting = self.phase == TRANSIT
-        if bool(transiting.any()):
+        # Measured before the follower is allowed to command anything, so the
+        # record is of the state the transit is in rather than of the state it
+        # was just driven into.
+        self._observe_transit_retention(transiting, step, tool, tool_rot)
+        if self.rigid_transit and bool(transiting.any()):
+            # **A different controller, because it is a different problem.**
+            #
+            # Everything in the `elif` below was written for a module held in
+            # the pads, which moves in the grip while the tool moves, so the
+            # follower servos the *tool* and corrects the module afterwards.
+            # With the form lock engaged the module is a rigid extension of the
+            # wrist, and then servoing the tool and hoping is not merely
+            # unnecessary, it diverges: the alignment sub-phase computes a tool
+            # target from the module's position, rotating the tool moves the
+            # module, and the target is never recomputed. Measured on the first
+            # rigid run, that loop walked the tool attitude from 0.66 rad to
+            # 1.61 rad and dragged the module 380 mm backwards out of the cell.
+            #
+            # A rigid payload has a closed-form answer instead. The module's
+            # pose is a fixed transform from the tool's, so a desired module
+            # pose *is* a desired tool pose, and the whole transit is three
+            # module waypoints and one servo. See ``_step_rigid_transit``.
+            arrived = self._step_rigid_transit(transiting, step, tool, tool_rot)
+            if bool(arrived.any()):
+                self._begin_guarded_insert(arrived, step)
+            self.gripper.retain_latch[arrived] = False
+            self.phase[arrived] = INSERT
+        elif bool(transiting.any()):
             ids = torch.nonzero(transiting, as_tuple=False).squeeze(-1)
             # The collision-clear retreat is part of the physical route too.
             # Originally only learned-extraction joints were recorded, so the
@@ -2183,7 +2562,13 @@ class WorkflowDriver:
 
         # --- insert -> seated --------------------------------------------------
         inserting = self.phase == INSERT
-        if bool(inserting.any()):
+        if self.rigid_transit and bool(inserting.any()):
+            fired = self._step_guarded_insert(inserting, step, tool, tool_rot)
+            self._finish(fired, step)
+            self.predicate_fired[fired] = True
+            if SEATED_RETAIN:
+                self.gripper.retain_latch[fired] = True
+        elif bool(inserting.any()):
             shuttle_inserting = inserting & self.payload_stage_engaged & self.base_rail_enabled
             estimator = getattr(task, "_module_state_estimator", None)
             if estimator is not None and estimator.backend == "fiducial_pnp":
@@ -2318,6 +2703,18 @@ class WorkflowDriver:
                 self.all_conditions[ripe] = everything[ripe]
                 self.judged[ripe] = True
                 self._freeze(ripe, step, grip_error, grip_attitude, blade_x)
+                # **This is the release the acceptance rule is about.** Every
+                # condition has now been re-checked after the settling window,
+                # so the hand may open -- and only now. Recorded, because an
+                # operation that ends with the robot still holding the module
+                # has not finished, and one that lets go early has not
+                # succeeded.
+                verified = ripe & self.outcome & self.all_conditions
+                self.gripper_released |= verified
+                self.gripper_released_at[verified] = step
+            # Held after the judgement as well, so the open persists for the
+            # rest of the recording rather than for one frame.
+            self.actions[finished & self.gripper_released, 6] = -1.0
 
         if self.base_rail_enabled:
             rail_joint_hold = (
@@ -2351,6 +2748,331 @@ class WorkflowDriver:
                 self._record_settle(settling, step)
         self.phase_started[self.phase != entry_phase] = step
         self._apply_scales()
+
+    def _rigid_tool_command(
+        self,
+        ids: torch.Tensor,
+        module_pos: torch.Tensor,
+        module_rot: torch.Tensor,
+        tool_rot_now: torch.Tensor,
+    ):
+        """Turn a desired *module* pose into the tool pose that produces it.
+
+        The form lock fixes ``blade = tool * offset``, so this is one inversion
+        rather than a control problem. Everything the rigid transit and the
+        guarded insertion command goes through here, which is why neither of
+        them needs a sub-phase.
+
+        **The position is inverted through the tool's** ``tool_rot_now``, **not
+        through the attitude being asked for**, and that is the difference
+        between a controller that converges and one that does not. The module
+        hangs about 340 mm in front of the tool, so a tool that is 0.16 rad from
+        the attitude it was told to hold puts the module 54 mm from where it was
+        told to go -- and if the position target is computed from the *desired*
+        attitude, that 54 mm never closes while the attitude is short. Measured
+        exactly there twice: the crossing leg parked with its lateral error at
+        61 mm and then at 64 mm, both times equal to the standing attitude error
+        times the offset. Inverting through the attitude the tool actually has
+        makes the position converge on its own timescale and leaves the attitude
+        to converge on its own, which is what the two legs after it are for.
+        """
+
+        tool_rot = quat_mul(module_rot, quat_inv(self.relocation_blade_relative_rot_to_tool[ids]))
+        tool_pos = module_pos - quat_apply(tool_rot_now, self.relocation_blade_relative_to_tool[ids])
+        return tool_pos, tool_rot
+
+    def _drive_tool_to(
+        self,
+        ids: torch.Tensor,
+        tool: torch.Tensor,
+        tool_rot: torch.Tensor,
+        target_pos: torch.Tensor,
+        target_rot: torch.Tensor,
+        scale: torch.Tensor,
+        attitude_authority: float,
+    ) -> None:
+        """Command one bounded Cartesian correction toward a tool pose."""
+
+        self.actions[ids, :3] = ((target_pos - tool[ids]) / scale[:3]).clamp(-1.0, 1.0)
+        rotation_error = axis_angle_from_quat(quat_mul(target_rot, quat_inv(tool_rot[ids])))
+        self.actions[ids, 3:6] = (rotation_error / scale[3:6]).clamp(-attitude_authority, attitude_authority)
+
+    def _step_rigid_transit(self, transiting: torch.Tensor, step: int, tool: torch.Tensor, tool_rot: torch.Tensor) -> torch.Tensor:
+        """Fly the carried module through three waypoints, in module space.
+
+        Leg 2 retreats along the rack axis until the module's *measured* front
+        corner is behind the lead-in flares. Leg 1 crosses to the second bay at
+        that depth and squares the module to the rack while it goes, which is
+        free there because squaring only shortens the overhang that leg 2 just
+        made room for. Leg 0 drives it in to the pose the insertion begins from.
+        Each leg is finished when the *module* has covered the distance the leg
+        was laid out to cover -- not when the tool has, because the clearance
+        the leg exists for is a module clearance.
+        """
+
+        task = self.task
+        ids = torch.nonzero(transiting, as_tuple=False).squeeze(-1)
+        # **The holding closure stays on through the carry, and that is
+        # measured rather than assumed.**
+        #
+        # The obvious reading is that the pads have nothing left to do once the
+        # form lock is engaged, and that their wedge thrust -- hundreds of
+        # newtons, from a drive saturating at 10 N-m through a 106.2 mm/rad
+        # transmission -- is then only a preload the arm has to fight with a
+        # 216 N-m/rad wrist. Relaxing to the retain closure to test that made
+        # the carried attitude *worse*, not better: 0.328 rad off square at the
+        # final leg against 0.066 rad with the holding closure kept, on the same
+        # seed and the same policies. Whatever the standing attitude error is,
+        # it is not the wedge preload, and the pads are still doing something
+        # the lock does not replace.
+        blade = task.scene["spare_blade"]
+        module_pos = blade.data.root_pos_w[ids] - task.scene.env_origins[ids]
+        module_rot = blade.data.root_quat_w[ids]
+        leg = self.waypoint_read[ids]
+        target_pos_local = self.module_leg_pos[leg, ids]
+        target_rot = self.module_leg_rot[leg, ids]
+        position_error = target_pos_local - module_pos
+        orientation_error = torch.linalg.vector_norm(
+            axis_angle_from_quat(quat_mul(target_rot, quat_inv(module_rot))), dim=-1
+        )
+        # **Full authority on attitude, on every leg, and that is the opposite
+        # of what the pad-held follower does.**
+        #
+        # The legacy path bounds rotation to a quarter of the command because a
+        # module held in the pads tumbles slowly and a differential IK solving
+        # one 6-D command spends its authority turning the wrist instead of
+        # crossing the rack. Under the form lock the trade reverses: the module
+        # cannot tumble, and giving the attitude away is not a cosmetic cost --
+        # the module *is* the wrist, so a wrist that winds carries the module
+        # round with it. Measured at a quarter authority, the crossing leg wound
+        # the module from 0.12 rad to 2.85 rad off square while tracking its
+        # lateral target, which is the reach-boundary trade
+        # ``evidence/attitude_wall_lateral_profile.json`` describes, taken in the
+        # direction a carried payload cannot survive.
+        #
+        # At full authority the solver has to hold the attitude and surrenders
+        # position instead, which stalls a leg rather than losing the module --
+        # a failure that is visible in the report and recoverable, against one
+        # that is neither.
+        authority = RIGID_TRANSIT_ATTITUDE_AUTHORITY
+        target_tool_pos, target_tool_rot = self._rigid_tool_command(
+            ids, target_pos_local + task.scene.env_origins[ids], target_rot, tool_rot[ids]
+        )
+        self._drive_tool_to(ids, tool, tool_rot, target_tool_pos, target_tool_rot, self.scales[TRANSIT], authority)
+
+        squared = (orientation_error <= INSERTION_ORIENTATION_TOLERANCE_RAD) & (
+            torch.linalg.vector_norm(position_error, dim=-1) <= INSERT_HANDOFF_POSITION_TOLERANCE_M
+        )
+        retreat_done = (leg == 4) & (position_error[:, 0].abs() <= 0.005)
+        cross_done = (leg == 2) & (position_error[:, 1:].abs().amax(dim=-1) <= 0.005)
+        square_done = ((leg == 3) | (leg == 1)) & squared
+        met = retreat_done | cross_done | square_done
+        # A leg that has converged as far as this arm's own branch allows is
+        # finished whether or not it met its gate, and the residual it stopped
+        # at is the measurement. Recorded per leg, per environment.
+        stalled = (~met) & (
+            (step - self.transit_leg_entered[ids]) >= RIGID_TRANSIT_LEG_TIMEOUT_STEPS
+        )
+        if bool(stalled.any()):
+            stalled_ids = ids[stalled]
+            self.transit_leg_forced[leg[stalled], stalled_ids] = True
+            self.transit_leg_residual_rad[leg[stalled], stalled_ids] = orientation_error[stalled]
+            self.transit_leg_residual_m[leg[stalled], stalled_ids] = torch.linalg.vector_norm(
+                position_error[stalled], dim=-1
+            )
+        advance = torch.zeros_like(transiting)
+        advance[ids] = met | stalled
+        self.waypoint_read[advance] = (self.waypoint_read[advance] - 1).clamp_min(0)
+        self.transit_leg_entered[advance] = step
+
+        # The hand-off contract is unchanged: the receiving controller starts at
+        # one exact rack pose and a weaker condition cannot authorise it.
+        velocity = attached_blade_velocity(task)[ids]
+        arrived = torch.zeros_like(transiting)
+        arrived[ids] = (
+            (leg <= 0)
+            & (torch.linalg.vector_norm(position_error, dim=-1) <= INSERT_HANDOFF_POSITION_TOLERANCE_M)
+            & (orientation_error <= INSERTION_ORIENTATION_TOLERANCE_RAD)
+            & (torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= INSERTION_LINEAR_VELOCITY_LIMIT_MPS)
+            & (torch.linalg.vector_norm(velocity[:, 3:], dim=-1) <= INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS)
+        )
+        return arrived & grapple_latched(task)
+
+    def _begin_guarded_insert(self, mask: torch.Tensor, _step: int) -> None:
+        """Let the form lock go, and set the axial target the seating will use.
+
+        **The lock is released here, at the mouth, and that is a measurement.**
+
+        The transport case for holding it through the seating is obvious and it
+        is wrong. Section 6 of ``docs/service_interface_spec.md`` establishes
+        that this rack's lead-in does not assist the insertion, it *performs*
+        it: the flares walk the module into a 0.75 mm-per-side channel by
+        contact, and two fully trained policies insert nothing without them.
+        Contact can only walk a module that is free to be walked. A module
+        rigidly locked to a wrist is not, and measured that way it does not move
+        at all: the seating phase spent its entire 30-second budget with the
+        module at 0.5818 m, having advanced 0.3 mm, while the arm pushed a
+        rigid link against a channel.
+
+        So the lock carries the module through free space and hands it to the
+        rack, which is the division of work the rack was designed for. The pads
+        keep it -- they are what the insert skill was always certified on -- and
+        the *hand* opens only after the settled seating re-check.
+
+        The geometric interlock in ``service_latch.release_before_blade_centre_x_m``
+        is kept as the outer bound it always was: even if the lock were held
+        longer, an engaged jaw enters the slot mouth once the module centre
+        passes 0.733 m, and the release below happens 145 mm before that.
+        """
+
+        ids = torch.nonzero(mask, as_tuple=False).squeeze(-1)
+        self.guarded_insert_target_x[ids] = _blade_centre_x(self.task)[ids]
+        engaged_far = LATCH_ENGAGED_FAR_DEPTH_M + self.latch_seek_travel_m[ids]
+        self.guarded_insert_release_x[ids] = (
+            SLOT_MOUTH_X
+            + 0.5 * BLADE_LENGTH_M
+            + (LATCH_MODULE_FACE_DEPTH_M - engaged_far)
+            - GUARDED_INSERT_RELEASE_MARGIN_M
+        )
+
+    def _step_guarded_insert(self, inserting: torch.Tensor, step: int, tool: torch.Tensor, tool_rot: torch.Tensor) -> torch.Tensor:
+        """Drive the module into the second bay, guarded, and let go on the way.
+
+        **Why this is not the learned insert policy.** It could have been, and
+        the flag to try it is still there. It is not, because the promoted
+        two-bay insert checkpoint certifies at 10.50% on the moved workcell --
+        0.00% in the first bay and 21.45% in the second
+        (``evidence/grapple_insert_two_slot_w65_certification.json``) -- against
+        98.60% for the same skill on the cell it was trained on. Handing a
+        robot-carried module to a policy measured at 21% would make the chain's
+        number a statement about that policy rather than about the interface
+        this branch exists to test, and the honest alternative was named in the
+        task: a guarded robot-held insertion. This is it, and the report labels
+        it scripted.
+
+        **What "guarded" means here, exactly.** The axial target advances by a
+        bounded step **only while the deployed estimator says the module is
+        inside the lateral and attitude envelope**, and stops advancing when it
+        is not. Perception is therefore in the loop and fails closed: a lost
+        fiducial stops the insertion rather than continuing blind. The estimate
+        comes from ``_payload_feedback``, which is the same RGB-D estimate the
+        policies see; simulator truth is used only to score the result.
+
+        **The lock is already off by the time this runs.** It is released at the
+        hand-off, in ``_begin_guarded_insert``, and the reason is measured
+        there: a module rigidly locked to a wrist cannot be walked into a
+        0.75 mm-per-side channel by contact, and contact is what this rack's
+        lead-in does. The seating is therefore pad-held, which is what the
+        insert skill was always certified on, and the *hand* opens only after
+        the settled re-check. The geometric interlock below is the outer bound
+        that would have forced the release anyway.
+        """
+
+        task = self.task
+        ids = torch.nonzero(inserting, as_tuple=False).squeeze(-1)
+        estimated_position, estimated_orientation, _velocity = self._payload_feedback()
+        module_pos = estimated_position[ids]
+        module_rot = estimated_orientation[ids]
+        seated = module_pos.new_tensor(SECOND_SLOT_INSERTED_POS)
+        staging_rot = self.relocation_staging_rot.unsqueeze(0).expand_as(module_rot)
+
+        lateral_error = torch.linalg.vector_norm(module_pos[:, 1:3] - seated[1:3].unsqueeze(0), dim=-1)
+        orientation_error = torch.linalg.vector_norm(
+            axis_angle_from_quat(quat_mul(staging_rot, quat_inv(module_rot))), dim=-1
+        )
+        lateral_tolerance = GUARDED_INSERT_LATERAL_TOLERANCE_M
+        orientation_tolerance = GUARDED_INSERT_ORIENTATION_TOLERANCE_RAD
+        sensor_ready = torch.ones_like(ids, dtype=torch.bool)
+        estimator = getattr(task, "_module_state_estimator", None)
+        if estimator is not None and estimator.backend == "fiducial_pnp":
+            lateral_tolerance = FIDUCIAL_GUARDED_LATERAL_TOLERANCE_M
+            orientation_tolerance = FIDUCIAL_GUARDED_ORIENTATION_TOLERANCE_RAD
+            sensor_ready = estimator.fiducial_current_detection[ids]
+        clear_to_advance = sensor_ready & (lateral_error <= lateral_tolerance) & (orientation_error <= orientation_tolerance)
+        self.guarded_insert_steps[ids] += clear_to_advance.to(torch.long)
+        self.guarded_insert_holds[ids] += (~clear_to_advance).to(torch.long)
+
+        # The axial target leads the measured module by a bounded amount, so a
+        # step the arm cannot take does not accumulate into a lunge.
+        lead = (self.guarded_insert_target_x[ids] - module_pos[:, 0]).clamp(
+            -GUARDED_INSERT_MAX_LEAD_M, GUARDED_INSERT_MAX_LEAD_M
+        )
+        advanced = torch.where(
+            clear_to_advance,
+            module_pos[:, 0] + lead + GUARDED_INSERT_AXIAL_STEP_M,
+            module_pos[:, 0] + lead,
+        )
+        self.guarded_insert_target_x[ids] = torch.minimum(advanced, seated[0].expand_as(advanced))
+        target_module_pos = torch.stack(
+            (
+                self.guarded_insert_target_x[ids],
+                seated[1].expand_as(advanced),
+                seated[2].expand_as(advanced),
+            ),
+            dim=-1,
+        )
+        target_tool_pos, target_tool_rot = self._rigid_tool_command(
+            ids, target_module_pos + task.scene.env_origins[ids], staging_rot, tool_rot[ids]
+        )
+        self._drive_tool_to(
+            ids, tool, tool_rot, target_tool_pos, target_tool_rot, self.scales[INSERT], RIGID_TRANSIT_ATTITUDE_AUTHORITY
+        )
+        # Hold the module firmly while it is being driven between rails. The
+        # operating rule this project measured is capture gently, hold hard to
+        # move, retain once free; this phase moves.
+        self.gripper.retain_latch[inserting] = False
+
+        # The backstop. The lock is released at the hand-off above, so this can
+        # only fire if some future change holds it longer; it is simulator truth
+        # deliberately, because it is a geometric interlock protecting the rack
+        # from a mechanism rather than a perception decision, and it must not be
+        # able to fail open because a marker was occluded.
+        true_blade_x = _blade_centre_x(task)[ids]
+        release_depth = self.guarded_insert_release_x[ids]
+        due_to_release = inserting.clone()
+        due_to_release[:] = False
+        due_to_release[ids] = (true_blade_x >= release_depth) & grapple_latched(task)[ids]
+        if bool(due_to_release.any()):
+            release_grapple_latch(task, due_to_release)
+            self.latch_released |= due_to_release
+            self.latch_released_at[due_to_release & (self.latch_released_at < 0)] = step
+
+        fired = inserting & grapple_insertion_success_mask(task)
+        # A lock still engaged at the moment of judgement would make the seating
+        # check a statement about a joint. Fail closed rather than quietly
+        # accepting it.
+        return fired & ~grapple_latched(task)
+
+    def _front_overhang_x(self, ids: torch.Tensor) -> torch.Tensor:
+        """Distance from the module centre to its furthest-forward corner, now.
+
+        Read from the module's measured attitude and its own authored size, so
+        a module that comes out of the rails askew is retreated for what it
+        actually is rather than for what a square one would be. The grapple pin
+        is ignored deliberately: it protrudes from the *rear* face, away from
+        the rack, and adding it here would retreat the arm past its own reach
+        boundary for a feature that cannot touch anything.
+        """
+
+        blade = self.task.scene["spare_blade"]
+        size = getattr(getattr(blade.cfg, "spawn", None), "size", None)
+        half = blade.data.root_pos_w.new_tensor(
+            (0.5 * BLADE_LENGTH_M, 0.080, 0.0175) if size is None else tuple(0.5 * value for value in size)
+        )
+        signs = torch.tensor(
+            [
+                (sx, sy, sz)
+                for sx in (-1.0, 1.0)
+                for sy in (-1.0, 1.0)
+                for sz in (-1.0, 1.0)
+            ],
+            device=half.device,
+            dtype=half.dtype,
+        )
+        corners = signs * half
+        orientation = blade.data.root_quat_w[ids].unsqueeze(1).expand(-1, corners.shape[0], -1)
+        rotated = quat_apply(orientation.reshape(-1, 4), corners.repeat(ids.numel(), 1))
+        return rotated.reshape(ids.numel(), corners.shape[0], 3)[..., 0].amax(dim=-1)
 
     def _plan_lateral_transit(
         self,
@@ -2460,7 +3182,20 @@ class WorkflowDriver:
             )
 
         tool_to_blade_x = tool[ids, 0] - blade_x[ids]
-        retreat_x = TRANSIT_CLEAR_BLADE_CENTRE_X + tool_to_blade_x
+        # How far the module's furthest-forward corner really is from its
+        # centre, at the attitude the rails have just released it in. For a
+        # square module this is half its length and the nominal constant is
+        # exact; for a real one it is larger, and the difference is the whole
+        # reason the first crossing leg stalled against a lead-in plate.
+        overhang = self._front_overhang_x(ids)
+        measured_clear_centre_x = FLARE_LEADING_X - overhang - TRANSIT_FLARE_CLEARANCE_M
+        clear_centre_x = torch.minimum(
+            measured_clear_centre_x,
+            measured_clear_centre_x.new_full((), TRANSIT_CLEAR_BLADE_CENTRE_X),
+        )
+        self.transit_clear_centre_x[ids] = clear_centre_x
+        self.transit_front_overhang_m[ids] = overhang
+        retreat_x = clear_centre_x + tool_to_blade_x
 
         back = tool[ids].clone()
         back[:, 0] = retreat_x
@@ -2472,6 +3207,39 @@ class WorkflowDriver:
         self.waypoints[2, ids] = back
         self.waypoints[1, ids] = across
         self.waypoints[0, ids] = approach
+        if self.rigid_transit:
+            # Four module poses. Legs 3 and 2 keep the attitude the rails
+            # released the module in: rotating it while its nose is still
+            # between the flares is the one thing the retreat exists to avoid,
+            # and rotating it while crossing is what the arm cannot afford.
+            module_local = blade_world[ids] - task.scene.env_origins[ids]
+            held_rot = blade_asset.data.root_quat_w[ids]
+            square_rot = self.relocation_staging_rot.unsqueeze(0).expand(ids.numel(), -1)
+            staging = self.relocation_staging_pos.unsqueeze(0).expand_as(module_local)
+            crossed = torch.stack((clear_centre_x, staging[:, 1], staging[:, 2]), dim=-1)
+            retreated = torch.stack(
+                (clear_centre_x, module_local[:, 1], module_local[:, 2]), dim=-1
+            )
+            # 4: retreat, holding whatever attitude the rails released.
+            self.module_leg_pos[4, ids] = retreated
+            self.module_leg_rot[4, ids] = held_rot
+            # 3: square, at the source bay's retreat depth. Squaring only ever
+            # *shortens* the module's forward overhang, so the clearance leg 4
+            # bought is not spent by it, and doing it here means the crossing
+            # has an attitude to hold rather than one to change.
+            self.module_leg_pos[3, ids] = retreated
+            self.module_leg_rot[3, ids] = square_rot
+            # 2: cross.
+            self.module_leg_pos[2, ids] = crossed
+            self.module_leg_rot[2, ids] = square_rot
+            # 1: square again, at the destination bay, because the crossing is
+            # measured to give some of it back.
+            self.module_leg_pos[1, ids] = crossed
+            self.module_leg_rot[1, ids] = square_rot
+            # 0: in, to the pose the insertion begins from.
+            self.module_leg_pos[0, ids] = staging
+            self.module_leg_rot[0, ids] = square_rot
+            self.transit_leg_entered[ids] = 0
         if self.base_rail_enabled:
             # The physical shuttle accepts the ORU as soon as learned
             # extraction clears the rails.  It owns the collision-clear axial
@@ -2497,6 +3265,16 @@ class WorkflowDriver:
         self.leg_axis[2, ids] = 0  # back: along x
         self.leg_axis[1, ids] = 1  # across: along y
         self.leg_axis[0, ids] = 0  # in again: along x
+        if self.rigid_transit:
+            # **Last, because the branch above sets it too.** Written before it,
+            # the rigid plan's first leg was silently replaced by the pad-held
+            # follower's, which starts at the *cross* waypoint -- so the module
+            # retreated and crossed at once, cutting the corner diagonally
+            # across the source bay's lead-in flare, which is the single thing
+            # the retreat leg exists to prevent. It completed anyway, which is
+            # exactly why this is worth a comment rather than a fix and a
+            # silence.
+            self.waypoint_read[ids] = RIGID_TRANSIT_LEGS - 1
 
     def transit_progress(self) -> str:
         """One line describing where the transit follower actually is.
@@ -2532,7 +3310,7 @@ class WorkflowDriver:
             ),
             dim=-1,
         )
-        legs = torch.bincount(self.waypoint_read[ids], minlength=3).tolist()
+        legs = torch.bincount(self.waypoint_read[ids], minlength=RIGID_TRANSIT_LEGS).tolist()
         # Each conjunct of `arrived` separately, because the first relocation run
         # showed the tool sitting 0.4 mm from its last waypoint and not arriving,
         # and a single boolean cannot say which clause is the one refusing.
@@ -2548,7 +3326,7 @@ class WorkflowDriver:
         grip_error = grip_error[ids]
         latch = grapple_latch_diagnostics(self.task)
         return (
-            f"  transit: legs_remaining={legs[:3]} "
+            f"  transit: legs_remaining={legs[:RIGID_TRANSIT_LEGS]} "
             f"to_waypoint_m p50={float(distance.median()):.4f} max={float(distance.max()):.4f} "
             f"| last_leg={int((self.waypoint_read[ids] <= 0).sum())} "
             f"blade_x_ok={int((blade_x >= TRANSIT_TARGET_BLADE_X - 0.005).sum())} "
@@ -2665,6 +3443,118 @@ class WorkflowDriver:
         return rows[env_ids]
 
 
+def _transit_retention_report(driver, arguments) -> dict[str, object]:
+    """Summarise what happened to the tool-to-module transform during transit.
+
+    Acceptance gate 3 of this branch's task is that *robot* motion commands, not
+    module motion commands, produce the transfer, and that the tool-to-module
+    pose stays bounded and is recorded through it. That is this block. It is
+    written from accumulators the driver keeps every control step, so it exists
+    whether or not a trace file was requested, and it reports the payload-stage
+    baseline honestly as a run in which the robot was *not* the carrier.
+    """
+
+    carried = not arguments.base_rail_on_relocation
+    sampled = driver.transit_samples > 0
+    count = int(sampled.sum())
+
+    def summarize(values, mask) -> dict[str, object] | None:
+        selected = values[mask]
+        if selected.numel() == 0:
+            return None
+        finite = selected[torch.isfinite(selected)]
+        if finite.numel() == 0:
+            return None
+        ordered = torch.sort(finite).values
+        return {
+            "count": int(finite.numel()),
+            "mean": float(finite.mean()),
+            "p50": float(ordered[int(0.50 * (finite.numel() - 1))]),
+            "p95": float(ordered[int(0.95 * (finite.numel() - 1))]),
+            "max": float(finite.max()),
+            "min": float(finite.min()),
+        }
+
+    within = sampled & (driver.transit_loss_step < 0)
+    return {
+        "carrier": ("six_axis_robot" if carried else "world_aligned_payload_stage"),
+        "claim_is_that_the_robot_carried_the_module": carried,
+        "environments_that_entered_transit": count,
+        "environments_retaining_the_planned_transform_throughout": int(within.sum()),
+        # Not a chosen tolerance. See TRANSIT_RETENTION_POSITION_LIMIT_M.
+        "retention_limit_position_m": TRANSIT_RETENTION_POSITION_LIMIT_M,
+        "retention_limit_orientation_rad": TRANSIT_RETENTION_ORIENTATION_LIMIT_RAD,
+        "retention_limit_derivation": (
+            "the insert hand-off envelope, read backwards: the transit is planned from the "
+            "tool-to-module transform measured at rail release, so drift in it lands on the "
+            "staging pose one for one"
+        ),
+        "reference_frame": "tool frame at the instant extraction cleared the rails",
+        # The retreat is laid out from the module's measured corners, not from
+        # its nominal half-length, because a module leaving the rails is not
+        # square to them. Reported so the difference between the two is visible
+        # rather than buried in a constant.
+        "flare_leading_plane_x_m": FLARE_LEADING_X,
+        "nominal_clear_blade_centre_x_m": TRANSIT_CLEAR_BLADE_CENTRE_X,
+        "flare_clearance_margin_m": TRANSIT_FLARE_CLEARANCE_M,
+        "measured_front_overhang_m": summarize(driver.transit_front_overhang_m, sampled),
+        # Which legs the follower had to give up on, and what attitude they were
+        # left at. Empty on a run where every leg met its gate.
+        "legs": [
+            {
+                "leg": index,
+                "role": ("retreat", "square_at_source", "cross", "square_at_destination", "insert_approach")[
+                    RIGID_TRANSIT_LEGS - 1 - index
+                ],
+                "environments_forced_by_timeout": int(driver.transit_leg_forced[index][sampled].sum()),
+                "residual_orientation_rad": summarize(
+                    driver.transit_leg_residual_rad[index], sampled & driver.transit_leg_forced[index]
+                ),
+                "residual_position_m": summarize(
+                    driver.transit_leg_residual_m[index], sampled & driver.transit_leg_forced[index]
+                ),
+            }
+            for index in range(RIGID_TRANSIT_LEGS - 1, -1, -1)
+        ],
+        "retreat_clear_blade_centre_x_m": summarize(driver.transit_clear_centre_x, sampled),
+        "max_tool_to_module_position_drift_m": summarize(driver.transit_max_drift_m, sampled),
+        "max_tool_to_module_orientation_drift_rad": summarize(driver.transit_max_drift_rad, sampled),
+        "terminal_tool_to_module_position_drift_m": summarize(driver.transit_final_drift_m, sampled),
+        "terminal_tool_to_module_orientation_drift_rad": summarize(driver.transit_final_drift_rad, sampled),
+        "max_grip_error_m": summarize(driver.transit_max_grip_error_m, sampled),
+        "max_grip_attitude_rad": summarize(driver.transit_max_grip_attitude_rad, sampled),
+        "min_grip_drive_torque_nm": summarize(driver.transit_min_drive_torque_nm, sampled),
+        "tool_travel_m": summarize(driver.transit_tool_travel_m, sampled),
+        "module_travel_m": summarize(driver.transit_module_travel_m, sampled),
+        # A module that travels with the tool has followed it; a module that
+        # travels much less has been left behind, and a pooled drift maximum
+        # alone cannot tell those apart from a short transit.
+        "control_steps_before_retention_was_lost": summarize(
+            driver.transit_loss_step.to(torch.float64), sampled & (driver.transit_loss_step >= 0)
+        ),
+        "observed_per_environment": [
+            {
+                "env": index,
+                "entered_transit": bool(sampled[index]),
+                "samples": int(driver.transit_samples[index]),
+                "max_position_drift_m": float(driver.transit_max_drift_m[index]),
+                "max_orientation_drift_rad": float(driver.transit_max_drift_rad[index]),
+                "terminal_position_drift_m": float(driver.transit_final_drift_m[index]),
+                "terminal_orientation_drift_rad": float(driver.transit_final_drift_rad[index]),
+                "tool_travel_m": float(driver.transit_tool_travel_m[index]),
+                "module_travel_m": float(driver.transit_module_travel_m[index]),
+                "measured_front_overhang_m": float(driver.transit_front_overhang_m[index]),
+                "retreat_clear_blade_centre_x_m": float(driver.transit_clear_centre_x[index]),
+                "retained_throughout": bool(within[index]),
+                "driver_step_retention_lost": (
+                    int(driver.transit_loss_step[index]) if int(driver.transit_loss_step[index]) >= 0 else None
+                ),
+            }
+            for index in range(driver.transit_samples.numel())
+        ],
+    }
+
+
 def _chain_report(recorder, workflow: str) -> dict[str, object]:
     """Pool the recorded workflows into a gated summary.
 
@@ -2755,10 +3645,39 @@ def main() -> dict[str, object]:
             if args.latch_joint_mode == "fixed":
                 env_cfg.scene.release_latch_joint.spawn.break_force_n = args.latch_rated_force_n
                 env_cfg.scene.release_latch_joint.spawn.break_torque_nm = args.latch_rated_torque_nm
+                # The release latch is a procedurally authored, per-environment
+                # joint, and PhysX scene replication copies only the first one.
+                # A 32-environment batch therefore came up with a latch prim in
+                # every environment and a usable joint in exactly one, and
+                # failed at construction rather than silently -- which is the
+                # right failure, but it is avoidable. Author every environment
+                # independently, as ``configure_base_rail`` already does for the
+                # payload stage and as the camera workflow does for its sensors.
+                env_cfg.scene.replicate_physics = False
+                env_cfg.scene.clone_in_fabric = False
         env_cfg.base_rail_enabled = args.base_rail_on_relocation
         env_cfg.configure_robustness(0)
         if args.base_rail_on_relocation:
             env_cfg.configure_base_rail()
+        if (
+            args.latch_on_release
+            and args.workflow == "relocate"
+            and not args.base_rail_on_relocation
+            and hasattr(env_cfg, "configure_service_destination")
+        ):
+            # A robot-carried module enters the destination bay from *outside*
+            # the rack, which no skill in this repository has ever done: both
+            # insertion skills reset with the module already in its channel. The
+            # bay therefore needs a lead-in on the vertical axis as well as the
+            # lateral one, sized by the attitude a six-axis arm can actually
+            # deliver through free space. Installed only on this path, so every
+            # task an existing certification describes is unchanged.
+            env_cfg.configure_service_destination()
+            print(
+                "[INFO] Destination bay fitted with its vertical lead-in "
+                "(16.6 mm per side, accepting 0.074 rad of delivered attitude error)",
+                flush=True,
+            )
         # The full physical stage motion can legitimately outlive the original
         # per-skill episode. Keep the environment alive for the explicitly
         # requested driver horizon; learned phases still retain their own
@@ -3013,7 +3932,8 @@ def main() -> dict[str, object]:
             np.savez_compressed(args.handoff_trace, **trace)
             print(
                 f"[INFO] Wrote {args.handoff_trace}: "
-                f"{trace['handoff'].shape[0]} hand-offs, {trace['settle'].shape[0]} settling rows",
+                f"{trace['handoff'].shape[0]} hand-offs, {trace['transit'].shape[0]} transit samples, "
+                f"{trace['settle'].shape[0]} settling rows",
                 flush=True,
             )
 
@@ -3057,6 +3977,11 @@ def main() -> dict[str, object]:
                 if args.workflow == "relocate"
                 else []
             ),
+            # Whether the robot carried the module, as a number rather than as
+            # a claim. Present on every workflow that has a transit, including
+            # the payload-stage baseline, so the two can be read side by side
+            # and the baseline cannot quietly borrow this section's language.
+            "robot_carried_transit": _transit_retention_report(driver, args),
             "transit_planner": (
                 {
                     "type": (
@@ -3168,6 +4093,16 @@ def main() -> dict[str, object]:
                     if bool(driver.latch_ever_engaged[index])
                     else None
                 ),
+                "released_before_insertion": bool(driver.latch_released[index]),
+                "hand_opened_after_settling_verification": bool(driver.gripper_released[index]),
+                "hand_opened_at_driver_step": (
+                    int(driver.gripper_released_at[index]) if bool(driver.gripper_released[index]) else None
+                ),
+                "released_at_driver_step": (
+                    int(driver.latch_released_at[index]) if bool(driver.latch_released[index]) else None
+                ),
+                "carriage_seek_travel_m": float(driver.latch_seek_travel_m[index]),
+                "engagements_refused_out_of_seek_travel": int(driver.latch_seek_refusals[index]),
                 "max_relative_position_error_m": float(driver.latch_max_position_error_m[index]),
                 "max_relative_orientation_error_rad": float(driver.latch_max_orientation_error_rad[index]),
                 "max_applied_force_n": (

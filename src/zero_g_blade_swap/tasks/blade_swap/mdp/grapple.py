@@ -35,13 +35,20 @@ from isaaclab.utils.math import (
     quat_mul,
     subtract_frame_transforms,
 )
-from pxr import Gf, UsdPhysics
+from pxr import Gf, UsdGeom, UsdPhysics
 
+from zero_g_blade_swap import service_latch
 from zero_g_blade_swap.grapple_geometry import (
     EXTRACTED_BLADE_CENTRE_X,
     GRAPPLE_HEAD_ON_TOOL_ROT,
+    GRAPPLE_PIN_COLLAR_X,
     GRAPPLE_PIN_GRIP_OFFSET,
     SLOT_MOUTH_X,
+)
+from zero_g_blade_swap.tasks.blade_swap.assets import (
+    SERVICE_LATCH_JAWS,
+    SERVICE_LATCH_PRIM,
+    service_latch_jaw_translation,
 )
 
 from .actions import (
@@ -206,6 +213,20 @@ class GrappleLatch(ManagerTermBase):
         env._grapple_latch_first_engagement_step = torch.full(
             (env.num_envs,), -1, dtype=torch.long, device=env.device
         )
+        #: Episode step the driver released the form lock, or -1. A latch that
+        #: is never released is not a latch, it is a weld, and the difference
+        #: has to be in the record rather than in the prose.
+        env._grapple_latch_release_step = torch.full(
+            (env.num_envs,), -1, dtype=torch.long, device=env.device
+        )
+        #: Carriage travel each engagement needed to find the collar shoulder.
+        env._grapple_latch_seek_travel_m = torch.zeros(env.num_envs, device=env.device)
+        #: Engagements refused because the shoulder was outside that travel.
+        env._grapple_latch_seek_refusals = torch.zeros(
+            env.num_envs, dtype=torch.long, device=env.device
+        )
+        # So a driver can ask the term to let go without reaching into it.
+        env._grapple_latch_term = self
         env._grapple_latch_position_error_m = torch.zeros(env.num_envs, device=env.device)
         env._grapple_latch_orientation_error_rad = torch.zeros(env.num_envs, device=env.device)
         env._grapple_latch_applied_force_n = torch.zeros(env.num_envs, device=env.device)
@@ -231,6 +252,35 @@ class GrappleLatch(ManagerTermBase):
             raise RuntimeError(f"GrappleLatch expected wrist_3_link, resolved {body_names}")
         self._wrist_body_id = int(body_ids[0])
         self._fixed_joints: list[UsdPhysics.FixedJoint] = []
+        # Translate ops of the visible jaw carriages, when the scene carries the
+        # latch hardware. Empty on tasks that do not, so every task that existed
+        # before the mechanism did behaves exactly as it did.
+        self._jaw_translate_ops: list[tuple[object, object]] = []
+        stage = get_current_stage()
+        for env_path in env.scene.env_prim_paths:
+            ops = []
+            for jaw in SERVICE_LATCH_JAWS:
+                prim = stage.GetPrimAtPath(
+                    f"{env_path}/Robot/wrist_3_link/{SERVICE_LATCH_PRIM}/{jaw}"
+                )
+                if not prim.IsValid():
+                    ops = []
+                    break
+                translate = next(
+                    (
+                        op
+                        for op in UsdGeom.Xformable(prim).GetOrderedXformOps()
+                        if op.GetOpType() == UsdGeom.XformOp.TypeTranslate
+                    ),
+                    None,
+                )
+                if translate is None:
+                    raise RuntimeError(f"Service latch jaw '{prim.GetPath()}' has no translate op")
+                ops.append(translate)
+            if not ops:
+                self._jaw_translate_ops = []
+                break
+            self._jaw_translate_ops.append(tuple(ops))
         if self.cfg.params.get("joint_mode", "compliant") == "fixed":
             stage = get_current_stage()
             for env_path in env.scene.env_prim_paths:
@@ -252,6 +302,9 @@ class GrappleLatch(ManagerTermBase):
         self._env._grapple_latch_relative_quat[ids] = 0.0
         self._env._grapple_latch_relative_quat[ids, 0] = 1.0
         self._env._grapple_latch_first_engagement_step[ids] = -1
+        self._env._grapple_latch_release_step[ids] = -1
+        self._env._grapple_latch_seek_travel_m[ids] = 0.0
+        self._env._grapple_latch_seek_refusals[ids] = 0
         self._env._grapple_latch_position_error_m[ids] = 0.0
         self._env._grapple_latch_orientation_error_rad[ids] = 0.0
         self._env._grapple_latch_applied_force_n[ids] = 0.0
@@ -267,6 +320,7 @@ class GrappleLatch(ManagerTermBase):
         if self._fixed_joints:
             for index in ids.detach().cpu().tolist():
                 self._fixed_joints[index].GetJointEnabledAttr().Set(False)
+        self._set_jaw_pose(ids, engaged=False)
         zeros = torch.zeros((len(ids), 1, 3), device=self._env.device)
         self._env.scene["spare_blade"].permanent_wrench_composer.set_forces_and_torques(
             forces=zeros, torques=zeros, env_ids=ids, is_global=True
@@ -308,7 +362,28 @@ class GrappleLatch(ManagerTermBase):
         newly_latched = qualified & ~latched
         blade = env.scene[asset_cfg.name]
         tool_position, tool_orientation = end_effector_pose_world(env)
+        # **The carriage seeks the collar; it does not assume it.** Where the
+        # pin sits along the approach axis is set by where its taper thickness
+        # equals the pad opening, so it moves with the closure command -- the
+        # interface specification measures about 12.5 mm of self-seating travel
+        # on every capture. A latch authored at the nominal collar depth would
+        # close on the collar's rim. Measure the shoulder, and refuse the
+        # engagement when it is outside the carriage's travel rather than
+        # pretending the mechanism can reach it.
+        seek = _collar_shoulder_seek_m(env, blade)
+        reachable = (seek >= service_latch.AXIAL_SEEK_RANGE_M[0]) & (
+            seek <= service_latch.AXIAL_SEEK_RANGE_M[1]
+        )
+        env._grapple_latch_seek_refusals.add_((newly_latched & ~reachable).to(torch.long))
+        newly_latched = newly_latched & reachable
+        qualified = qualified & (latched | reachable)
         if bool(newly_latched.any()):
+            env._grapple_latch_seek_travel_m[newly_latched] = seek[newly_latched]
+            self._set_jaw_pose(
+                torch.nonzero(newly_latched, as_tuple=False).squeeze(-1),
+                engaged=True,
+                seek=seek,
+            )
             inverse_tool = quat_inv(tool_orientation[newly_latched])
             env._grapple_latch_relative_pos[newly_latched] = quat_apply(
                 inverse_tool,
@@ -449,6 +524,55 @@ class GrappleLatch(ManagerTermBase):
             is_global=False,
         )
 
+    def release(self, mask: torch.Tensor) -> None:
+        """Let the module go: disable the joint, drop the wrench, stow the jaws.
+
+        Called by the driver at the instant the transit hands over, because the
+        form lock is for *transport*. Driving the module back between rails is
+        the certified insert policy's job and it was trained on pad contact; a
+        joint left enabled through insertion would be carrying the seating
+        contact, and the settling check at the end would then be measuring a
+        weld rather than a seated module.
+        """
+
+        env = self._env
+        ids = mask.nonzero(as_tuple=False).flatten()
+        if ids.numel() == 0:
+            return
+        newly_released = mask & env._grapple_latched
+        env._grapple_latch_release_step[newly_released] = env.episode_length_buf[newly_released].to(
+            torch.long
+        )
+        env._grapple_latched[ids] = False
+        env._grapple_latch_armed[ids] = False
+        if self._fixed_joints:
+            for index in ids.detach().cpu().tolist():
+                self._fixed_joints[index].GetJointEnabledAttr().Set(False)
+        zeros = torch.zeros((ids.numel(), 1, 3), device=env.device)
+        env.scene["spare_blade"].permanent_wrench_composer.set_forces_and_torques(
+            forces=zeros, torques=zeros, env_ids=ids, is_global=True
+        )
+        self._set_jaw_pose(ids, engaged=False)
+
+    def _set_jaw_pose(self, ids, *, engaged: bool, seek: torch.Tensor | None = None) -> None:
+        """Move the visible carriages between their two commanded positions."""
+
+        if not self._jaw_translate_ops:
+            return
+        indices = ids.detach().cpu().tolist() if hasattr(ids, "detach") else list(ids)
+        travel = None if seek is None else seek.detach().cpu().tolist()
+        for index in indices:
+            for op, sign in zip(self._jaw_translate_ops[index], (1.0, -1.0), strict=True):
+                op.Set(
+                    Gf.Vec3d(
+                        *service_latch_jaw_translation(
+                            engaged=engaged,
+                            seek_m=0.0 if travel is None else float(travel[index]),
+                            sign=sign,
+                        )
+                    )
+                )
+
     def _engage_fixed_joints(self, env, blade, mask: torch.Tensor) -> None:
         """Capture the current wrist-to-payload frame, then enable the joint."""
 
@@ -510,6 +634,39 @@ def _blade_mass(env, asset_cfg: SceneEntityCfg) -> torch.Tensor:
     return env._grapple_latch_mass
 
 
+def _collar_shoulder_seek_m(env, blade) -> torch.Tensor:
+    """Carriage travel needed to put the jaw lips behind the collar shoulder.
+
+    The depth of the module's collar shoulder from the flange, along the wrist's
+    own approach axis, minus the depth the latch is authored at. Zero means the
+    module is seated exactly where the geometry assumed.
+    """
+
+    robot = env.scene["robot"]
+    wrist_body = getattr(env, "_grapple_wrist_body_id", None)
+    if wrist_body is None:
+        body_ids, _names = robot.find_bodies(["wrist_3_link"], preserve_order=True)
+        wrist_body = int(body_ids[0])
+        env._grapple_wrist_body_id = wrist_body
+    wrist_position = robot.data.body_pos_w[:, wrist_body]
+    wrist_orientation = robot.data.body_quat_w[:, wrist_body]
+    shoulder_local = blade.data.root_pos_w.new_tensor((GRAPPLE_PIN_COLLAR_X[1], 0.0, 0.0)).expand(
+        env.num_envs, -1
+    )
+    shoulder_world = blade.data.root_pos_w + quat_apply(blade.data.root_quat_w, shoulder_local)
+    depth = quat_apply(quat_inv(wrist_orientation), shoulder_world - wrist_position)[:, 2]
+    return depth - service_latch.COLLAR_SHOULDER_FROM_FLANGE_M
+
+
+def release_grapple_latch(env, mask: torch.Tensor) -> None:
+    """Tell the form lock to let the module go. A no-op where none is fitted."""
+
+    term = getattr(env, "_grapple_latch_term", None)
+    if term is None:
+        return
+    term.release(mask)
+
+
 def arm_grapple_latch(env, mask: torch.Tensor) -> None:
     """Tell a ``require_armed`` latch that these modules are free of the rack.
 
@@ -555,6 +712,9 @@ def grapple_latch_diagnostics(env) -> dict[str, torch.Tensor]:
     return {
         "engaged": read("_grapple_latched", false),
         "first_engagement_episode_step": read("_grapple_latch_first_engagement_step", first),
+        "release_episode_step": read("_grapple_latch_release_step", first),
+        "seek_travel_m": read("_grapple_latch_seek_travel_m", zeros),
+        "seek_refusals": read("_grapple_latch_seek_refusals", counts),
         "position_error_m": read("_grapple_latch_position_error_m", zeros),
         "orientation_error_rad": read("_grapple_latch_orientation_error_rad", zeros),
         "applied_force_n": read("_grapple_latch_applied_force_n", zeros),

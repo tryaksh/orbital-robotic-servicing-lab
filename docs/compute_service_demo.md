@@ -22,10 +22,16 @@ Open `http://127.0.0.1:8000`.
 | `replay_full_chain` | Synthetic service/API demonstration without Isaac physics |
 | `isaac_full_chain_perception` | Live RGB-D Isaac run |
 
-Important: the live preset currently enables `--base_rail_on_relocation`, which
-hands the module to a hidden world-mounted D6 payload stage. It is a retained
-baseline, not the final robot-carried demonstration. The work described in
-`docs/claude_opus_5_handoff.md` must replace that default.
+The live preset runs the **robot-carried** workflow: learned capture and
+extraction, a transit on the visible robot-side form lock, guarded robot-driven
+insertion, and release only after settled seating. It commands
+`--latch_on_release --latch_joint_mode fixed`.
+
+It does **not** enable `--base_rail_on_relocation`. That flag hands the module to
+a hidden world-mounted D6 payload stage and is retained in the driver only as a
+labelled historical baseline;
+`tests/test_robot_carried_contract.py::test_the_live_preset_does_not_use_the_world_mounted_payload_stage`
+keeps it out of this preset.
 
 ## API
 

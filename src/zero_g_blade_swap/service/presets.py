@@ -41,6 +41,15 @@ POSE_HEAD_W65_OVERVIEW = Path("checkpoints/module_pose_head_two_slot_w65_overvie
 POSE_HEAD_W65_OVERVIEW_EVIDENCE = Path("evidence/module_pose_head_two_slot_w65_overview.json")
 CAMERA_SCALE_W65_OVERVIEW_EVIDENCE = Path("evidence/camera_scale_grapple_w65.json")
 WORKFLOW_SCRIPT = Path("scripts/run_workflow_demo.py")
+LATCH_SOURCE = Path("src/zero_g_blade_swap/service_latch.py")
+#: Rating the live run gives the robot-side form lock, in newtons and
+#: newton-metres. Not a preference: ``scripts/run_robot_carried.sh sweep``
+#: measures what the transit's own reaction demands and
+#: ``evidence/robot_carried_interface.json`` records the sweep. A PhysX break
+#: threshold is permanent, so a rating below the demand is a lock that is
+#: present for the first second of the flight and absent for the rest of it.
+LATCH_RATED_FORCE_N = 20_000.0
+LATCH_RATED_TORQUE_NM = 1_000.0
 LIVE_TASK_ID = "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0"
 COLLECTION_TASK_ID = "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Collect-v0"
 OVERVIEW_IMAGE_SHAPE_HWC = [384, 384, 3]
@@ -70,6 +79,7 @@ LIVE_INPUT_REQUIREMENTS = (
     ("perception integration", "perception_integration", PERCEPTION_SOURCE),
     ("RGB-D camera configuration", "camera_config", CAMERA_CONFIG_SOURCE),
     ("service-workcell configuration", "workcell_config", WORKCELL_CONFIG_SOURCE),
+    ("service-latch geometry", "service_latch_geometry", LATCH_SOURCE),
 )
 
 
@@ -148,10 +158,11 @@ class PresetRegistry:
                 title="Live RGB-D compute-module service run",
                 description=(
                     "Runs the measured two-bay Isaac workflow: calibrated RGB-D fiducial perception, "
-                    "visual occupancy planning, learned capture and extraction, physical payload-shuttle "
-                    "transfer, guarded insertion, settling verification, telemetry, video, and artifacts."
+                    "visual occupancy planning, learned capture and extraction, a robot-carried transit "
+                    "on a visible robot-side form lock, guarded robot-driven insertion, release after "
+                    "settling verification, telemetry, video, and artifacts."
                 ),
-                revision="isaac-rgbd-serviceability-v1",
+                revision="isaac-rgbd-robot-carried-v1",
                 backend=BackendKind.ISAAC,
                 estimated_runtime_s=480,
                 produces_video=True,
@@ -596,7 +607,19 @@ class PresetRegistry:
                 str(self._project_path(INSERT_W65_TWO_SLOT)),
                 "--perception_backend",
                 "fiducial_pnp",
-                "--base_rail_on_relocation",
+                # The robot carries the module. The world-mounted payload stage
+                # that used to appear here took it off the arm after extraction
+                # and moved it independently; it is retained in the driver as a
+                # labelled historical baseline and is deliberately not reachable
+                # from this preset. tests/test_robot_carried_contract.py keeps it
+                # out.
+                "--latch_on_release",
+                "--latch_joint_mode",
+                "fixed",
+                "--latch_rated_force_n",
+                str(LATCH_RATED_FORCE_N),
+                "--latch_rated_torque_nm",
+                str(LATCH_RATED_TORQUE_NM),
                 "--num_envs",
                 "1",
                 "--seed",

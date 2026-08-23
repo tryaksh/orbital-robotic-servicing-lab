@@ -1,0 +1,210 @@
+{
+  "status": "passed",
+  "title": "Robot-side service latch clearance, derived from the measured gripper envelope",
+  "evidence_type": "geometric_derivation_no_simulator",
+  "inputs": {
+    "gripper_envelope": "evidence/gripper_collision_envelope.json",
+    "gripper_envelope_axes": {
+      "closing_axis": "x",
+      "approach_axis": "z",
+      "third_axis": "y",
+      "note": "The closing axis is chosen by measurement: it is the wrist axis on which the two pad centres move apart as the command opens. The approach axis is +z because every tool offset in this project is a +z translation of the flange."
+    },
+    "gripper_envelope_min_m": [
+      -0.077232,
+      -0.0375,
+      -0.003357
+    ],
+    "gripper_envelope_max_m": [
+      0.077232,
+      0.0375,
+      0.16211
+    ],
+    "latch_module": "src/zero_g_blade_swap/service_latch.py"
+  },
+  "latch": {
+    "frame": "wrist_3_link; x closing, y third, z approach out of the flange",
+    "window_from_flange_m": [
+      0.16800000000000004,
+      0.24800000000000003
+    ],
+    "stowed_depth_from_flange_m": [
+      0.14300000000000004,
+      0.16500000000000004
+    ],
+    "engaged_depth_from_flange_m": [
+      0.16800000000000004,
+      0.19000000000000003
+    ],
+    "axial_seek_range_m": [
+      -0.005000000000000032,
+      0.04
+    ],
+    "close_stroke_m": 0.031,
+    "extend_stroke_m": 0.025,
+    "lip_total_bearing_area_m2": 0.000968,
+    "lip_bearing_stress_at_rating_mpa": 0.6198347107438016,
+    "rated_force_n": 600.0,
+    "rated_torque_nm": 30.0,
+    "required_axial_capacity_n": 66.4
+  },
+  "release_requirement": {
+    "release_before_blade_centre_x_m": 0.693,
+    "release_before_blade_centre_x_at_zero_seek_m": 0.733,
+    "seated_blade_centre_x_m": 0.75,
+    "note": "An engaged jaw at the far end of its seek travel enters the slot mouth once the module centre passes this x. The workflow releases the latch before the final insertion leg, which is earlier than this, and the stowed carriage clears the mouth at the seated pose by the margin recorded above."
+  },
+  "channel": {
+    "half_width_y_m": 0.08975,
+    "floor_top_z_m": 0.7025,
+    "lip_bottom_z_m": 0.7385,
+    "pin_axis_z_m": 0.72
+  },
+  "checks": [
+    {
+      "check": "latch_engaged_clear_of_hand:left_rail@seek-5mm",
+      "requirement": "latch inner face clears the full hand half-extent of 0.0375 m at this depth",
+      "margin_m": 0.0085,
+      "passed": true,
+      "detail": "seek=-0.0050 m, jaw depth from 0.0300 m, inner face at 0.0460 m"
+    },
+    {
+      "check": "latch_engaged_clear_of_hand:right_rail@seek-5mm",
+      "requirement": "latch inner face clears the full hand half-extent of 0.0375 m at this depth",
+      "margin_m": 0.0085,
+      "passed": true,
+      "detail": "seek=-0.0050 m, jaw depth from 0.0300 m, inner face at 0.0460 m"
+    },
+    {
+      "check": "latch_engaged_clear_of_hand:left_rail@seek+40mm",
+      "requirement": "latch inner face clears the full hand half-extent of 0.0375 m at this depth",
+      "margin_m": 0.0085,
+      "passed": true,
+      "detail": "seek=+0.0400 m, jaw depth from 0.0300 m, inner face at 0.0460 m"
+    },
+    {
+      "check": "latch_engaged_clear_of_hand:right_rail@seek+40mm",
+      "requirement": "latch inner face clears the full hand half-extent of 0.0375 m at this depth",
+      "margin_m": 0.0085,
+      "passed": true,
+      "detail": "seek=+0.0400 m, jaw depth from 0.0300 m, inner face at 0.0460 m"
+    },
+    {
+      "check": "latch_stowed_clear_of_hand:left_web",
+      "requirement": "latch inner face clears the inner fingers only half-extent of 0.0135 m at this depth",
+      "margin_m": 0.033,
+      "passed": true,
+      "detail": "seek=+0.0000 m, jaw depth from 0.1430 m, inner face at 0.0465 m"
+    },
+    {
+      "check": "latch_stowed_clear_of_hand:right_web",
+      "requirement": "latch inner face clears the inner fingers only half-extent of 0.0135 m at this depth",
+      "margin_m": 0.033,
+      "passed": true,
+      "detail": "seek=+0.0000 m, jaw depth from 0.1430 m, inner face at 0.0465 m"
+    },
+    {
+      "check": "latch_stowed_clear_of_hand:left_lip_upper",
+      "requirement": "latch inner face clears the inner fingers only half-extent of 0.0135 m at this depth",
+      "margin_m": 0.0215,
+      "passed": true,
+      "detail": "seek=+0.0000 m, jaw depth from 0.1430 m, inner face at 0.0350 m"
+    },
+    {
+      "check": "latch_stowed_clear_of_hand:right_lip_upper",
+      "requirement": "latch inner face clears the inner fingers only half-extent of 0.0135 m at this depth",
+      "margin_m": 0.0215,
+      "passed": true,
+      "detail": "seek=+0.0000 m, jaw depth from 0.1430 m, inner face at 0.0350 m"
+    },
+    {
+      "check": "latch_stowed_clear_of_hand:left_lip_lower",
+      "requirement": "latch inner face clears the inner fingers only half-extent of 0.0135 m at this depth",
+      "margin_m": 0.0215,
+      "passed": true,
+      "detail": "seek=+0.0000 m, jaw depth from 0.1430 m, inner face at 0.0350 m"
+    },
+    {
+      "check": "latch_stowed_clear_of_hand:right_lip_lower",
+      "requirement": "latch inner face clears the inner fingers only half-extent of 0.0135 m at this depth",
+      "margin_m": 0.0215,
+      "passed": true,
+      "detail": "seek=+0.0000 m, jaw depth from 0.1430 m, inner face at 0.0350 m"
+    },
+    {
+      "check": "latch_stowed_clear_of_hand:left_rail",
+      "requirement": "latch inner face clears the full hand half-extent of 0.0375 m at this depth",
+      "margin_m": 0.0085,
+      "passed": true,
+      "detail": "seek=+0.0000 m, jaw depth from 0.0300 m, inner face at 0.0460 m"
+    },
+    {
+      "check": "latch_stowed_clear_of_hand:right_rail",
+      "requirement": "latch inner face clears the full hand half-extent of 0.0375 m at this depth",
+      "margin_m": 0.0085,
+      "passed": true,
+      "detail": "seek=+0.0000 m, jaw depth from 0.0300 m, inner face at 0.0460 m"
+    },
+    {
+      "check": "stowed_latch_clear_of_the_slot_mouth",
+      "requirement": "with the module fully seated, no stowed latch body is past the slot mouth",
+      "margin_m": 0.008,
+      "passed": true,
+      "detail": "deepest stowed body reaches x = 0.4420 m against a mouth at 0.4500 m"
+    },
+    {
+      "check": "latch_rails_inside_the_channel_width",
+      "requirement": "the carriage rails are narrower than the rack channel they run beside",
+      "margin_m": 0.03175,
+      "passed": true,
+      "detail": "rail outer face at 0.0580 m against a channel half-width of 0.0897 m"
+    },
+    {
+      "check": "engaged_jaw_stops_short_of_the_module_face",
+      "requirement": "at the far end of its seek travel the jaw is still on the shaft",
+      "margin_m": 0.018,
+      "passed": true,
+      "detail": "jaw reaches 0.2300 m from the flange, module face at 0.2480 m"
+    },
+    {
+      "check": "lip_is_backed_by_collar",
+      "requirement": "the lip's outer edge is inside the collar's own half-height",
+      "margin_m": 0.005,
+      "passed": true,
+      "detail": "jaw half-height 0.0400 m, collar half-height 0.0450 m"
+    },
+    {
+      "check": "lip_clears_the_shaft",
+      "requirement": "the lip band starts above the shaft's own half-height",
+      "margin_m": 0.003,
+      "passed": true,
+      "detail": "lip inner edge 0.0180 m, shaft half-height 0.0150 m"
+    },
+    {
+      "check": "lip_overlaps_the_collar_shoulder",
+      "requirement": "the lip reaches inboard of the collar's third-axis half-width, so it has shoulder to bear on",
+      "margin_m": 0.011,
+      "passed": true,
+      "detail": "lip reaches 0.0040 m, collar half-width 0.0150 m"
+    },
+    {
+      "check": "released_lip_clears_the_collar",
+      "requirement": "after the release stroke the lip is outboard of the collar",
+      "margin_m": 0.02,
+      "passed": true,
+      "detail": "released lip at 0.0350 m"
+    },
+    {
+      "check": "latch_lives_past_the_hand",
+      "requirement": "the engaged latch begins past the deepest measured gripper body",
+      "margin_m": 0.00589,
+      "passed": true,
+      "detail": "collar shoulder 0.1680 m, hand reaches 0.1621 m"
+    }
+  ],
+  "scope_and_limitations": [
+    "Axis-aligned bounding volumes, in the frame the gripper envelope was measured in.",
+    "The latch is authored as visual geometry; its load path is the break-rated fixed joint the workflow reports, not contact between these boxes and the pin.",
+    "Simulation only. No latch has been built or loaded on hardware."
+  ]
+}
