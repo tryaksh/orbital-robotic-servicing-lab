@@ -60,9 +60,9 @@ echo "[$(date +%H:%M:%S)] RESET GATE: is the module actually held at reset"
     --episode_metrics "$OUT/reset_gate.npz" --report "$OUT/reset_gate.json" \
     > "$OUT/reset_gate.log" 2>&1
 echo "[$(date +%H:%M:%S)]   exit=$?"
-"$PYTHON" - <<'PY' 2>/dev/null || true
-import json, numpy as np
-rows = np.load("artifacts/insert_stroke/reset_gate.npz", allow_pickle=True)
+OUT="$OUT" "$PYTHON" - <<'PY' 2>/dev/null || true
+import json, numpy as np, os
+rows = np.load(f"{os.environ['OUT']}/reset_gate.npz", allow_pickle=True)
 fields = [str(name) for name in rows["fields"]]
 index = {name: position for position, name in enumerate(fields)}
 data = rows["rows"]

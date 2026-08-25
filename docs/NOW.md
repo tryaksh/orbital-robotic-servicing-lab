@@ -48,20 +48,41 @@ seeds, Wilson 95% **[92.7%, 99.4%]**. Per seed: 93.75%, 100%, 100%. The gate is
 95% pooled and 95% worst-case; both pass. Tool-to-module drift through the carry
 is 0.9 mm and 2.5 mrad at the median, 2.3 mm and 6.3 mrad at worst.
 
-`evidence/workflow_robot_carried_m130pin_guarded_certification.json`
+`evidence/workflow_robot_carried_m130pin_guarded_c11065_certification.json`
 
-The two befores are preserved, because a before is what makes an after mean
+**Certified twice, at two rack clearances, and the two are identical.** The
+destination channel's throat was re-derived on 2026-08-25 and moved from
+12.689 mm to 11.065 mm per side, which moves a published number, so the chain was
+re-run under it before anything was allowed to depend on it:
+
+| | throat 12.689 mm | throat 11.065 mm |
+| --- | ---: | ---: |
+| pooled | 97.92% (94/96) | **97.92% (94/96)** |
+| seed 4070 | 93.75% | 93.75% |
+| seed 5070 | 100.00% | 100.00% |
+| seed 6070 | 100.00% | 100.00% |
+
+Seed for seed, which is stronger than the pooled agreement on its own. The chain
+never used the headroom that moved: it delivers 46 mrad and its form lock holds
+the module there, so a throat that accepts 49.18 mrad instead of 56.40 is still
+3.2 mrad clear, and the guarded advance's own gates come from
+`SLOT_ENTRY_RAMP_CATCH_M` on the *vertical* ramp, which did not move. The
+12.689 mm run is preserved as
+`evidence/workflow_robot_carried_m130pin_guarded_certification.json`.
+
+The two befores are preserved too, because a before is what makes an after mean
 anything: 31.25% (`workflow_robot_carried_relocate_certification.json`), then
 96.88% (`workflow_robot_carried_m130_guarded_certification.json`).
 
-> **Provenance caveat, and it applies to every number on this page.** This run —
-> like all nine reports that record source hashes — was produced on **uncommitted
-> working-tree code**. Four of its six recorded `runtime_source_bindings` match no
-> commit in the repository's 266-commit history. The run happened and the episodes
-> are the episodes, but it **cannot be reproduced from this repository**, and
-> nobody can say what differed. Verify with
-> `python scripts/check_source_provenance.py --depth 200`. Closing this is
-> `NEXT_WORK.md` **T0**, ahead of everything else.
+> **Provenance: the 11.065 mm run is the first one here that recovers.** Every
+> report that records source hashes had been produced on **uncommitted
+> working-tree code** — nine of them, across three sessions, none reproducible
+> from this repository. This one was launched from a clean commit, and
+> `python scripts/check_source_provenance.py --depth 20` reads
+> `robot_carried_full_chain_c11065.json` as **RECOVERED** where the other nine are
+> LOST. That is `NEXT_WORK.md` **T0**'s first recommendation, and it cost nothing
+> but ordering. The nine are still lost and every number that rests on them still
+> carries the caveat.
 
 ### Skills
 
@@ -111,10 +132,13 @@ certification loaded it and the policy-set hash covers it; the seating is the
 scripted guarded advance, so it never acts. `--insert_checkpoint` is optional and
 `--insert_controller policy` is what makes it act.
 
-Provenance is mechanical, not remembered: `evidence/robot_carried_full_chain_pin.json`
+Provenance is mechanical, not remembered: `evidence/robot_carried_full_chain_c11065.json`
 records all three paths and their SHA-256, the pooled report records the combined
 `policy_set_sha256`, and `tests/test_reproduction_path.py` fails if
-`scripts/run_robot_carried.sh` stops defaulting to that set.
+`scripts/run_robot_carried.sh` stops defaulting to that set. That file is also the
+one report here whose *source* bindings recover from git;
+`evidence/robot_carried_full_chain_pin.json` is the same record for the 12.689 mm
+run and does not.
 
 ## 4. Settled — do not re-litigate
 
@@ -153,6 +177,30 @@ Each of these was measured, and re-deriving them costs GPU hours that buy nothin
   and the chain scored **0.00%** over 32 episodes on that rack. Both lead-ins are
   derived from the rail face now and `tests/test_workcell_geometry.py` holds it.
   See `evidence/RETRACTED.md`.
+- **A rack may not hold a module outside its own acceptance criterion.** A rigid
+  part fully inside a channel with `c` per side wedges at `2c/L` and cannot be
+  squarer, so the channel decides the attitude of a module that merely rests in
+  it. At 12.689 mm that was 56.40 mrad against a 52.36 mrad seated criterion, and
+  no controller fixes a rack that specifies a part it will then reject.
+  `GUIDE_CENTER_OFFSET_Y` is derived from that requirement now, and the chain is
+  certified at both clearances.
+- **Do not place a derived constant on a bound.** Both values this project has
+  used for `GUIDE_CENTER_OFFSET_Y` sat exactly on one: 15.750 mm was outside the
+  pads' bound and cost measured grips, and the 12.689 mm that replaced it sat on
+  the pads' bound and 4.04 mrad outside the seated criterion. The value is placed
+  at the clearance that maximises the smaller of the two margins — the midpoint
+  *in attitude* between the 46.0 mrad the transit delivers and the 52.36 mrad a
+  seated module is accepted at — which is **11.065 mm**, 3.18 mrad clear on each
+  side. Specification §6.5.
+- **Configuration that mutates the scene must write absolute poses.**
+  `configure_service_destination` added the channel relief as an increment, and
+  it is called from `configure_robustness`, which `__post_init__` has already
+  run — so `train.py --robustness_level` and `play.py --latch_enabled` each
+  applied it twice. **The insert skill was trained in a 21.91 x 17.23 mm channel
+  and certified in a 17.30 x 12.61 mm one**, on both axes, for as long as both
+  paths have existed. `scripts/check_destination_channel.py` reads the built
+  configuration rather than the source and reports the applied relief as a
+  multiple; `evidence/destination_channel_geometry.json` is the measurement.
 
 ## 5. Open
 
@@ -235,16 +283,20 @@ here so this file stays the one place the state is described:
   `tests/test_skill_chain_agreement.py` (T9).
 - The **live compute service runs the superseded w65 policy set**, two promotions
   behind the certified chain (T7).
-- **`GUIDE_CENTER_OFFSET_Y` sits exactly on its upper bound, and that is now
-  measured to cost the insert skill its last condition.** It is the largest
-  clearance the pads can follow, 12.689 mm, which lets a resting module cock to
-  56.40 mrad against a 52.36 mrad acceptance criterion. `2c/L` meets the criterion
-  at c = 11.78 mm, and the check's own window bottoms at 10.35 mm (46.0 mrad).
-  Re-deriving it with the criterion as the binding constraint is `NEXT_WORK.md`
-  T9; it moves a published number, so the chain must be re-run at both values.
-- **Delivered angle has about 10 mrad of margin** — modules seat at 46 mrad
-  against a 56 mrad channel. The only quantity in the certification operating
-  against a limit.
+- **Grasp and extract are certified on the *old* rack.** The derived clearance
+  narrows the source bay as well as the destination, so 85.69% and 87.75% are
+  numbers taken in a channel this repository no longer builds. The chain re-run
+  exercises both skills in situ and reproduces seed for seed, which bounds the
+  effect at the chain level and says nothing about the skill level. Re-certifying
+  them is `NEXT_WORK.md` **T12**. The predicted direction is favourable: the
+  channel corner the pads have to follow falls from 15.000 mm — exactly their
+  limit — to 13.654 mm.
+- **Delivered angle has about 3 mrad of margin** — modules seat at 46.0 mrad
+  (p95 46.5) against a channel throat that now accepts 49.18. It was ~10 mrad
+  against the 56.40 mrad throat. The margin was deliberately spent: it is the
+  same margin the seated criterion needed on the other side, and §4 records why
+  the value sits between them rather than on either. Still the only quantity in
+  the certification operating against a limit.
 
 ### What breaks the chain first
 

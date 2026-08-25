@@ -43,6 +43,7 @@ training runs do not.
 | **T9** | **The insert blocker.** Give the skill the chain's *mating compliance*, not just "enable the lock" | half a day + ~2 h GPU | a learned seating phase |
 | **T10** | Test-suite portability | **done 2026-08-25** | — |
 | **T11** | No recording shows the certified chain | ~8 min a clip | the media, and any release |
+| **T12** | Grasp and extract are certified on the rack before the clearance was derived | ~45 min a skill | the two skill numbers |
 | **P1–P7** | [Publication track](#publication-track) — the same work on a submission deadline | see section | Frontiers, 2026-11-09 |
 
 ---
@@ -684,6 +685,49 @@ each clip needs.
 publishing the clip.
 
 ---
+
+## T12 — Grasp and extract are certified on the rack before the clearance was derived
+
+**Where it stands.** `GUIDE_CENTER_OFFSET_Y` moved 86.689 → 85.065 mm on
+2026-08-25, which narrows the channel by 1.624 mm per side in **both** bays —
+the constant places the source bay's guides as well as the destination's. Grasp
+(85.69% pooled) and extract (87.75% pooled) were certified in the wider one.
+
+**What is and is not known.** The chain was re-certified at both clearances and
+reproduces **seed for seed**, 93.75 / 100 / 100 either way
+(`workflow_robot_carried_m130pin_guarded_c11065_certification.json`). That runs
+both skills in situ, so it bounds the effect at the chain level. It says nothing
+about the skill level, where the certifications pool three curriculum stages and
+the chain runs one.
+
+**The predicted direction is favourable, and it is worth stating in advance so
+the measurement can contradict it.** The failure mode extraction has at stage 0
+is the grip losing the pin: 65 of 92 stage-0 failures on v17m130 end with the
+grip more than 13.5 mm across the pin, against a channel corner of
+`hypot(lateral, vertical)`. That corner was **15.000 mm** — exactly
+`GRIP_MAX_TRANSVERSE_M`, the offset at which a pad keeps half its face on the pin
+— and is now **13.654 mm**. The rack can no longer take the module anywhere the
+pads cannot follow. If extraction does *not* improve, that is a result: it would
+mean the corner was not the mechanism, and `evidence/extract_attribution.json`
+would need a fifth row.
+
+**Run it.**
+
+```bash
+SKILL=Extract CKPT=logs/rl_games/zero_g_blade_insertion_contact/grapple_extract_l0_seed70_v18pin/nn/last_zero_g_blade_insertion_contact_ep_12600_rew_172.70488.pth \
+  TAG=extract_v18pin_c11065 scripts/certify_grapple_skills.sh
+
+SKILL=Grasp CKPT=logs/rl_games/zero_g_blade_insertion_contact/grapple_grasp_l0_seed70_v7m130/nn/last_zero_g_blade_insertion_contact_ep_3100_rew_30.262873.pth \
+  TAG=grasp_v7m130_c11065 scripts/certify_grapple_skills.sh
+```
+
+**Done when.** Both are re-certified on the derived rack with the **unchanged**
+checkpoints — one variable, the rack — and `docs/NOW.md` §2 quotes the new
+numbers beside the old ones rather than replacing them. If either moves by more
+than its Wilson interval, it belongs in `evidence/extract_attribution.json` as a
+row of its own.
+
+**Cost.** About 45 minutes a skill: nine runs of 128 environments each.
 
 ---
 
