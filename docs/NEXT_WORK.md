@@ -573,59 +573,87 @@ it trained under:
 A third of episodes now drive the module home, where none did before.
 
 **Orientation is the sole remaining failure, and it is not the policy's either.**
-Among the 91 episodes that reach seated depth, orientation clusters between
-**56.03 and 56.92 mrad** — a band under a milliradian wide. That is a wall, not a
-behaviour: the module is resting corner-to-corner against the channel walls at the
-largest angle the clearance permits. `check_workcell_geometry.py` names that angle
-independently as the hand-off yaw, **56.40 mrad**, and records measured attitude
-running 0.87–1.02 of `2c/L` across eight sweep points. The observed band is
-0.99–1.01 of it.
+Among the 91 episodes that reach seated depth, orientation **floors** at
+56.033 mrad — p5 is 56.035, the minimum is 56.033, and the tail runs to 86.5.
+A floor is a surface the module cannot get past, and `2c/L` on the channel's
+unrelieved lateral throat is **56.396 mrad**: the floor is 0.994 of it.
 
 `INSERTION_ORIENTATION_TOLERANCE_RAD` is **52.36 mrad**. So **the angle at which
-this channel holds a module is 4.04 mrad outside the angle its own acceptance
-criterion demands.** A module that merely rests in this channel cannot pass. The
-chain reaches 46 mrad because its form lock holds the module squarer than the
-channel does — not because the channel squares it.
+this throat holds a module is 4.04 mrad outside the angle its own acceptance
+criterion demands.** A module that merely rests in it cannot pass. The chain
+reaches 46 mrad because its form lock holds the module squarer than the rack
+does — not because the rack squares it.
 
-**What that implies is a rack change, and the geometry check already brackets it.**
-The lateral clearance window is 10.35 mm to 12.69 mm, and `GUIDE_CENTER_OFFSET_Y`
-sits at the very top of it at 12.689 mm. `2c/L` = 52.36 mrad at **c = 11.78 mm**,
-so any value at or below that puts a resting module inside the criterion, and the
-window's own lower end of 10.35 mm gives 46.0 mrad with margin. `NOW.md` has
-carried *"sits exactly on its upper bound … not measured"* as an open item; this
-measures it.
+> **Two corrections to the mechanism named above, both from
+> `evidence/destination_channel_geometry.json`, and the conclusion survives
+> both.** This section originally read the band as the module "resting
+> corner-to-corner against the channel walls". It is not the walls: the
+> destination bay is relieved, so they admit 76.90 mrad of yaw, and these runs
+> went through `play.py --latch_enabled`, which applied the relief a *second*
+> time and opened them to 97.40. What holds the module is the **lead-in throat**
+> at the mouth, which is authored from the rail face and does not move with the
+> relief. And a wedge against a wall would be a ceiling; this is a floor. Same
+> constant either way — `GUIDE_CENTER_OFFSET_Y` places the guides and the flares
+> are derived from the rail face — so the rack change below is unchanged.
+> `evidence/RETRACTED.md`.
 
-**Not changed here, deliberately.** The chain's certification was produced at
-12.689 mm, so moving it moves a published number — and the two non-negotiable
-rules apply: do not widen the 52.36 mrad tolerance to make this pass, and if the
-clearance moves, re-run the chain under both values so a geometry change and a
-policy change are never quoted as one number.
+### Done, 2026-08-25: the rack was re-derived and the floor moved with it
 
-**Next, in order.** (1) Re-derive `GUIDE_CENTER_OFFSET_Y` inside its window with
-the criterion as the binding constraint rather than the pads. (2) Re-run the chain
-certification at both clearances. (3) Retrain and re-verify the insert skill with
-`scripts/verify_insert_skill.sh`, which certifies it alone and then head to head
-against the scripted advance in the chain.
+**(1) `GUIDE_CENTER_OFFSET_Y` is derived from the seated criterion, 86.689 →
+85.065 mm.** The pads' bound, 12.689 mm, is no longer the binding one:
 
-**Done when.** The eighth row of `tests/test_skill_chain_agreement.py` asserts the
-load paths are equal like the other seven, and the skill is retrained and verified
-**both ways** — the standard extraction is held to and insertion never has been:
-
-```bash
-CKPT=<retrained checkpoint> TAG=insert_v23lock scripts/verify_insert_skill.sh
+```
+lower  2c/L >= 46.00 mrad delivered   ->  c >= 10.350 mm
+upper  2c/L <= 52.36 mrad accepted    ->  c <= 11.781 mm
+(pads  hypot(c, 8.00) <= 15.00 mm     ->  c <= 12.689 mm, superseded)
 ```
 
-That certifies three stages on three held-out seeds, then runs the same checkpoint
-inside the full chain against the scripted guarded advance. **The chain keeps the
-scripted advance unless the chain arm beats it on the same seeds.**
+Placed at **11.065 mm**, the midpoint *in attitude*, which is the clearance that
+maximises the smaller of the two margins — 3.18 mrad on each side. Not on a bound,
+because both values this project has used sat on one and each cost a training run.
+`tests/test_workcell_geometry.py` pins the derivation and the equal margins.
 
-**The gate to watch is attitude, not success.** If the load path is the cause,
-orientation should fall from 84.5 mrad toward the chain's 46 mrad. If it falls and
-the success rate still does not move, **publish that** — it would mean squareness
-was necessary and not sufficient, which is a further result rather than a failure.
+**(2) Tested by moving it, before spending an epoch on it.** Same checkpoint
+(`v23lock`, trained on the old rack), same seed, same 256 episodes:
 
-**Cost.** Half a day of implementation. ~1 hour training, ~45 minutes to certify
-the skill, ~25 minutes for the chain arm.
+| throat | `2c/L` | attitude floor | median | success |
+| ---: | ---: | ---: | ---: | ---: |
+| 12.689 mm | 56.40 mrad | 56.03 mrad | 56.92 mrad | 0.00% |
+| 11.065 mm | 49.18 mrad | **45.75 mrad** | 46.85 mrad | **18.85%** |
+
+The first non-zero insert-skill success this project has recorded, and it is
+zero-shot on the wrong training rack. Among episodes reaching seated depth,
+orientation passes 94.6% where it passed 0%, and the binding condition moves to
+**lateral alignment** at 54.8% — 2.464 mm at the median against a 2.5 mm
+tolerance, which is the policy's to close and is what the retrain is for.
+`evidence/insert_attitude_wall_moved.json`.
+
+**(3) The chain was re-certified at both clearances and is identical seed for
+seed** — 97.92% pooled either way, 93.75 / 100 / 100 either way. The chain never
+used the headroom that moved.
+`evidence/workflow_robot_carried_m130pin_guarded_c11065_certification.json`.
+
+**(4) A defect found on the way, and it is its own finding.** The channel relief
+was applied as an increment by a method that runs once from `__post_init__` and
+again from anything re-selecting the robustness level — so `train.py
+--robustness_level` and `play.py --latch_enabled` each applied it twice. **The
+insert skill trained in a 21.91 × 17.23 mm channel and was certified in a
+17.30 × 12.61 mm one**, on both axes, for as long as both paths have existed.
+Every insert number taken before 2026-08-25 carries it. Fixed by writing absolute
+poses; `scripts/check_destination_channel.py` reports the applied relief as a
+multiple so it cannot drift back.
+
+**(5) The load path is the task's, not a flag's.** `verify_insert_skill.sh`
+passes no `--latch_mating_compliance` to `play.py`, so a checkpoint trained on
+the lock would have been certified on pad contact alone — the same shape of
+mismatch as the relief. `ZeroGBladeGrapplePinInsertTwoSlotEnvCfg` carries
+`latch_enabled`, `joint_mode fixed`, soften-on-engage, engage-after-5 and
+replication off. That is the eighth row of
+`tests/test_skill_chain_agreement.py`, equal now rather than named as a gap.
+
+**Cost, as spent.** ~25 min for the chain at the new clearance, ~6 min for the
+zero-shot probe that gated the training run, ~100 min of training, ~110 min to
+verify.
 
 ---
 
