@@ -68,6 +68,23 @@ def drive_torque_for_grip_force_nm(grip_force_n: float) -> float:
 # ---------------------------------------------------------------------------
 # Scene geometry the pin has to live inside.
 
+#: **Unchanged at 450 mm, and 250 mm was tried and reverted with the number that
+#: reverted it.**
+#:
+#: The clearance a rigid module needs is *L* *theta*/2 and its leading corner
+#: dips by the same, so shortening it is the direct fix for a chain that jams on
+#: its lead-in. It is also the one change that moves every axial target at once:
+#: ``EXTRACTED_BLADE_CENTRE_X`` and ``TRANSIT_CLEAR_BLADE_CENTRE_X`` are both
+#: derived from it, so a 200 mm cut moves the extraction target 100 mm.
+#:
+#: Measured at 250 mm on the same seed and checkpoints: capture and seating
+#: still work -- the pin is unchanged, so it is the same capture -- and
+#: extraction does not. It ran 750 control steps against 233, ended past its
+#: moved target, and left the module 544 mm off line and 1.21 rad round. The
+#: extract policy is trained to pull to a place, and the place moved.
+#:
+#: So the clearance is taken out of the cross-section instead, where it costs no
+#: axial target and no policy: see ``BLADE_SIZE``.
 BLADE_LENGTH_M = 0.45
 #: Leading edge of the rails. The gripper must stay outside this.
 SLOT_MOUTH_X = 0.45
@@ -127,7 +144,10 @@ TRANSIT_RETREAT_M = EXTRACTED_BLADE_CENTRE_X - TRANSIT_CLEAR_BLADE_CENTRE_X
 
 GRAPPLE_PIN_WEDGE_X = (-0.371, -0.311)
 GRAPPLE_PIN_COLLAR_X = (-0.311, -0.305)
-GRAPPLE_PIN_SHAFT_X = (-0.305, -0.225)
+#: Runs to the blade's rear face, which moved with ``BLADE_LENGTH_M``. The
+#: gripped sections -- wedge and collar -- are untouched, in blade-local and in
+#: world coordinates, which is what keeps capture the same problem it was.
+GRAPPLE_PIN_SHAFT_X = (-0.305, -0.5 * BLADE_LENGTH_M)
 GRAPPLE_PIN_HALF_WIDTH_Y = 0.015
 #: Free end then blade end. Thicker at the free end is what makes pulling wedge
 #: the pin into the pads instead of pulling it out from between them.
@@ -135,8 +155,19 @@ GRAPPLE_PIN_WEDGE_HALF_HEIGHT = (0.035, 0.008)
 #: Taller than the pads can ever open, so it is an absolute depth stop rather
 #: than something a wide-open gripper slides past.
 GRAPPLE_PIN_COLLAR_HALF_HEIGHT = 0.045
-#: Thin enough to pass the slot between the floor plate and the upper lips.
-GRAPPLE_PIN_SHAFT_HALF_HEIGHT = 0.015
+#: Thin enough to pass the slot between the floor plate and the upper lips --
+#: and, since the module was thinned to 20 mm, thin enough to pass it *at the
+#: attitude the arm delivers*.
+#:
+#: At 30 mm tall the shaft had 3 mm per side in the 36 mm channel while the
+#: blade in front of it had 8. That inverts which part is binding: the last
+#: 74 mm of the seating stroke is the shaft entering the mouth, and at the
+#: 24.8 mrad the module was holding, its far end swings 3.6 mm. Measured, the
+#: chain stopped exactly there -- module at 0.6759 against a seated 0.75, with
+#: the blade itself well inside its own clearance.
+#:
+#: Twenty millimetres is also what a boss on a 20 mm blade is.
+GRAPPLE_PIN_SHAFT_HALF_HEIGHT = 0.010
 
 #: Tool frame: the centre of the measured pad span, so the frame the policy
 #: steers is the frame the pads grip with.
@@ -150,6 +181,82 @@ GRAPPLE_PIN_GRIP_OFFSET = (
 )
 #: Head-on: the tool's +z approach axis along world +x, closing axis vertical.
 GRAPPLE_HEAD_ON_TOOL_ROT = (0.0, 0.7071068, 0.0, 0.7071068)
+
+# ---------------------------------------------------------------------------
+# What "the grip is still there" means, resolved onto the pin's own axes.
+#
+# ``GRAPPLE_PIN_GRIP_OFFSET`` above is a *drawing* dimension: where the pads
+# would sit on an unloaded pin with their leading faces on the collar. It is not
+# where they sit once the pull takes load, and the difference is not small.
+#
+# A tapered pin holds by feeding thicker material between the pads as the module
+# lags the tool, which is the whole reason this interface exists -- a parallel
+# jaw on a passive feature holds about 6 N along the pull axis against the
+# 66.4 N the job needs, and the wedge holds 77 N from geometry alone. Feeding is
+# the load path working. Measured over 433 successful extractions of the current
+# module, the pads come to rest **12.0 mm** along the pin from the drawing pose,
+# in a band 11.2 to 12.0 mm wide: a hard equilibrium, not a spread.
+#
+# Both grip criteria in this project were isotropic balls about the drawing
+# pose: 20 mm to count as captured, 30 mm to count as dropped. So 12 of the
+# 20 mm and 12 of the 30 mm were spent by the interface doing its job before the
+# policy acted, and 79% of what consumed the rest was more of the same feed.
+# Measured on extract v17m130 at stage 0, 50 of 79 failures ended on that ball
+# with the module 14.7 mm into a 525 mm pull -- at the first load transfer, with
+# the pin seating, which is the one thing that must not read as a dropped
+# module.
+#
+# The bounds below replace the ball with the three questions the pin actually
+# asks, and each is a dimension of the pin rather than a number chosen to pass:
+GRIP_SEATED_APPROACH_OFFSET_M = -0.0120
+#: Length of pin the pads close on.
+GRAPPLE_PIN_WEDGE_LENGTH_M = GRAPPLE_PIN_WEDGE_X[1] - GRAPPLE_PIN_WEDGE_X[0]
+#: Pad length along the approach axis, from the measured span.
+PAD_LENGTH_M = PAD_SPAN_FROM_FLANGE_M[1] - PAD_SPAN_FROM_FLANGE_M[0]
+#: **Feeding in.** The pads may ride along the taper while at least half the
+#: wedge stays under them. Past that the pads are running out of pin, and the
+#: 2 N sin(alpha) the capacity argument rests on is being taken over a contact
+#: that is disappearing. Half the wedge, from the wedge's own length.
+GRIP_MAX_APPROACH_FEED_M = GRIP_SEATED_APPROACH_OFFSET_M - 0.5 * GRAPPLE_PIN_WEDGE_LENGTH_M
+#: **Backing out.** The collar is a hard stop -- it is taller than the pads can
+#: open, which is what makes it a depth stop rather than something a wide-open
+#: gripper slides past -- and it sits exactly at the drawing pose, which is how
+#: that pose was defined. So a module backing out past zero is not a tolerance
+#: question: the collar is in the way, and anything past it means the pads have
+#: left the pin. One PhysX contact envelope of slack, and no more.
+#:
+#: This end of the band is not slack for extraction, which never reaches it. It
+#: is where the *insertion* sits: pushing the module home makes it lag the other
+#: way and bear on the collar, so the same predicate has to admit both. That is
+#: why the band is stated on the absolute offset rather than as a margin either
+#: side of the seated pull equilibrium.
+GRIP_MAX_APPROACH_BACKOUT_M = 0.005
+#: **Across the pin.** The pads are 27 mm wide and the pin is 30 mm, so a pad
+#: bears over its whole face until the offset passes the 1.5 mm the pin is
+#: wider, and then loses one millimetre of face per millimetre of offset:
+#: ``overlap(d) = pad_half + pin_half - d``. Half the face is gone when that
+#: reaches half a pad width, which is at ``d = pin_half`` exactly -- the pad
+#: widths cancel. So the bound is the pin's own half-width, and it is *tighter*
+#: than the 30 mm ball it replaces by a factor of two, which is the point:
+#: 30 mm was never a transverse budget, it was an axial one being spent
+#: sideways. Measured on extract v17m130 at stage 0, 41 of 83 failures under the
+#: ball were already past 13.5 mm across the pin, and its worst was 31.6 mm.
+GRIP_MAX_TRANSVERSE_M = GRAPPLE_PIN_HALF_WIDTH_Y
+
+
+def grip_offset_admissible(closing_m: float, third_m: float, approach_m: float) -> bool:
+    """Whether a tool-to-grip offset, in tool axes, still describes a held pin.
+
+    Signed ``approach_m``, because the two directions along the pin are not the
+    same question: one is the taper taking load and the other is the pin leaving
+    the pads.
+    """
+
+    transverse = (closing_m**2 + third_m**2) ** 0.5
+    return bool(
+        transverse <= GRIP_MAX_TRANSVERSE_M
+        and GRIP_MAX_APPROACH_FEED_M <= approach_m <= GRIP_MAX_APPROACH_BACKOUT_M
+    )
 
 
 def wedge_half_height_at(blade_local_x: float) -> float:
@@ -192,7 +299,14 @@ __all__ = [
     "GRAPPLE_PIN_SHAFT_HALF_HEIGHT",
     "GRAPPLE_PIN_SHAFT_X",
     "GRAPPLE_PIN_WEDGE_HALF_HEIGHT",
+    "GRAPPLE_PIN_WEDGE_LENGTH_M",
     "GRAPPLE_PIN_WEDGE_X",
+    "GRIP_MAX_APPROACH_BACKOUT_M",
+    "GRIP_MAX_APPROACH_FEED_M",
+    "GRIP_MAX_TRANSVERSE_M",
+    "GRIP_SEATED_APPROACH_OFFSET_M",
+    "PAD_LENGTH_M",
+    "grip_offset_admissible",
     "GRAPPLE_TOOL_OFFSET_POS",
     "MAX_CLEAR_OPENING_M",
     "PAD_HALF_WIDTH_M",

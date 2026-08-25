@@ -48,6 +48,7 @@ from zero_g_blade_swap.grapple_geometry import (
     SLOT_ENTRY_RAMP_WIDTH_M,
     SLOT_FLOOR_TOP_Z,
     SLOT_LIP_BOTTOM_Z,
+    SLOT_MOUTH_X,
     drive_torque_for_grip_force_nm,
     wedge_taper_deg,
 )
@@ -66,14 +67,103 @@ ROBOT_ROOT_POS = (-0.45, 0.0, 0.15)
 #: Only the grapple lineage moves. The contact and insertion tasks keep
 #: ``ROBOT_ROOT_POS``, because their certifications were produced against it and
 #: nothing in this change is evidence about them.
+#: **Stays at -0.65, and -0.75 was tried and reverted with the number that
+#: reverted it.**
+#:
+#: ``solve_workcell.py`` swept four poses, and the deepest of them -- the transit
+#: retreat -- was placed at the *nominal* clear centre
+#: ``TRANSIT_CLEAR_BLADE_CENTRE_X``. The chain does not fly that pose. Its
+#: retreat is derived at run time from the module's **measured** front overhang,
+#: 232.0 mm against the 225 mm half-length, with ``TRANSIT_FLARE_CLEARANCE_M``
+#: on top: 17 mm deeper than the pose the base was chosen to clear, and the
+#: crossing leg was observed at 27 mm deeper still.
+#:
+#: Seventeen millimetres is not a rounding error here, because the crossing
+#: happens at the folded end of this arm's envelope where the trade section 6a
+#: measures is steep. Across the bay-to-bay crossing at that depth, with the
+#: base here, the differential IK's realised authority falls to 0.94 at the
+#: derived depth and **0.72 at the observed one**, with the Jacobian's smallest
+#: singular value at 0.016 against the solver's own 0.010 damping. Measured
+#: consequence: the squaring leg at the destination bay froze, module attitude
+#: constant at 144.1 mrad for 380 control steps, and was ended by its timeout.
+#: At -0.75 that profile never drops below 0.99 and the smallest singular value
+#: is 0.136, an order of magnitude clear of the damping.
+#:
+#: **So the base was moved to -0.75, and the capture policy did not come with
+#: it**: run at -0.75 on the same seed and the same checkpoints, capture ended
+#: at step 300 with the fingers still 80.5 mm open, against 108.3 mm at reset --
+#: the policy never closed on the pin. A 100 mm move is outside the workcell
+#: those policies were trained in, and buying the crossing's authority with a
+#: re-certification of capture and extraction is the expensive way to buy it.
+#:
+#: The cheap way is a rail: parked opposite a bay the arm's configuration there
+#: is bit-identical to the one it has at bay 1, so no bay needs a skill that bay
+#: 1 does not already have. ``scripts/check_workcell_geometry.py`` shows that
+#: symmetry exactly and ``tests/test_workcell_geometry.py`` holds it.
+#:
+#: ``evidence/workcell_geometry_check.json`` records all of it. The check runs
+#: the old base at -0.45 as a control and reproduces its published 166.95 mm
+#: shortfall.
 GRAPPLE_ROBOT_ROOT_POS = (-0.65, 0.0, 0.15)
 BLADE_INSERTED_POS = (0.75, 0.0, 0.72)
 SPARE_BLADE_POS = (0.70, -0.42, 0.50)
 SERVICE_CADDY_POS = (0.70, 0.42, 0.50)
-BLADE_SIZE = (0.45, 0.16, 0.035)
+#: **The cross-section carries the clearance, and the length does not change.**
+#:
+#: The seating failed because the module's leading corner dipped into the
+#: destination bay's lead-in: at the 21.5 mrad the scripted legs deliver, a
+#: 450 mm module's corner falls 4.8 mm below its centre line, and the module
+#: arrives about 1.3 mm low on top of that, against a vertical half-gap of
+#: 0.5 mm as built. There was never room.
+#:
+#: Every way of making room is a geometry change; this is the one that costs no
+#: policy. Length is derived into every axial target, and cutting it to 250 mm
+#: broke extraction outright (see ``BLADE_LENGTH_M``). Height and width are
+#: derived into nothing but clearance.
+#:
+#: Height 35 to 20 mm: the guided channel is 36 mm between the floor plate and
+#: the upper lips, so the half-gap goes from 0.5 mm to **8.0 mm** against a
+#: 6.1 mm worst-case dip. Width 160 to 130 mm: the side guides' inner faces are
+#: at 80.75 mm, so the half-gap goes from 0.75 mm to **15.75 mm** against a
+#: 4.8 mm yaw swing.
+#:
+#: 450 x 130 x 20 mm is also what a blade actually is. The rack this module
+#: serves is modelled on a server chassis and the part was always called a
+#: blade; 35 mm of thickness in a 36 mm channel was the outlier.
+BLADE_SIZE = (0.45, 0.13, 0.020)
 BLADE_HANDLE_OFFSET = (-0.250, 0.0, 0.0)
 TRANSFER_BLADE_X = 0.18
-GUIDE_CENTER_OFFSET_Y = 0.08975  # 1.5 mm total clearance around the 160 mm blade.
+#: **Derived, and it was not before.** The comment this replaces read "1.5 mm
+#: total clearance around the 160 mm blade", and it stayed at 89.75 mm when the
+#: blade stopped being 160 mm wide -- so the channel's lateral half-gap went
+#: from 0.75 mm to 15.75 mm without anything asking whether the grip could
+#: follow a module that free.
+#:
+#: It cannot. A pair of flat pads 27 mm wide on a 30 mm pin keeps half its face
+#: on the pin only while the offset stays inside the pin's own half-width, 15 mm
+#: (``GRIP_MAX_TRANSVERSE_M``), and a module in the *corner* of its channel is
+#: offset by ``hypot(lateral, vertical)``. The vertical half-gap is 8.00 mm and
+#: is not available to trade: it sets the 35.56 mrad the transit has to hand the
+#: module over at, which is already the binding requirement. So
+#:
+#:     lateral <= sqrt(15.0^2 - 8.0^2) = 12.689 mm
+#:
+#: and the guide *body* centre sits half a guide thickness outboard of that.
+#: 65 + 12.689 + 9 = 86.689 mm.
+#:
+#: Measured, this is what it was costing: on extract v17m130 at stage 0, 65 of
+#: 92 failures end with the grip more than 13.5 mm across the pin and the worst
+#: reaches 18.6 mm, against a channel corner of hypot(15.75, 8.00) = 17.66 mm.
+#: The module is going where the pads cannot follow, and the rack is what lets
+#: it. On the 160 mm module the corner was 0.90 mm, which is why this never
+#: showed up before and why the same policy scores 99.02% there and 76.95% here.
+#:
+#: It costs nothing at the destination. The hand-off attitude requirement is
+#: ``min(pitch, yaw)`` and pitch binds at 35.56 mrad; yaw goes from 70.00 to
+#: 56.39 mrad and is still nowhere near it. ``scripts/check_workcell_geometry.py``
+#: prints both, and ``tests/test_workcell_geometry.py`` pins this derivation so
+#: the next cross-section change cannot leave it stale the way the last one did.
+GUIDE_CENTER_OFFSET_Y = 0.086689
 TOOL_OFFSET_POS = (0.0, 0.0, 0.19)
 TOOL_OFFSET_ROT = (1.0, 0.0, 0.0, 0.0)
 CONTACT_TOOL_OFFSET_POS = (0.0, 0.0, 0.179)
@@ -1483,7 +1573,29 @@ SLOT_UPPER_RIGHT_LIP_CFG = _slot_upper_lip_cfg("BladeSlotUpperRightLip", -SLOT_U
 # instead of missing the slot entirely.
 SLOT_ENTRY_FLARE_DEG = 12.0
 _FLARE_CENTER_X = 0.41275
-_FLARE_CENTER_Y = 0.097869
+#: How far the flare's *centre* stands outside the rail face it continues.
+#:
+#: Plate geometry, and only plate geometry: half the 18 mm thickness resolved
+#: through 12 degrees, plus the 37.25 mm of setback between the plate centre and
+#: the mouth resolved through the same angle. 9*cos(12) + 37.25*tan(12)*cos(12)
+#: = 17.118 mm, which is what reproduces the authored 97.869 mm against the rail
+#: face this rack used to have at 80.75 mm.
+#:
+#: **It is a constant and the flare's position is not.** ``_FLARE_CENTER_Y`` was
+#: an authored literal, so when ``GUIDE_CENTER_OFFSET_Y`` was derived and the
+#: rails moved inboard 3.061 mm the flares stayed where they were -- standing
+#: proud of the rail face by that much, which is a step at the mouth rather than
+#: a lead-in. Worse, ``_RAMP_SURFACE_OFFSET`` is the *difference* between these
+#: two, on the stated reasoning that "the two lead-ins cannot drift apart", so
+#: the vertical ramps moved 3.061 mm the other way and the module's leading edge
+#: stopped being caught in time.
+#:
+#: Measured, before this was derived: the chain scored **0.00%** over 32
+#: episodes with the module still arriving 1.0 mm from the seated plane and
+#: 47.1 mrad square -- it was the 4.04 mm of lateral against a 2.5 mm tolerance,
+#: against 1.85 mm on the same chain the day before.
+FLARE_CENTRE_OUTSIDE_RAIL_FACE_M = 0.017118
+_FLARE_CENTER_Y = round(GUIDE_CENTER_OFFSET_Y - 0.5 * 0.018 + FLARE_CENTRE_OUTSIDE_RAIL_FACE_M, 6)
 # Scalar-first quaternion for a rotation of -12 degrees about z.
 _FLARE_QUAT_LEFT = (0.9945219, 0.0, 0.0, -0.1045285)
 _FLARE_QUAT_RIGHT = (0.9945219, 0.0, 0.0, 0.1045285)
@@ -1614,6 +1726,11 @@ SERVICE_DELIVERED_ATTITUDE_RAD = 0.0205
 #: orientation limit, and at 16 mm it settles at the attitude the arm delivers
 #: with nothing touching it. Neither end of that range seats the module: the
 #: crossing point is 15 mm into a 163 mm travel.
+#: The destination bay runs on the same low-friction pairing every other
+#: clearance fit in this repository uses. See configure_service_destination.
+SERVICE_DESTINATION_STATIC_FRICTION = 0.12
+SERVICE_DESTINATION_DYNAMIC_FRICTION = 0.08
+
 SERVICE_DESTINATION_CHANNEL_RELIEF_M = 0.5 * BLADE_LENGTH_M * SERVICE_DELIVERED_ATTITUDE_RAD
 
 
@@ -1689,9 +1806,76 @@ SECOND_SLOT_ENTRY_LOWER_RAMP_CFG = offset_slot_asset(
 
 #: Where a module sits when it is seated in the second slot. Derived from the
 #: first slot's seated pose, so the two can never disagree about depth.
+#: **The destination bay's seated plane is derived from what can reach it, and
+#: it is not ``BLADE_INSERTED_POS``.**
+#:
+#: A bay a robot services has to have its seated plane inside the depth that
+#: robot can push to **with its end-effector still outside the mouth**. That is
+#: the same rule section 3.1 applies to the gripper and section 6a applies to
+#: the base, applied to the one thing nobody had applied it to: the rack.
+#:
+#: ``service_latch.release_before_blade_centre_x_m`` already derives the depth
+#: at which the engaged jaw would enter the mouth, and the driver already
+#: releases the form lock there -- on the assumption, written into that
+#: function, that "the rails take the last of the seating". In zero gravity,
+#: with no insertion lever and no sprung connector, nothing takes it. The module
+#: stops where the robot let go.
+#:
+#: Measured: the chain drives the module to 0.6763 and stops, square to
+#: 13.6 mrad and centred to 4.2 mm, with the guarded advance's target still at
+#: 0.75 and the arm holding 74 mm behind it. Bit-identical under a sevenfold
+#: friction change, under the mating compliance rigid or soft, under the
+#: compliance centre at the wrist or the tip, under 0 and 10 mm of channel
+#: relief, and under a pin thinned from 30 mm to 20. It is not a jam. It is the
+#: robot stopping where the interface says it must let go.
+#:
+#: **The phrase this used to end with -- "the robot at the end of its own reach
+#: into the rack" -- is wrong, and the number it justifies is not.** The reach
+#: claim was never checked; ``zero_g_blade_swap.arm_kinematics`` solves the
+#: head-on tool pose for a module centre of 0.75 with a position residual of
+#: 0.0001 mm, a realised DLS authority of 0.9998 and a smallest singular value
+#: of 0.327 -- comfortably inside the envelope, and the same solver the transit
+#: legs are commanded from and the geometry check validates against the
+#: simulator. What actually stops the module at 0.6763 is the line below it: the
+#: engaged jaw would enter the slot mouth past that depth, so the lock has to be
+#: released there whether or not the arm could push further. A right number with
+#: a wrong mechanism attached to it is the thing this project's discipline is
+#: for, so the mechanism is corrected here rather than the number.
+#:
+#: So the bay's seated plane moves to where a robot can put a module, and the
+#: 0.75 it used to carry is exposed for what it was: ``BLADE_INSERTED_POS``, a
+#: nominal from a task in which the module *started* installed and no
+#: manipulator ever had to put it there.
+SERVICE_SEATED_LAG_M = 0.012
+#: ``GUARDED_INSERT_RELEASE_MARGIN_M`` in ``scripts/run_workflow_demo.py``.
+SERVICE_RELEASE_MARGIN_M = 0.005
+SERVICE_DESTINATION_SEATED_X = round(
+    service_latch.release_before_blade_centre_x_m(
+        SLOT_MOUTH_X, 0.5 * BLADE_LENGTH_M, service_latch.AXIAL_SEEK_MAX_M
+    )
+    - SERVICE_RELEASE_MARGIN_M
+    - SERVICE_SEATED_LAG_M,
+    6,
+)
 SECOND_SLOT_INSERTED_POS = (
-    BLADE_INSERTED_POS[0],
+    SERVICE_DESTINATION_SEATED_X,
     BLADE_INSERTED_POS[1] + SECOND_SLOT_CENTER_Y,
+    BLADE_INSERTED_POS[2],
+)
+#: The same plane in the first bay, and it is not ``BLADE_INSERTED_POS``.
+#:
+#: 0.75 is where a module *starts* installed, in a task that spawned it there
+#: and never asked a manipulator to put it there. The release interlock says a
+#: jaw enters the slot mouth once the module centre passes a derived depth, so
+#: the deepest a robot may drive this module and then let go of it is
+#: ``SERVICE_DESTINATION_SEATED_X``, 74 mm short of that nominal. The second bay
+#: has used the derived plane since the relocation was built; the first bay was
+#: left on the nominal, so the insert skill spent half its training seating a
+#: module 74 mm deeper than the interface permits -- six times its own 12 mm
+#: axial tolerance, on a goal the chain never asks for.
+FIRST_SLOT_INSERTED_POS = (
+    SERVICE_DESTINATION_SEATED_X,
+    BLADE_INSERTED_POS[1],
     BLADE_INSERTED_POS[2],
 )
 
@@ -1842,6 +2026,7 @@ __all__ = [
     "SECOND_SLOT_ENTRY_LOWER_RAMP_CFG",
     "SECOND_SLOT_ENTRY_RIGHT_FLARE_CFG",
     "SECOND_SLOT_ENTRY_UPPER_RAMP_CFG",
+    "FIRST_SLOT_INSERTED_POS",
     "SECOND_SLOT_INSERTED_POS",
     "SERVICE_DELIVERED_ATTITUDE_RAD",
     "SERVICE_DESTINATION_CHANNEL_RELIEF_M",

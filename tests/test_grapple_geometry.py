@@ -193,3 +193,143 @@ def test_no_pin_section_reaches_closer_to_the_flange_than_the_palm() -> None:
         f"the pin's free end sits {depth * 1000:.1f} mm from the flange, inside the palm at "
         f"{PALM_FACE_FROM_FLANGE_M * 1000:.1f} mm"
     )
+
+
+def test_the_grip_bounds_are_the_pin_and_not_a_ball() -> None:
+    """What counts as a held module has to be three questions, not one distance.
+
+    An isotropic ball about ``GRAPPLE_PIN_GRIP_OFFSET`` cannot express any of
+    them, because a loaded pull sits 12.0 mm from that pose by design -- the
+    taper feeds thicker material between the pads, which is how the interface
+    holds 77 N instead of 6. Both criteria this project shipped spent 12 of
+    their 20 and 30 mm on that feed, isotropically, in whichever direction
+    happened to consume them.
+    """
+
+    from zero_g_blade_swap.grapple_geometry import (
+        GRAPPLE_PIN_HALF_WIDTH_Y,
+        GRAPPLE_PIN_WEDGE_LENGTH_M,
+        GRIP_MAX_APPROACH_BACKOUT_M,
+        GRIP_MAX_APPROACH_FEED_M,
+        GRIP_MAX_TRANSVERSE_M,
+        GRIP_SEATED_APPROACH_OFFSET_M,
+        grip_offset_admissible,
+    )
+
+    # Each bound is a dimension of the pin, not a number that was chosen.
+    assert GRIP_MAX_TRANSVERSE_M == GRAPPLE_PIN_HALF_WIDTH_Y
+    assert GRIP_MAX_APPROACH_FEED_M == GRIP_SEATED_APPROACH_OFFSET_M - 0.5 * GRAPPLE_PIN_WEDGE_LENGTH_M
+
+    # The pose a loaded pull actually holds is admissible; that is the whole
+    # point, and the criterion it replaces spent 60% of its budget getting there.
+    assert grip_offset_admissible(-0.002, -0.002, GRIP_SEATED_APPROACH_OFFSET_M)
+    # So is the feed measured on the failures the old ball was ending: 26.75 mm
+    # along the pin with 4.8 mm across it, at 14.7 mm of a 525 mm pull.
+    assert grip_offset_admissible(-0.0041, 0.0025, -0.02675)
+    # A module 30 mm across the pin is not held, and the ball called it held
+    # whenever the axial part happened to be small.
+    assert not grip_offset_admissible(0.0, 0.0303, GRIP_SEATED_APPROACH_OFFSET_M)
+    # The insertion bears on the collar, at the drawing pose, so the band has to
+    # reach zero from the other side or the same predicate rejects a seating.
+    assert grip_offset_admissible(-0.002, -0.002, 0.0)
+    # And the collar is a hard stop, so anything past it is the pads off the pin.
+    assert not grip_offset_admissible(0.0, 0.0, GRIP_MAX_APPROACH_BACKOUT_M + 0.001)
+
+
+def test_a_module_in_the_corner_of_its_channel_stays_inside_the_grip_bounds() -> None:
+    """The rack and the grip have to agree about the same envelope.
+
+    The pads are bolted to the arm. Anywhere the channel lets the module go, the
+    grip has to be able to follow, or the rack is generating grip loss on its
+    own -- which is exactly what 15.750 mm of lateral clearance was doing.
+    """
+
+    import ast
+    from pathlib import Path
+
+    from zero_g_blade_swap.grapple_geometry import (
+        GRIP_MAX_TRANSVERSE_M,
+        SLOT_FLOOR_TOP_Z,
+        SLOT_LIP_BOTTOM_Z,
+    )
+
+    assets = (
+        Path(__file__).resolve().parent.parent
+        / "src"
+        / "zero_g_blade_swap"
+        / "tasks"
+        / "blade_swap"
+        / "assets.py"
+    ).read_text(encoding="utf-8")
+
+    def literal(name: str) -> object:
+        for node in ast.parse(assets).body:
+            targets = node.targets if isinstance(node, ast.Assign) else []
+            for target in targets:
+                if isinstance(target, ast.Name) and target.id == name:
+                    return ast.literal_eval(node.value)
+        raise KeyError(name)
+
+    blade = literal("BLADE_SIZE")
+    guide_thickness_y = 0.018  # ``_slot_guide_cfg``'s own size along y.
+    inner_face = float(literal("GUIDE_CENTER_OFFSET_Y")) - 0.5 * guide_thickness_y
+    lateral = inner_face - 0.5 * float(blade[1])
+    vertical = 0.5 * ((SLOT_LIP_BOTTOM_Z - SLOT_FLOOR_TOP_Z) - float(blade[2]))
+    corner = (lateral**2 + vertical**2) ** 0.5
+    assert corner <= GRIP_MAX_TRANSVERSE_M + 1.0e-6, (
+        f"the channel's corner is {corner * 1000:.3f} mm and the pads keep half their face "
+        f"only to {GRIP_MAX_TRANSVERSE_M * 1000:.1f} mm"
+    )
+
+
+def test_the_extract_task_opts_into_the_pin_criterion_and_the_bounded_reset() -> None:
+    """Three lines, each of which was a measurement before it was a line.
+
+    The grip criterion, the retention reward's position axis, and the reset's
+    bound are separate opt-ins on purpose: the grasp skill keeps the isotropic
+    ball its certification was produced under, and the insert task keeps the
+    reward defaults its own was. Nothing here should be silently global.
+    """
+
+    from pathlib import Path
+
+    config = (
+        Path(__file__).resolve().parent.parent
+        / "src"
+        / "zero_g_blade_swap"
+        / "tasks"
+        / "blade_swap"
+        / "grapple_pin_env_cfg.py"
+    ).read_text(encoding="utf-8")
+    mdp = (
+        Path(__file__).resolve().parent.parent
+        / "src"
+        / "zero_g_blade_swap"
+        / "tasks"
+        / "blade_swap"
+        / "mdp"
+        / "grapple.py"
+    ).read_text(encoding="utf-8")
+
+    extract = config.split("class ExtractRewardsCfg", 1)[1].split("@configclass", 1)[0]
+    assert '"resolve_on_pin": True' in extract, extract
+
+    # And the insert task's does too, since 2026-08-24. It was held back while
+    # insert v6's certification still described this task; it no longer does --
+    # the reset, the goal plane and the action scale have all changed - and the
+    # term was the dominant one in that reward, charging about 150 an episode
+    # against the 71 a successful insertion pays.
+    insert = config.split("class InsertRewardsCfg", 1)[1].split("@configclass", 1)[0]
+    assert '"resolve_on_pin": True' in insert
+
+    # The failure predicate asks the pin unless a run explicitly restores the ball.
+    assert "grip_position_limit: float | None = None" in mdp
+    assert "lost = ~pin_grip_intact(env) if grip_position_limit is None else" in mdp
+    # And the success predicate asks the same question, or the two disagree about
+    # what a held module is -- which is how 12 mm of a 20 mm budget went missing.
+    assert "capture_established(env, position_tolerance=None)" in mdp
+    # The capture skill keeps the ball, by default, on purpose.
+    assert "position_tolerance: float | None = 0.020" in mdp
+
+    # The reset bound is the chain's own hand-over gate, not a chosen number.
+    assert 'params["max_tool_offset_m"] = mdp.WORKFLOW_HANDOVER_GRIP_M' in config
