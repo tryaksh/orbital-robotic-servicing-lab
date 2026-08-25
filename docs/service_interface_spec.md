@@ -10,6 +10,23 @@ read this without reading the simulation.
 Everything here is simulation evidence. No number on this page was produced on
 real hardware, and the limitations at the end are part of the specification.
 
+## How to read it
+
+It is long because it is the evidence trail, not a summary. Three ways in:
+
+- **Designing a module.** Sections 2 and 3 are the gripper it has to suit and the
+  geometry that follows from it. Section 3.2 is what counts as holding it.
+  Section 8 is four attempts to constrain attitude mechanically, three of which
+  failed and are kept because the failures are the useful part.
+- **Designing a rack.** Section 6 is the lead-in, 6.2 and 6.3 are the two bounds
+  the channel's clearance has to lie between, and 6a is where the arm has to be
+  able to stand. Section 9.8 is the attitude a robot may hand a module over at.
+- **Deciding what to automate.** Section 10 is the rule for which phases are
+  learned and which are not, and the gates it is held to.
+
+For current measured state rather than requirements, read
+[`STATUS.md`](STATUS.md).
+
 ---
 
 ## 1. Why a specification exists at all
@@ -120,6 +137,51 @@ allows a shorter pin; a deeper one demands a longer one.
 
 Consequence to accept at design time: the interface protrudes about 62 mm beyond
 the rack face when the module is installed.
+
+### 3.2 What counts as a held module, on the pin's axes
+
+A tapered pin holds by **feeding**: the module lags the tool under load, thicker
+material is drawn between the pads, and they are forced apart against the drive.
+That is the whole reason this interface exists — a parallel jaw on a passive
+feature holds about 6 N along the pull axis and the wedge holds 77 N from
+geometry alone, before any friction coefficient is assumed.
+
+So the feed is the load path working, and it moves the tool along the pin.
+Measured over 433 successful extractions of the current module, the pads come to
+rest **12.0 mm** from the pin's drawing pose, in a band 0.8 mm wide: an
+equilibrium, not a spread.
+
+Both grip criteria this project shipped measured the *distance* from that
+drawing pose — 20 mm to count as captured, 30 mm to count as dropped — so 12 mm
+of each was spent before the policy acted, isotropically, in whichever direction
+happened to consume it. Measured on extract v17m130 at stage 0, 50 of 79
+failures ended on that ball with 79% of the error along the pin and the module
+14.7 mm into a 525 mm pull: the pin seating at the first load transfer, reported
+as a dropped module.
+
+> **Requirement.** A held module is judged on the pin's own axes, not as a
+> distance from a drawing dimension:
+>
+> | Axis | Bound | Where it comes from |
+> | --- | ---: | --- |
+> | Feeding along the pin | −42.0 mm | half the wedge stays under the pads |
+> | Backing out along the pin | +5.0 mm | the collar is a hard stop at zero, plus one contact envelope |
+> | Across the pin | 15.0 mm | half the pad face stays on the pin, which is the pin's half-width |
+>
+> Two of the three are **tighter** than the ball they replace, by a factor of
+> two. The one that is looser is the direction the interface is designed to
+> move in.
+
+The back-out end is not slack for extraction, which never reaches it: it is
+where the *insertion* sits, bearing on the collar the other way, so the same
+predicate has to admit both.
+
+`zero_g_blade_swap.grapple_geometry` derives all three from the pin and the
+measured pad envelope, `mdp.pin_grip_residuals` applies them, and
+`tests/test_grapple_geometry.py` pins them. Certifications produced before
+2026-08-24 were taken under the ball; `play.py --legacy_grip_ball_m 0.030`
+reproduces it exactly so an archived checkpoint can be re-run under the
+criterion it was certified against.
 
 ---
 
@@ -271,9 +333,40 @@ directly:
 | Quantity | Value |
 | --- | ---: |
 | Module length *L* | 450 mm |
-| Delivered attitude θ, measured at the destination hand-off | 0.063 to 0.067 rad |
-| Required clearance per side | **14.2 mm** |
+| Delivered attitude θ, measured at the destination hand-off | **0.0187 rad** |
+| Required clearance per side | **4.2 mm** |
+| Clearance the shipped destination preset fits | 5.11 mm vertical, 5.36 mm lateral |
 | The unmodified channel's clearance per side | 0.5 mm vertical, 0.75 mm lateral |
+
+**The 0.063 to 0.067 rad this table used to carry was not a delivered
+attitude.** It was read off runs whose destination channel had already been
+opened to 14 to 16 mm per side, and at that width the number it reports is
+2*c*/*L* — the tilt the channel itself permits — not the tilt the arm produced.
+Every row of `evidence/robot_carried_seating_sweep.json` lands within 13% of
+2*c*/*L*, and the slope that sweep was read as a controller trade, 3.5 mrad of
+squareness per millimetre of relief, is 2/*L*: 4.44 mrad per millimetre on a
+450 mm module, and a property of the module's length alone.
+`scripts/check_workcell_geometry.py` checks the recorded sweep against the law
+and `tests/test_workcell_geometry.py` holds it.
+
+The delivered attitude is measured where nothing is touching the module: the
+rack as built, 0.75 mm and 0.5 mm per side, where a module 18.7 mrad off square
+cannot enter at all and parks with its front face on the mouth plane at
+*x* = 0.2250 m. That run is the measurement, and it is 3.4 times better than the
+number this table used to state.
+
+**And the same law is the reason a wider channel does not help.** Read forwards
+it says what clearance admits a given tilt. Read backwards it says a module
+inside a channel of clearance *c* is free to sit at 2*c*/*L*, so every millimetre
+of relief that buys entry also buys the module a millimetre of room to wedge in.
+Measured on the shipped preset: delivered at 18.7 mrad into a channel that
+permits 22.7, the module enters 362 mm of the 525 it needs, rotates to
+**22.78 mrad** — 0.06 mrad from the bound — and stops. Four milliradians of
+margin is not margin.
+
+> **Corollary.** Size the channel for the delivered attitude *plus* what the
+> mating imparts, which is measured here at about 4 mrad, and treat any margin
+> under a factor of two as none.
 
 A designer has three ways to satisfy it, and widening the channel is the last of
 them: hold the module compliantly for the final approach — which this workcell
@@ -296,6 +389,56 @@ Fitted to the destination bay only, and only on the robot-carried path
 (`configure_service_destination()`), because the source bay is never entered from
 outside and adding geometry to it would change a scene four certifications
 describe. Dimensions in `src/zero_g_blade_swap/tasks/blade_swap/assets.py`.
+
+### 6.3 The channel also has an upper bound, and it comes from the gripper
+
+Section 6.2 bounds the channel's clearance **from below**: a rigidly delivered
+module needs room for the attitude the arm delivers. Nothing bounded it from
+above, and something has to, because the pads are bolted to the arm and cannot
+chase a module the rack lets wander.
+
+A pair of flat pads 27 mm wide on a 30 mm pin keeps its full face on the pin
+until the offset passes the 1.5 mm the pin is wider, and then loses a millimetre
+of face per millimetre of offset. Half the face is gone when the offset reaches
+the **pin's own half-width**, 15.0 mm — the pad widths cancel exactly. A module
+sitting in the *corner* of a rectangular channel is offset by
+`hypot(lateral, vertical)`, and the vertical half-gap is not available to trade:
+section 9.8 spends it on the 35.56 mrad hand-off requirement.
+
+> **Requirement.** Channel lateral clearance per side ≤
+> `sqrt(pin_half_width² − vertical_clearance²)`. On this rack, with 8.000 mm of
+> vertical gap and a 15 mm pin half-width, that is **12.689 mm**, and
+> `GUIDE_CENTER_OFFSET_Y` is derived from it rather than inherited.
+
+The two bounds leave a window of 10.35 to 12.689 mm and the rack now sits at the
+top of it. It sat **outside** it, at 15.750 mm, from the moment the module was
+thinned: the comment on that constant read "1.5 mm total clearance around the
+160 mm blade" and it did not move when the blade stopped being 160 mm wide.
+
+What it cost was measured. On the current module the channel's corner is
+`hypot(15.75, 8.00) = 17.66 mm`, against 0.90 mm on the module the extract skill
+was certified on, and 65 of 92 stage-0 extraction failures end with the grip more
+than 13.5 mm across the pin. Run on the section it was built for, with nothing
+else changed, the same policy scores **99.02%** against **76.95%** here.
+
+`scripts/check_workcell_geometry.py` prints both bounds and where the rack sits
+between them; `tests/test_workcell_geometry.py` and
+`tests/test_grapple_geometry.py` pin the derivation from both ends.
+
+**Which modules this rack accepts, then.** The two bounds close over the whole
+cross-section, so the cell can state its family rather than its one part. Of a
+6 × 6 grid from 110 to 160 mm wide and 14 to 35 mm tall, six sections are
+accepted; the module this project used to run fails **entry** and several
+thinner ones fail **grip**, in the same rack, and until this session the only
+instrument that measured either was a training run. The map is printed by the
+same script and recorded in `evidence/workcell_geometry_check.json`.
+
+> **Known and not fixed.** `GUIDE_CENTER_OFFSET_Y` is derived as the *largest*
+> lateral clearance the pads can follow, so the shipped 450 × 130 × 20 mm module
+> sits exactly on that bound with no margin. The window runs down to 5.738 mm
+> and a value in the middle of it would leave a few millimetres on both sides.
+> That is a measurement, not an argument, and this session did not have the
+> clock for it.
 
 ---
 
@@ -383,6 +526,77 @@ mechanically". It is:
 
 The cost of getting (1) wrong is not a warning. It is a clean, monotone,
 entirely convincing reach boundary in a report.
+
+### The pose the sweep did not contain
+
+`solve_workcell.py` swept four poses and adopted −0.65 because the deepest of
+them, the transit retreat, solved there with 33 mm to spare. **The chain does
+not fly that pose.** Its retreat depth is derived at run time from the module's
+*measured* front overhang — 232.0 mm against the 225 mm half-length — with
+`TRANSIT_FLARE_CLEARANCE_M` on top, which puts it 17 mm deeper than the pose the
+base was chosen to clear. The crossing leg was observed 27 mm deeper still.
+
+Seventeen millimetres would be a rounding error anywhere but here. The crossing
+happens at the folded end of this arm's envelope, where the trade above is
+steep, and reachability is not the quantity that goes first. Every pose on the
+crossing solves at −0.65, to a micrometre and to a microradian. What collapses
+is how much of a commanded twist the differential IK actually delivers:
+`J Jᵀ (J Jᵀ + λ²I)⁻¹` falls to **0.72** at the destination bay, with the
+Jacobian's smallest singular value at 0.016 against the solver's own λ = 0.010.
+
+| Base *x* | Worst realised authority across the crossing | Smallest singular value |
+| ---: | ---: | ---: |
+| **−0.65 (adopted)** | **0.72** | 0.016 |
+| −0.70 | 0.988 | 0.089 |
+| −0.75 | 0.995 | 0.136 |
+| −0.85 | 0.998 | 0.203 |
+
+Measured consequence, in the chain: the squaring leg at the destination bay
+froze — module attitude constant at 144.1 mrad for 380 control steps, tool
+150 µm from a fixed point — and was ended by its own timeout. The same leg at
+the *source* bay, 220 mm away and at the same depth, converges in 80 steps.
+
+> **Requirement.** A base position is not qualified by the poses a sweep chose.
+> It has to be qualified at the poses the operation actually flies, including
+> the ones derived at run time from measured geometry, and the quantity to
+> qualify is the solver's realised authority rather than convergence. Below
+> about 0.95 a bounded proportional loop stops converging inside a leg's budget,
+> and it does so silently.
+
+`scripts/check_workcell_geometry.py` derives the executed depth and profiles the
+crossing on the CPU in about a second;
+`evidence/workcell_geometry_check.json` records it. It reproduces the published
+166.95 mm shortfall at −0.45 as a control.
+
+**Moving the base is not free, and that is measured too.** Run at −0.75 on the
+same seed and the same checkpoints, capture ended at step 300 with the fingers
+still 80.5 mm open against 108.3 mm at reset: the policy never closed on the
+pin. At −0.70 it ended the same way, at 76.3 mm. A 50 mm move is already outside
+the workcell those policies were trained in.
+
+At −0.675 — 25 mm — capture survives, and the effect on the two squaring legs is
+the size the authority profile predicts:
+
+| Base *x* | `square_at_source` residual | `square_at_destination` residual | Capture |
+| ---: | ---: | ---: | --- |
+| −0.65 | 18.95 mrad | **144.13 mrad** | closes on the pin |
+| −0.675 | **7.69 mrad** | **43.38 mrad** | closes on the pin |
+| −0.70 | — | — | **never closes** |
+| −0.75 | — | — | **never closes** |
+
+Twenty-five millimetres of base movement improves the source squaring by a
+factor of 2.5 and the destination squaring by 3.3, which is what a solver
+recovering from 0.72 of its authority to 0.94 looks like. Fifty is already too
+far for the policies. That leaves a narrow band, and the way out of a narrow
+band is not to sit in it:
+
+> **Requirement.** Where a manipulator serves more than one bay, put it on a
+> lateral axis rather than choosing one base position that serves all of them.
+> Parked opposite a bay the arm's configuration there is identical to its
+> configuration at any other bay, so a skill certified at one bay is certified
+> at every bay the axis reaches, and no bay's geometry has to be traded against
+> another's. On this workcell that symmetry is exact — the same joint solution,
+> the same singular values, the same realised authority to five decimal places.
 
 ---
 
@@ -1066,7 +1280,238 @@ the rack before the module does. Derived:
 
 ---
 
-## 10. What this specification does not cover
+### 9.8 The hand-off attitude, and the three different numbers it is not
+
+The transit has to put the module in front of the destination bay square enough
+to go in. Until this session it was allowed to hand over at
+`INSERTION_ORIENTATION_TOLERANCE_RAD` — 52.36 mrad — which is the **seated
+success predicate**, the test for whether a module that is already in counts as
+installed. It is not an entry requirement, and using it as one is what let the
+transit deliver a module that wedged 53 mm short.
+
+The law is section 6.2's: a rigid part engaged over `l` with `c` of gap per side
+fits while its tilt is under `2c/l`. What makes this a trap is that **`c` is not
+one number along the stroke**:
+
+| Surface | Vertical gap per side | `2c/l` at full 450 mm engagement |
+| --- | ---: | ---: |
+| Lead-in ramps and flares, at the nominal surfaces | 8.000 mm | 35.56 mrad |
+| Destination channel, with the shipped 4.6125 mm relief | 12.613 mm | 56.06 mrad |
+| Seated success predicate (not a geometric limit at all) | — | 52.36 mrad |
+
+The relief moves the guides, the floor and the lips and deliberately leaves the
+ramps and flares where they are, because a lead-in moved out with the relief
+stops touching the module in time to square it. So the module enters through the
+tighter gap and sits in the looser one.
+
+> **Requirement.** The hand-off gate is `2c/l` taken at the **lead-in** gap:
+> 35.56 mrad on this rack. That is deliberately conservative — it is the tightest
+> surface on the path evaluated at the longest engagement, so a module that meets
+> it clears every surface at every depth. It is **not** the largest attitude that
+> can seat, and must not be quoted as one.
+
+Measured, on the same rack: modules seat at **46.7 mrad** and wedge at **53**,
+both between the lead-in bound and the channel bound, which is exactly where a
+conservative gate says they may be. A depth-dependent envelope built from the
+lead-in gap alone was written, checked against those numbers, and **refuted
+before it ran** — it would have held the runs that succeed. The reason is
+recorded in the guarded advance's own report under `why_not_depth_dependent`, so
+it is not rediscovered.
+
+`scripts/check_workcell_geometry.py` derives all three numbers without a
+simulator and `tests/test_workcell_geometry.py` pins them.
+
+### 9.9 The mating stroke must be compliant, re-measured on the module that exists
+
+Section 9.6 concluded that the form lock has to soften before the module enters
+the rack, from a run in which a rigidly held module advanced 0.3 mm in thirty
+seconds. That was taken on the **450 x 160 x 35 mm** module, whose channel had
+0.75 mm of clearance per side. The module is now 450 x 130 x 20 mm and the same
+channel had 15.75 mm of lateral and 8.00 mm of vertical clearance per side — a
+twenty-fold change in the quantity the conclusion was about, so the conclusion
+had to be re-taken rather than inherited. (The lateral figure has since been
+derived down to 12.689 mm; see section 6.3. The vertical is unchanged, and it is
+the one this conclusion turns on.)
+
+It survives, and not narrowly. Same seed, same rail, same everything but
+`--mating_mode rigid`:
+
+| | Compliant | Rigid |
+| --- | ---: | ---: |
+| Module centre reached | **0.6753 m** (seated plane 0.6760) | 0.2275 m |
+| Attitude at the end | 45.9 mrad | 269 mrad |
+| Seating conditions met | **7 of 7** | 0 of 7 |
+| Reached phase | done | transit |
+
+> **Requirement.** The lock's rigidity is released where the rack takes over, and
+> that is not a tuning. A rigidly held module does not enter this bay at any
+> clearance the rack has been built with: the lead-in aligns a part by pushing
+> it, and a part welded to a wrist cannot be pushed.
+
+---
+
+## 10. Required control allocation: which phase is learned and which is not
+
+Every other section of this document is about geometry. This one is about who
+drives, and it is here for the same reason: it is a **requirement on the
+system**, decided once and checkable from the report, not an implementation
+detail that can drift.
+
+The rule is one sentence.
+
+> **Requirement.** Reinforcement learning owns the phases where contact decides
+> the outcome and no model predicts it. Deterministic control owns the phases
+> where the geometry is known and the requirement is repeatability. A phase may
+> not be labelled learned unless a policy produced the actions that ran.
+
+### 10.1 Where the boundary falls, and why there
+
+**RL owns contact under uncertainty.**
+
+- **Capture on the pin.** The pin is a wedge; a closing pad on a wedge in zero
+  gravity thrusts the free module along the pull axis before it grips it, and
+  whether the grip takes depends on contact transients across a 0.1 s window.
+  Section 8 is four failed attempts to constrain that mechanically and section
+  2.1 is why the interface has the shape it does. Nothing here is modelled well
+  enough to plan through.
+- **The last millimetres of seating.** Section 6 establishes that this rack's
+  lead-in does not assist the insertion, it *performs* it: the flares walk the
+  module into the channel by contact, and contact can only walk a module that is
+  free to be walked. A stroke whose outcome is decided by which lead-in the
+  module's corner touches first is the same class of problem as the capture.
+
+**Deterministic owns known geometry.** The seat dwell, the retreat, the rail
+crossing, the two squaring legs, and the long free-space approach. Every one of
+them is a pose-to-pose move through a workcell whose kinematics
+`scripts/check_workcell_geometry.py` solves in closed form and agrees with the
+simulator to **0.006 mm**. There is no uncertainty for a policy to be robust to,
+and repeatability is the whole requirement — so a solved inverse kinematics is
+not merely adequate here, it is strictly better than a policy, and it is what
+runs. It commands actuator targets through the same action term as every other
+phase.
+
+The deterministic half has one hard sub-requirement, because getting it wrong
+looks like a control problem and is not:
+
+> **Requirement.** A scripted pose-to-pose leg must be commanded from an
+> absolute setpoint, not from a pose-relative delta. IsaacLab's differential IK
+> in relative mode re-anchors on the tool's measured pose every control step and
+> drives to current-plus-delta across the decimation, which integrates the
+> joints' lag into the command. Measured on the destination squaring leg, that
+> loop does not converge — it limit-cycles at about one action scale, 4.5, 11.4,
+> 13.9, 15.1 mrad on successive samples, against a channel that admits 2.22 —
+> and both a smaller rotation gain and a smaller uniform six-channel gain make
+> it **diverge**, to 1.4 and 2.3 rad, because the arm is holding the module
+> against the pads' closure rather than merely aiming it. No gain closes an
+> integrator that should not be in the loop.
+
+### 10.2 Where the implementation sits against that rule
+
+Stated plainly, because a hybrid that is not stated is decoration:
+
+| Phase | Controller that runs | Certified |
+| --- | --- | ---: |
+| Grasp | RL policy | in isolation, three held-out seeds |
+| Seat | scripted, 0.03 s dwell | — |
+| Extract | RL policy | in isolation, three held-out seeds |
+| Transit, 5 legs | scripted, solved inverse kinematics | — |
+| Insert | **scripted guarded advance**, on the deployed RGB-D estimate | — |
+| Back off | scripted, after the settled re-check | — |
+| *(insert policy)* | *loaded and hashed; runs only under `--insert_controller policy`* | — |
+
+So the contact-rich seating stroke — the phase §10.1 assigns to RL — is driven
+deterministically. That is a **deviation from this section**, and two things
+about it changed in the last session.
+
+The first is that the deviation is now real rather than nominal. Until then the
+phase labelled "insert" was not performing the insertion at all: the transit's
+last leg drove the module the full 446 mm into the bay and the guarded advance
+advanced it 0.7 mm in six control steps. The insertion phase now receives the
+module at the mouth and drives the whole stroke, which is what puts the deployed
+estimate in the loop for 446 mm instead of for the last millimetre, and what
+makes "the seating is scripted" a statement about 446 mm of scripted contact
+control rather than about a rounding error.
+
+The second is that the alternative is now runnable. `--insert_controller policy`
+hands the phase to the trained checkpoint, with the same lock release and the
+same geometric interlock and no envelope check wrapped around it, so the two arms
+differ in the controller and in nothing else.
+
+> **Requirement.** The deviation is closed in one of two ways and no third:
+> either the insert policy, trained on the geometry that now exists, beats the
+> guarded advance **on this chain** and takes the stroke; or it does not, that
+> negative result is published with both pooled rates beside each other, and the
+> checkpoint is **removed from the chain** rather than carried. A checkpoint that
+> is loaded and never consulted must not appear in a `learned_phases` list.
+
+**Closed the second way, on 2026-08-24.** The task was rebuilt first, so this is
+a measurement of a policy rather than of a mis-specified problem: the reset now
+spans the whole 529 mm stroke from a bank solved in closed form rather than
+starting at one pose 362 mm from where the chain hands over; the axial action
+scale is sized for that stroke instead of for the 167 mm one it replaced; both
+bays seat at the depth `service_latch.release_before_blade_centre_x_m` permits
+rather than 74 mm past it; and the retention reward stopped charging the pin's
+own load path, which was worth about 150 an episode against the ~71 that
+finishing pays.
+
+That last correction did what it should. The best mean reward moved from −80 to
+−18 on the step it took effect, and the policy now holds the module: grip error
+sits at 12.0 mm, which is the seated feed exactly, p95 12.6 mm, with zero lost
+grips in 128 held-out episodes.
+
+It still does not seat. Over 2,403 episodes on three held-out seeds and both
+bays it scores **0.00%**, Wilson [0.00%, 0.16%], with the module a median of
+323 mm short. Half the episodes run out the clock and half leave the workspace,
+and a further 977 epochs drifted the mean reward down rather than up.
+
+On the chain itself, on the first held-out seed, the policy arm seats 0 of 32
+against the guarded advance's 30 of 32. Thirty of those 32 reach the insertion
+phase, so this is the seating failing rather than the hand-off.
+
+So the checkpoint comes out. `--insert_checkpoint` is optional, a chain seating
+with the guarded advance does not load one, and
+`tests/test_robot_carried_contract.py` holds both that and the label rule.
+Report: `evidence/grapple_insert_v16pin_certification.json`.
+
+### 10.3 The gates, so "industrial" is a number and not an adjective
+
+These hold for every claim this project makes about the chain.
+
+Measured against them, at the end of the working session of 2026-08-24:
+
+| Gate | Result |
+| --- | --- |
+| Chain pooled with a Wilson interval | **97.92%**, [92.7%, 99.4%], 96 episodes, three held-out seeds — **passes** (was 96.88%) |
+| A learned phase at 95% pooled and worst-stage | grasp 85.69% / 78.68%, extract 87.75% / 84.08% — **both fail** (extract was 74.27% / 60.80%, on a criterion that charged the pin's own load path as a dropped module; see §3.2) |
+| A scripted phase labelled on the controller that ran | passes; pinned by `tests/test_robot_carried_contract.py` |
+| Every geometric requirement derived by a CI check with no simulator | passes; `check_workcell_geometry.py`, `check_service_latch_clearance.py` |
+| Every load-path simplification named in `README.md` and in the report | passes |
+
+
+| | |
+| --- | --- |
+| A phase that claims to be learned | ≥ 95% pooled **and** ≥ 95% worst-stage over three held-out seeds, zero instability terminations |
+| A phase that is scripted | labelled scripted in the report, keyed on **the controller that ran**, never on a flag |
+| The chain as a whole | a pooled success rate with a Wilson interval, not an anecdote |
+| Every geometric requirement in this document | derived by a check that runs in CI without a simulator |
+| Every simplification in the load path | named in `README.md` under Honest limits, and in every report that depends on it |
+
+The label rule is not pedantry. Until it was fixed, the report's
+`learned_phases` listed `insert` and its `loaded_but_not_executed_policies` was
+empty — because the label branched on a configuration flag belonging to a
+retired world-mounted payload shuttle instead of on which controller the driver
+actually stepped. `tests/test_robot_carried_contract.py` pins it.
+
+The CI rule is the same argument applied to geometry:
+`scripts/check_workcell_geometry.py` and
+`scripts/check_service_latch_clearance.py` answer in a second what a simulator
+sweep answers in an hour, and because they are validated against the simulator
+their answers are usable rather than indicative. A requirement that only a
+GPU can check is a requirement that stops being checked.
+
+---
+
+## 11. What this specification does not cover
 
 - Simulation only. PhysX Coulomb friction between primitive geometry, not a
   measured pad compound on a machined fixture.

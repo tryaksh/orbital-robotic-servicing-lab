@@ -1,6 +1,12 @@
+> **Status superseded, reasoning kept.** The seating *is* closed — the whole
+> chain runs end to end and is certified at a pooled rate. Read
+> [`final_session_handoff.md`](final_session_handoff.md) for what is true now.
+> Everything below remains the correct account of how the faults in section 4
+> were found, which is why it is still here.
+
 # Robot-carried relocation: what is proven, what is scripted, what is open
 
-`docs/claude_opus_5_handoff.md` is the task this branch was given. This is the
+`claude_opus_5_handoff.md` is the task this branch was given. This is the
 answer to it, and it is the file to read first.
 
 ## The question, and the answer
@@ -46,7 +52,7 @@ policy observation.
 
 ## 1. The lock is on the robot, not the module
 
-Section 8.4 of `docs/service_interface_spec.md` already contained the rule, from
+Section 8.4 of `../service_interface_spec.md` already contained the rule, from
 a sweep of the gripped section against the measured hand: a serviceable module
 cannot carry a positive axial stop forward of the pads, so the axial lock has to
 come from the end-effector. Two module-side attempts had been built and refuted
@@ -102,6 +108,232 @@ half of that requirement this session measured: it is bounded **above** as well,
 because opening the channel is also what stops it correcting the module.
 
 ## 4. What is open, and why it is hard
+
+> **Read section 4a first.** A later session found the cause of the seating
+> failure and it is not what the rest of section 4 says. Three of the numbers
+> below are retracted there, with the measurements that retract them. The text
+> is kept because the reasoning that produced it is worth having, and because
+> the sweep it describes turns out to be a correct measurement of the wrong
+> thing.
+
+## 4a. The correction: the destination squaring leg has never worked
+
+Every robot-carried report in this branch already contained the answer, in the
+one field nobody read: `robot_carried_transit.legs[].residual_orientation_rad`.
+
+| Run | `square_at_destination` | forced by timeout | residual |
+| --- | --- | ---: | ---: |
+| `evidence/robot_carried_rgbd_seed6070.json` | never met its gate | 1 of 1 | **133.3 mrad** |
+| the shipped preset, state task | never met its gate | 1 of 1 | **144.1 mrad** |
+| the rack as built, no relief | never met its gate | 1 of 1 | **144.1 mrad** |
+
+The transit's job is four legs: retreat, square at the source bay, cross, square
+at the destination bay. The first three meet their gates. The fourth has never
+met its gate in any run this branch has recorded. Traced per step, the module's
+attitude sits at 144.11 mrad and does not change to five decimal places for
+**380 control steps**, with the tool parked inside 150 µm of a fixed point,
+until the leg's own timeout ends it. The leg after it — the one that drives the
+module 450 mm into the channel — is what does the squaring, from 144 mrad down
+to about 19, while it is also pushing.
+
+So the module was never delivered square and then disturbed. It was never
+squared at all.
+
+### Why that leg freezes, and why the source leg does not
+
+The two squaring legs are the same code at the same depth, 220 mm apart. The
+source one converges in 80 control steps. The destination one does not converge
+at all.
+
+`solve_workcell.py` adopted the base at *x* = −0.65 because the deepest pose it
+swept — the transit retreat, at the *nominal* clear centre — solved there with
+33 mm of margin. The chain does not fly that pose. It derives its retreat from
+the module's **measured** front overhang, 232.0 mm against the 225 mm
+half-length, plus `TRANSIT_FLARE_CLEARANCE_M`: 17 mm deeper than the certified
+pose, and the crossing was observed 27 mm deeper still.
+
+Every pose on the crossing is still reachable at −0.65, to a micrometre and a
+microradian. What is not still there is authority. The chain's differential IK
+is damped least squares with λ = 0.010, so a commanded twist arrives multiplied
+by `J Jᵀ (J Jᵀ + λ²I)⁻¹`, and across the crossing at the executed depth that
+falls to **0.72** at the destination bay with the smallest singular value at
+0.016 — inside a factor of two of the damping itself. At −0.75 the same profile
+never drops below 0.99.
+
+`scripts/check_workcell_geometry.py` computes all of this on the CPU in about a
+second, from closed-form UR10e kinematics validated against every configuration
+the simulator recorded in `evidence/workcell_reach_solution.json` (0.006 mm and
+0.000 mrad of disagreement), and reproduces the published 166.95 mm shortfall at
+the old −0.45 base as a control. `evidence/workcell_geometry_check.json`.
+
+### What the clearance sweep was actually measuring
+
+The sweep below reads as a trade: open the channel and the module goes further
+in but ends up more crooked, at about 3.5 mrad per millimetre, "because the
+channel was what was squaring the module".
+
+A rigid module of length *L* fully inside a channel with *c* of clearance per
+side cannot be tilted past 2*c*/*L*. A module pushed in until it wedges
+therefore *stops at* 2*c*/*L* — and the slope of that curve is 2/*L*, which is
+**4.44 mrad per millimetre on a 450 mm module** and a property of the module's
+length and of nothing else. Every one of the eight recorded rows lands within
+13% of it:
+
+| Relief per side | Measured stop attitude | 2*c*/*L* | ratio |
+| ---: | ---: | ---: | ---: |
+| 4 mm | 20.50 mrad | 20.00 | 1.03 |
+| 6 mm | 27.93 | 28.89 | 0.97 |
+| 8 mm | 35.22 | 37.78 | 0.93 |
+| 12 mm | 49.79 | 55.56 | 0.90 |
+| 16 mm | 63.55 | 73.33 | 0.87 |
+
+So the sweep is a correct measurement of the module's length. It is not
+evidence about the lead-ins, the compliance, the force cap, or the arm — and the
+**"the arm delivers 63 to 67 mrad" headline in the rest of section 4 is one of
+its rows**, read at 14 to 16 mm of relief where that number is the channel's
+own permission rather than the arm's error.
+
+The arm's actual delivered attitude is measured where nothing is touching the
+module — the rack as built, where an 18.7 mrad module cannot enter at all and
+parks with its front face on the mouth plane at *x* = 0.2250 m. **18.7 mrad**,
+3.4 times better than the retracted figure, and still five to eight times more
+than the 2.22 mrad vertical and 3.33 mrad lateral that the unmodified channel
+admits.
+
+### What the rail moved the failure to
+
+With the rail fitted the crossing and the destination squaring both work — the
+module holds 24.7 mrad flat across the crossing against 107 to 157 mrad without
+it, and the squaring leg reaches 6.1 mrad against 144.1 — and the *last* leg then
+fails somewhere new. It is worth writing down exactly where, because it is a
+much better-defined failure than the one it replaced.
+
+The module's leading corner sits at *x* = 0.3727 and stays there to four decimal
+places for 900 control steps, against a lead-in flare whose leading plane is at
+*x* = 0.371754. **The module is jammed on the destination bay's own lead-in.**
+Everything after that — the attitude winding from 6 mrad to 120, the module
+drifting 52 mm off the bay centre line, the tool parked 0.44 m from its target —
+is the arm pushing on that contact.
+
+Two faults were found and fixed on the way to that sentence, and then the real
+one appeared underneath them.
+
+**The crossing leg was judged on an axis the rail does not own.** Without a rail
+the arm crosses, so it closes lateral and vertical together and the leg is
+judged on both. With one, the carriage owns the lateral axis and only that; the
+module's height sits 8 to 12 mm below the staging value because extraction left
+it there, so the leg could never meet a gate on both axes and was ended by its
+timeout with 16.8 mm of lateral error still open. The flare catches 16.6 mm per
+side. Judged on the lateral axis alone the crossing now **meets its gate**, at
+3.3 mm.
+
+**The squaring legs wanted more time than they had.** Tightening their gate from
+52.36 mrad to the channel's 2.22 gave them work they did not have before:
+attitude *and* the 2.5 mm position gate, which do not converge together because
+rotating the module about where it stands moves the tool about 50 mm. Four
+hundred steps was generous at the old gate and is not at the new one; at 1200
+the source leg's position residual falls from 6.31 mm to 2.23 mm.
+
+### What is actually left: 15 milliradians of pitch and a 5 millimetre gap
+
+With both fixed the module is handed to the last leg in good shape — centred to
+2 mm on the bay's line, at 0.7192 m against a channel centre of 0.7205, and
+**14.8 mrad off square** — and it still does not enter. Traced to the step:
+
+| Step | Module *x* | *y* | *z* | Attitude | Nose corner *x* |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 2986 | 0.1321 | −0.2219 | 0.7192 | 14.8 mrad | 0.3582 |
+| 2990 | 0.1459 | −0.2011 | 0.7000 | 31.0 mrad | 0.3733 |
+| 6498 | 0.1423 | −0.1811 | 0.6953 | 69.8 mrad | 0.3723 |
+
+The module drops 24 mm in four control steps and never recovers, and its nose
+corner sits on the flare leading plane at 0.371754 for the remaining 3,500.
+
+The arithmetic closes it. At 14.8 mrad of pitch the leading corner dips
+225 mm × 0.0148 = **3.3 mm** below the module's centre line, the module is
+already sitting 1.3 mm low, and the channel's vertical half-gap at the shipped
+preset is 5.1 mm. That leaves about 0.4 mm, and the first contact spends it: the
+corner catches the lower lead-in, the contact drives the module down, and it
+wedges. On the rack as built the half-gap is 0.5 mm and there is nothing to
+spend at all.
+
+So the requirement on the delivery is not the 52.36 mrad the chain used to check
+and it is not even the 2.22 mrad the seated channel admits. It is **pitch under
+about 5 mrad and vertical centring under a millimetre, at the mouth**, and the
+controller's floor is 15.
+
+**And widening the channel cannot reach this one.** Run at 10.00 mm of per-side
+relief against the shipped 4.61 mm, the result is byte-identical — the same
+module centre at *x* = 0.1399, the same 103.47 mrad, the same residual on all
+four legs. `service_destination_channel_relief_m` moves the guides, the floor
+and the lips; it deliberately does not move the ramps and the flares, and the
+ramps and the flares are what the module is caught on. Every earlier row of the
+clearance sweep was measuring a module that had already got past the lead-in.
+This one has not.
+
+Three things this rules out, and each was a live suspect:
+
+* **Not the carriage.** `robot_base_y_m` in the transit trace reaches −0.2360.
+  The base was commanded and it moved.
+* **Not reach.** Walked continuously from the frozen configuration to the leg's
+  own target, the closed-form solver converges at every point to 0.1 µm with the
+  head-on attitude held exactly, and no joint passes 2.78 rad.
+* **Not conditioning.** Realised authority along that same path runs 0.984 to
+  0.999 and the smallest singular value 0.079 to 0.342, against λ = 0.010.
+
+**Not the mating compliance either, though it makes things worse.** Softening
+the lock at the leg boundary throws the module from 14.8 mrad to 160 mrad in
+four steps; run rigid the same transient is 14.8 to 31. The compliance is
+costing about 130 mrad of the transient and is not the reason the module cannot
+enter, because the rigid run jams in the same place.
+
+### The floor is a limit cycle, and a smaller gain makes it worse
+
+`_drive_tool_to` commands `rotation_error / scale` clamped to the authority, so
+a squaring leg commands a full 8 mrad every step against a 2.22 mrad target, and
+the differential IK is in relative mode: it re-anchors on the tool's current
+pose each control step and drives to current + delta across the decimation, so
+while the joints lag the deltas accumulate ahead of the arm. The leg does not
+converge, it limit-cycles at about one action scale — 8.9, 16.1, 9.9 mrad on
+successive samples.
+
+The obvious remedy is a smaller step, and it was measured: at a quarter
+authority the same leg **diverges**, 0.15 to 2.29 rad over four samples, the
+module tumbling end for end. A squaring leg is not a pure rotation — rotating
+the module about where it stands moves the tool about 50 mm — so rate-limiting
+the rotation hands the solver a translation it can satisfy instead, and the
+wrist winds. The default is back at full authority and
+`RIGID_TRANSIT_SQUARE_AUTHORITY` is kept so the sweep is one variable away.
+
+**Closing 15 mrad to 5 therefore needs a different controller, not a different
+gain.** The candidate this codebase has not tried is to stop commanding clamped
+relative deltas on the scripted legs and command joint targets from a solved
+inverse kinematics instead — which is what a real robot controller does, which
+`GraspSettlingDifferentialInverseKinematicsAction.set_joint_target_override`
+already supports, and for which `scripts/check_workcell_geometry.py` is a
+validated solver.
+
+Three things this rules out, and each was a live suspect:
+
+* **Not the carriage.** `robot_base_y_m` in the transit trace reaches −0.2313.
+  The base was commanded 231 mm and moved 231 mm.
+* **Not reach.** Walked continuously from the frozen configuration to the leg's
+  own target, the closed-form solver converges at every point to 0.1 µm with the
+  head-on attitude held exactly, and no joint passes 2.78 rad.
+* **Not conditioning.** Realised authority along that same path runs 0.984 to
+  0.999 and the smallest singular value 0.079 to 0.342, against λ = 0.010.
+
+### The requirement that was missing
+
+The chain gated its squaring legs on `INSERTION_ORIENTATION_TOLERANCE_RAD`,
+52.36 mrad. The channel admits 2.22. That is a factor of **24**, and it is why
+every failing run reported `"orientation": true` on a module too crooked to
+enter. The gate is now the channel's acceptance, derived by
+`scripts/check_workcell_geometry.py`, with the leg's existing timeout as the
+escape so a leg that cannot reach it reports the residual instead of hanging.
+
+---
+
 
 The seating does not close. The robot carries the module to the destination bay,
 drives it 362 mm into the channel, and stops 163 mm short of seated.

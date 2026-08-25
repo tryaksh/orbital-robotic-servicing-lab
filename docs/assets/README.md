@@ -1,24 +1,17 @@
-# Portfolio page assets
+# Documentation assets
 
-`../portfolio.html` is a single self-contained page — no build step, no
-framework, no external requests. It expects one asset beside it:
+`camera_frames.png` — ten unretouched 64×64 frames from the module pose head's
+training set, tiled and shown at 4×. It is what the perception model actually
+sees, at the resolution it sees it.
 
-- `camera_frames.png` — ten unretouched 64x64 frames from the pose head's
-  training set, shown at 4x. Referenced as `assets/camera_frames.png`.
+It was produced alongside `evidence/module_pose_head.json`. There is no build
+step and nothing generates it on demand; regenerate it from the dataset in
+`datasets/` if the camera or the crop changes.
 
-The workflow video is **not** committed, because this repository keeps videos out
-of Git. It is written to `artifacts/demo/vision_install/rl-video-step-0.mp4` by:
+Videos are not committed. `scripts/run_workflow_demo.py --video` writes one to
+`artifacts/demo/` when asked, and `docs/compute_service_demo.md` describes the
+service job that produces one per run.
 
-```
-scripts/run_workflow_demo.py --headless \
-  --task Isaac-ZeroG-Blade-GrappleVision-Workflow-v0 --workflow install \
-  --curriculum_stage 2 --num_envs 1 --video \
-  --pose_head_checkpoint checkpoints/module_pose_head.pth \
-  --grasp_checkpoint ... --extract_checkpoint ... --insert_checkpoint ...
-```
-
-To put it on the page, copy it next to `portfolio.html` and drop a `<video>` in
-place of the `<figure>` holding the camera strip, or beside it.
-
-Every number on the page names the file in `evidence/` it came from, so each one
-can be checked rather than taken on trust.
+A single-page portfolio that used this image was removed in commit `0b28191`;
+the image is kept because it is a record of the perception input, not because
+that page is coming back.

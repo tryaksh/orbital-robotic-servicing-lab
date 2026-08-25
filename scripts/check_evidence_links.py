@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCUMENTS = (
     "README.md",
     "CLAUDE.md",
-    "docs/claude_opus_5_handoff.md",
+    "docs/STATUS.md",
     "docs/compute_service_demo.md",
     "docs/service_interface_spec.md",
     "evidence/RETRACTED.md",
