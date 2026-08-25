@@ -500,6 +500,47 @@ passed / 1 skipped under Isaac's Python.
 
 ---
 
+## T11 — No recording shows the certified chain
+
+**Where it stands.** Audited 2026-08-25 by checking every clip against the report
+of the run that produced it rather than against its filename. Every video in the
+repository is from superseded checkpoints, pre-fix geometry, or both, and **none
+achieved settled seating**:
+
+* `1_grasp_and_extract.mp4` and `2_carry_across_on_the_rail.mp4` run the w65
+  checkpoints, two promotions behind the certified set, in a run that ended at
+  `reached_phase: transit` with 43.2 mm of final lateral error;
+* `3_full_chain_seated.mp4` is **misnamed** — its run reports
+  `lateral_alignment: false`, 4.62 mm against a 2.5 mm tolerance;
+* the perception clips are from 2026-08-15, predating the workcell move, the
+  130 x 20 mm module and the derived rack.
+
+The 4.62 mm failure is the blocker that deriving both lead-ins closed, so those
+clips are an honest record of the problem and a dishonest record of the solution.
+
+**Why it was not fixed in the audit.** Producing honest media is a GPU run, and
+the audit deliberately spent no GPU time on anything but the one training resume
+it was asked to carry.
+
+**Run it.**
+
+```bash
+scripts/run_robot_carried.sh rgbd    # ~8 min, 1 env, RGB-D active, writes a report
+```
+
+**Done when.** Three or four clips exist whose runs report
+`seated_conditions_still_held_after_settling: true`, covering the learned skills,
+the robot-carried transit, the complete seating chain and perception — attached to
+a GitHub Release rather than committed, since `*.mp4` stays gitignored and the
+repository stays ~21 MB. `docs/DEMOS.md` holds the full detail and the caption
+each clip needs.
+
+**Cost.** Minutes per clip. The check that matters costs nothing: read
+`seated_conditions_still_held_after_settling` in the run's report before
+publishing the clip.
+
+---
+
 ## Not tasks: things already settled
 
 Do not spend GPU hours re-deriving these. `NOW.md` §4 lists them with their
