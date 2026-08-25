@@ -13,6 +13,13 @@ Everything here is simulated. Nothing has been run on hardware.
 
 ## 1. What runs
 
+**The mission this stands in for:** replacing a failed compute module on an
+orbiting platform, autonomously, without an astronaut EVA. The whole simulation
+runs at `gravity=(0.0, 0.0, 0.0)`, which is not decoration — it is why capture is
+learned rather than scripted. Nothing settles, and squeezing a free-floating mass
+in zero gravity ejects it before the pads close. The README says why that changes
+the problem; the specification is the design output it exists to produce.
+
 One continuous episode, no cuts: a UR10e locates a compute module in a rack bay,
 grips it, pulls it clear, carries it to the neighbouring bay, drives it home, and
 opens its hand only after every seating condition has held for 0.70 s. The robot
