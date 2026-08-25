@@ -230,3 +230,18 @@ change from being quoted as one number: `play.py --legacy_grip_ball_m 0.030` and
 for the reasoning and the negative results in them, not for their status claims —
 every one is superseded by this file. `docs/archive/README.md` says what each
 contains.
+
+### Branches
+
+`main` is canonical and carries everything. Two exploration branches are kept as
+refs, and **neither holds any evidence file that `main` does not** — that was
+checked file by file before consolidating, so nothing is lost by ignoring them.
+They are kept for the reasoning in their commit messages:
+
+| Branch | What is in it | Why kept |
+| --- | --- | --- |
+| `keyed-interface` | A keyed pin instead of a tapered one. Five real defects on that geometry, each found and fixed, **none of which moved extraction off 0.00%**. | Its final commit message is the write-up: it ends by naming parameter search as the wrong tool and the missing lead-in geometry as the actual gap. What stands — seated grip offset 19.4 → 0.7 mm, attitude 63.7 → 1.3 mrad, 40 N·m of lateral load held without slip — is worth reading before anyone re-opens a keyed interface. |
+| `agent/zero-g-blade-swap` | The original eight-phase swap line, before the workcell move. | Historical origin. Superseded in every respect; merging it would delete current work. |
+
+`industrial-relocation` was the working branch through 2026-08-25 and is now
+identical to `main`.
