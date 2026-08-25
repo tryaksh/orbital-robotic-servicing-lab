@@ -1,0 +1,72 @@
+{
+  "title": "The insert skill's attitude floor is the channel throat, and it moves with it",
+  "evidence_type": "simulation_only",
+  "generated_utc": "2026-08-25T22:19:47.002319+00:00",
+  "question": "T9 read the insert skill's terminal attitude band as a wall set by the channel's lateral clearance through 2c/L, from a coincidence of numbers. Does the band move when the clearance moves?",
+  "answer": "Yes. Narrowing the channel from 12.689 mm to 11.065 mm per side moves the floor of the seated-attitude band from 56.03 mrad to 45.75 mrad, on the same checkpoint, seed and episode count. The band is geometry, not behaviour, and the geometry is the throat.",
+  "method": "One checkpoint, grapple_insert_l0_seed70_v23lock, trained on the OLD rack and evaluated on both. Zero-shot on the new one, so the policy is off its training distribution there; that weakens the success number and not the floor.",
+  "law": "a module fully inside a channel with c per side wedges at 2c/L and cannot be squarer",
+  "success_orientation_tolerance_mrad": 52.3599,
+  "arms": [
+    {
+      "label": "old rack, GUIDE_CENTER_OFFSET_Y 86.689 mm",
+      "lateral_clearance_per_side_m": 0.012689,
+      "acceptance_law_wall_mrad": 56.396,
+      "episodes": 256,
+      "success_rate": 0.0,
+      "reached_seated_depth": 91,
+      "fraction_reaching_seated_depth": 0.3555,
+      "median_shortfall_mm": 98.611,
+      "median_lateral_mm": 4.512,
+      "seated_orientation_mrad": {
+        "min": 56.033,
+        "p5": 56.035,
+        "median": 56.919,
+        "p95": 70.117
+      },
+      "floor_over_wall": 0.9936,
+      "fraction_inside_success_orientation": 0.0,
+      "seated_conditions_passing": {
+        "orientation": 0.0,
+        "lateral": 0.0
+      }
+    },
+    {
+      "label": "new rack, GUIDE_CENTER_OFFSET_Y 85.065 mm",
+      "lateral_clearance_per_side_m": 0.011065,
+      "acceptance_law_wall_mrad": 49.178,
+      "episodes": 260,
+      "success_rate": 0.188462,
+      "reached_seated_depth": 93,
+      "fraction_reaching_seated_depth": 0.3577,
+      "median_shortfall_mm": 105.744,
+      "median_lateral_mm": 3.613,
+      "seated_orientation_mrad": {
+        "min": 45.754,
+        "p5": 45.758,
+        "median": 46.855,
+        "p95": 52.352
+      },
+      "floor_over_wall": 0.9304,
+      "fraction_inside_success_orientation": 0.3846,
+      "seated_conditions_passing": {
+        "orientation": 0.9462,
+        "lateral": 0.5484
+      }
+    }
+  ],
+  "what_it_settles": [
+    "The attitude band is set by the channel's lateral throat. Both floors sit just under their own 2c/L -- 0.994 and 0.930 of it -- and the floor moved by 10.3 mrad when the throat moved by 1.6 mm.",
+    "It is not the relief. The relieved channel is 15.68 x 12.61 mm and admits 69.7 mrad of yaw; the module rests far inside that, against the unrelieved throat the lead-ins hold at the mouth. evidence/destination_channel_geometry.json measures both.",
+    "It is not the policy's. Nothing about the checkpoint changed between these two rows."
+  ],
+  "what_it_does_not_settle": [
+    "This is not a certification. One seed, stage 0, 256 episodes, and the policy was trained on the other rack.",
+    "Success is now limited by lateral alignment rather than by attitude: among episodes that reach seated depth on the new rack, 94.6% are inside the orientation tolerance and 54.8% are inside the 2.5 mm lateral one. That is the policy's to improve and is what a retrain on this rack is for."
+  ],
+  "scope_and_limitations": [
+    "Simulation only. No result here was produced on real hardware.",
+    "One PPO training seed. The evaluation seed is held out.",
+    "Stage 0 only. The published skill certifications pool three curriculum stages."
+  ]
+}
