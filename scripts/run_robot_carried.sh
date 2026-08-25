@@ -23,9 +23,32 @@ CKPT_ROOT="logs/rl_games/zero_g_blade_insertion_contact"
 OUT="artifacts/robotcarried"
 mkdir -p "$OUT" evidence
 
-GRASP_CKPT="${GRASP_CKPT:-$CKPT_ROOT/grapple_grasp_l0_seed70_v6w65/nn/last_zero_g_blade_insertion_contact_ep_2400_rew__37.24023_.pth}"
-EXTRACT_CKPT="${EXTRACT_CKPT:-$CKPT_ROOT/grapple_extract_l0_seed70_v16w65/nn/last_zero_g_blade_insertion_contact_ep_9700_rew__176.34572_.pth}"
-INSERT_CKPT="${INSERT_CKPT:-$CKPT_ROOT/grapple_insert_l0_seed70_v12w65/nn/last_zero_g_blade_insertion_contact_ep_7100_rew_-20.706831.pth}"
+# **These three are the set that produced the published rate, and they are not
+# a preference.** Read them out of the certification rather than trusting this
+# comment: `evidence/robot_carried_full_chain_pin.json` records all three paths
+# and their SHA-256, and the pooled report's `policy_set_sha256`
+# (3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95) is the
+# hash of that set.
+#
+# Corrected 2026-08-25. These defaults had been left on the superseded w65 set
+# -- grasp v6w65, extract v16w65, insert v12w65 -- two promotions behind the
+# checkpoints the 97.92% was measured on, so `run_robot_carried.sh certify` as
+# documented did not reproduce the number it was documented as reproducing.
+# `scripts/promote_checkpoints.py` exists to stop exactly this and did not cover
+# this file; it does now. `src/zero_g_blade_swap/service/presets.py` is still on
+# the w65 set and moving it would move a published service number, so it is a
+# task rather than an edit: docs/NEXT_WORK.md T7.
+#
+# The extract filename is the single-underscore form on purpose. Epoch 12600
+# exists under two rl-games naming conventions whose weights are byte-identical
+# but whose file hashes are not, and the certification recorded this one.
+GRASP_CKPT="${GRASP_CKPT:-$CKPT_ROOT/grapple_grasp_l0_seed70_v7m130/nn/last_zero_g_blade_insertion_contact_ep_3100_rew_30.262873.pth}"
+EXTRACT_CKPT="${EXTRACT_CKPT:-$CKPT_ROOT/grapple_extract_l0_seed70_v18pin/nn/last_zero_g_blade_insertion_contact_ep_12600_rew_172.70488.pth}"
+# Loaded, and never stepped: the seating phase is the scripted guarded advance.
+# It stays in the set because the certification loaded it and the policy-set
+# hash includes it, so dropping it would change the hash without changing a
+# single action. `--insert_controller policy` is what makes it act.
+INSERT_CKPT="${INSERT_CKPT:-$CKPT_ROOT/grapple_insert_l0_seed70_v13m130/nn/last_zero_g_blade_insertion_contact_ep_8000_rew_-42.01845.pth}"
 
 STATE_TASK="Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0"
 VISION_TASK="Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0"
@@ -146,6 +169,21 @@ case "$stage" in
     # the baseline with the result.
     CERT_TAG="${CERT_TAG:-relocate}"
     CERT_TITLE="${CERT_TITLE:-Robot-carried servicing workflow: relocation, bay 1 to bay 2}"
+    # The comment above says a bare re-run would replace the baseline it is
+    # supposed to be compared against. Saying so did not stop it being possible,
+    # so this stops it: an aggregate that would overwrite an existing report
+    # aborts before a single GPU-hour is spent, rather than after.
+    #
+    # Rule 6 -- failed and superseded results stay in evidence/, labelled -- is
+    # only enforceable if the files survive, and the two preserved befores are
+    # what make the 97.92% mean anything.
+    CERT_OUT="evidence/workflow_robot_carried_${CERT_TAG}_certification.json"
+    if [ -e "$CERT_OUT" ] && [ "${FORCE_OVERWRITE:-}" != "1" ]; then
+      echo "REFUSING: $CERT_OUT already exists."
+      echo "  It is preserved evidence, and this stage would replace it."
+      echo "  Re-run with a new CERT_TAG, or FORCE_OVERWRITE=1 if replacing it is the intent."
+      exit 3
+    fi
     rows=()
     for seed in ${SEEDS:-4070 5070 6070}; do
       out="$OUT/certify_${CERT_TAG}_seed${seed}"

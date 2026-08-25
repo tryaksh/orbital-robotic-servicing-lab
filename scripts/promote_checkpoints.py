@@ -42,6 +42,13 @@ SCRIPTS = (
     "scripts/certify_vision_workflow.sh",
     "scripts/run_relocation.sh",
     "scripts/probe_workcell_policies.sh",
+    # Added 2026-08-25, and the omission is the reason it was added: this is the
+    # driver for the chain that carries the headline number, and it was the one
+    # script with a default checkpoint set that promotion never moved. It sat
+    # two promotions behind, so the documented way to reproduce 97.92% ran the
+    # superseded policies instead. A promotion tool that skips the promoted
+    # chain is worse than none.
+    "scripts/run_robot_carried.sh",
 )
 EPOCH = re.compile(r"_ep_(\d+)_")
 
