@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-77 scripts. Grouped by the verb their filename starts with.
+78 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -17,6 +17,7 @@ These are the ones to run first and the ones that run in CI. A requirement only 
 | --- | --- |
 | `check_camera_scale.py` | Render one frame and measure what the servicing camera can actually resolve. |
 | `check_criterion_currency.py` | Fail if an evidence report predates the code that defines what it measured. |
+| `check_destination_channel.py` | What channel does each entry point actually put the module in? |
 | `check_estimate_stability.py` | Is the pose estimate steady, or does it jitter the policy around? |
 | `check_evidence_currency.py` | Fail if a workflow loaded a policy that nothing in ``evidence/`` certifies. |
 | `check_evidence_links.py` | Every evidence file the documentation names must exist. |

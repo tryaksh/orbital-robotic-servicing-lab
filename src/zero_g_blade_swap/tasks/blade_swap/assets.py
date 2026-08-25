@@ -158,12 +158,51 @@ TRANSFER_BLADE_X = 0.18
 #: it. On the 160 mm module the corner was 0.90 mm, which is why this never
 #: showed up before and why the same policy scores 99.02% there and 76.95% here.
 #:
-#: It costs nothing at the destination. The hand-off attitude requirement is
-#: ``min(pitch, yaw)`` and pitch binds at 35.56 mrad; yaw goes from 70.00 to
-#: 56.39 mrad and is still nowhere near it. ``scripts/check_workcell_geometry.py``
-#: prints both, and ``tests/test_workcell_geometry.py`` pins this derivation so
-#: the next cross-section change cannot leave it stale the way the last one did.
-GUIDE_CENTER_OFFSET_Y = 0.086689
+#: **That derivation was right about the pads and wrong about what binds, and
+#: the insert skill is what measured it.** The line above says the destination
+#: "costs nothing" because yaw at 56.39 mrad is nowhere near the 35.56 mrad
+#: hand-off requirement. Both halves of that are true and the conclusion does
+#: not follow, because the hand-off requirement is about *entering* and there is
+#: a second requirement about *resting* that nothing had written down:
+#:
+#:     a module that merely rests in this channel must be inside the attitude
+#:     a seated module is accepted at.
+#:
+#: A module fully inside a channel with ``c`` per side wedges at ``2c/L`` and
+#: cannot be squarer, so that requirement is ``2c/L <= tolerance``.
+#: ``INSERTION_ORIENTATION_TOLERANCE_RAD`` is 52.36 mrad and 12.689 mm gives
+#: 56.40, so the channel held a module **4.04 mrad outside its own acceptance
+#: criterion** and a module that merely rested in it could not pass. Measured
+#: on ``grapple_insert_l0_seed70_v23lock``: of 91 episodes that reached seated
+#: depth, the terminal attitude floors at 56.033 mrad -- 0.64% under ``2c/L``
+#: and a floor rather than a spread. See ``evidence/insert_attitude_diagnosis.json``.
+#:
+#: So the binding pair is now the same law at two attitudes, and the pads'
+#: 12.689 mm is a third constraint that no longer binds:
+#:
+#:     lower  2c/L >= DELIVERED_ATTITUDE 46.00 mrad  ->  c >= 10.350 mm
+#:     upper  2c/L <= TOLERANCE          52.36 mrad  ->  c <= 11.781 mm
+#:     (pads  hypot(c, 8.00) <= 15.00 mm             ->  c <= 12.689 mm)
+#:
+#: **Placed where the two margins are equal, because sitting on a bound is the
+#: defect this replaces.** The value above sat exactly on the pads' bound with
+#: no margin, and the value the criterion alone would give, 11.781 mm, sits
+#: exactly on the criterion -- where a resting module reports about 1.01x the
+#: wall at the median and fails anyway. The clearance that maximises the smaller
+#: of the two margins is the midpoint in attitude:
+#:
+#:     2c/L = (46.00 + 52.36) / 2 = 49.18 mrad  ->  c = 11.065 mm
+#:
+#: and the guide *body* centre sits half a guide thickness outboard of that.
+#: 65 + 11.065 + 9 = 85.065 mm. It leaves 3.18 mrad on each side, and the corner
+#: the pads have to follow improves from 15.000 mm -- exactly their limit -- to
+#: hypot(11.065, 8.000) = 13.654 mm, so the constraint that used to bind now has
+#: 1.35 mm of margin.
+#:
+#: ``scripts/check_workcell_geometry.py`` prints the window and the derived
+#: value, and ``tests/test_workcell_geometry.py`` pins it so the next
+#: cross-section change cannot leave it stale the way the last one did.
+GUIDE_CENTER_OFFSET_Y = 0.085065
 TOOL_OFFSET_POS = (0.0, 0.0, 0.19)
 TOOL_OFFSET_ROT = (1.0, 0.0, 0.0, 0.0)
 CONTACT_TOOL_OFFSET_POS = (0.0, 0.0, 0.179)

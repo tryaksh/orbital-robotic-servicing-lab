@@ -147,10 +147,12 @@ def test_phase_two_profiles_keep_one_six_axis_policy_interface() -> None:
 def test_phase_two_tight_geometry_has_valid_contact_envelope() -> None:
     assets = (SRC / "zero_g_blade_swap" / "tasks" / "blade_swap" / "assets.py").read_text(encoding="utf-8")
 
-    # Derived from the pads and the vertical gap since 2026-08-24; the value it
-    # replaced was inherited from a 160 mm module. tests/test_workcell_geometry.py
-    # holds the derivation, this only holds that the contact envelope came with it.
-    assert "GUIDE_CENTER_OFFSET_Y = 0.086689" in assets
+    # Derived from the attitude the transit delivers and the attitude a seated
+    # module is accepted at, since 2026-08-25; it was derived from the pads
+    # before that and inherited from a 160 mm module before that.
+    # tests/test_workcell_geometry.py holds the derivation, this only holds that
+    # the contact envelope came with it.
+    assert "GUIDE_CENTER_OFFSET_Y = 0.085065" in assets
     assert "ROBUST_INSERTION_BLADE_CFG.spawn.collision_props.contact_offset = 0.0001" in assets
     assert "ROBUST_INSERTION_SLOT_CFG.spawn.collision_props.contact_offset = 0.0001" in assets
     assert "_robust_guide_cfg.spawn.collision_props.contact_offset = 0.0001" in assets
@@ -268,10 +270,12 @@ def test_geometry_and_reward_guards_cover_pilot_failure_modes() -> None:
     )
 
     assert '"shoulder_pan_joint": 0.35' in assets
-    # Derived from the pads and the vertical gap since 2026-08-24; the value it
-    # replaced was inherited from a 160 mm module. tests/test_workcell_geometry.py
-    # holds the derivation, this only holds that the contact envelope came with it.
-    assert "GUIDE_CENTER_OFFSET_Y = 0.086689" in assets
+    # Derived from the attitude the transit delivers and the attitude a seated
+    # module is accepted at, since 2026-08-25; it was derived from the pads
+    # before that and inherited from a 160 mm module before that.
+    # tests/test_workcell_geometry.py holds the derivation, this only holds that
+    # the contact envelope came with it.
+    assert "GUIDE_CENTER_OFFSET_Y = 0.085065" in assets
     assert "self._forces[due, 0]" in randomization
     # The 2F-85 is symmetric about its closing axis, so a grasp orientation
     # error that ignores the finger swap reports pi where the grip is perfect.

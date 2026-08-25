@@ -33,6 +33,7 @@ from . import mdp
 from .assets import (
     CONTACT_INSERTION_STAGE_BLADE_POSE,
     FIRST_SLOT_INSERTED_POS,
+    GRAPPLE_MOUNT_ANCHOR_CFG,
     GRAPPLE_ROBOT_ROOT_POS,
     SECOND_SLOT_CENTER_Y,
     SECOND_SLOT_INSERTED_POS,
@@ -160,14 +161,50 @@ class ZeroGBladeGrapplePinInsertTwoSlotEnvCfg(ZeroGBladeGrapplePinInsertEnvCfg):
     lead-in the seating stroke depends on.
     """
 
+    #: **Replication off, and it costs environments.** PhysX copies only the
+    #: first environment's procedurally authored joint, so with replication on
+    #: envs 1..N get the latch prim and no usable joint and the run dies with
+    #: ``Fixed release latch is missing``. ``configure_base_rail`` records the
+    #: same defect. This is the structural reason the chain's load path was not
+    #: reachable from a skill task, and it is why this trains at 512 rather than
+    #: 1024.
     scene: ZeroGTwoSlotGrapplePinSceneCfg = ZeroGTwoSlotGrapplePinSceneCfg(
         num_envs=512,
         env_spacing=2.6,
-        replicate_physics=True,
-        clone_in_fabric=True,
+        replicate_physics=False,
+        clone_in_fabric=False,
     )
     commands: DestinationBayCommandsCfg = DestinationBayCommandsCfg()
     curriculum: SingleStageCurriculumCfg = SingleStageCurriculumCfg()
+
+    # **The chain's load path, carried by the task rather than by a flag.**
+    #
+    # The chain seats with the form lock softened to a bounded remote-centre
+    # spring-damper, because a lead-in aligns a part by pushing it and a part
+    # welded to a wrist cannot be pushed. This task trained without it and was
+    # certified without it, and the difference was the insert skill's blocker:
+    # trained on the mating compliance the median shortfall fell 202.2 -> 98.6 mm
+    # and 35.5% of episodes reached seated depth against essentially none.
+    # See docs/NEXT_WORK.md T9 and evidence/insert_attitude_diagnosis.json.
+    #
+    # It lives here rather than on ``train.py --latch_mating_compliance``
+    # because a load path only a flag can reach is one the certification runs
+    # without. ``scripts/verify_insert_skill.sh`` passes no such flag, so a
+    # skill certified through it would otherwise be certified on pad contact
+    # alone while the checkpoint it certifies was trained on the lock.
+    latch_enabled: bool = True
+    #: ``fixed``, not ``compliant``. With ``compliant`` the load path is the
+    #: explicit wrench and the mating joint is never installed, so softening
+    #: re-anchors a transform engagement set one line earlier -- measured
+    #: byte-identical to not softening at all.
+    latch_joint_mode: str = "fixed"
+    latch_softens_on_engage: bool = True
+    #: Five control steps. Engaging on the first qualifying step killed 100% of
+    #: episodes inside ten steps, because this task's reset writes the module
+    #: anywhere along a 436 mm stroke while the joint is authored at the spawn
+    #: poses, and PhysX resolves the disagreement by snapping the two together.
+    #: Deferring removes that entirely: 0% dead inside ten steps.
+    latch_engage_after_steps: int = 5
 
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)
@@ -206,10 +243,17 @@ class ZeroGBladeGrapplePinInsertTwoSlotEnvCfg(ZeroGBladeGrapplePinInsertEnvCfg):
             GRAPPLE_ROBOT_ROOT_POS[1] + SECOND_SLOT_CENTER_Y,
             GRAPPLE_ROBOT_ROOT_POS[2],
         )
+        # Absolute against the authored anchor, not an increment: this method
+        # runs once from ``__post_init__`` and again from every caller that
+        # re-selects the level, and an increment moved the anchor to -0.44 on
+        # the second call -- twice the bay it is meant to sit opposite. Same
+        # defect, same fix, as the channel relief in
+        # ``configure_service_destination``.
         mount = getattr(self.scene, "mount_anchor", None)
         if mount is not None:
             anchor = tuple(mount.init_state.pos)
-            mount.init_state.pos = (anchor[0], anchor[1] + SECOND_SLOT_CENTER_Y, anchor[2])
+            authored = GRAPPLE_MOUNT_ANCHOR_CFG.init_state.pos
+            mount.init_state.pos = (anchor[0], authored[1] + SECOND_SLOT_CENTER_Y, anchor[2])
         if level < 4:
             self.events.clear_mount_wrench = None
             self.events.base_wobble = None

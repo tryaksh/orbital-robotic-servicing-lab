@@ -304,45 +304,85 @@ def rail_constraint(
 def lateral_clearance_window() -> dict[str, object]:
     """Return the band the channel's lateral clearance has to lie in, and why.
 
-    Two independent requirements bound it from opposite sides and neither was
-    ever written down, so the number between them was inherited from a module
-    that no longer exists.
+    Three independent requirements bound it and none was ever written down, so
+    the number between them was inherited from a module that no longer exists.
 
     **From below**, the lead-ins have to admit the attitude the transit
     delivers. The chain delivers about 46 mrad, and ``2c/l`` says that needs
     ``c >= 46e-3 * l / 2``.
 
-    **From above**, the grip has to be able to follow the module anywhere the
-    channel lets it go. A pair of flat pads keeps half its face on the pin while
-    the offset stays inside the pin's half-width, and a module in the *corner*
-    of its channel is offset by ``hypot(lateral, vertical)``. The vertical gap
-    is spent on the hand-off pitch requirement, so what is left for lateral is
-    ``sqrt(pin_half^2 - vertical^2)``.
+    **From above, and this is the one the insert skill measured**, a module that
+    merely *rests* in the channel has to be inside the attitude a seated module
+    is accepted at. A rigid part fully inside a channel with ``c`` per side
+    wedges at ``2c/L`` and cannot be squarer than that, so the channel may not
+    be wider than ``L * tolerance / 2``. Anything wider is a rack that holds a
+    module outside its own acceptance criterion, and no controller fixes it:
+    measured on ``grapple_insert_l0_seed70_v23lock``, terminal attitude floors
+    at 56.033 mrad against a ``2c/L`` of 56.396 at the clearance that produced
+    it.
 
-    The channel as it stood was outside the upper bound, which is what
-    ``GUIDE_CENTER_OFFSET_Y`` now derives itself from.
+    **From above as well, but no longer binding**, the grip has to be able to
+    follow the module anywhere the channel lets it go. A pair of flat pads keeps
+    half its face on the pin while the offset stays inside the pin's half-width,
+    and a module in the *corner* of its channel is offset by
+    ``hypot(lateral, vertical)``. That bound is reported here because it is what
+    ``GUIDE_CENTER_OFFSET_Y`` used to derive itself from, and keeping it visible
+    is what makes the change legible.
+
+    **Where in the window.** Sitting on a bound is the defect this replaces --
+    the pads' bound left zero margin, and the criterion's bound leaves none
+    either, since a resting module reports about 1.01x the wall at the median.
+    So the derived value is the clearance that maximises the smaller of the two
+    margins, which is the midpoint in *attitude* between what has to be admitted
+    and what may not be exceeded.
     """
 
     entry = channel_acceptance(0.0)
     vertical = float(entry["vertical_clearance_per_side_m"])
     lateral = float(entry["lateral_clearance_per_side_m"])
+    tolerance = float(_literal("INSERTION_ORIENTATION_TOLERANCE_RAD", INSERTION))
     lower = 0.5 * DELIVERED_ATTITUDE_RAD * BLADE_LENGTH_M
-    upper = float(np.sqrt(max(GRIP_MAX_TRANSVERSE_M**2 - vertical**2, 0.0)))
+    upper = 0.5 * tolerance * BLADE_LENGTH_M
+    pads = float(np.sqrt(max(GRIP_MAX_TRANSVERSE_M**2 - vertical**2, 0.0)))
+    derived = 0.5 * BLADE_LENGTH_M * 0.5 * (DELIVERED_ATTITUDE_RAD + tolerance)
     return {
         "question": "how much lateral clearance may the channel have",
         "delivered_attitude_rad": DELIVERED_ATTITUDE_RAD,
+        "seated_orientation_tolerance_rad": tolerance,
         "pad_half_bearing_offset_m": GRIP_MAX_TRANSVERSE_M,
         "vertical_clearance_per_side_m": round(vertical, 6),
         "lower_bound_m": round(lower, 6),
         "lower_bound_reason": "the lead-ins must admit the attitude the transit delivers, 2c/l",
         "upper_bound_m": round(upper, 6),
         "upper_bound_reason": (
-            "a module in the corner of its channel must stay inside the pads' half-bearing "
-            "offset, so hypot(lateral, vertical) <= the pin's half-width"
+            "a module that merely rests in the channel wedges at 2c/L and cannot be squarer, so "
+            "the channel may not hold one outside INSERTION_ORIENTATION_TOLERANCE_RAD"
         ),
+        "pad_bound_m": round(pads, 6),
+        "pad_bound_reason": (
+            "a module in the corner of its channel must stay inside the pads' half-bearing "
+            "offset, so hypot(lateral, vertical) <= the pin's half-width; superseded as the "
+            "binding upper bound by the seated criterion, and kept because it is what the "
+            "previous value derived itself from"
+        ),
+        "pad_bound_still_binds": bool(pads < upper),
+        "derived_m": round(derived, 6),
+        "derived_reason": (
+            "the midpoint in attitude between the two bounds, which is the clearance that "
+            "maximises the smaller of the two margins; sitting on either bound is what the "
+            "previous two values each did"
+        ),
+        "derived_resting_attitude_rad": round(2.0 * derived / BLADE_LENGTH_M, 6),
         "as_built_m": round(lateral, 6),
+        "as_built_resting_attitude_rad": round(2.0 * lateral / BLADE_LENGTH_M, 6),
+        "as_built_channel_corner_m": round(float(np.hypot(lateral, vertical)), 6),
         "inside_the_window": bool(lower - 1.0e-6 <= lateral <= upper + 1.0e-6),
         "historic_lateral_m": round(HISTORIC_GUIDE_CENTER_OFFSET_Y - 0.5 * GUIDE_THICKNESS_Y_M - 0.5 * 0.13, 6),
+        "superseded_lateral_m": 0.012689,
+        "superseded_reason": (
+            "derived as the largest clearance the pads can follow, which let a resting module "
+            "reach 56.40 mrad against a 52.36 mrad acceptance criterion"
+        ),
     }
 
 
@@ -423,10 +463,11 @@ def section_envelope(
             6,
         ),
         "note_on_the_shipped_section": (
-            "GUIDE_CENTER_OFFSET_Y is derived as the *largest* lateral clearance the pads can "
-            "follow, so the shipped module sits exactly on that bound with no margin. The window "
-            "runs from 5.738 mm, and a value in the middle of it would leave a few millimetres on "
-            "both sides. That is a measurement this session did not have the clock to take."
+            "GUIDE_CENTER_OFFSET_Y used to be derived as the *largest* lateral clearance the pads "
+            "can follow, so the shipped module sat exactly on that bound with no margin. It is "
+            "derived now at the equal-margin point between the attitude the transit delivers and "
+            "the attitude a seated module is accepted at, which leaves 1.35 mm on the pads' bound "
+            "as a consequence rather than as a target. See lateral_clearance_window."
         ),
         "evaluated_count": len(rows),
         "sections": rows,
@@ -806,9 +847,17 @@ def main() -> int:
     print(
         f"lateral clearance window: {window['lower_bound_m'] * 1000:.2f} mm "
         f"(lead-ins must admit {window['delivered_attitude_rad'] * 1000:.0f} mrad) to "
-        f"{window['upper_bound_m'] * 1000:.2f} mm (the pads must be able to follow the corner); "
-        f"as built {window['as_built_m'] * 1000:.3f} mm, "
-        f"inside={window['inside_the_window']}; it was {window['historic_lateral_m'] * 1000:.3f} mm"
+        f"{window['upper_bound_m'] * 1000:.2f} mm (a resting module must be inside "
+        f"{window['seated_orientation_tolerance_rad'] * 1000:.2f} mrad); "
+        f"derived {window['derived_m'] * 1000:.3f} mm at the equal-margin point, "
+        f"as built {window['as_built_m'] * 1000:.3f} mm, inside={window['inside_the_window']}"
+    )
+    print(
+        f"  a resting module then sits at {window['as_built_resting_attitude_rad'] * 1000:.2f} mrad "
+        f"and the corner the pads must follow is {window['as_built_channel_corner_m'] * 1000:.3f} mm "
+        f"of {window['pad_half_bearing_offset_m'] * 1000:.2f}; "
+        f"superseded {window['superseded_lateral_m'] * 1000:.3f} mm, "
+        f"inherited {window['historic_lateral_m'] * 1000:.3f} mm"
     )
 
     print()

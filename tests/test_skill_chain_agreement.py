@@ -16,6 +16,7 @@ What the insert skill trained on, against what the chain ran it in, before
 | Channel relief | none | 4.6125 mm per side |
 | Destination surfaces | production friction, 0.8/0.65 | low-friction pairing |
 | Load path | pads on the pin, no lock | bounded spring-damper on the lock |
+| Channel a run is built with | doubled the relief when a caller re-selected the level | applied once |
 | Module at reset | one pose, 362 mm from the hand-off | at the mouth |
 | Seated goal | 0.75 m in bay 1 | 0.676 m, the depth release permits |
 | Axial action scale | 45 mm/s, sized for 167 mm | the same field, sized for 529 mm |
@@ -25,6 +26,11 @@ a module delivered from outside "cocked to 36 mrad, exactly the 2c/L the channel
 admits, and then did not move for six thousand control steps of pushing, under
 every mating variant tried". The skill was being asked for something the geometry
 forbids, which is why it certified at 0.00% while holding the grip perfectly.
+
+All eight are equal now. The load path was the last, and closing it moved the
+median shortfall from 202.2 mm to 98.6 mm; the ninth row above was found while
+closing it, and is the reason the skill's training rack and its certification
+rack are now the same rack.
 
 These are source-level assertions on purpose: they run in CI with no GPU and no
 simulator, which is this repository's rule for anything that has to keep being
@@ -83,35 +89,77 @@ def test_the_insert_skill_parks_the_robot_where_the_rail_parks_it() -> None:
     assert 'mount = getattr(self.scene, "mount_anchor", None)' in task
 
 
-def test_the_insert_skill_declares_the_chains_mating_and_the_one_gap_left() -> None:
-    """The load path is the last dimension that still differs, and it is recorded.
+def test_the_insert_skill_runs_the_chains_load_path_by_default() -> None:
+    """The eighth dimension, and it is equal now rather than named as a gap.
 
-    The chain seats with the lock softened to a bounded spring-damper, because a
-    lead-in aligns a part by pushing it and a part welded to a wrist cannot be
-    pushed. The skill cannot simply switch that on: the lock's joint is authored
-    between the wrist and the module at their spawn poses, and this task's reset
-    writes the module anywhere along 436 mm of stroke, so PhysX snaps them
-    together. Measured with the lock as the only change, same checkpoint and
-    seed: 125 of 128 episodes dead inside ten control steps and 247.6 mrad of
-    roll about the pin, against 0 dead and 9.4 mrad with it off.
+    The chain seats with the lock softened to a bounded remote-centre
+    spring-damper, because a lead-in aligns a part by pushing it and a part
+    welded to a wrist cannot be pushed. The skill could not simply switch that
+    on, and the three things that stood in the way each masked the next: the
+    joint is authored between the wrist and the module at their *spawn* poses
+    while this task's reset writes the module anywhere along 436 mm of stroke,
+    so PhysX snapped them together and killed 100% of episodes inside ten
+    control steps; ``joint_mode`` had to be ``fixed``, because with
+    ``compliant`` the mating joint is never installed and softening is a no-op;
+    and ``replicate_physics`` had to be off, because PhysX copies only env 0's
+    procedurally authored joint.
 
-    Closing it needs ``mdp.GrappleLatch`` to re-anchor after a reset, which is
-    code rather than configuration. This test exists so the gap stays named --
-    every other dimension in this file is now equal on both sides.
+    **It lives on the task, not on a flag, and that is the point of this test.**
+    The measurement that opened T9 was taken with ``--latch_mating_compliance``
+    on ``train.py``, and ``scripts/verify_insert_skill.sh`` passes no such flag
+    to ``play.py`` -- so a checkpoint trained on the lock would have been
+    certified on pad contact alone. A load path only a flag can reach is a load
+    path the certification runs without.
+    """
+
+    two_slot = _read("two_slot_env_cfg.py")
+    insert = two_slot.split("class ZeroGBladeGrapplePinInsertTwoSlotEnvCfg", 1)[1]
+    assert "latch_enabled: bool = True" in insert
+    assert 'latch_joint_mode: str = "fixed"' in insert
+    assert "latch_softens_on_engage: bool = True" in insert
+    assert "latch_engage_after_steps: int = 5" in insert
+    # Replication has to be off or the joint exists only in env 0.
+    assert "replicate_physics=False," in insert
+    assert "clone_in_fabric=False," in insert
+    # The mating numbers the chain uses are declared on the base task.
+    grapple = _read("grapple_pin_env_cfg.py")
+    base = grapple.split("class ZeroGBladeGrapplePinInsertEnvCfg", 1)[1]
+    assert "latch_position_stiffness_n_per_m: float = 40_000.0" in base
+    assert "latch_rotation_stiffness_nm_per_rad: float = 20_000.0" in base
+    assert "mating_force_cap_n: float = 1_000.0" in base
+    assert "service_destination_channel_relief_m: float = 0.0046125" in base
+    # And the measurement that says why the naive version fails travels with it.
+    assert "125 of 128 episodes dead inside ten control steps" in base
+
+
+def test_the_destination_relief_is_written_absolutely_so_it_applies_once() -> None:
+    """The rack the skill trains in must be the rack it is certified in.
+
+    ``configure_service_destination`` is called from ``configure_robustness``,
+    which ``__post_init__`` has already run, so a caller that re-selects the
+    level used to apply the relief a second time -- and two do:
+    ``train.py --robustness_level`` and ``play.py --latch_enabled``. Measured in
+    ``evidence/destination_channel_geometry.json``: the chain and the skill
+    certification built a 17.30 x 12.61 mm channel while skill *training* built
+    a 21.91 x 17.23 mm one, on both axes, and nothing said so.
+
+    The fix is that every pose the method writes is absolute against the
+    authored asset rather than an increment on whatever is there.
     """
 
     grapple = _read("grapple_pin_env_cfg.py")
-    insert = grapple.split("class ZeroGBladeGrapplePinInsertEnvCfg", 1)[1]
-    # The mating numbers the chain uses are declared, so closing the gap is a
-    # one-line change rather than a rediscovery.
-    assert 'latch_joint_mode: str = "compliant"' in insert
-    assert "latch_position_stiffness_n_per_m: float = 40_000.0" in insert
-    assert "latch_rotation_stiffness_nm_per_rad: float = 20_000.0" in insert
-    assert "mating_force_cap_n: float = 1_000.0" in insert
-    assert "service_destination_channel_relief_m: float = 0.0046125" in insert
-    # And the measurement that says why it is off travels with it.
-    assert "125 of 128 episodes dead inside ten control steps" in insert
-    assert "latch_enabled: bool = False" in insert
+    destination = grapple.split("def configure_service_destination", 1)[1]
+    destination = destination.split("def configure_base_rail", 1)[0]
+    assert "SECOND_SLOT_LEFT_GUIDE_CFG.init_state.pos[1] + relief" in destination
+    assert "SECOND_SLOT_RIGHT_GUIDE_CFG.init_state.pos[1] - relief" in destination
+    assert "SECOND_SLOT_CFG.init_state.pos[2] - relief" in destination
+    assert "authored.init_state.pos[2] + relief" in destination
+    # No accumulating form may come back.
+    assert "left_guide[1] += relief" not in destination
+    assert "floor[2] -= relief" not in destination
+    two_slot = _read("two_slot_env_cfg.py")
+    assert "anchor[1] + SECOND_SLOT_CENTER_Y" not in two_slot
+    assert "authored[1] + SECOND_SLOT_CENTER_Y" in two_slot
 
 
 def test_the_insert_skill_starts_where_the_chain_hands_over() -> None:

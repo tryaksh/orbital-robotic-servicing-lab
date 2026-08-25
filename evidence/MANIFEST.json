@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 17,
     "retracted": 8,
-    "historical": 138
+    "historical": 139
   },
   "canonical": {
     "chain_robustness_sweep.json": {
@@ -354,6 +354,10 @@
     },
     "camera_scale_grapple_w65.json": {
       "title": "Servicing camera scale and framing, measured by rendering"
+    },
+    "destination_channel_geometry.json": {
+      "title": "What channel each entry point actually builds for the destination bay",
+      "generated_utc": "2026-08-25T22:06:16.473623+00:00"
     },
     "estimate_stability.json": {
       "title": "Pose estimate stability, with the module held still"

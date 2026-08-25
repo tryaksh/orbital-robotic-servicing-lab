@@ -45,8 +45,13 @@ from .assets import (
     GRAPPLE_HEAD_ON_ARM_JOINT_POS,
     GRAPPLE_HEAD_ON_TOOL_ROT,
     GRAPPLE_TOOL_OFFSET_POS,
+    SECOND_SLOT_CFG,
     SECOND_SLOT_ENTRY_LOWER_RAMP_CFG,
     SECOND_SLOT_ENTRY_UPPER_RAMP_CFG,
+    SECOND_SLOT_LEFT_GUIDE_CFG,
+    SECOND_SLOT_RIGHT_GUIDE_CFG,
+    SECOND_SLOT_UPPER_LEFT_LIP_CFG,
+    SECOND_SLOT_UPPER_RIGHT_LIP_CFG,
     SERVICE_DESTINATION_DYNAMIC_FRICTION,
     SERVICE_DESTINATION_STATIC_FRICTION,
     CompliantD6JointCfg,
@@ -230,6 +235,15 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
     #: a restoring torque jams it; the transit is where the lock is needed and it
     #: has never been tested there. See ``mdp.GrappleLatch``.
     latch_engages_on_release: bool = False
+    #: Hand the load path to the remote-centre mating joint the moment the lock
+    #: engages, instead of carrying a rigid transit first. A task whose episode
+    #: begins at the channel mouth has no transit to soften out of.
+    latch_softens_on_engage: bool = False
+    #: Defer engagement this many control steps. Zero engages on the first
+    #: qualifying step, which is what every published number was measured under;
+    #: a task whose reset writes the module along a stroke has to step the pair
+    #: together first or PhysX snaps them to their spawn poses.
+    latch_engage_after_steps: int = 0
     #: Per-side clearance added to the destination bay's channel, in metres.
     #:
     #: **Zero, which is the production channel, and that is deliberate.** A
@@ -263,6 +277,14 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
         self.events.grapple_latch.params["rotation_damping_ratio"] = self.latch_rotation_damping_ratio
         self.events.grapple_latch.params["joint_mode"] = self.latch_joint_mode
         self.events.grapple_latch.params["mating_force_cap_n"] = self.mating_force_cap_n
+        # Both default to the event term's own values, so a task that does not
+        # ask for the mating compliance is bit-identical to before these
+        # existed. They are here rather than only on the command line because a
+        # load path a task can only reach through a flag is a load path its
+        # certification runs without -- which is how the insert skill came to be
+        # trained under one and certified under another.
+        self.events.grapple_latch.params["soften_on_engage"] = self.latch_softens_on_engage
+        self.events.grapple_latch.params["engage_after_steps"] = self.latch_engage_after_steps
         # The same number has to reach the *joint*, or the cap that was measured
         # on the wrench silently stops applying when the mechanism became a
         # joint -- which is exactly what happened: the drive pushed at its own
@@ -374,24 +396,38 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
         # preference: hold the module compliantly for the last 10 mm (this
         # project cannot -- the pads do not resist lateral load, measured), move
         # the arm out of its reach boundary (section 6a), or widen the channel.
+        # **Written as absolute poses against the authored ones, not as
+        # increments, and that is a fix rather than a style.** This method is
+        # called from ``configure_robustness``, which ``__post_init__`` has
+        # already run, so every caller that calls ``configure_robustness`` a
+        # second time used to apply the relief a second time -- and two of them
+        # do: ``train.py --robustness_level`` and ``play.py --latch_enabled``,
+        # which calls it to reinstall the latch event.
+        #
+        # Measured, before this was written this way
+        # (``evidence/destination_channel_geometry.json``): the chain and the
+        # skill *certification* built a 17.30 x 12.61 mm channel, while skill
+        # *training* and every lock-on diagnostic built a 21.91 x 17.23 mm one.
+        # The insert skill was trained in a rack 4.6 mm per side wider than the
+        # rack it was then certified in, on both axes, and nothing said so.
+        # ``scripts/check_destination_channel.py`` reads the built config and
+        # reports the applied relief as a multiple, so this cannot drift back.
         relief = self.service_destination_channel_relief_m
-        if relief <= 0.0:
-            return
         left_guide = list(self.scene.blade_slot_two_left_guide.init_state.pos)
         right_guide = list(self.scene.blade_slot_two_right_guide.init_state.pos)
-        left_guide[1] += relief
-        right_guide[1] -= relief
+        left_guide[1] = SECOND_SLOT_LEFT_GUIDE_CFG.init_state.pos[1] + relief
+        right_guide[1] = SECOND_SLOT_RIGHT_GUIDE_CFG.init_state.pos[1] - relief
         self.scene.blade_slot_two_left_guide.init_state.pos = tuple(left_guide)
         self.scene.blade_slot_two_right_guide.init_state.pos = tuple(right_guide)
         floor = list(self.scene.blade_slot_two.init_state.pos)
-        floor[2] -= relief
+        floor[2] = SECOND_SLOT_CFG.init_state.pos[2] - relief
         self.scene.blade_slot_two.init_state.pos = tuple(floor)
-        for lip in (
-            self.scene.blade_slot_two_upper_left_lip,
-            self.scene.blade_slot_two_upper_right_lip,
+        for lip, authored in (
+            (self.scene.blade_slot_two_upper_left_lip, SECOND_SLOT_UPPER_LEFT_LIP_CFG),
+            (self.scene.blade_slot_two_upper_right_lip, SECOND_SLOT_UPPER_RIGHT_LIP_CFG),
         ):
             position = list(lip.init_state.pos)
-            position[2] += relief
+            position[2] = authored.init_state.pos[2] + relief
             lip.init_state.pos = tuple(position)
         # **The lead-ins stay where they are, and that is measured rather than
         # tidy.** The obvious rule is that a lead-in continues a channel surface,

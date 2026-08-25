@@ -109,48 +109,73 @@ def test_the_rack_as_built_admits_the_attitude_this_arm_delivers():
     # it. The axis that is tight is the one the channel is tight on, and 20 mm
     # of module in a 36 mm channel is as thin as the pin boss allows.
     assert seated["pitch"] > 1.5 * DELIVERED_ATTITUDE_RAD, seated["pitch"]
-    # Yaw was 70.0 mrad and is now 56.4, because the lateral clearance stopped
-    # being whatever a 160 mm module left behind and started being derived from
-    # what the pads can follow. It is still 2.6x the delivery and still nowhere
-    # near binding: the hand-off requirement is min(pitch, yaw) and pitch binds.
-    assert seated["yaw"] > 2.5 * DELIVERED_ATTITUDE_RAD, seated["yaw"]
+    # Yaw went 70.0 -> 56.4 -> 49.2 mrad, and the last step is the one that
+    # matters: it is now under the attitude a seated module is accepted at, so
+    # a module that merely rests in this channel passes rather than failing on
+    # the wall. It was 4.04 mrad outside that criterion, which is what the
+    # insert skill measured and what no controller could have fixed.
+    assert seated["yaw"] > DELIVERED_ATTITUDE_RAD, seated["yaw"]
+    assert seated["yaw"] < INSERTION_ORIENTATION_TOLERANCE_RAD, seated["yaw"]
     assert seated["yaw"] > seated["pitch"], (seated["yaw"], seated["pitch"])
 
 
 def test_the_lateral_clearance_is_inside_the_window_two_requirements_leave_it():
-    """The rack may not be looser than the grip can follow, and it was.
+    """The rack may not hold a module outside its own acceptance criterion.
 
-    Two independent requirements bound the channel's lateral clearance and
-    neither had ever been written down, so the number between them was left
+    Three independent requirements bound the channel's lateral clearance and
+    none had ever been written down, so the number between them was left
     wherever the previous module's cross-section put it.
 
     From below, the lead-ins have to admit the attitude the transit delivers.
-    From above, a module in the *corner* of its channel has to stay inside the
-    offset at which a pad still keeps half its face on the pin -- because the
-    pads are bolted to the arm and cannot chase a module the rack lets wander.
+    From above, a module that merely *rests* in the channel wedges at ``2c/L``
+    and cannot be squarer, so the channel may not be wider than the attitude a
+    seated module is accepted at. A third bound -- a module in the corner of its
+    channel staying inside the offset at which a pad still keeps half its face
+    on the pin -- used to be the binding one and no longer is.
 
-    The channel as inherited was 15.750 mm against an upper bound of 12.689, and
-    the consequence was measured: 65 of 92 extract failures at stage 0 end with
-    the grip more than 13.5 mm across the pin, and the same policy scores 99.02%
-    on the 160 mm module whose channel corner was 0.90 mm.
+    Both of the values this replaces sat *on* a bound. The inherited 15.750 mm
+    was outside the pads' 12.689 and cost measured grips: 65 of 92 extract
+    failures at stage 0 ended with the grip more than 13.5 mm across the pin.
+    The 12.689 mm that replaced it sat exactly on the pads' bound and 4.04 mrad
+    outside the seated criterion, which is what the insert skill then measured.
     """
 
     window = lateral_clearance_window()
     assert window["inside_the_window"], window
     assert window["lower_bound_m"] < window["as_built_m"] <= window["upper_bound_m"] + 1.0e-6
-    # The value that was there before this was derived is outside it, which is
-    # what makes the window worth checking rather than a restatement.
+    # The criterion binds from above now, and the pads' bound does not.
+    assert not window["pad_bound_still_binds"], window
+    assert window["upper_bound_m"] < window["pad_bound_m"], window
+    # Both superseded values are outside the window, which is what makes it
+    # worth checking rather than a restatement of the constant.
     assert window["historic_lateral_m"] > window["upper_bound_m"], window
+    assert window["superseded_lateral_m"] > window["upper_bound_m"], window
+    # And a module resting in the channel now passes the criterion it is
+    # judged by, which is the whole point of the change.
+    assert window["as_built_resting_attitude_rad"] < INSERTION_ORIENTATION_TOLERANCE_RAD, window
+    # The corner the pads have to follow gained margin as a consequence, not as
+    # a target: it was exactly GRIP_MAX_TRANSVERSE_M and is now inside it.
+    assert window["as_built_channel_corner_m"] < window["pad_half_bearing_offset_m"], window
 
 
 def test_the_guide_offset_is_the_derivation_and_not_a_remembered_number():
-    """``GUIDE_CENTER_OFFSET_Y`` must reproduce the window's upper bound."""
+    """``GUIDE_CENTER_OFFSET_Y`` must reproduce the window's derived value.
+
+    Not a bound. Sitting on a bound is what both previous values did and what
+    cost this project a training run each time, so the derivation places the
+    clearance where the two margins are equal.
+    """
 
     window = lateral_clearance_window()
     thickness = GUIDE_THICKNESS_Y_M
     blade = _literal("BLADE_SIZE")
-    expected = 0.5 * float(blade[1]) + window["upper_bound_m"] + 0.5 * thickness
+    expected = 0.5 * float(blade[1]) + window["derived_m"] + 0.5 * thickness
     assert abs(float(_literal("GUIDE_CENTER_OFFSET_Y")) - expected) < 1.0e-5, expected
+    # Equal margins, which is what "derived" means here.
+    below = window["as_built_resting_attitude_rad"] - window["delivered_attitude_rad"]
+    above = window["seated_orientation_tolerance_rad"] - window["as_built_resting_attitude_rad"]
+    assert abs(below - above) < 1.0e-4, (below, above)
+    assert below > 0.003, below
 
 
 def test_the_rails_stopped_holding_the_module_when_it_was_thinned():
@@ -371,9 +396,12 @@ def test_the_rack_states_which_module_sections_it_accepts():
     # Thin and narrow is not free: it is the corner of the channel that grows.
     assert not lookup[(0.110, 0.014)]["pads_can_follow_the_corner"]
     assert 0 < envelope["accepted_count"] < envelope["evaluated_count"]
-    # And the shipped section sits on the grip bound rather than inside it,
-    # because the guide offset is derived as the *largest* clearance that fits.
-    assert abs(float(envelope["grip_margin_of_the_shipped_section_m"])) < 1.0e-5, envelope
+    # And the shipped section now sits *inside* the grip bound rather than on
+    # it. It sat exactly on it while the guide offset was derived as the largest
+    # clearance the pads can follow; the seated criterion binds from above now,
+    # and this margin is a consequence of that rather than its purpose.
+    margin = float(envelope["grip_margin_of_the_shipped_section_m"])
+    assert 0.001 < margin < 0.002, envelope
 
 
 def test_the_lead_ins_move_with_the_rails_they_continue():

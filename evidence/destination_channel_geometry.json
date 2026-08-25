@@ -1,0 +1,114 @@
+{
+  "title": "What channel each entry point actually builds for the destination bay",
+  "evidence_type": "simulation_only",
+  "generated_utc": "2026-08-25T22:12:01.454100+00:00",
+  "question": "configure_service_destination mutates the destination bay in place and is called from configure_robustness, which __post_init__ already ran. Does every entry point put the module in the same channel, and which axis holds a resting module?",
+  "law": "a module fully inside a channel with c per side wedges at 2c/L",
+  "module_length_m": 0.45,
+  "module_section_m": [
+    0.13,
+    0.02
+  ],
+  "success_orientation_tolerance_rad": 0.0523599,
+  "nominal_guide_body_centre_y_m": -0.134935,
+  "arms": [
+    {
+      "guide_body_centre_y_m": [
+        -0.130323,
+        -0.309678
+      ],
+      "floor_centre_z_m": 0.690887,
+      "upper_lip_centre_z_m": 0.748113,
+      "relief_applied_lateral_m": 0.004612,
+      "relief_applied_floor_m": 0.004613,
+      "relief_applied_lip_m": 0.004613,
+      "relief_applications": 1.0,
+      "lateral_clearance_per_side_m": 0.015678,
+      "vertical_clearance_per_side_m": 0.012613,
+      "resting_yaw_rad": 0.069678,
+      "resting_pitch_rad": 0.056056,
+      "tightest_resting_attitude_rad": 0.056056,
+      "worst_resting_attitude_rad": 0.089427,
+      "channel_corner_m": 0.020121,
+      "pads_can_follow_the_corner": false,
+      "yaw_inside_the_success_criterion": false,
+      "pitch_inside_the_success_criterion": false,
+      "arm": "chain",
+      "entry_point": "run_workflow_demo.py --destination_channel_relief_m 0.0046125"
+    },
+    {
+      "guide_body_centre_y_m": [
+        -0.130323,
+        -0.309678
+      ],
+      "floor_centre_z_m": 0.690887,
+      "upper_lip_centre_z_m": 0.748113,
+      "relief_applied_lateral_m": 0.004612,
+      "relief_applied_floor_m": 0.004613,
+      "relief_applied_lip_m": 0.004613,
+      "relief_applications": 1.0,
+      "lateral_clearance_per_side_m": 0.015678,
+      "vertical_clearance_per_side_m": 0.012613,
+      "resting_yaw_rad": 0.069678,
+      "resting_pitch_rad": 0.056056,
+      "tightest_resting_attitude_rad": 0.056056,
+      "worst_resting_attitude_rad": 0.089427,
+      "channel_corner_m": 0.020121,
+      "pads_can_follow_the_corner": false,
+      "yaw_inside_the_success_criterion": false,
+      "pitch_inside_the_success_criterion": false,
+      "arm": "skill_certification",
+      "entry_point": "certify_grapple_skills.sh -> play.py, no latch flags"
+    },
+    {
+      "guide_body_centre_y_m": [
+        -0.130323,
+        -0.309678
+      ],
+      "floor_centre_z_m": 0.690887,
+      "upper_lip_centre_z_m": 0.748113,
+      "relief_applied_lateral_m": 0.004612,
+      "relief_applied_floor_m": 0.004613,
+      "relief_applied_lip_m": 0.004613,
+      "relief_applications": 1.0,
+      "lateral_clearance_per_side_m": 0.015678,
+      "vertical_clearance_per_side_m": 0.012613,
+      "resting_yaw_rad": 0.069678,
+      "resting_pitch_rad": 0.056056,
+      "tightest_resting_attitude_rad": 0.056056,
+      "worst_resting_attitude_rad": 0.089427,
+      "channel_corner_m": 0.020121,
+      "pads_can_follow_the_corner": false,
+      "yaw_inside_the_success_criterion": false,
+      "pitch_inside_the_success_criterion": false,
+      "arm": "skill_lock_diagnostic",
+      "entry_point": "play.py --latch_enabled --latch_mating_compliance"
+    },
+    {
+      "guide_body_centre_y_m": [
+        -0.130323,
+        -0.309678
+      ],
+      "floor_centre_z_m": 0.690887,
+      "upper_lip_centre_z_m": 0.748113,
+      "relief_applied_lateral_m": 0.004612,
+      "relief_applied_floor_m": 0.004613,
+      "relief_applied_lip_m": 0.004613,
+      "relief_applications": 1.0,
+      "lateral_clearance_per_side_m": 0.015678,
+      "vertical_clearance_per_side_m": 0.012613,
+      "resting_yaw_rad": 0.069678,
+      "resting_pitch_rad": 0.056056,
+      "tightest_resting_attitude_rad": 0.056056,
+      "worst_resting_attitude_rad": 0.089427,
+      "channel_corner_m": 0.020121,
+      "pads_can_follow_the_corner": false,
+      "yaw_inside_the_success_criterion": false,
+      "pitch_inside_the_success_criterion": false,
+      "arm": "skill_training",
+      "entry_point": "train.py --robustness_level 0"
+    }
+  ],
+  "relief_applied_once_everywhere": true,
+  "every_arm_builds_the_same_channel": true
+}
