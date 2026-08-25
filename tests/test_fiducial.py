@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-import cv2
 import numpy as np
 import pytest
 
-from zero_g_blade_swap.fiducial import (
+# OpenCV is an Isaac-side dependency, not one CI installs. An unguarded import
+# here is a *collection* error rather than a skip, which takes the whole suite
+# down with it -- so the file that needs cv2 is the file that guards it.
+cv2 = pytest.importorskip("cv2")
+
+from zero_g_blade_swap.fiducial import (  # noqa: E402
     FIDUCIAL_DICTIONARY,
     FIDUCIAL_MARKER_ID,
     FIDUCIAL_TAG_BASIS_MODULE,

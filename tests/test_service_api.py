@@ -4,9 +4,16 @@ import asyncio
 import time
 from pathlib import Path
 
-from fastapi.testclient import TestClient
+import pytest
 
-from zero_g_blade_swap.service.app import create_app
+# Starlette's TestClient needs httpx, which is a dev extra rather than a runtime
+# dependency -- so it is present in CI and absent from the simulator's
+# interpreter. Guarded so the suite runs under both, which is the whole point of
+# these being source-level checks.
+pytest.importorskip("httpx", reason="TestClient needs httpx; install the dev extra")
+from fastapi.testclient import TestClient  # noqa: E402
+
+from zero_g_blade_swap.service.app import create_app  # noqa: E402
 from zero_g_blade_swap.service.config import ServiceSettings
 from zero_g_blade_swap.service.models import (
     ApplicableLimits,

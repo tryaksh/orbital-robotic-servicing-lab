@@ -16,9 +16,14 @@ from __future__ import annotations
 
 import json
 
-import torch
+import pytest
 
-from zero_g_blade_swap.pose_head import (
+# Torch is installed against the simulator's interpreter, not CI's. Guarded for
+# the same reason test_arm_kinematics.py guards it: an unguarded import is a
+# collection error that fails every other test in the run.
+torch = pytest.importorskip("torch")
+
+from zero_g_blade_swap.pose_head import (  # noqa: E402
     MODULE_POSE_DIM,
     POSE_HEAD_ARCHITECTURE_V1,
     POSE_HEAD_ARCHITECTURE_V2,
