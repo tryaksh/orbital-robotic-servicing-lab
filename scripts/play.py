@@ -67,6 +67,15 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--latch_mating_compliance",
+        action="store_true",
+        help=(
+            "Engage the form lock straight into the remote-centre mating compliance, which is "
+            "the state the chain is in while it seats. For a task whose episode begins at the "
+            "mouth there is no rigid transit to soften out of."
+        ),
+    )
+    parser.add_argument(
         "--latch_engage_after_steps",
         type=int,
         default=0,
@@ -601,9 +610,32 @@ def main() -> dict[str, object]:
             # things after `parse_env_cfg` -- so flip the flag first and let it
             # reinstall the term.
             env_cfg.latch_enabled = True
+            if args.latch_mating_compliance:
+                # **The mating compliance is only reachable from the rigid
+                # state.** With joint_mode "compliant" the load path is the
+                # explicit wrench and the mating joint is never installed, so
+                # softening re-anchors a transform that engagement anchored one
+                # line earlier and changes nothing -- measured byte-identical.
+                # The chain runs the lock "fixed" for exactly this reason: a
+                # fixed joint carries the transit, and `soften` disables it and
+                # hands the load path to the remote-centre mating joint.
+                env_cfg.latch_joint_mode = "fixed"
+                # **And the joints do not survive scene replication.** PhysX
+                # copies only the first environment's procedurally authored
+                # joint, so envs 1..N get the prim and no usable joint --
+                # `configure_base_rail` records the same thing and turns
+                # replication off for exactly this reason. The skill tasks run
+                # replicate_physics=True for throughput, which is why the
+                # chain's load path is not reachable from them as they stand.
+                env_cfg.scene.replicate_physics = False
+                env_cfg.scene.clone_in_fabric = False
+                print("[INFO] replicate_physics disabled: latch joints do not replicate")
             env_cfg.configure_robustness(int(env_cfg.robustness_level))
             if getattr(env_cfg.events, "grapple_latch", None) is None:
                 raise RuntimeError("--latch_enabled did not reinstall the grapple latch event")
+            if args.latch_mating_compliance:
+                env_cfg.events.grapple_latch.params["soften_on_engage"] = True
+                print("[INFO] Form lock engages straight into the mating compliance")
             if args.latch_engage_after_steps:
                 env_cfg.events.grapple_latch.params["engage_after_steps"] = (
                     args.latch_engage_after_steps

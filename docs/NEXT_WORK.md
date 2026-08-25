@@ -519,21 +519,45 @@ tip — precisely so the lead-ins can still walk the module square. A stiff lock
 cannot be reoriented by the channel it is entering, which is the other half of the
 jam (`_configure_latch`, and specification §9.6).
 
-**So the work is not "enable the lock".** It is to give the skill the chain's
-*mating* configuration:
+**So the work is not "enable the lock", and reaching the chain's load path took
+three things, all now in the tree** (`--latch_mating_compliance` on both
+`train.py` and `play.py` sets all three):
 
-1. engage the compliance at the mouth rather than the transit form lock —
-   `latch_joint_mode`, the `mating_compliance_joint`, and the remote centre at
-   `MATING_COMPLIANCE_CENTRE`;
-2. anchor it after the reset has settled (`engage_after_steps`, already in);
-3. keep `mating_force_cap_n` and the rotation stiffness at the values the chain
-   seats with — 1 kN and 20 kN·m/rad — since those are measured, not chosen.
+1. **Anchor after the reset settles.** `engage_after_steps`, defaulting to 0 so
+   nothing published moves.
+2. **`joint_mode` must be `"fixed"`, not `"compliant"`.** With `"compliant"` the
+   load path is the explicit wrench and the mating joint is *never installed*, so
+   softening re-anchors a transform that engagement set one line earlier —
+   measured byte-identical to not softening at all. The chain runs the lock
+   `fixed` for exactly this reason: a fixed joint carries the transit, and
+   `soften()` disables it and hands the load path to the remote-centre mating
+   joint.
+3. **`replicate_physics` must be off.** PhysX copies only the first
+   environment's procedurally authored joint, so envs 1..N get the prim and no
+   usable joint, and the run dies with `Fixed release latch is missing at
+   /World/envs/env_1/...`. `configure_base_rail` records the same defect and
+   turns replication off for it. **The skill tasks run replication ON for
+   throughput — that is the structural reason the chain's load path was never
+   reachable from them.** It costs environments: this trains at 512, not 1024.
+
+**Zero-shot, with all three in place:** episodes survive — 0% dead inside ten
+control steps against 100% on the transit lock — and the module gets **20 mm
+further in**, 182.2 mm short against 202.2 with no lock. Attitude is worse,
+113.3 mrad against 84.6, which is expected and is *not* a result: the policy was
+trained on pad contact alone and is being evaluated on a load path it has never
+seen. **The measurement that matters is a policy trained under it.**
 
 **Code.** `src/zero_g_blade_swap/tasks/blade_swap/mdp/grapple.py` (`GrappleLatch`,
 the `_mating_joints` path around the `joint_mode != "compliant"` early return);
 `grapple_pin_env_cfg.py::ZeroGBladeGrapplePinInsertEnvCfg` (`latch_enabled`,
 `latch_joint_mode`, the mating caps); `scripts/run_workflow_demo.py` for how the
 chain sequences arm → soften → release.
+
+> **In flight, 2026-08-25.** `grapple_insert_l0_seed70_v23lock` is training under
+> this configuration (512 environments, 1400 epochs). If its checkpoints are on
+> disk, evaluate them first — the whole point is a policy trained on the load path
+> it will be deployed onto. If they are not, the run did not finish and this task
+> is open exactly as written.
 
 **Done when.** The eighth row of `tests/test_skill_chain_agreement.py` asserts the
 load paths are equal like the other seven, and the skill is retrained and verified

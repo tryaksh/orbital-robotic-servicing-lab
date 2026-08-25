@@ -64,6 +64,27 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Insertion profile: 0=tight/6D, 1=pose, 2=mass, 3=friction, 4=mount wobble.",
     )
+    parser.add_argument(
+        "--latch_mating_compliance",
+        action="store_true",
+        help=(
+            "Train a grapple skill holding the module on the chain's remote-centre mating "
+            "compliance, which is the load path the chain seats with. Three things have to be "
+            "true at once for it to exist: the lock enabled, joint_mode 'fixed' so softening can "
+            "hand over to the mating joint, and replicate_physics off because PhysX copies only "
+            "the first environment's procedurally authored joint. Off by default -- every "
+            "published skill number was measured on pad contact alone."
+        ),
+    )
+    parser.add_argument(
+        "--latch_engage_after_steps",
+        type=int,
+        default=5,
+        help=(
+            "With --latch_mating_compliance, defer engagement this many control steps so the "
+            "reset has been stepped before the lock anchors to it. Ignored otherwise."
+        ),
+    )
     parser.add_argument("--checkpoint", type=Path, default=None, help="Resume an RL-Games .pth checkpoint.")
     parser.add_argument("--bc_checkpoint", type=Path, default=None, help="Initialize the vision actor from BC.")
     parser.add_argument("--smoke", action="store_true", help="Run two PPO epochs with small batches.")
@@ -235,6 +256,17 @@ def main() -> None:
         )
         print(f"[INFO] Simulation and PPO device: {rl_device} ({device_description})")
         env_cfg = parse_env_cfg(args.task, device=rl_device, num_envs=args.num_envs)
+        if args.latch_mating_compliance:
+            if getattr(env_cfg, "latch_enabled", None) is None:
+                raise ValueError("--latch_mating_compliance is valid only for a grapple-pin task")
+            env_cfg.latch_enabled = True
+            env_cfg.latch_joint_mode = "fixed"
+            env_cfg.scene.replicate_physics = False
+            env_cfg.scene.clone_in_fabric = False
+            print(
+                "[INFO] Training on the mating compliance: lock on, joint_mode fixed, "
+                "replicate_physics off"
+            )
         if args.robustness_level is not None:
             valid_profile_task = any(
                 label in args.task for label in ROBUST_FAMILY_TASKS
@@ -243,6 +275,18 @@ def main() -> None:
                 raise ValueError("--robustness_level is valid only for a robust/contact insertion task")
             env_cfg.configure_robustness(args.robustness_level)
             print(f"[INFO] Insertion robustness level: {args.robustness_level}")
+        if args.latch_mating_compliance:
+            # After configure_robustness, which rebuilds the event set and would
+            # otherwise discard these.
+            latch = getattr(env_cfg.events, "grapple_latch", None)
+            if latch is None:
+                raise RuntimeError("--latch_mating_compliance did not install the grapple latch")
+            latch.params["soften_on_engage"] = True
+            latch.params["engage_after_steps"] = args.latch_engage_after_steps
+            print(
+                f"[INFO] Lock softens into the mating compliance at control step "
+                f"{args.latch_engage_after_steps}"
+            )
         agent_cfg = load_cfg_from_registry(args.task, "rl_games_cfg_entry_point")
         agent_cfg["params"]["seed"] = args.seed
         agent_cfg["params"]["config"]["device"] = rl_device

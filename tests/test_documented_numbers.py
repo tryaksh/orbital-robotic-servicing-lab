@@ -93,12 +93,15 @@ def test_the_insert_diagnosis_is_quoted_against_the_tolerance_it_missed() -> Non
     for document, label in ((README, "docs"), (NOW, "docs/NOW.md")):
         assert f"{tolerance:.1f} mrad" in document, f"{label} does not quote the {tolerance:.1f} mrad tolerance"
 
-    # The three arms must agree to within a milliradian; that agreement IS the
-    # finding, so a document quoting one without the others would mislead.
+    # The three OBJECTIVE arms must agree to within a milliradian; that
+    # agreement IS the finding, so a document quoting one without the others
+    # would mislead. Load-path arms are excluded on purpose -- they change the
+    # interface rather than the reward, and the whole point is that those are
+    # different questions.
     angles = [
         arm["orientation_error_mrad"]["median"]
         for arm in report["arms"]
-        if "lock" not in arm["label"].lower()
+        if not any(word in arm["label"].lower() for word in ("lock", "compliance"))
     ]
     assert len(angles) >= 3, "the diagnosis needs all three objective arms to make its point"
     assert max(angles) - min(angles) < 1.0, (

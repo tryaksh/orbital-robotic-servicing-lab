@@ -405,6 +405,7 @@ class GrappleLatch(ManagerTermBase):
         mating_force_cap_n: float = 400.0,
         mating_torque_cap_nm: float = 40.0,
         engage_after_steps: int = 0,
+        soften_on_engage: bool = False,
     ) -> None:
         del env_ids
         if joint_mode not in ("compliant", "fixed"):
@@ -483,6 +484,25 @@ class GrappleLatch(ManagerTermBase):
                 # A softened environment has already given its joint up; do not
                 # re-arm it behind the driver's back.
                 self._engage_fixed_joints(env, blade, newly_latched & ~env._grapple_latch_compliant)
+            if soften_on_engage:
+                # **Engage straight into the mating state, for a task that
+                # starts where the chain softens.**
+                #
+                # The chain arms the lock once the module is clear of the rails,
+                # carries it rigid, and softens to the remote-centre mating
+                # compliance at the mouth -- so by the time it is seating, the
+                # module hangs on a spring whose centre is near its own leading
+                # face and the lead-ins can still walk it square. The insert
+                # skill's episode *begins* at that point, so there is no rigid
+                # transit for it to soften out of.
+                #
+                # Without this the only reachable state is the transit lock, and
+                # a stiff lock on a module the rails already hold fights the
+                # rack: measured at 313.6 mrad engaged immediately and 325.1
+                # engaged after twenty steps, against 84.6 with no lock at all.
+                # ``soften`` re-anchors to the transform the module is in at
+                # this instant, so entering the state stores no energy.
+                self.soften(newly_latched)
         latched |= qualified
 
         desired_position = tool_position + quat_apply(tool_orientation, env._grapple_latch_relative_pos)

@@ -121,6 +121,8 @@ def main() -> int:
          "v21time ep1400, stage 0, form lock engaged after 5 control steps"),
         ("artifacts/insert_attitude/lock_defer20.npz",
          "v21time ep1400, stage 0, form lock engaged after 20 control steps"),
+        ("artifacts/insert_attitude/lock_mating3.npz",
+         "v21time ep1400, stage 0, chain's MATING compliance, zero-shot (policy trained without it)"),
     ):
         path = ROOT / pattern
         if path.is_file():
@@ -184,6 +186,25 @@ def main() -> int:
             "the rails, and softens it to the remote-centre mating compliance at the mouth so the "
             "lead-ins can still walk the module. Reproducing that inside the skill is the work, "
             "and it is docs/NEXT_WORK.md T9."
+        ),
+        "what_it_took_to_reach_the_chains_load_path": [
+            "Anchor after the reset settles. engage_after_steps, added here, defaulting to 0.",
+            "joint_mode 'fixed', not 'compliant'. With 'compliant' the load path is the explicit "
+            "wrench and the mating joint is never installed, so softening re-anchors a transform "
+            "engagement set one line earlier -- measured byte-identical to not softening at all.",
+            "replicate_physics off. PhysX copies only the first environment's procedurally "
+            "authored joint, so envs 1..N get the prim and no usable joint and the run dies with "
+            "'Fixed release latch is missing'. configure_base_rail records the same thing. The "
+            "skill tasks run replication ON for throughput, which is the structural reason the "
+            "chain's load path was not reachable from them.",
+        ],
+        "zero_shot_on_the_mating_compliance": (
+            "With all three in place the episodes survive -- 0% dead inside ten control steps, "
+            "against 100% on the transit lock -- and the module gets 20 mm further in, 182.2 mm "
+            "short against 202.2 with no lock. Attitude is worse, 113.3 mrad against 84.6, which "
+            "is expected and is not a result: this policy was trained on pad contact alone and is "
+            "being evaluated on a load path it has never seen. The measurement that matters is a "
+            "policy TRAINED under it, which is T9."
         ),
         "mechanism": (
             "Two flat pads on a pin cannot resist a moment about the closing axis -- the same "

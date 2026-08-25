@@ -1,7 +1,7 @@
 {
   "title": "Why the insert skill does not seat: attitude, not creep",
   "evidence_type": "simulation_only",
-  "generated_utc": "2026-08-25T08:07:17.534577+00:00",
+  "generated_utc": "2026-08-25T08:16:58.116429+00:00",
   "question": "The insert skill certifies at 0.00% and stops ~204 mm short. The published reading was that it creeps because the objective made dawdling nearly free. Is that right?",
   "answer": "No. The time cost trained to convergence changes nothing. What the episodes show is attitude: the module ends at a median 84.6 mrad against the 52.4 mrad a seated module must be inside, so essentially every episode is outside the orientation tolerance by about 1.6x. A 7x stronger angular penalty, trained 400 epochs, moved that by 0.03 mrad -- so the angle is not the policy's to give through pad contact.",
   "success_orientation_tolerance_mrad": 52.3599,
@@ -204,6 +204,39 @@
       "control_steps_median": 23.0,
       "fraction_dead_within_10_steps": 0.0,
       "fraction_inside_success_orientation": 0.0078
+    },
+    {
+      "label": "v21time ep1400, stage 0, chain's MATING compliance, zero-shot (policy trained without it)",
+      "episodes": 64,
+      "success_rate": 0.0,
+      "orientation_error_mrad": {
+        "p5": 97.349,
+        "median": 113.328,
+        "p95": 132.507
+      },
+      "axial_short_mm": {
+        "p5": 39.14,
+        "median": 182.249,
+        "p95": 257.099
+      },
+      "lateral_error_mm": {
+        "p5": 0.681,
+        "median": 6.014,
+        "p95": 16.727
+      },
+      "terminal_speed_mm_s": {
+        "p5": 0.177,
+        "median": 0.368,
+        "p95": 2.314
+      },
+      "tool_to_handle_mm": {
+        "p5": 11.407,
+        "median": 11.637,
+        "p95": 11.897
+      },
+      "control_steps_median": 900.0,
+      "fraction_dead_within_10_steps": 0.0,
+      "fraction_inside_success_orientation": 0.0
     }
   ],
   "what_this_refutes": [
@@ -217,6 +250,12 @@
     "Not grip slip. Tool-to-handle holds at 12.2 mm with a p95 of 12.48, which is the pin's own measured 12 mm feed rather than the pads losing it."
   ],
   "why_the_lock_cannot_simply_be_switched_on": "The insert task's reset places the module INSIDE the destination channel, anywhere along a 436 mm stroke, so the rails are already constraining it when the latch engages. A restoring wrench on a module the rails hold fights the rack rather than the drift it was designed for -- the same effect this project already measured on extraction, where a latch engaged on capture collapsed the pull from 465 mm to about 25 mm. The chain never does this: it arms the lock only once the module is clear of the rails, and softens it to the remote-centre mating compliance at the mouth so the lead-ins can still walk the module. Reproducing that inside the skill is the work, and it is docs/NEXT_WORK.md T9.",
+  "what_it_took_to_reach_the_chains_load_path": [
+    "Anchor after the reset settles. engage_after_steps, added here, defaulting to 0.",
+    "joint_mode 'fixed', not 'compliant'. With 'compliant' the load path is the explicit wrench and the mating joint is never installed, so softening re-anchors a transform engagement set one line earlier -- measured byte-identical to not softening at all.",
+    "replicate_physics off. PhysX copies only the first environment's procedurally authored joint, so envs 1..N get the prim and no usable joint and the run dies with 'Fixed release latch is missing'. configure_base_rail records the same thing. The skill tasks run replication ON for throughput, which is the structural reason the chain's load path was not reachable from them."
+  ],
+  "zero_shot_on_the_mating_compliance": "With all three in place the episodes survive -- 0% dead inside ten control steps, against 100% on the transit lock -- and the module gets 20 mm further in, 182.2 mm short against 202.2 with no lock. Attitude is worse, 113.3 mrad against 84.6, which is expected and is not a result: this policy was trained on pad contact alone and is being evaluated on a load path it has never seen. The measurement that matters is a policy TRAINED under it, which is T9.",
   "mechanism": "Two flat pads on a pin cannot resist a moment about the closing axis -- the same limit this project measured four independent ways and the reason the chain carries the module on a form lock. With the lock off, contact with the lead-in rotates the module and nothing opposes it. The chain reaches 46 mrad at the same seating phase, and the only difference is that the chain carries the module on the form lock while the skill trains without one. Strengthening the objective does not substitute for that, which is what the 400-epoch null result measured.",
   "scope_and_limitations": [
     "Simulation only. No result here was produced on real hardware.",
