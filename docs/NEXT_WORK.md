@@ -208,9 +208,11 @@ scripted guarded advance until a policy beats it head to head.
 of GPU, plus ~20 minutes to certify. This is the cheapest open task with a real
 chance of changing a headline claim.
 
-> **Status note, 2026-08-25 audit.** The run was resumed from epoch 300 to
-> **1400** and the checkpoints are on disk under
-> `logs/rl_games/zero_g_blade_insertion_contact/grapple_insert_l0_seed70_v21time/nn/`.
+> **Status note, 2026-08-25 audit.** The run was resumed from epoch 300 and
+> **completed at epoch 1400** (exit 0). The checkpoint to evaluate is
+> `logs/rl_games/zero_g_blade_insertion_contact/grapple_insert_l0_seed70_v21time/nn/last_zero_g_blade_insertion_contact_ep_1400_rew_3.8209805.pth`
+> — note the single-underscore form; epoch 1400 exists under both conventions,
+> the same trap as T8.
 > **It was not evaluated**, deliberately: the audit's scope was the repository,
 > not the policy, so the measurement is left here rather than half-done.
 >
