@@ -651,8 +651,18 @@ def insertion_settling_penalty(env, command_name: str = "insertion_goal") -> tor
     axial, lateral, orientation = _errors(env, command_name)
     velocity = attached_blade_velocity(env)
     near_goal = (axial < 0.050) & (lateral < 0.010) & (orientation < 0.15)
-    linear_cost = torch.square(torch.linalg.vector_norm(velocity[:, :3], dim=-1) / 0.030)
-    angular_cost = 0.25 * torch.square(torch.linalg.vector_norm(velocity[:, 3:], dim=-1) / 0.080)
+    # Normalised by the *success criterion's own* limits rather than by a copy of
+    # their values. The two were the same two numbers written twice, 585 lines
+    # apart, and this repository has already been bitten four times by a
+    # criterion moving while something that had memorised it did not. Referencing
+    # them is bit-identical today and stays correct if the limits are ever
+    # re-derived.
+    linear_cost = torch.square(
+        torch.linalg.vector_norm(velocity[:, :3], dim=-1) / INSERTION_LINEAR_VELOCITY_LIMIT_MPS
+    )
+    angular_cost = 0.25 * torch.square(
+        torch.linalg.vector_norm(velocity[:, 3:], dim=-1) / INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS
+    )
     return near_goal.to(torch.float32) * (linear_cost + angular_cost).clamp(max=25.0)
 
 
