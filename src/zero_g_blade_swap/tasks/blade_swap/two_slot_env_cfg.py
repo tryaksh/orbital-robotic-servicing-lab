@@ -31,14 +31,14 @@ from isaaclab.utils import configclass
 
 from . import mdp
 from .assets import (
-    BLADE_INSERTED_POS,
     CONTACT_INSERTION_STAGE_BLADE_POSE,
-    GRAPPLE_HEAD_ON_ARM_JOINT_POS,
+    FIRST_SLOT_INSERTED_POS,
+    GRAPPLE_ROBOT_ROOT_POS,
     SECOND_SLOT_CENTER_Y,
     SECOND_SLOT_INSERTED_POS,
     make_grapple_pin_robot_cfg,
 )
-from .grapple_pin_env_cfg import ExtractEventsCfg, ZeroGBladeGrapplePinInsertEnvCfg
+from .grapple_pin_env_cfg import SingleStageCurriculumCfg, ZeroGBladeGrapplePinInsertEnvCfg
 from .robust_insertion_env_cfg import configure_insertion_play_presentation
 from .scene_cfg import ZeroGTwoSlotGrapplePinSceneCfg
 from .workflow_demo_env_cfg import ZeroGBladeGrapplePinWorkflowEnvCfg
@@ -88,9 +88,20 @@ class TwoSlotCommandsCfg:
     """One seated pose per bay, selected by the same index everything else uses."""
 
     insertion_goal = mdp.InsertionGoalCommandCfg(
-        goal_pos=BLADE_INSERTED_POS,
-        goal_pos_by_stage=(BLADE_INSERTED_POS, SECOND_SLOT_INSERTED_POS),
+        goal_pos=FIRST_SLOT_INSERTED_POS,
+        goal_pos_by_stage=(FIRST_SLOT_INSERTED_POS, SECOND_SLOT_INSERTED_POS),
     )
+
+
+@configclass
+class DestinationBayCommandsCfg:
+    """One seated pose: the bay the chain actually seats into.
+
+    The two-bay goal it replaces indexed on a curriculum stage that no longer
+    exists. See ``ZeroGBladeGrapplePinInsertTwoSlotEnvCfg``.
+    """
+
+    insertion_goal = mdp.InsertionGoalCommandCfg(goal_pos=SECOND_SLOT_INSERTED_POS)
 
 
 @configclass
@@ -125,7 +136,29 @@ class TwoSlotCurriculumCfg:
 
 @configclass
 class ZeroGBladeGrapplePinInsertTwoSlotEnvCfg(ZeroGBladeGrapplePinInsertEnvCfg):
-    """Insert a physically held module into either bay of a two-bay rack."""
+    """Seat a physically held module into the destination bay the chain uses.
+
+    **One bay, with the robot parked opposite it, and that is a correction.**
+
+    This used to draw the two bays evenly on the reasoning that a policy which
+    learns the new bay by forgetting the old one has not done the job. That
+    argument belongs to a robot bolted in one place. This one rides a lateral
+    rail, and the rail is what makes a certification at one bay a certification
+    at every bay it reaches: solved both ways, the arm's configuration parked
+    opposite the second bay differs from its configuration at the first by
+    **0.0000 mrad**.
+
+    Reaching the second bay from the *first* bay's base is a different pose
+    entirely -- 505 mrad on the worst joint -- and it is one the chain never
+    presents, because the chain moves the base. So half of what this task used
+    to train was a stretch nothing asks for, and the other half was the first
+    bay, whose channel has no vertical lead-in because nothing was ever supposed
+    to enter it from outside. Since the reset began at the mouth, something is.
+
+    Both halves are gone. The robot parks where the chain parks it, the module
+    seats where the chain seats it, and the rack it enters is the one with the
+    lead-in the seating stroke depends on.
+    """
 
     scene: ZeroGTwoSlotGrapplePinSceneCfg = ZeroGTwoSlotGrapplePinSceneCfg(
         num_envs=512,
@@ -133,8 +166,8 @@ class ZeroGBladeGrapplePinInsertTwoSlotEnvCfg(ZeroGBladeGrapplePinInsertEnvCfg):
         replicate_physics=True,
         clone_in_fabric=True,
     )
-    commands: TwoSlotCommandsCfg = TwoSlotCommandsCfg()
-    curriculum: TwoSlotCurriculumCfg = TwoSlotCurriculumCfg()
+    commands: DestinationBayCommandsCfg = DestinationBayCommandsCfg()
+    curriculum: SingleStageCurriculumCfg = SingleStageCurriculumCfg()
 
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)
@@ -144,18 +177,13 @@ class ZeroGBladeGrapplePinInsertTwoSlotEnvCfg(ZeroGBladeGrapplePinInsertEnvCfg):
                 "been solved yet. Run `scripts/run_relocation.sh calibrate` and paste the converged "
                 "joint angles into two_slot_env_cfg.py. Guessing it is what rule 7 forbids."
             )
-        # The parent collapses these to the single certified bay; restore two
-        # entries, in the order the goal and the curriculum use.
-        self.events = ExtractEventsCfg()
-        self.events.reset_arm.params["poses_by_stage"] = (
-            GRAPPLE_HEAD_ON_ARM_JOINT_POS[2],
-            tuple(SECOND_SLOT_STAGING_ARM_JOINT_POS),
-        )
-        self.events.reset_arm.params["noise_by_stage"] = (0.020, 0.020)
-        self.events.reset_blade.params["poses_by_stage"] = (
-            CONTACT_INSERTION_STAGE_BLADE_POSE[2],
-            SECOND_SLOT_STAGE_BLADE_POSE,
-        )
+        # **Park the robot opposite the bay it is seating into.**
+        #
+        # The chain does this with the lateral rail and the whole rail argument
+        # rests on it: parked opposite a bay the arm's configuration is the one
+        # it has at bay 1, so no bay needs a skill bay 1 does not already have.
+        # A skill task that reaches the second bay by stretching from the first
+        # bay's base is training the one configuration the rail exists to avoid.
         if level < 2:
             self.events.blade_mass = None
         if level < 3:
@@ -165,9 +193,43 @@ class ZeroGBladeGrapplePinInsertTwoSlotEnvCfg(ZeroGBladeGrapplePinInsertEnvCfg):
             self.events.randomize_stiction = None
             self.events.rail_stiction_force = None
         self.scene.robot = make_grapple_pin_robot_cfg(floating=level >= 4)
+        # **Park the robot opposite the bay it is seating into.**
+        #
+        # After ``make_grapple_pin_robot_cfg``, which rebuilds the robot. The
+        # chain does this with the lateral rail and the whole rail argument
+        # rests on it: parked opposite a bay the arm's configuration is the one
+        # it has at bay 1, solved both ways to 0.0000 mrad. A skill task that
+        # reaches the second bay by stretching from the first bay's base trains
+        # the one configuration -- 505 mrad away -- the rail exists to avoid.
+        self.scene.robot.init_state.pos = (
+            GRAPPLE_ROBOT_ROOT_POS[0],
+            GRAPPLE_ROBOT_ROOT_POS[1] + SECOND_SLOT_CENTER_Y,
+            GRAPPLE_ROBOT_ROOT_POS[2],
+        )
+        mount = getattr(self.scene, "mount_anchor", None)
+        if mount is not None:
+            anchor = tuple(mount.init_state.pos)
+            mount.init_state.pos = (anchor[0], anchor[1] + SECOND_SLOT_CENTER_Y, anchor[2])
         if level < 4:
             self.events.clear_mount_wrench = None
             self.events.base_wobble = None
+        # **Fit the destination bay the way the chain fits it.**
+        #
+        # ``configure_service_destination`` installs the vertical entry ramps,
+        # applies the channel relief and puts the destination bay's running
+        # surfaces on the low-friction pairing, and until now only
+        # ``run_workflow_demo.py`` ever called it. So every insert policy this
+        # project trained was trained in a bay with no vertical lead-in, no
+        # relief and production friction -- and that bay's own docstring records
+        # the measurement: a module delivered from outside "cocked to 36 mrad,
+        # exactly the 2c/L the channel admits, and then did not move for six
+        # thousand control steps of pushing, under every mating variant tried".
+        #
+        # The skill was being asked for something the geometry forbids. That is
+        # the whole of why it certifies at 0.00% while holding the grip
+        # perfectly, and it is the last of the ways this task and the chain
+        # described different problems.
+        self.configure_service_destination()
         self._configure_latch()
 
 

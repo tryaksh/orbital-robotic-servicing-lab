@@ -47,6 +47,8 @@ from .assets import (
     GRAPPLE_TOOL_OFFSET_POS,
     SECOND_SLOT_ENTRY_LOWER_RAMP_CFG,
     SECOND_SLOT_ENTRY_UPPER_RAMP_CFG,
+    SERVICE_DESTINATION_DYNAMIC_FRICTION,
+    SERVICE_DESTINATION_STATIC_FRICTION,
     CompliantD6JointCfg,
     make_grapple_pin_robot_cfg,
 )
@@ -56,6 +58,7 @@ from .contact_insertion_env_cfg import (
     ZeroGBladeContactInsertionEnvCfg,
 )
 from .env_cfg import ARM_JOINTS
+from .insert_reset_bank import INSERT_STROKE_ARM_JOINT_POS, INSERT_STROKE_BLADE_POSE
 from .insertion_env_cfg import ARM_CFG, GRIPPER_CFG, WRIST_CFG
 from .robust_insertion_env_cfg import configure_insertion_play_presentation
 from .scene_cfg import ZeroGGrapplePinSceneCfg
@@ -313,6 +316,38 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
 
         self.scene.blade_slot_two_entry_upper_ramp = SECOND_SLOT_ENTRY_UPPER_RAMP_CFG
         self.scene.blade_slot_two_entry_lower_ramp = SECOND_SLOT_ENTRY_LOWER_RAMP_CFG
+
+        # **The destination bay's running surfaces get the low-friction pairing
+        # this repository already uses wherever a part has to slide into a
+        # clearance fit**, and the reason is that jamming is a friction ratio,
+        # not a clearance.
+        #
+        # The production guides are authored at 0.8 static and 0.65 dynamic with
+        # ``friction_combine_mode="max"``. That is a reasonable number for a
+        # rack a human pushes a blade into and a very unreasonable one for a
+        # 450 mm part pushed by a manipulator gripping it 340 mm behind its
+        # centre: the first contact at the mouth produces a moment about the
+        # grip, the part cocks, and a cocked part in a clearance fit is held by
+        # friction rather than by geometry. Measured: the module entered square
+        # at 13 mrad, cocked to 36 -- exactly the ``2c/L`` the channel admits --
+        # and then did not move for six thousand control steps of pushing, under
+        # every mating variant tried.
+        #
+        # ``INSERTION_SLOT_*`` in ``assets.py`` already carries 0.12 and 0.08 for
+        # precisely this, and the entry ramps and flares are described as low
+        # friction in section 6. This puts the channel behind them on the same
+        # footing. Destination bay only, so every task an existing
+        # certification describes keeps the surfaces it was measured on.
+        for surface in (
+            self.scene.blade_slot_two,
+            self.scene.blade_slot_two_left_guide,
+            self.scene.blade_slot_two_right_guide,
+            self.scene.blade_slot_two_upper_left_lip,
+            self.scene.blade_slot_two_upper_right_lip,
+        ):
+            surface.spawn.physics_material.static_friction = SERVICE_DESTINATION_STATIC_FRICTION
+            surface.spawn.physics_material.dynamic_friction = SERVICE_DESTINATION_DYNAMIC_FRICTION
+            surface.spawn.physics_material.friction_combine_mode = "min"
 
         # **And the channel behind it may have to be wider, for a reason that
         # is a general rule rather than a fudge -- but only for a module that
@@ -635,6 +670,80 @@ class ExtractActionsCfg(GrapplePinActionsCfg):
 
 
 @configclass
+class InsertActionsCfg(GrapplePinActionsCfg):
+    """Six corrections, at the axial rate the stroke it now covers requires.
+
+    The inherited scale is 0.0015 m per control step, 45 mm/s, and it was sized
+    against a 167 mm stroke: the skill reset at one pose that far from the
+    seated plane. It now resets anywhere along the stroke the *chain* uses, up
+    to 529 mm, and 45 mm/s is 11.8 s of pure travel against a 30 s budget.
+
+    Measured on the 167 mm task, a successful insertion took 12.3 s at the
+    median and 24.3 s at the slowest, against 3.7 s of pure travel -- a factor
+    of 3.3 to 6.6 spent servoing rather than travelling. Keeping the slowest of
+    those ratios inside the same budget needs the travel under 4.5 s, so the
+    axial scale has to be at least 529 / 4.5 = 118 mm/s. 120 mm/s, and the
+    lateral and rotational scales are untouched, because nothing about the
+    stroke's length says the module should be steered faster across it.
+    """
+
+    arm = mdp.GraspSettlingDifferentialInverseKinematicsActionCfg(
+        asset_name="robot",
+        joint_names=ARM_JOINTS,
+        body_name="wrist_3_link",
+        body_offset=mdp.GraspSettlingDifferentialInverseKinematicsActionCfg.OffsetCfg(
+            pos=GRAPPLE_TOOL_OFFSET_POS,
+            rot=mdp.TOOL_OFFSET_ROT,
+        ),
+        scale=(0.004, 0.00075, 0.00075, 0.006, 0.006, 0.006),
+        settling_time_s=1.0,
+        controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=True, ik_method="dls"),
+    )
+
+
+@configclass
+class InsertStrokeEventsCfg(GrapplePinEventsCfg):
+    """Start the insertion anywhere along the stroke, already holding the module.
+
+    One event replaces ``reset_arm``, ``reset_blade`` and the replayed capture,
+    because those three cannot be varied independently without producing a state
+    no hand-off ever creates. See ``mdp.reset_grapple_insert_stroke``.
+    """
+
+    reset_arm = None
+    reset_blade = None
+    close_gripper_on_reset = None
+    reset_stroke = EventTerm(
+        func=mdp.reset_grapple_insert_stroke,
+        mode="reset",
+        params={
+            "asset_cfg": ARM_CFG,
+            "gripper_cfg": GRIPPER_CFG,
+            "arm_poses_by_bay": INSERT_STROKE_ARM_JOINT_POS,
+            "blade_poses_by_bay": INSERT_STROKE_BLADE_POSE,
+            "finger_positions": tuple(
+                GRAPPLE_FINGER_SEATED_RAD * sign for sign in (1.0, 1.0, -1.0, 1.0, -1.0, -1.0)
+            ),
+            "hold_positions": GRAPPLE_GRIPPER_HOLD,
+            "noise_rad": 0.010,
+        },
+    )
+    hold_gripper_closed = EventTerm(
+        func=mdp.hold_two_stage_grip,
+        mode="interval",
+        interval_range_s=(1.0 / 30.0, 1.0 / 30.0),
+        is_global_time=False,
+        params={
+            "asset_cfg": GRIPPER_CFG,
+            "capture_positions": GRAPPLE_GRIPPER_CAPTURE,
+            "hold_positions": GRAPPLE_GRIPPER_HOLD,
+        },
+    )
+    remember_blade_pose = EventTerm(func=mdp.record_blade_reset_pose, mode="reset")
+    reset_grapple = EventTerm(func=mdp.reset_grapple_progress, mode="reset")
+
+
+@configclass
 class GraspEventsCfg(GrapplePinEventsCfg):
     """Start near the pin with the fingers open and let the policy close them."""
 
@@ -833,6 +942,14 @@ class ExtractRewardsCfg:
             "orientation_scale": 0.06,
             "orientation_weight": 1.0,
             "max_penalty": 60.0,
+            # The attitude half of this term was tuned against extraction's own
+            # failure mode and the position half was left at the shared default,
+            # whose 4 mm free band sits 8 mm inside a grip error the taper makes
+            # physically unreachable. So the position axis was saturated on
+            # every step of every episode: a constant charge for the interface
+            # holding, and a gradient toward a pose the collar blocks. See
+            # mdp.pin_grip_residuals.
+            "resolve_on_pin": True,
         },
     )
     time = RewTerm(func=mdp.elapsed_time_penalty, weight=-0.10)
@@ -956,6 +1073,24 @@ class ZeroGBladeGrapplePinExtractEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
         # the evidence for tolerating a real hand-off; this reset only has to
         # produce a grip for the skill to be measured from.
         self.events.reset_arm.params["noise_by_stage"] = (0.010, 0.015, 0.020)
+        # **And the box is bounded by what the chain will hand over.**
+        #
+        # The three numbers above are a box in *joint* space, and a joint-space
+        # box does not map to a bounded grip error. Measured on extract v17m130
+        # at stage 2: 202 of 513 episodes end inside three control steps with
+        # the tool a median of 17.4 mm across the pin, 47.5 mm at p95, and the
+        # pin never fed -- the pads closed on nothing and the policy never
+        # acted. Conditional on surviving the reset the same policy scores
+        # 83.6%, so 39% of that stage's certification was a measurement of this
+        # line rather than of the skill.
+        #
+        # ``WORKFLOW_HANDOVER_GRIP_M`` is the grip error the chain requires
+        # before it hands a captured module to this skill, and the tolerance the
+        # capture task's own success predicate is written against. An episode
+        # starting outside it is not an extraction this workflow can ask for.
+        # The noise direction is untouched; only its length is scaled, and only
+        # where it would have exceeded the bound.
+        self.events.reset_arm.params["max_tool_offset_m"] = mdp.WORKFLOW_HANDOVER_GRIP_M
         self.events.reset_blade.params["poses_by_stage"] = CONTACT_INSERTION_STAGE_BLADE_POSE
         if level < 2:
             self.events.blade_mass = None
@@ -975,7 +1110,25 @@ class ZeroGBladeGrapplePinExtractEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
 
 @configclass
 class InsertRewardsCfg:
-    progress = RewTerm(func=mdp.insertion_progress_reward, weight=12.0)
+    # **Rebalanced for the stroke this task now covers.**
+    #
+    # The defaults were set against a 167 mm insertion. This one starts anywhere
+    # along 529 mm, and with the defaults a control step of axial progress moved
+    # the cost by 0.02 against 0.133 for a millimetre of lateral jitter inside
+    # the channel's own play -- so the objective was six times more sensitive to
+    # wobble than to going in, and the policy did exactly that: 176 mm short at
+    # the median with every step of the clock spent.
+    #
+    # The axial scale drops to 0.05, which makes one action step of progress
+    # 0.08 -- inside the +/-0.25 clamp with room, and above lateral jitter rather
+    # than under it. The lateral weight drops to 0.5 so that the widest excursion
+    # the destination channel permits, 17.3 mm, costs 0.58 against the stroke's
+    # own 10.6. Orientation is unchanged.
+    progress = RewTerm(
+        func=mdp.insertion_progress_reward,
+        weight=12.0,
+        params={"axial_scale": 0.050, "lateral_weight": 0.5, "orientation_weight": 0.5},
+    )
     success = RewTerm(func=mdp.grapple_insertion_success_reward, weight=30.0)
     # **Extraction's attitude parameters, adopted here on a measurement.**
     #
@@ -1012,11 +1165,68 @@ class InsertRewardsCfg:
             "orientation_scale": 0.06,
             "orientation_weight": 1.0,
             "max_penalty": 60.0,
+            # **The position half was left on the shared default and it was the
+            # dominant term in this reward.**
+            #
+            # The default free band is 4 mm about the pin's drawing pose, and a
+            # loaded grip sits 12.0 mm from that pose because the taper feeds --
+            # that is how the interface holds 77 N instead of 6. So the term
+            # charged about 0.9 before the policy did anything, and a grip
+            # sitting at 26 mm charges 4.8, which at this weight is 0.08 per
+            # control step and about 150 over a 30 s episode. A successful
+            # insertion is worth roughly 41 of progress and 30 of success
+            # together, so the load path was being charged four times what
+            # finishing pays.
+            #
+            # Measured: 800 epochs from scratch on the stroke-wide reset moved
+            # the best mean reward from -88 to -74 and never came near positive.
+            # This was held at the default because insert v6's certification was
+            # produced under it -- and insert v6 describes a task with a
+            # different reset, a different goal plane and a different action
+            # scale, so that reason expired. See mdp.pin_grip_residuals.
+            "resolve_on_pin": True,
         },
     )
-    time = RewTerm(func=mdp.elapsed_time_penalty, weight=-0.10)
-    misalignment = RewTerm(func=mdp.insertion_misalignment_penalty, weight=-0.03)
-    settling = RewTerm(func=mdp.insertion_settling_penalty, weight=-0.04)
+    # **Taking the whole clock has to cost something, and it cost 3.**
+    #
+    # Measured on v20chain over 256 episodes: the module is still moving at
+    # 3.65 mm/s when the clock stops, against the 120 mm/s the action scale
+    # allows and the 60 mm/s the scripted advance uses to cover the same stroke
+    # in nine seconds. It is not jamming -- it is creeping, and creeping is what
+    # this objective paid for. Progress is potential-based, so covering the
+    # stroke pays the same however long it takes, and the only cost of dawdling
+    # was 0.0033 a step: three over a full episode, against a success worth 30.
+    #
+    # At -0.40 a full clock costs 12. That is deliberately *below* the 15 that
+    # failing costs, because a time penalty larger than the failure penalty
+    # makes giving up early the cheaper option -- the policy would learn to die
+    # rather than crawl, which is worse than crawling. Twelve is enough to make
+    # finishing early clearly better and not enough to make failing attractive.
+    time = RewTerm(func=mdp.elapsed_time_penalty, weight=-0.40)
+    # **The only continuous pressure toward alignment, and it was worth nothing.**
+    #
+    # A potential-based progress term pays for *changes*, so a policy that
+    # reaches 20.7 mm of lateral error and stops is charged nothing further by
+    # it. This term is what should charge it, and at -0.03 it cost 0.013 a step
+    # there -- about 4 over an episode, against a success worth 30.
+    #
+    # At -0.30 the same state costs 36 over an episode and a module inside its
+    # own success tolerance costs 0.6, so the term is nearly free when correct
+    # and decisive when not. That is the shape extraction's attitude term was
+    # given, for the same reason and on the same kind of measurement.
+    #
+    # The gate moves with the stroke. It marked where a 167 mm insertion started;
+    # a stroke that begins at the mouth has to be aligned over all of it, because
+    # a lead-in can only walk a module that arrives inside its catch.
+    misalignment = RewTerm(
+        func=mdp.insertion_misalignment_penalty,
+        weight=-0.30,
+        params={"engage_m": 0.60},
+    )
+    # Sized against the same measurement: arriving at the plane still moving is
+    # the one thing the settled re-check cannot forgive, and -0.04 charged 0.03 a
+    # step for it.
+    settling = RewTerm(func=mdp.insertion_settling_penalty, weight=-0.40)
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.003)
     failure = RewTerm(func=mdp.extraction_failure_reward, weight=-15.0)
 
@@ -1105,64 +1315,91 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
     # allowed to take.
     episode_length_s: float = 30.0
 
+    # **The one dimension that still differs from the chain, and the measurement
+    # that says why it cannot simply be switched on.**
+    #
+    # ``latch_enabled`` defaults to False for the whole grapple family, and only
+    # ``run_workflow_demo.py`` ever set it True. So every insert policy this
+    # project has trained learned to seat a module held by pad-on-pin friction
+    # alone, and every one of them was deployed onto a module hanging off a
+    # bounded spring-damper with 25 mm of stroke and 0.2 rad of rotation. Those
+    # are not the same mating problem, and the difference is not incidental: the
+    # entire reason the lock softens at the mouth is that a lead-in aligns a part
+    # by *pushing* it, and a part welded to a wrist cannot be pushed
+    # (specification section 9.6). The policy was being trained on the one
+    # variant of this task where the rack cannot help it.
+    #
+    # Measured on v16pin over 2,403 episodes: the grip holds perfectly, 12.0 mm
+    # with a p95 of 12.6, and the module still ends a median of 176 mm short with
+    # 20.7 mm of lateral error. A policy holding a rigid payload has no reason to
+    # discover that the flares will square the module for it.
+    #
+    # Switching it on here does not work, and the reason is the reset rather
+    # than the mechanism. The lock's joint is authored between the wrist and the
+    # module at their *spawn* poses; this task's reset then writes the module
+    # anywhere along 436 mm of stroke, and PhysX resolves the disagreement by
+    # snapping the two together. Measured on the same checkpoint and seed, with
+    # the lock the only thing changed:
+    #
+    #   lock on   125 of 128 episodes dead inside ten control steps,
+    #             roll about the pin 247.6 mrad at the median
+    #   lock off  0 of 128 dead early, roll 9.4 mrad, every episode runs its clock
+    #
+    # So the skill trains without it and the chain seats with it, and that is
+    # the last divergence left between them. Closing it needs the latch to
+    # re-anchor its joint after a reset writes the module, which is a change to
+    # ``mdp.GrappleLatch`` rather than a configuration value.
+    # ``tests/test_skill_chain_agreement.py`` records it as known rather than
+    # letting it be forgotten again.
+    latch_enabled: bool = False
+    latch_joint_mode: str = "compliant"
+    latch_rated_force_n: float = 20_000.0
+    latch_rated_torque_nm: float = 1_000.0
+    latch_position_stiffness_n_per_m: float = 40_000.0
+    latch_rotation_stiffness_nm_per_rad: float = 20_000.0
+    mating_force_cap_n: float = 1_000.0
+    mating_translation_stiffness_n_per_m: float = 40_000.0
+    mating_rotation_stiffness_nm_per_rad: float = 20_000.0
+    #: The chain seats into a relieved destination bay; a skill certified in the
+    #: unrelieved one is certified in a rack the chain does not use.
+    service_destination_channel_relief_m: float = 0.0046125
+
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)
-        self.events = ExtractEventsCfg()
-        # Wide enough that a policy handed over from a capture is still inside
-        # the distribution it trained on.
+        # **The reset spans the stroke, and that is what changed on 2026-08-24.**
         #
-        # This was (0.0005, 0.001, 0.002) rad, which is three hundredths of a
-        # degree: the skill only ever saw one arm configuration. Certified alone
-        # that is fine, and chained it is fatal, because a capture finishes
-        # wherever the grasp policy's servoing puts it, never on the nominal
-        # pose. Measured on the chained run, the hand-off grip error matches the
-        # reset's to within a millimetre and the policy still reverses, which is
-        # the joint configuration being out of distribution rather than the grip.
-        # A skill that is going to be chained has to be trained across the states
-        # its predecessor actually produces.
-        self.events.reset_arm.params["noise_by_stage"] = (0.010, 0.015, 0.020)
-        # Full distance only. Measured on the v4 checkpoint: the stage curriculum
-        # never promoted past its first level, so the policy solved the 31 mm
-        # near reset perfectly (500/500) and the 167 mm full reset barely at all
-        # (7%, and 469 of 512 failures were timeouts rather than lost grips, so
-        # the approach was never learned rather than the grip failing). A chained
-        # workflow only ever asks for the full distance, so that is what it
-        # trains on.
-        self.events.reset_arm.params["poses_by_stage"] = (GRAPPLE_HEAD_ON_ARM_JOINT_POS[2],)
-        self.events.reset_blade.params["poses_by_stage"] = (CONTACT_INSERTION_STAGE_BLADE_POSE[2],)
-        self.events.reset_arm.params["noise_by_stage"] = (0.020,)
-        # NOT enabled, and the measurement is why. Three resets were built to
-        # reproduce the state the chain hands this skill, and a gate was run on
-        # each *before* training: insert v6 unchanged must score near the ~80% it
-        # already achieves in the chain's insert phase.
+        # It used to place the module at one pose, the certified staging pose,
+        # 167 mm from the seated plane. The chain hands this skill the module at
+        # the mouth, 529 mm out, so every state the chain produces was 362 mm
+        # outside the distribution -- which is why the checkpoint the chain
+        # carries certifies at 0.00% and why the driver has a scripted advance
+        # doing the seating instead.
+        #
+        # Four resets had been tried before, all of them attempts to reproduce
+        # the hand-off by *sampling* it, each gated before training on whether
+        # insert v6 still scored near the ~80% it achieves in the chain:
         #
         #   per-joint noise box                       0.00%
         #   measured arm poses, module left nominal  26.32%
         #   measured arm AND module poses, paired    47.17%
         #
-        # Pairing the module with the arm recovered half the gap and did not
-        # close it, so the hand-off is still not reproduced and no amount of PPO
-        # would fix that. Training on the arm-only bank was tried anyway before
-        # this gate existed and cost the chain 8 points.
+        # None of them moved where along the stroke the module started, because
+        # none of them could: a bank of measured hand-offs is a bank of one
+        # depth. ``scripts/solve_insert_reset_bank.py`` solves the depths in
+        # closed form instead, gates each on residual, on the DLS controller's
+        # realised authority and on the collar staying clear of the mouth, and
+        # ``mdp.reset_grapple_insert_stroke`` writes the arm, the module and the
+        # fingers together so they cannot decorrelate.
         #
-        # What is left is not an initial condition at all: the chained driver
-        # latches the holding closure at hand-over (TwoStageRobotiqAction
-        # .hold_latch) so the grip cannot relax, and no training task sets it, so
-        # the module is also carried under a different gripper controller. That
-        # is why the reset below is the *original* one -- insert v6's 95.57%
-        # describes the task in this file, and it must keep doing so.
-        #
-        # This line of work is **closed**, and the thing that closed it is
-        # `Isaac-ZeroG-Blade-GrapplePin-InsertChain-v0`, which runs the real
-        # capture inside the environment and reproduces the hand-off at 93.06%
-        # against the best bank's 47.17%. Do not build a fifth reset.
-        #
-        # The whole path is deleted -- the 84 kB pose bank, its generator, and
-        # `mdp.reset_from_handoff_bank` -- because nothing imported any of it and
-        # keeping refuted machinery in the tree is how a future session spends a
-        # night rediscovering that it does not work. The measurements are in
-        # docs/status.md, which is where a result actually lives; the code was
-        # only ever the way they were taken.
+        # The one thing those notes named as *not* an initial condition is now
+        # also handled. The chained driver latches the holding closure at
+        # hand-over so the grip cannot relax, and no training task set it; the
+        # reset now writes the fingers at ``GRAPPLE_FINGER_SEATED_RAD``, the
+        # closure they come to rest at, with the module at the grip offset a
+        # loaded pull holds. Nothing closes through free space -- which matters
+        # most at the shallow end, where the module is entirely outside the rack
+        # and squeezing a free mass in zero gravity throws it.
+        self.events = InsertStrokeEventsCfg()
         if level < 2:
             self.events.blade_mass = None
         if level < 3:
@@ -1209,6 +1446,8 @@ __all__ = [
     "GRAPPLE_GRIPPER_CAPTURE",
     "GRAPPLE_GRIPPER_HOLD",
     "ExtractActionsCfg",
+    "InsertActionsCfg",
+    "InsertStrokeEventsCfg",
     "ExtractEventsCfg",
     "GraspActionsCfg",
     "GraspEventsCfg",

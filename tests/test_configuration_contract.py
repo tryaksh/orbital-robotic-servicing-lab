@@ -70,15 +70,29 @@ def test_the_live_grapple_interface_is_declared_in_exactly_one_place() -> None:
     2026-08-18: it cost insertion 67 points to buy extraction 0.13, and the keyed
     redesign meant to supersede it is itself refuted by
     ``evidence/grapple_pin_keyed_interference.json``. The measurements stay in
-    docs/status.md and evidence/; the code does not.
+    docs/archive/ and evidence/; the code does not.
+
+    **The insert task restates it, and that is deliberate.** The chain's seating
+    stroke softens the lock to a bounded spring-damper, so the skill declares the
+    chain's mating numbers next to its own ``latch_enabled`` -- together with the
+    measurement that says why the lock is nonetheless off there: switched on,
+    the reset's teleport and the joint's spawn anchor disagree and PhysX snaps
+    them, killing 125 of 128 episodes inside ten control steps.
     """
 
     source = (
         ROOT / "src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py"
     ).read_text(encoding="utf-8")
     assert "latch_enabled: bool = False" in source
-    # One declaration each, or two skills could silently diverge.
-    assert source.count("latch_enabled: bool =") == 1
+    # Exactly two: the shared default and the insert task's, which restates it
+    # alongside the chain's mating numbers and the measurement that says why the
+    # lock is off there. See tests/test_skill_chain_agreement.py.
+    assert source.count("latch_enabled: bool =") == 2
+    insert = source.split("class ZeroGBladeGrapplePinInsertEnvCfg", 1)[1]
+    assert 'latch_joint_mode: str = "compliant"' in insert
+    assert "latch_position_stiffness_n_per_m: float = 40_000.0" in insert
+    assert "mating_force_cap_n: float = 1_000.0" in insert
+    assert "service_destination_channel_relief_m: float = 0.0046125" in insert
     # Capture and the three skills each rebuild the event set in their own
     # configure_robustness, so every one of the four re-applies the latch.
     assert source.count("self._configure_latch()") == 4

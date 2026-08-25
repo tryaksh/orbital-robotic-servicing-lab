@@ -1,0 +1,239 @@
+{
+  "title": "Paired arm and module poses along the seating stroke",
+  "evidence_type": "geometry_check_no_simulator",
+  "generated_utc": "2026-08-25T03:11:20.137349+00:00",
+  "question": "What states does the insertion actually have to start from, and can the arm hold the head-on attitude at all of them?",
+  "method": "Closed-form UR10e inverse kinematics from zero_g_blade_swap.arm_kinematics, the same solver the transit legs are commanded from and the one scripts/check_workcell_geometry.py validates against the simulator's own recorded configurations before reporting.",
+  "robot_root_local_m": [
+    -0.65,
+    -0.22,
+    0.15
+  ],
+  "gates": {
+    "position_residual_m": 1e-05,
+    "attitude_residual_rad": 1e-05,
+    "authority_worst_rotation_axis": 0.9,
+    "collar_clear_of_mouth": true
+  },
+  "stations_by_bay": [
+    [
+      {
+        "blade_centre_x_m": 0.146753,
+        "bay_centre_y_m": -0.22,
+        "joints_rad": [
+          -0.99794,
+          -2.362859,
+          2.648292,
+          2.855897,
+          -0.573046,
+          -1.570581
+        ],
+        "position_residual_m": 5.861092024991203e-08,
+        "attitude_residual_rad": 0.0,
+        "authority_worst_rotation_axis": 0.9986997470315944,
+        "jacobian_min_singular_value": 0.06831351028234152,
+        "tool_world_m": [
+          -0.192747,
+          -0.22,
+          0.72
+        ],
+        "collar_leading_x_m": -0.158247,
+        "collar_clear_of_mouth": true,
+        "collar_half_height_m": 0.045
+      },
+      {
+        "blade_centre_x_m": 0.201271,
+        "bay_centre_y_m": -0.22,
+        "joints_rad": [
+          -0.728012,
+          -2.112343,
+          2.57599,
+          2.677817,
+          -0.842805,
+          -1.570707
+        ],
+        "position_residual_m": 6.023189573511465e-08,
+        "attitude_residual_rad": 0.0,
+        "authority_worst_rotation_axis": 0.9993112908044198,
+        "jacobian_min_singular_value": 0.12079282540063603,
+        "tool_world_m": [
+          -0.138229,
+          -0.22,
+          0.72
+        ],
+        "collar_leading_x_m": -0.103729,
+        "collar_clear_of_mouth": true,
+        "collar_half_height_m": 0.045
+      },
+      {
+        "blade_centre_x_m": 0.25579,
+        "bay_centre_y_m": -0.22,
+        "joints_rad": [
+          -0.583196,
+          -1.940423,
+          2.496875,
+          2.585093,
+          -0.987592,
+          -1.570383
+        ],
+        "position_residual_m": 6.229255213754113e-08,
+        "attitude_residual_rad": 0.0,
+        "authority_worst_rotation_axis": 0.9994860876611235,
+        "jacobian_min_singular_value": 0.1640711127528681,
+        "tool_world_m": [
+          -0.08371,
+          -0.22,
+          0.72
+        ],
+        "collar_leading_x_m": -0.04921,
+        "collar_clear_of_mouth": true,
+        "collar_half_height_m": 0.045
+      },
+      {
+        "blade_centre_x_m": 0.310308,
+        "bay_centre_y_m": -0.22,
+        "joints_rad": [
+          -0.488971,
+          -1.804165,
+          2.412519,
+          2.533195,
+          -1.081817,
+          -1.570392
+        ],
+        "position_residual_m": 5.110269686809036e-08,
+        "attitude_residual_rad": 0.0,
+        "authority_worst_rotation_axis": 0.9995798591354175,
+        "jacobian_min_singular_value": 0.20320789988583005,
+        "tool_world_m": [
+          -0.029192,
+          -0.22,
+          0.72
+        ],
+        "collar_leading_x_m": 0.005308,
+        "collar_clear_of_mouth": true,
+        "collar_half_height_m": 0.045
+      },
+      {
+        "blade_centre_x_m": 0.364826,
+        "bay_centre_y_m": -0.22,
+        "joints_rad": [
+          -0.421895,
+          -1.688878,
+          2.32379,
+          2.506653,
+          -1.148917,
+          -1.570774
+        ],
+        "position_residual_m": 5.485437028003883e-08,
+        "attitude_residual_rad": 0.0,
+        "authority_worst_rotation_axis": 0.9996409493964391,
+        "jacobian_min_singular_value": 0.2394696138586907,
+        "tool_world_m": [
+          0.025327,
+          -0.22,
+          0.72
+        ],
+        "collar_leading_x_m": 0.059826,
+        "collar_clear_of_mouth": true,
+        "collar_half_height_m": 0.045
+      },
+      {
+        "blade_centre_x_m": 0.419345,
+        "bay_centre_y_m": -0.22,
+        "joints_rad": [
+          -0.371472,
+          -1.587086,
+          2.231121,
+          2.497534,
+          -1.199284,
+          -1.570783
+        ],
+        "position_residual_m": 6.789958129670465e-08,
+        "attitude_residual_rad": 0.0,
+        "authority_worst_rotation_axis": 0.9996843670603858,
+        "jacobian_min_singular_value": 0.27315268286090455,
+        "tool_world_m": [
+          0.079845,
+          -0.22,
+          0.72
+        ],
+        "collar_leading_x_m": 0.114345,
+        "collar_clear_of_mouth": true,
+        "collar_half_height_m": 0.045
+      },
+      {
+        "blade_centre_x_m": 0.473863,
+        "bay_centre_y_m": -0.22,
+        "joints_rad": [
+          -0.331999,
+          -1.494336,
+          2.134633,
+          2.501279,
+          -1.238795,
+          -1.57078
+        ],
+        "position_residual_m": 5.2629163643317285e-08,
+        "attitude_residual_rad": 0.0,
+        "authority_worst_rotation_axis": 0.9997169015575268,
+        "jacobian_min_singular_value": 0.30374155175620576,
+        "tool_world_m": [
+          0.134363,
+          -0.22,
+          0.72
+        ],
+        "collar_leading_x_m": 0.168863,
+        "collar_clear_of_mouth": true,
+        "collar_half_height_m": 0.045
+      },
+      {
+        "blade_centre_x_m": 0.528382,
+        "bay_centre_y_m": -0.22,
+        "joints_rad": [
+          -0.30025,
+          -1.407683,
+          2.034212,
+          2.515051,
+          -1.270538,
+          -1.570781
+        ],
+        "position_residual_m": 5.243090579016208e-08,
+        "attitude_residual_rad": 0.0,
+        "authority_worst_rotation_axis": 0.9997421166379843,
+        "jacobian_min_singular_value": 0.3289823460949739,
+        "tool_world_m": [
+          0.188882,
+          -0.22,
+          0.72
+        ],
+        "collar_leading_x_m": 0.223382,
+        "collar_clear_of_mouth": true,
+        "collar_half_height_m": 0.045
+      },
+      {
+        "blade_centre_x_m": 0.5829,
+        "bay_centre_y_m": -0.22,
+        "joints_rad": [
+          -0.274131,
+          -1.325029,
+          1.929532,
+          2.537075,
+          -1.296616,
+          -1.570788
+        ],
+        "position_residual_m": 5.459387739636888e-08,
+        "attitude_residual_rad": 0.0,
+        "authority_worst_rotation_axis": 0.9997622017158047,
+        "jacobian_min_singular_value": 0.344187106324437,
+        "tool_world_m": [
+          0.2434,
+          -0.22,
+          0.72
+        ],
+        "collar_leading_x_m": 0.2779,
+        "collar_clear_of_mouth": true,
+        "collar_half_height_m": 0.045
+      }
+    ]
+  ],
+  "scope_and_limitations": "Kinematics only. It says the arm can present the pin at every station; it says nothing about whether the pads take the pin there, which is what the smoke run and the certification are for."
+}
