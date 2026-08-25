@@ -1,0 +1,163 @@
+{
+  "title": "What breaks the robot-carried chain first",
+  "evidence_type": "simulation_only",
+  "generated_utc": "2026-08-25T01:23:35.400041+00:00",
+  "question": "The chain is certified at one point in a space a real cell varies across. Which variable takes it down soonest?",
+  "method": "scripts/sweep_chain_robustness.sh: one variable moved at a time around the certified configuration, same seed, same checkpoints, same everything else.",
+  "nominal_point": "nominal",
+  "nominal_success_rate": 0.9375,
+  "ranked_by_points_below_nominal": [
+    "section_120x16",
+    "base_y_+10mm",
+    "rack_lat_16mm",
+    "mass_40kg",
+    "section_140x26",
+    "mass_20kg",
+    "rack_lat_6mm",
+    "relief_0mm",
+    "base_x_-0.70"
+  ],
+  "points": {
+    "base_x_-0.70": {
+      "success_rate": 1.0,
+      "episodes": 16,
+      "wilson_95": {
+        "low": 0.806392,
+        "high": 1.0
+      },
+      "median_terminal": {
+        "axial_error_m": 0.000768,
+        "lateral_error_m": 0.001857,
+        "orientation_error_rad": 0.045772
+      },
+      "points_below_nominal": -6.25
+    },
+    "base_y_+10mm": {
+      "success_rate": 0.0625,
+      "episodes": 16,
+      "wilson_95": {
+        "low": 0.011119,
+        "high": 0.283287
+      },
+      "median_terminal": {
+        "axial_error_m": 0.453127,
+        "lateral_error_m": 0.25074,
+        "orientation_error_rad": 0.249654
+      },
+      "points_below_nominal": 87.5
+    },
+    "mass_20kg": {
+      "success_rate": 0.9375,
+      "episodes": 16,
+      "wilson_95": {
+        "low": 0.716713,
+        "high": 0.988881
+      },
+      "median_terminal": {
+        "axial_error_m": 0.000667,
+        "lateral_error_m": 0.001833,
+        "orientation_error_rad": 0.045801
+      },
+      "points_below_nominal": 0.0
+    },
+    "mass_40kg": {
+      "success_rate": 0.8125,
+      "episodes": 16,
+      "wilson_95": {
+        "low": 0.569911,
+        "high": 0.934084
+      },
+      "median_terminal": {
+        "axial_error_m": 0.000655,
+        "lateral_error_m": 0.001836,
+        "orientation_error_rad": 0.045807
+      },
+      "points_below_nominal": 12.5
+    },
+    "nominal": {
+      "success_rate": 0.9375,
+      "episodes": 16,
+      "wilson_95": {
+        "low": 0.716713,
+        "high": 0.988881
+      },
+      "median_terminal": {
+        "axial_error_m": 0.005897,
+        "lateral_error_m": 0.001725,
+        "orientation_error_rad": 0.046382
+      },
+      "points_below_nominal": 0.0
+    },
+    "rack_lat_16mm": {
+      "success_rate": 0.75,
+      "episodes": 16,
+      "wilson_95": {
+        "low": 0.505017,
+        "high": 0.898179
+      },
+      "median_terminal": {
+        "axial_error_m": 0.005938,
+        "lateral_error_m": 0.001832,
+        "orientation_error_rad": 0.04636
+      },
+      "points_below_nominal": 18.75
+    },
+    "rack_lat_6mm": {
+      "success_rate": 0.9375,
+      "episodes": 16,
+      "wilson_95": {
+        "low": 0.716713,
+        "high": 0.988881
+      },
+      "median_terminal": {
+        "axial_error_m": 0.000684,
+        "lateral_error_m": 0.001832,
+        "orientation_error_rad": 0.045825
+      },
+      "points_below_nominal": 0.0
+    },
+    "relief_0mm": {
+      "success_rate": 0.9375,
+      "episodes": 16,
+      "wilson_95": {
+        "low": 0.716713,
+        "high": 0.988881
+      },
+      "median_terminal": {
+        "axial_error_m": 0.004244,
+        "lateral_error_m": 0.000606,
+        "orientation_error_rad": 0.035875
+      },
+      "points_below_nominal": 0.0
+    },
+    "section_120x16": {
+      "success_rate": 0.0,
+      "episodes": 16,
+      "wilson_95": {
+        "low": 0.0,
+        "high": 0.193608
+      },
+      "median_terminal": {
+        "axial_error_m": 0.000939,
+        "lateral_error_m": 0.003136,
+        "orientation_error_rad": 0.051238
+      },
+      "points_below_nominal": 93.75
+    },
+    "section_140x26": {
+      "success_rate": 0.875,
+      "episodes": 16,
+      "wilson_95": {
+        "low": 0.639772,
+        "high": 0.965023
+      },
+      "median_terminal": {
+        "axial_error_m": 0.006338,
+        "lateral_error_m": 0.001728,
+        "orientation_error_rad": 0.036042
+      },
+      "points_below_nominal": 6.25
+    }
+  },
+  "scope_and_limitations": "Sixteen episodes a point on one seed. The Wilson interval on each is about twenty points wide, so this ranks variables and does not measure any of them. Whatever it ranks first is what deserves the 96-episode protocol."
+}

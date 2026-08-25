@@ -365,7 +365,14 @@ def test_live_preset_uses_fixed_argv_and_runtime_outputs(tmp_path: Path) -> None
     assert spec.preset_title.startswith("Live RGB-D")
     assert "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0" in spec.argv
     assert spec.argv[spec.argv.index("--seed") + 1] == "123"
-    assert spec.argv[spec.argv.index("--steps") + 1] == "3600"
+    # Long enough for one whole workflow. Measured end to end at about 3,800
+    # control steps on this workcell, so the old 3,600 could only ever end by
+    # running out of clock.
+    assert int(spec.argv[spec.argv.index("--steps") + 1]) >= 4200
+    # And on the rail, which is the configuration that squares the module. The
+    # rail carries the robot; --base_rail_on_relocation carries the module and is
+    # asserted absent below.
+    assert "--robot_rail_on_relocation" in spec.argv
     assert spec.argv[spec.argv.index("--perception_backend") + 1] == "fiducial_pnp"
     # The robot carries the module: the form lock is commanded, and the
     # world-mounted payload stage that used to appear here is not.

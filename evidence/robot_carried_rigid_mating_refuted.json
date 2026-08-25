@@ -1,0 +1,574 @@
+{
+  "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
+  "visual_randomization": "on",
+  "workflow": "relocate",
+  "seed": 4070,
+  "num_envs": 1,
+  "curriculum_stage": 0,
+  "checkpoints": {
+    "capture": "logs\\rl_games\\zero_g_blade_insertion_contact\\grapple_grasp_l0_seed70_v6w65\\nn\\last_zero_g_blade_insertion_contact_ep_2400_rew__37.24023_.pth",
+    "extract": "logs\\rl_games\\zero_g_blade_insertion_contact\\grapple_extract_l0_seed70_v16w65\\nn\\last_zero_g_blade_insertion_contact_ep_9700_rew__176.34572_.pth",
+    "insert": "logs\\rl_games\\zero_g_blade_insertion_contact\\grapple_insert_l0_seed70_v12w65\\nn\\last_zero_g_blade_insertion_contact_ep_7100_rew_-20.706831.pth"
+  },
+  "checkpoint_sha256": {
+    "capture": "D5506848D6C63E00DF2D5A9397109D7913B57542B163E15574C7F0B9D69C4612",
+    "extract": "5391CD416EC900E07872BF758B54F661A2C141ECF3A1E1D920D9A15AF769B300",
+    "insert": "9159DE38F659A2ED47C56D7E873F1C580A98420340B8FB799C080F4D93A173C0"
+  },
+  "policy_set_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
+  "runtime_source_bindings": [
+    {
+      "path": "scripts/run_workflow_demo.py",
+      "sha256": "7acf6ad35d457a6ee9be2fd48417788209ff71054525015a9a6b630039300288"
+    },
+    {
+      "path": "src/zero_g_blade_swap/fiducial.py",
+      "sha256": "233554bc271c3e730b7b73748911429fd3036d92c468fec5679c8311727a8ab7"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/assets.py",
+      "sha256": "900f7d2417c2bc9bd7d6ac617f7a3a48f0662bc0c7637f168d4a2d6e40e8e349"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/mdp/perception.py",
+      "sha256": "0489b39b6551d3d6b9067dc9a06ee8b9f3d6e9aec1e1020632ac89adf94737de"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/scene_cfg.py",
+      "sha256": "5d610803665d12c780abc12be7bafa2c20cc80b6ba97be9ba55ce116fcd4fd68"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py",
+      "sha256": "f3a6c359f75688e5fd6281ef5bff55042599a09c87256c5b622304fc4460f52c"
+    }
+  ],
+  "loaded_but_not_executed_policies": [
+    "insert"
+  ],
+  "learned_phases": [
+    "capture",
+    "extract"
+  ],
+  "scripted_phases": [
+    "seat",
+    "transit",
+    "guarded_insert"
+  ],
+  "robot_carried_transit": {
+    "carrier": "six_axis_robot",
+    "claim_is_that_the_robot_carried_the_module": true,
+    "environments_that_entered_transit": 1,
+    "environments_retaining_the_planned_transform_throughout": 1,
+    "retention_limit_position_m": 0.0025,
+    "retention_limit_orientation_rad": 0.05236,
+    "retention_limit_derivation": "the insert hand-off envelope, read backwards: the transit is planned from the tool-to-module transform measured at rail release, so drift in it lands on the staging pose one for one",
+    "reference_frame": "tool frame at the instant extraction cleared the rails",
+    "flare_leading_plane_x_m": 0.371753,
+    "nominal_clear_blade_centre_x_m": 0.146753,
+    "flare_clearance_margin_m": 0.01,
+    "measured_front_overhang_m": {
+      "count": 1,
+      "mean": 0.230886,
+      "p50": 0.230886,
+      "p95": 0.230886,
+      "max": 0.230886,
+      "min": 0.230886
+    },
+    "legs": [
+      {
+        "leg": 4,
+        "role": "retreat",
+        "environments_forced_by_timeout": 0,
+        "residual_orientation_rad": null,
+        "residual_position_m": null
+      },
+      {
+        "leg": 3,
+        "role": "square_at_source",
+        "environments_forced_by_timeout": 0,
+        "residual_orientation_rad": null,
+        "residual_position_m": null
+      },
+      {
+        "leg": 2,
+        "role": "cross",
+        "environments_forced_by_timeout": 0,
+        "residual_orientation_rad": null,
+        "residual_position_m": null
+      },
+      {
+        "leg": 1,
+        "role": "square_at_destination",
+        "environments_forced_by_timeout": 1,
+        "residual_orientation_rad": {
+          "count": 1,
+          "mean": 0.011683,
+          "p50": 0.011683,
+          "p95": 0.011683,
+          "max": 0.011683,
+          "min": 0.011683
+        },
+        "residual_position_m": {
+          "count": 1,
+          "mean": 0.007736,
+          "p50": 0.007736,
+          "p95": 0.007736,
+          "max": 0.007736,
+          "min": 0.007736
+        }
+      },
+      {
+        "leg": 0,
+        "role": "insert_approach",
+        "environments_forced_by_timeout": 1,
+        "residual_orientation_rad": {
+          "count": 1,
+          "mean": 0.269357,
+          "p50": 0.269357,
+          "p95": 0.269357,
+          "max": 0.269357,
+          "min": 0.269357
+        },
+        "residual_position_m": {
+          "count": 1,
+          "mean": 0.371943,
+          "p50": 0.371943,
+          "p95": 0.371943,
+          "max": 0.371943,
+          "min": 0.371943
+        }
+      }
+    ],
+    "retreat_clear_blade_centre_x_m": {
+      "count": 1,
+      "mean": 0.130867,
+      "p50": 0.130867,
+      "p95": 0.130867,
+      "max": 0.130867,
+      "min": 0.130867
+    },
+    "handoff_contract_attitude_rad": 0.008,
+    "handoff_contract_derivation": "what the destination channel and its lead-in admit, 2c/l over the engaged length, which is the same requirement the squaring legs are gated on; it is not INSERTION_ORIENTATION_TOLERANCE_RAD, which is the seated success check and is 6.5 times looser",
+    "environments_handed_over_without_meeting_it": 1,
+    "attitude_at_a_waived_handoff_rad": {
+      "count": 1,
+      "mean": 0.269358,
+      "p50": 0.269358,
+      "p95": 0.269358,
+      "max": 0.269358,
+      "min": 0.269358
+    },
+    "scripted_leg_controller": {
+      "solved_inverse_kinematics_enabled": true,
+      "method": "a tool setpoint walked toward the leg target at one action scale per control step, turned into arm joint targets by a damped-least-squares solve seeded from the measured joints, and commanded through set_joint_target_override",
+      "replaces": "IsaacLab differential IK in relative mode, which re-anchors on the tool pose every control step and therefore integrates the joints' lag into the command",
+      "actuator_targets_only": true,
+      "iterations_per_solve": 40,
+      "control_steps": {
+        "count": 1,
+        "mean": 5851.0,
+        "p50": 5851.0,
+        "p95": 5851.0,
+        "max": 5851.0,
+        "min": 5851.0
+      },
+      "solves_refused_for_residual": {
+        "count": 1,
+        "mean": 0.0,
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 0.0,
+        "min": 0.0
+      },
+      "worst_solve_position_residual_m": {
+        "count": 1,
+        "mean": 1e-06,
+        "p50": 1e-06,
+        "p95": 1e-06,
+        "max": 1e-06,
+        "min": 1e-06
+      },
+      "worst_solve_attitude_residual_rad": {
+        "count": 1,
+        "mean": 1e-06,
+        "p50": 1e-06,
+        "p95": 1e-06,
+        "max": 1e-06,
+        "min": 1e-06
+      },
+      "forward_kinematics_agreement_m": 0.0,
+      "forward_kinematics_agreement_rad": 1e-06,
+      "compliant_steps_use_the_cartesian_follower": "the solved inversion assumes the module's pose is the tool's pose through a fixed offset, which is true while the form lock is a weld and false once it softens; softened steps need the module-space trim and go back to the Cartesian follower"
+    },
+    "robot_rail": {
+      "carries": "the robot",
+      "module_moved_by": "the robot only",
+      "step_m": 0.001,
+      "travel_m": {
+        "count": 1,
+        "mean": 0.241,
+        "p50": 0.241,
+        "p95": 0.241,
+        "max": 0.241,
+        "min": 0.241
+      },
+      "index_steps": {
+        "count": 1,
+        "mean": 241.0,
+        "p50": 241.0,
+        "p95": 241.0,
+        "max": 241.0,
+        "min": 241.0
+      },
+      "arm_joint_targets_held_during_index": true,
+      "simplification": "the carriage indexes a base that is already fixed to the world; its own load path is not modelled, in the same way and for the same reason as the form lock's break-rated joint. The module is never written, never constrained to the world, and never held by anything but the robot."
+    },
+    "channel_angular_acceptance_rad": 0.008,
+    "channel_angular_acceptance_derivation": "2 * channel clearance per side / module length, from scripts/check_workcell_geometry.py and evidence/workcell_geometry_check.json",
+    "max_tool_to_module_position_drift_m": {
+      "count": 1,
+      "mean": 0.001292,
+      "p50": 0.001292,
+      "p95": 0.001292,
+      "max": 0.001292,
+      "min": 0.001292
+    },
+    "max_tool_to_module_orientation_drift_rad": {
+      "count": 1,
+      "mean": 0.003628,
+      "p50": 0.003628,
+      "p95": 0.003628,
+      "max": 0.003628,
+      "min": 0.003628
+    },
+    "terminal_tool_to_module_position_drift_m": {
+      "count": 1,
+      "mean": 0.001275,
+      "p50": 0.001275,
+      "p95": 0.001275,
+      "max": 0.001275,
+      "min": 0.001275
+    },
+    "terminal_tool_to_module_orientation_drift_rad": {
+      "count": 1,
+      "mean": 0.003439,
+      "p50": 0.003439,
+      "p95": 0.003439,
+      "max": 0.003439,
+      "min": 0.003439
+    },
+    "max_grip_error_m": {
+      "count": 1,
+      "mean": 0.01358,
+      "p50": 0.01358,
+      "p95": 0.01358,
+      "max": 0.01358,
+      "min": 0.01358
+    },
+    "max_grip_attitude_rad": {
+      "count": 1,
+      "mean": 0.071734,
+      "p50": 0.071734,
+      "p95": 0.071734,
+      "max": 0.071734,
+      "min": 0.071734
+    },
+    "min_grip_drive_torque_nm": {
+      "count": 1,
+      "mean": 10.0,
+      "p50": 10.0,
+      "p95": 10.0,
+      "max": 10.0,
+      "min": 10.0
+    },
+    "tool_travel_m": {
+      "count": 1,
+      "mean": 0.275878,
+      "p50": 0.275878,
+      "p95": 0.275878,
+      "max": 0.275878,
+      "min": 0.275878
+    },
+    "module_travel_m": {
+      "count": 1,
+      "mean": 0.179164,
+      "p50": 0.179164,
+      "p95": 0.179164,
+      "max": 0.179164,
+      "min": 0.179164
+    },
+    "control_steps_before_retention_was_lost": null,
+    "observed_per_environment": [
+      {
+        "env": 0,
+        "entered_transit": true,
+        "samples": 6093,
+        "max_position_drift_m": 0.001292,
+        "max_orientation_drift_rad": 0.003628,
+        "terminal_position_drift_m": 0.001275,
+        "terminal_orientation_drift_rad": 0.003439,
+        "tool_travel_m": 0.275878,
+        "module_travel_m": 0.179164,
+        "measured_front_overhang_m": 0.230886,
+        "retreat_clear_blade_centre_x_m": 0.130867,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      }
+    ]
+  },
+  "base_mount_compliance": {
+    "authored": true,
+    "bodies": "MountAnchor to Robot/base_link",
+    "robot_root_fixed_to_world": true,
+    "in_load_path": false,
+    "max_measured_mount_rotation_rad": 0.0,
+    "why_zero": "the articulation root is welded to the world by fix_root_link, so the external spring has nothing to deflect",
+    "claim_supported_about_base_compliance_tolerance": false
+  },
+  "guarded_insertion": {
+    "controller": "scripted, bounded axial advance on the deployed estimate",
+    "axial_step_m": 0.001,
+    "lateral_tolerance_m": 0.016633,
+    "orientation_tolerance_rad": 0.073924,
+    "max_lead_m": 0.025,
+    "advancing_steps": [
+      0
+    ],
+    "held_steps_outside_the_envelope": [
+      0
+    ],
+    "held_steps_because_the_module_refused": [
+      0
+    ],
+    "terminal_axial_target_m": [
+      0.0
+    ],
+    "terminal_attitude_axis_angle_rad": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "reads": "advancing_steps counts control steps where the estimate was inside the envelope and the module was following; held_steps_outside_the_envelope is perception failing closed; held_steps_because_the_module_refused is the commanded target a full mating stroke ahead of a module that is not moving, which is a wedge and not a lag"
+  },
+  "insert_handoff_contract": {
+    "receiver": "learned_insert_policy_reset_distribution",
+    "axial_tolerance_m": 0.0025,
+    "lateral_tolerance_m": 0.0025,
+    "orientation_tolerance_rad": 0.05236,
+    "note": "The tolerance is the receiving controller's own precondition. The learned policy's is its reset distribution; the guarded controller's is the bay's lead-in catch, which is what it needs to finish the job."
+  },
+  "transit_planner": {
+    "type": "cartesian_clearance_translate_then_stationary_alignment",
+    "lateral_crossing_attitude": "unconstrained_for_fixed_latch_only",
+    "physical_d6_drive_target_step_m": null,
+    "physical_d6_drive_target_range_m": null,
+    "kinematic_mount_transform_writes": false,
+    "physical_d6_translation_drive_target_writes": [],
+    "physical_d6_rotation_drive_target_writes": [],
+    "physical_d6_rotation_target_limit_deg": null,
+    "arm_joint_position_target_hold": null,
+    "stage_arm_stiffness_multiplier": null,
+    "physical_payload_stage_handoff": false,
+    "arm_mode": null,
+    "robot_or_payload_state_writes": false,
+    "destination_interface": null,
+    "rail_force_measured": null,
+    "observed_per_environment": [
+      {
+        "env": 0,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "transit",
+        "terminal_blade_position_xyz_m": [
+          0.227485,
+          -0.132497,
+          0.653952
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          -0.355415,
+          0.087503,
+          -0.066049
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          0.066084,
+          0.259192,
+          0.031694
+        ],
+        "joint_replay_stop_index": 26,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 1.090645,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.261988,
+          -1.399983,
+          2.6493,
+          1.666466,
+          -1.281375,
+          -1.587066
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.211383,
+          -1.124117,
+          1.576189,
+          2.757111,
+          -1.335009,
+          -1.58761
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      }
+    ]
+  },
+  "success_definition": "the workflow's own condition re-checked after a 0.70 s settling window, not the instant a predicate fired",
+  "capture_interface": {
+    "type": "break_rated_fixed_joint",
+    "engagement": "after_rail_release",
+    "rated_force_n": 1000000.0,
+    "rated_torque_nm": 1000000.0,
+    "position_stiffness_n_per_m": null,
+    "position_damping_ratio": null,
+    "rotation_stiffness_nm_per_rad": null,
+    "rotation_damping_ratio": null,
+    "reaction_wrench_on_robot_modelled": true,
+    "states": [
+      "rigid_for_transport_and_mating",
+      "released_after_seating"
+    ],
+    "mating_mode": "rigid",
+    "mating_compliance_n_per_m": 40000.0,
+    "mating_compliance_nm_per_rad": 20000.0,
+    "mating_stroke_m": 0.025,
+    "mating_force_cap_n": 1000.0,
+    "destination_channel_relief_m": 0.004613,
+    "load_measurement": "break_threshold_only_reaction_magnitude_not_exposed",
+    "observed_per_environment": [
+      {
+        "env": 0,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 408,
+        "softened_for_mating": false,
+        "softened_at_driver_step": null,
+        "released_after_seating": false,
+        "hand_opened_after_settling_verification": false,
+        "hand_opened_at_driver_step": null,
+        "released_at_driver_step": null,
+        "carriage_seek_travel_m": 0.011919,
+        "guarded_advance_steps": 0,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "guarded_terminal_target_x_m": 0.0,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 8.6e-05,
+        "max_relative_orientation_error_rad": 0.000593,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      }
+    ]
+  },
+  "reached_phase": "transit",
+  "timeline": [
+    {
+      "event": "start:capture",
+      "step": 0,
+      "time_s": 0.0,
+      "blade_centre_x_m": 0.719475,
+      "grip_error_m": 0.026569,
+      "grip_attitude_rad": 0.011355,
+      "drive_torque_nm": 0.0
+    },
+    {
+      "event": "capture -> seat",
+      "step": 122,
+      "time_s": 4.067,
+      "blade_centre_x_m": 0.753198,
+      "grip_error_m": 0.009118,
+      "grip_attitude_rad": 0.070067,
+      "drive_torque_nm": 1.407082
+    },
+    {
+      "event": "seat -> extract",
+      "step": 152,
+      "time_s": 5.067,
+      "blade_centre_x_m": 0.755437,
+      "grip_error_m": 0.012514,
+      "grip_attitude_rad": 0.067405,
+      "drive_torque_nm": 10.0
+    },
+    {
+      "event": "extract -> transit",
+      "step": 407,
+      "time_s": 13.567,
+      "blade_centre_x_m": 0.221178,
+      "grip_error_m": 0.01355,
+      "grip_attitude_rad": 0.069543,
+      "drive_torque_nm": 10.0
+    }
+  ],
+  "final": {
+    "axial_error_m": 0.448515,
+    "lateral_error_m": 0.109632,
+    "orientation_error_rad": 0.269355,
+    "grip_error_m": 0.013498,
+    "grip_attitude_rad": 0.071611,
+    "blade_centre_x_m": 0.227485
+  },
+  "insertion_conditions": {
+    "axial_depth": false,
+    "lateral_alignment": false,
+    "orientation": false,
+    "linear_velocity": true,
+    "angular_velocity": true,
+    "grasp_position": true,
+    "grasp_orientation": true
+  },
+  "predicate_fired": false,
+  "completed": false,
+  "seated_conditions_still_held_after_settling": false,
+  "all_conditions_including_released_gripper": false,
+  "conditions_still_held_after_settling": false
+}

@@ -635,6 +635,16 @@ class PresetRegistry:
                 # labelled historical baseline and is deliberately not reachable
                 # from this preset. tests/test_robot_carried_contract.py keeps it
                 # out.
+                # **The robot rides the rail, and the showcase run has to use
+                # it.** This preset used to omit the flag, which meant the one
+                # run a viewer actually sees was the configuration the project's
+                # own measurements say cannot work: without a rail the arm has to
+                # translate the bay pitch at the retreat depth, where its
+                # realised authority falls to 0.72, and the destination squaring
+                # leg has never converged there. The flag moves the *robot*; it
+                # is not --base_rail_on_relocation, which moves the module and is
+                # kept out of this preset deliberately.
+                "--robot_rail_on_relocation",
                 "--latch_on_release",
                 "--latch_joint_mode",
                 "fixed",
@@ -652,8 +662,12 @@ class PresetRegistry:
                 "1",
                 "--seed",
                 str(seed),
+                # The chain takes about 3,800 control steps end to end on this
+                # workcell, measured. 3,600 sets an episode shorter than one
+                # workflow, so the showcase run could only ever end by running
+                # out of clock -- which is what it did.
                 "--steps",
-                "3600",
+                "5000",
                 "--settle_steps",
                 "30",
                 "--inspection_view",

@@ -155,6 +155,29 @@ RELOCATE_TRANSIT_HOLD = bool(int(os.environ.get("RELOCATE_TRANSIT_HOLD", "0")))
 #: actually crossing the rack. Overridable so the trade can be swept.
 TRANSIT_ALIGN_ATTITUDE_AUTHORITY = float(os.environ.get("TRANSIT_ALIGN_ATTITUDE_AUTHORITY", "0.25"))
 TRANSIT_HOLD_ATTITUDE_AUTHORITY = float(os.environ.get("TRANSIT_HOLD_ATTITUDE_AUTHORITY", "1.0"))
+
+#: What the destination channel admits, which is not what the seating check
+#: tolerates. A rigid part engaged over a length ``l`` in a channel with ``c``
+#: of clearance per side fits only while its attitude is under ``2c/l``. On this
+#: rack that is 2.22 mrad on the vertical axis and 3.33 mrad on the lateral one,
+#: seated over 450 mm -- against the 52.36 mrad ``INSERTION_ORIENTATION_TOLERANCE_RAD``
+#: the chain used to gate this leg on, which is 24 times looser than the channel.
+#: Derived by ``scripts/check_workcell_geometry.py``; the tighter axis is used.
+#: **Set to a value the leg can actually reach, which is not the same as the
+#: tightest one worth wanting.**
+#:
+#: The squaring leg does not converge, it oscillates -- 4.5, 11.4, 13.9, 15.1
+#: mrad on successive samples, an amplitude of about one action scale, and a
+#: smaller gain makes it diverge rather than settle. A gate below the bottom of
+#: that oscillation is never met, so the leg always ends on its timeout, at
+#: whatever phase of the swing the timeout happens to fall on. That is why the
+#: delivered attitude was 6, 11, 14 and 21 mrad across runs that were otherwise
+#: identical: it was sampling the oscillation at random.
+#:
+#: A gate inside the swing turns that into a choice. The leg exits on a *good*
+#: sample instead of an arbitrary one, and the timeout stays as the backstop
+#: that reports the residual when even that is not reached.
+RELOCATION_CHANNEL_ACCEPTANCE_RAD = float(os.environ.get("RELOCATION_CHANNEL_ACCEPTANCE_RAD", "0.008"))
 RELOCATE_FINAL_LEG_POSITION_AUTHORITY = float(os.environ.get("RELOCATE_FINAL_LEG_POSITION_AUTHORITY", "0.33"))
 BASE_RAIL_TARGET_STEP_M = 0.0020
 BASE_STAGE_OUTER_LOOP_GAIN = 0.08
@@ -203,6 +226,60 @@ TRANSIT_FLARE_CLEARANCE_M = 0.010
 #: Share of the rotation command the rigid transit and the guarded insertion
 #: may use. One, unless a sweep says otherwise: see ``_step_rigid_transit``.
 RIGID_TRANSIT_ATTITUDE_AUTHORITY = float(os.environ.get("RIGID_TRANSIT_ATTITUDE_AUTHORITY", "1.0"))
+
+#: What the two squaring legs may command per step, as a fraction of the
+#: rotation scale.
+#:
+#: **Left at full authority, and a quarter of it was tried and reverted with the
+#: number that reverted it.** The reasoning for a smaller step is sound and is
+#: written out in ``_step_rigid_transit``: at full authority a squaring leg
+#: commands a full 8 mrad every step against a 2.22 mrad target and limit-cycles
+#: at about that amplitude -- 8.9, 16.1, 9.9 mrad on successive samples.
+#:
+#: Run at 0.25 the source squaring leg does not settle smaller, it **diverges**:
+#: 0.15, 0.80, 1.87, 2.29 rad on successive samples, the module tumbling end for
+#: end. A squaring leg is not a pure rotation. Rotating the module about where it
+#: stands moves the tool about 50 mm, and a damped least-squares solver given a
+#: translation it can satisfy and a rotation it has been rate-limited out of
+#: satisfying takes the translation and winds the wrist. That is the same trade
+#: the crossing leg measures, on the leg that looked immune to it.
+RIGID_TRANSIT_SQUARE_AUTHORITY = float(os.environ.get("RIGID_TRANSIT_SQUARE_AUTHORITY", "1.0"))
+
+#: Uniform gain on the squaring legs' whole six-vector command, **left at 1.0
+#: because 0.3 was tried and it diverges too.**
+#:
+#: The reasoning was that scaling every channel equally slows the loop without
+#: turning the twist it asks for, which is the flaw in rate-limiting the
+#: rotation alone (``RIGID_TRANSIT_SQUARE_AUTHORITY``). It is sound and it is
+#: not what limits this leg. Run at 0.3 the source squaring leg went 0.38 rad,
+#: then 1.41 rad, the module tumbling -- the same failure a rotation-only limit
+#: produced, from the opposite change.
+#:
+#: Both results say the same thing: the squaring leg is not overshooting a free
+#: payload, it is **holding one against something**. The pads keep their
+#: holding closure through the carry, and that closure's wedge thrust is
+#: hundreds of newtons through a saturating drive; a corrective command with
+#: less than full authority loses to it. The limit cycle at one action scale is
+#: what winning by a small margin looks like.
+#:
+#: Closing it therefore needs the *interface* changed, not the gain: either
+#: relax the pad closure once the form lock is a weld, or command joint targets
+#: from a solved IK so the correction is not rate-limited at all.
+RIGID_TRANSIT_SQUARE_GAIN = float(os.environ.get("RIGID_TRANSIT_SQUARE_GAIN", "1.0"))
+
+#: Control steps over which a leg's command ramps in from zero. A leg boundary
+#: is a step change in the target -- leg 0's is 450 mm from leg 1's -- and the
+#: arm lurches through it: measured, 4 steps and the module fell 24 mm.
+RIGID_TRANSIT_ENTRY_RAMP_STEPS = int(os.environ.get("RIGID_TRANSIT_ENTRY_RAMP_STEPS", "90"))
+
+#: The last leg advances 450 mm at a bounded position gain, so it needs a budget
+#: the crossing legs do not. 450 mm at 0.33 of a 2 mm scale is about 680 steps.
+RIGID_TRANSIT_INSERT_TIMEOUT_STEPS = int(os.environ.get("RIGID_TRANSIT_INSERT_TIMEOUT_STEPS", "1800"))
+
+#: How far in front of the lead-in the form lock goes compliant. Far enough that
+#: the state change has settled before first contact, near enough that the lock
+#: is still a weld for the part of the advance that is free flight.
+MATING_SOFTEN_LEAD_M = float(os.environ.get("MATING_SOFTEN_LEAD_M", "0.030"))
 #: Legs the rigid transit flies, and **why there are four rather than three.**
 #:
 #: The obvious plan is retreat, cross, insert, and it is what the pad-held
@@ -242,7 +319,70 @@ RIGID_TRANSIT_LEGS = 5
 #: carried. A leg with no timeout turns that into a deadlock and a timeout row;
 #: a leg with one turns it into a number, per leg, in the report.
 RIGID_TRANSIT_LEG_TIMEOUT_STEPS = int(os.environ.get("RIGID_TRANSIT_LEG_TIMEOUT_STEPS", "400"))
-GUARDED_INSERT_AXIAL_STEP_M = 0.0010
+
+#: The squaring legs get their own, longer budget, because tightening their gate
+#: gave them work they did not have before.
+#:
+#: At the old 52.36 mrad gate a squaring leg finished in a few dozen steps and
+#: 400 was generous. At the channel's 2.22 mrad it has to converge attitude
+#: *and* the 2.5 mm position gate, and the two do not converge together: rotating
+#: the module about where it stands moves the tool about 50 mm, so the leg
+#: trades. Measured on the rail at 400 steps, it spent the budget on attitude and
+#: was ended 28 mm off the destination bay's centre line -- whereupon the next
+#: leg drove the module's leading corner into that bay's lead-in flare, which
+#: catches 16.6 mm per side, and the whole chain stalled there with the corner
+#: pinned at x = 0.3727 against a flare plane at 0.3718.
+RIGID_TRANSIT_SQUARE_TIMEOUT_STEPS = int(os.environ.get("RIGID_TRANSIT_SQUARE_TIMEOUT_STEPS", "1200"))
+
+#: Command the scripted transit legs from a solved inverse kinematics rather
+#: than from IsaacLab's relative-mode differential IK.
+#:
+#: **On, and it is the difference between a leg that converges and one that
+#: does not.** The differential IK action re-anchors on the tool's *current*
+#: pose every control step and drives to current-plus-delta across the
+#: decimation, so while the joints lag the deltas accumulate ahead of the arm.
+#: A squaring leg on it does not settle, it limit-cycles at about one action
+#: scale -- 4.5, 11.4, 13.9, 15.1 mrad on successive samples -- against a
+#: channel that admits 2.22, and both a smaller rotation gain and a smaller
+#: uniform six-channel gain make it *diverge* to 1.4-2.3 rad, because the arm
+#: is holding the module against the pads' closure rather than merely aiming
+#: it. None of that is a gain to be tuned; it is an integrator in the loop.
+#:
+#: With this on, each leg carries a tool *setpoint* that walks from the pose
+#: the leg started at to the pose the leg wants, by at most one action scale
+#: per control step, and ``zero_g_blade_swap.arm_kinematics.batched_solve_ik``
+#: turns that setpoint into joint targets. The setpoint stops when it arrives,
+#: so there is nothing left to accumulate. These are actuator targets through
+#: ``set_joint_target_override``, the same path the joint-path replay uses --
+#: not a joint-state write, not a teleport.
+#:
+#: Set ``TRANSIT_SOLVED_IK=0`` to run the Cartesian follower instead, which is
+#: how the two are compared.
+TRANSIT_SOLVED_IK = bool(int(os.environ.get("TRANSIT_SOLVED_IK", "1")))
+#: DLS iterations per solve. Seeded from the joint positions the arm is at and
+#: chasing a setpoint one action scale away, so this is a local refinement and
+#: not a search; measured, it converges below a micrometre in under twenty.
+TRANSIT_SOLVED_IK_ITERATIONS = int(os.environ.get("TRANSIT_SOLVED_IK_ITERATIONS", "40"))
+#: A solve whose own forward kinematics does not reach the pose it was asked
+#: for is not commanded, and the environment holds its previous joint target
+#: instead. A leg that ends that way is recorded as forced, like any other.
+TRANSIT_SOLVED_IK_POSITION_LIMIT_M = 0.001
+TRANSIT_SOLVED_IK_ATTITUDE_LIMIT_RAD = 0.001
+#: Agreement required between the closed-form forward kinematics and the
+#: simulator's own tool frame before any solved target is commanded. Checked
+#: once per run, on the real configuration, because ``find_joints`` does not
+#: promise to preserve the order it is given and a permuted arm is a solver
+#: that confidently commands the wrong pose.
+SOLVED_IK_FK_AGREEMENT_M = 0.0005
+SOLVED_IK_FK_AGREEMENT_RAD = 0.001
+#: How far the guarded advance moves its axial target per control step.
+#:
+#: One millimetre at 30 Hz is 30 mm/s, and the stroke is 446 mm. The number
+#: trades total seating time against how many control steps the attitude loop
+#: gets per millimetre of advance -- and the attitude is what the seating is
+#: short of, not the time. Exposed so the trade can be measured rather than
+#: assumed; the default is what every number in evidence/ was taken at.
+GUARDED_INSERT_AXIAL_STEP_M = float(os.environ.get("GUARDED_INSERT_AXIAL_STEP_M", "0.0010"))
 #: How far the commanded seating depth may get in front of the measured module
 #: before the advance holds. It is the mating stroke rather than a chosen
 #: number: inside the stroke the lead is spring travel, and past it the joint is
@@ -268,7 +408,18 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--grasp_checkpoint", type=Path, required=True)
     parser.add_argument("--extract_checkpoint", type=Path, required=True)
-    parser.add_argument("--insert_checkpoint", type=Path, required=True)
+    parser.add_argument(
+        "--insert_checkpoint",
+        type=Path,
+        default=None,
+        help=(
+            "The learned seating policy. Optional, and that is a requirement rather than a "
+            "convenience: section 10.2 of the interface specification says a checkpoint that is "
+            "loaded and never consulted must not appear in a learned_phases list, so a chain that "
+            "seats with the guarded advance should be able to run without one at all. Required "
+            "only when --insert_controller policy asks for it."
+        ),
+    )
     parser.add_argument("--seed", type=int, default=4070)
     parser.add_argument(
         "--curriculum_stage",
@@ -347,6 +498,30 @@ def _parser() -> argparse.ArgumentParser:
             "Override the module's mass. The interface specification has to state a payload range, and "
             "the earlier mass sweep was run on the fixed-joint task where mass is nearly vacuous. Held "
             "by contact it is not: inertia levers the grip."
+        ),
+    )
+    parser.add_argument(
+        "--module_cross_section_m",
+        type=float,
+        nargs=2,
+        metavar=("WIDTH", "HEIGHT"),
+        default=None,
+        help=(
+            "Override the module's width and height, leaving its length and mass alone. The "
+            "cross-section is what sets every clearance the chain runs through -- what the source "
+            "bay still holds during the pull, and what the destination's lead-ins admit -- so it is "
+            "the first thing a robustness sweep has to vary. See scripts/check_workcell_geometry.py, "
+            "which derives both from the same dimensions with no simulator."
+        ),
+    )
+    parser.add_argument(
+        "--rack_lateral_clearance_mm",
+        type=float,
+        default=None,
+        help=(
+            "Move both side guides so the channel leaves this much clearance per side around the "
+            "module, instead of wherever GUIDE_CENTER_OFFSET_Y happens to put them. A rack tolerance "
+            "is a manufacturing number and the chain has never been measured against a range of one."
         ),
     )
     parser.add_argument("--steps", type=int, default=1200)
@@ -458,6 +633,17 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--insert_controller",
+        choices=("guarded", "policy"),
+        default="guarded",
+        help=(
+            "Which controller performs the seating. guarded is the bounded axial "
+            "advance that moves only while the deployed estimator says the module is "
+            "inside the bay envelope; policy hands the phase to the trained insert "
+            "checkpoint. The report labels whichever ran."
+        ),
+    )
+    parser.add_argument(
         "--mating_mode",
         choices=("compliant", "rigid"),
         default="compliant",
@@ -476,6 +662,38 @@ def _parser() -> argparse.ArgumentParser:
             "A module delivered rigidly needs L*theta/2 of it; one delivered compliantly should not, "
             "and that difference is the experiment."
         ),
+    )
+    parser.add_argument(
+        "--robot_rail_on_relocation",
+        action="store_true",
+        help=(
+            "Carry the ROBOT between bays on a lateral rail instead of asking the arm to translate "
+            "the bay pitch at the retreat depth. The module stays in the robot's grip throughout and "
+            "nothing but the arm ever moves it; the rail moves the arm. This is not "
+            "--base_rail_on_relocation, which hands the module to a world-mounted shuttle."
+        ),
+    )
+    parser.add_argument(
+        "--robot_rail_step_m",
+        type=float,
+        default=0.001,
+        help="How far the rail carriage indexes per control step. 1 mm at 30 Hz is 30 mm/s.",
+    )
+    parser.add_argument(
+        "--robot_base_x",
+        type=float,
+        default=None,
+        help=(
+            "Move the robot base and its mount anchor along x. The workcell's own value is "
+            "GRAPPLE_ROBOT_ROOT_POS; this is for sweeping it without editing the asset module. "
+            "Moving the base moves the workcell the capture and extraction policies were trained in."
+        ),
+    )
+    parser.add_argument(
+        "--robot_base_y",
+        type=float,
+        default=None,
+        help="Move the robot base and its mount anchor along y. See --robot_base_x.",
     )
     parser.add_argument(
         "--base_rail_on_relocation",
@@ -521,6 +739,8 @@ if args.episodes < 0:
     parser.error("--episodes must be non-negative")
 if args.video and args.num_envs > 1:
     parser.error("--video records one workflow; use --num_envs 1")
+if args.insert_controller == "policy" and args.insert_checkpoint is None:
+    parser.error("--insert_controller policy needs an --insert_checkpoint to run")
 if args.video or "Vision" in args.task:
     # The vision profile renders a camera and drives Replicator randomizers, and
     # both need the rendering extensions up before the app launches. Without
@@ -535,7 +755,14 @@ import numpy as np
 import omni.usd
 import torch
 
-from isaaclab.utils.math import axis_angle_from_quat, quat_apply, quat_inv, quat_mul
+from isaaclab.utils.math import (
+    axis_angle_from_quat,
+    matrix_from_quat,
+    quat_apply,
+    quat_from_angle_axis,
+    quat_inv,
+    quat_mul,
+)
 from isaaclab_tasks.utils import parse_env_cfg
 from pxr import Gf, UsdPhysics
 
@@ -594,11 +821,19 @@ from zero_g_blade_swap.tasks.blade_swap.workflow_demo_env_cfg import (
     TRANSIT_TARGET_BLADE_X,
     TRANSIT_TARGET_BLADE_POSE,
 )
+from zero_g_blade_swap.arm_kinematics import (
+    JOINT_ORDER,
+    batched_rotation_vector,
+    batched_solve_ik,
+    batched_tool_pose,
+)
 from zero_g_blade_swap.checkpoint_policy import CheckpointPolicy
 from zero_g_blade_swap.grapple_geometry import (
     BLADE_LENGTH_M,
     EXTRACTED_BLADE_CENTRE_X,
     FLARE_LEADING_X,
+    SLOT_FLOOR_TOP_Z,
+    SLOT_LIP_BOTTOM_Z,
     SLOT_MOUTH_X,
     TRANSIT_CLEAR_BLADE_CENTRE_X,
 )
@@ -616,7 +851,35 @@ LATCH_ENGAGED_FAR_DEPTH_M = _LATCH_ENGAGED_DEPTH_M[1]
 
 
 from zero_g_blade_swap.grapple_geometry import SLOT_ENTRY_RAMP_CATCH_M
-from zero_g_blade_swap.tasks.blade_swap.assets import SECOND_SLOT_CENTER_Y, SECOND_SLOT_INSERTED_POS
+from zero_g_blade_swap.tasks.blade_swap.assets import (
+    BLADE_SIZE,
+    SECOND_SLOT_CENTER_Y,
+    SECOND_SLOT_INSERTED_POS,
+)
+
+#: The attitude the transit may hand a module over at, derived rather than chosen.
+#:
+#: A rigid module of thickness ``t`` entering a gap of ``t + 2c`` over a length
+#: ``l`` sweeps ``t + l*sin(theta)`` and fits only while ``theta <= 2c/l``. The
+#: gap that matters is the **lead-in's**, not the channel's: the destination
+#: relief moves the guides, the floor and the lips, and deliberately leaves the
+#: ramps and flares at the nominal surfaces, because a lead-in moved out with
+#: the relief stops touching the module in time to square it. So a module can
+#: satisfy the seated fit and still be too crooked to get in.
+#:
+#: On this rack that is 35.56 mrad, against the 52.36 mrad the hand-off used to
+#: be gated on -- which is ``INSERTION_ORIENTATION_TOLERANCE_RAD``, the *seated
+#: success* predicate, and not an entry requirement at all. Measured on the run
+#: that found this: handed over at 52.4 mrad, wedged 53 mm short of the seated
+#: plane, and the guarded advance's stall detector correctly refused to push.
+#: ``scripts/check_workcell_geometry.py`` derives the same number on the CPU and
+#: ``tests/test_workcell_geometry.py`` pins it.
+#: Half the vertical gap the lead-ins leave around the module, at the nominal
+#: surfaces. The destination relief moves the channel and deliberately leaves
+#: the ramps and flares here, so this is what a module has to enter through
+#: however wide the channel behind it is.
+LEAD_IN_VERTICAL_HALF_GAP_M = 0.5 * ((SLOT_LIP_BOTTOM_Z - SLOT_FLOOR_TOP_Z) - BLADE_SIZE[2])
+RELOCATION_HANDOFF_ATTITUDE_RAD = 2.0 * LEAD_IN_VERTICAL_HALF_GAP_M / BLADE_SIZE[0]
 
 #: The envelope the guarded insertion's advance is checked against, and it is
 #: **the mouth's, not the seated tolerance**.
@@ -650,6 +913,13 @@ HANDOVER_GRIP_M = WORKFLOW_HANDOVER_GRIP_M
 #: head's sigmoid values are decision scores rather than calibrated confidence,
 #: so this threshold is reported plainly and no uncertainty claim is made.
 OCCUPANCY_PLAN_THRESHOLD = 0.5
+
+#: Drive the last transit leg to the insert policy's *old* single reset pose
+#: instead of leaving the module at the mouth. Off, because the reset is no
+#: longer a single pose; on, it reproduces the hand-off an archived checkpoint
+#: was trained for. An environment variable rather than a flag because it exists
+#: to re-run history, not to configure a workcell.
+LEG_ZERO_AT_POLICY_RESET = os.environ.get("LEG_ZERO_AT_POLICY_RESET", "0") == "1"
 
 #: Fail-closed relocation-to-insert contract.  Position and attitude are the
 #: insert task's full-distance reset displaced to bay 1; tolerances and motion
@@ -803,6 +1073,18 @@ TRANSIT_TRACE_FIELDS = (
     "tool_z_m",
     "blade_linear_velocity_mps",
     "blade_angular_velocity_radps",
+    # The three quantities that separate why a module arrives crooked, because
+    # the pooled terminal number cannot: how far off square the module is, how
+    # far the tool is from the attitude it was told to hold, and how far the
+    # compliant mount has rolled under the arm. A tool that has converged while
+    # the module has not is a transform fault; a tool that has not converged is
+    # a controller or a mount fault, and the third column says which.
+    "module_attitude_rad",
+    "tool_attitude_error_rad",
+    "mount_rotation_rad",
+    # Where the robot's own base is. Zero on every run without a rail, and the
+    # only way to tell a carriage that moved from one that was commanded.
+    "robot_base_y_m",
 )
 #: Control steps between recorded transit-retention samples. Every second step
 #: at 30 Hz is 15 Hz, fast enough to catch the instant a grip lets go -- the
@@ -898,6 +1180,9 @@ class WorkflowDriver:
         release_latch_required: bool = False,
         base_rail_enabled: bool = False,
         base_rail_arm_mode: str = "ik_attitude",
+        robot_rail_enabled: bool = False,
+        robot_rail_step_m: float = 0.001,
+        insert_controller: str = "guarded",
     ) -> None:
         self.task = task
         self.policies = policies
@@ -908,10 +1193,36 @@ class WorkflowDriver:
         #: The two transit controllers below are selected on it and nothing
         #: else, so every previously certified path is bit-identical.
         self.rigid_transit = release_latch_required and not base_rail_enabled and workflow == "relocate"
+        #: Which controller performs the seating. Reported, and the report's
+        #: honesty labels are keyed on it rather than on any flag beside it.
+        self.insert_controller = insert_controller
         self.base_rail_enabled = base_rail_enabled
+        # **The rail carries the robot. It never touches the module.**
+        #
+        # The crossing leg asks the arm to translate the bay pitch sideways at
+        # the retreat depth, which is the folded end of this arm's envelope: the
+        # differential IK's realised authority there falls to 0.72 and the
+        # squaring leg that follows has never once converged. Moving the base
+        # back fixes the authority and costs the capture policy -- measured, at
+        # both 100 mm and 50 mm, the fingers never close on the pin.
+        #
+        # A rail costs neither, because it does not move the arm relative to the
+        # bay it is working in. Parked opposite a bay the arm's configuration
+        # there is bit-identical to the one it has at bay 1, which is where
+        # every learned skill in this chain was trained and certified, so no bay
+        # needs a policy bay 1 does not already have. That symmetry is exact and
+        # ``tests/test_workcell_geometry.py`` holds it to 1e-5.
+        self.robot_rail_enabled = robot_rail_enabled
+        self.robot_rail_step_m = float(robot_rail_step_m)
+        self.rail_verified = False
+        self.rail_spawn_root_y: torch.Tensor | None = None
         self.base_rail_joint_hold = base_rail_arm_mode == "joint_hold"
         device = task.device
         count = task.num_envs
+        self.rail_base_offset_m = torch.zeros(count, device=device)
+        self.rail_indexing = torch.zeros(count, dtype=torch.bool, device=device)
+        self.rail_travel_m = torch.zeros(count, device=device)
+        self.rail_index_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.phase = torch.full((count,), CAPTURE, dtype=torch.long, device=device)
         self.phase_started = torch.zeros(count, dtype=torch.long, device=device)
         # Only the learned phases are held to a deadline. The two scripted ones
@@ -919,8 +1230,22 @@ class WorkflowDriver:
         # SEAT_STEPS, the transit is exactly the recorded path replayed -- so a
         # deadline there could only ever fire on an off-by-one, and the episode
         # length still bounds them.
+        # **On the robot-carried chain the insertion is scripted too**, so it is
+        # not held to the learned insert skill's certified episode length -- and
+        # it had been, which is the whole of the last 74 mm.
+        #
+        # ``INSERT_BUDGET_S`` is ``certified_episode_length_s`` of the *insert
+        # policy*: 900 control steps, the length that policy was trained and
+        # certified in. The guarded advance that replaces it here is a different
+        # thing with a different job -- it drives the module 155 mm through a
+        # clearance fit at 1 mm of commanded step, yielding to contact, and its
+        # net rate is a fifth of that. Measured, it advanced 82 mm and was cut
+        # off mid-stroke at exactly step 900, at the same module x to four
+        # decimals under every mating variant tried: pin thickness, compliance
+        # centre, softening trigger, channel relief. A budget, not a wedge.
+        scripted = {SEAT, TRANSIT, DONE} | ({INSERT} if self.rigid_transit else set())
         budgets = [
-            float("inf") if index in (SEAT, TRANSIT, DONE) else budget for index, budget in enumerate(PHASE_BUDGET_S)
+            float("inf") if index in scripted else budget for index, budget in enumerate(PHASE_BUDGET_S)
         ]
         self.phase_deadline = torch.tensor(
             [float("inf") if budget == float("inf") else round(budget / float(task.step_dt)) for budget in budgets],
@@ -949,12 +1274,34 @@ class WorkflowDriver:
         self.module_leg_rot = torch.zeros((RIGID_TRANSIT_LEGS, count, 4), device=device)
         self.module_leg_rot[..., 0] = 1.0
         self.transit_leg_entered = torch.zeros(count, dtype=torch.long, device=device)
+        # The solved-IK follower's own state. ``solved_setpoint_*`` is the tool
+        # pose being commanded, which walks toward the leg's target rather than
+        # being re-derived from the tool each step; ``solved_setpoint_leg``
+        # remembers which leg it belongs to, so a leg change reseeds it at the
+        # pose the arm is actually in and no boundary is a step change.
+        self.solved_setpoint_pos = torch.zeros((count, 3), device=device)
+        self.solved_setpoint_rot = torch.zeros((count, 4), device=device)
+        self.solved_setpoint_rot[:, 0] = 1.0
+        self.solved_setpoint_leg = torch.full((count,), -1, dtype=torch.long, device=device)
+        self.solved_joint_hold = torch.zeros(count, dtype=torch.bool, device=device)
+        # Whether the transit handed the insertion a module that did not meet
+        # the hand-off contract. See the arrival test in ``_step_rigid_transit``.
+        self.transit_handoff_forced = torch.zeros(count, dtype=torch.bool, device=device)
+        self.transit_handoff_orientation_rad = torch.zeros(count, device=device)
+        self.solved_joint_targets = torch.zeros((count, 6), device=device)
+        self.solved_ik_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.solved_ik_refusals = torch.zeros(count, dtype=torch.long, device=device)
+        self.solved_ik_worst_position_residual_m = torch.zeros(count, device=device)
+        self.solved_ik_worst_attitude_residual_rad = torch.zeros(count, device=device)
+        self.solved_ik_forward_agreement_m = -1.0
+        self.solved_ik_forward_agreement_rad = -1.0
         self.transit_leg_forced = torch.zeros((RIGID_TRANSIT_LEGS, count), dtype=torch.bool, device=device)
         self.transit_leg_residual_rad = torch.zeros((RIGID_TRANSIT_LEGS, count), device=device)
         self.transit_leg_residual_m = torch.zeros((RIGID_TRANSIT_LEGS, count), device=device)
         self.guarded_insert_target_x = torch.zeros(count, device=device)
         self.guarded_insert_release_x = torch.zeros(count, device=device)
         self.guarded_insert_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.policy_insert_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.guarded_insert_holds = torch.zeros(count, dtype=torch.long, device=device)
         self.guarded_insert_stalls = torch.zeros(count, dtype=torch.long, device=device)
         self.guarded_insert_attitude = torch.zeros(count, 3, device=device)
@@ -1126,6 +1473,24 @@ class WorkflowDriver:
         # reset writes rather than the first six of whatever order the scene has.
         arm_joint_ids = getattr(self.arm, "_joint_ids", None)
         self.arm_joint_ids = list(range(6)) if arm_joint_ids is None else list(arm_joint_ids)
+        # **The solver's joint order is not assumed, it is resolved.**
+        #
+        # ``arm_kinematics``' Denavit-Hartenberg parameters are written in
+        # ``JOINT_ORDER``; the action term resolved its own ids through
+        # ``find_joints``, which does not promise to return them in the order it
+        # was given. A permuted arm is a solver that commands the wrong pose
+        # confidently, so keep the map explicitly and check the result against
+        # the simulator's own tool frame before commanding anything.
+        term_names = [task.scene["robot"].joint_names[index] for index in self.arm_joint_ids]
+        missing = [name for name in JOINT_ORDER if name not in term_names]
+        if missing:
+            raise RuntimeError(
+                f"The arm action term does not drive {missing}; it drives {term_names}. "
+                "Refusing to solve inverse kinematics for a chain that is not this arm."
+            )
+        self.arm_dh_permutation = torch.tensor(
+            [term_names.index(name) for name in JOINT_ORDER], dtype=torch.long, device=device
+        )
         self.payload_stage_joints: list[UsdPhysics.Joint] = []
         self.stage_drive_target_attributes: list[tuple[object, object, object]] = []
         self.stage_rotation_drive_target_attributes: list[tuple[object, object, object]] = []
@@ -1176,9 +1541,14 @@ class WorkflowDriver:
         # the runs whose transit is the question.
         self.transit_reference_valid[env_ids] = False
         self.transit_leg_entered[env_ids] = 0
+        self.solved_setpoint_leg[env_ids] = -1
+        self.solved_joint_hold[env_ids] = False
+        self.transit_handoff_forced[env_ids] = False
+        self.transit_handoff_orientation_rad[env_ids] = 0.0
         self.guarded_insert_target_x[env_ids] = 0.0
         self.guarded_insert_release_x[env_ids] = 0.0
         self.guarded_insert_steps[env_ids] = 0
+        self.policy_insert_steps[env_ids] = 0
         self.guarded_insert_holds[env_ids] = 0
         self.guarded_insert_stalls[env_ids] = 0
         self.guarded_insert_attitude[env_ids] = 0.0
@@ -1201,6 +1571,10 @@ class WorkflowDriver:
         self.initial_occupancy_scores[env_ids] = float("nan")
         self.relocation_aligning[env_ids] = False
         self.relocation_aligned[env_ids] = False
+        if self.robot_rail_enabled:
+            # Park the carriage back at the source bay, and take the anchor with
+            # it. The episode reset returns the arm's joints, not its base.
+            self._park_robot_rail(env_ids)
         self.relocation_stage_retreat_done[env_ids] = False
         self.relocation_stage_lateral_done[env_ids] = False
         self.relocation_stage_attitude_done[env_ids] = False
@@ -1238,8 +1612,36 @@ class WorkflowDriver:
                 for attribute in self.stage_rotation_drive_target_attributes[index]:
                     attribute.Set(0.0)
 
+    def _guarded_receiver(self) -> bool:
+        """Whether the guarded advance, not the learned policy, receives the module.
+
+        Read at call time rather than at import, because ``MATING_MODE`` is
+        overwritten from the command line long after this module is imported --
+        a constant computed from it at import time is a constant computed from
+        the default.
+        """
+
+        return self.rigid_transit and self.insert_controller == "guarded" and MATING_MODE == "compliant"
+
     def _apply_scales(self) -> None:
-        self.arm._scale[:] = self.scales[self.phase]
+        """Publish each environment's action scale for the phase it is in.
+
+        **The seating phase's scale follows its controller.** ``scales[INSERT]``
+        is the insert policy's certified scale and has to stay that whenever the
+        policy is what runs. The guarded advance is not that policy: it is the
+        same Cartesian follower the transit legs use, on the same payload hanging
+        340 mm in front of the tool, and it needs the same 2 mm and 8 mrad per
+        step. Given the policy's 8 mm and 20 mrad it walks the module out of its
+        own envelope faster than its 1 mm axial step walks it in -- measured, 17
+        mm of advance and then 4,557 control steps held outside the envelope.
+        """
+
+        scales = self.scales[self.phase]
+        if self._guarded_receiver():
+            scales = torch.where(
+                (self.phase == INSERT).unsqueeze(-1), self.scales[TRANSIT].unsqueeze(0), scales
+            )
+        self.arm._scale[:] = scales
 
     def _set_stage_arm_servo(self, env_ids: torch.Tensor, *, strengthened: bool) -> None:
         """Switch the arm gains while it transfers the ORU to the shuttle."""
@@ -1299,12 +1701,22 @@ class WorkflowDriver:
             task._grapple_latch_armed[env_ids] = False
 
     def _payload_feedback(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Return local pose and velocity from the deployed estimator when present.
+        """Return local pose and velocity from the deployed estimator.
 
-        The state task has no estimator and keeps exact simulator feedback.  A
-        vision task uses the same cached RGB estimate as its learned policies,
-        including for shuttle alignment and the guarded insertion predicate.
-        Simulator pose remains available only to final diagnostic scoring.
+        The state task has no estimator and keeps exact simulator feedback, which
+        is what a state task is. A vision task uses the same cached RGB estimate
+        its learned policies see, including for the guarded insertion predicate;
+        simulator pose is available to final diagnostic scoring and nowhere else.
+
+        **The fall-through raises on a vision task, and that is the whole point
+        of it.** The guarded advance is only guarded because this function is an
+        estimate: it advances while the *deployed* estimator says the module is
+        inside the bay's envelope, and it fails closed when the fiducial is lost.
+        Falling back to simulator truth on a vision run would keep that loop
+        running on an oracle and report it as perception in the loop -- a silent
+        upgrade from a guarded insertion to a clairvoyant one, in the one place
+        where nothing downstream could tell. A vision task with no estimator
+        attached is a configuration error and it stops the run.
         """
 
         estimator = getattr(self.task, "_module_state_estimator", None)
@@ -1312,6 +1724,12 @@ class WorkflowDriver:
             pose, velocity = estimator.estimate()
             pose_wxyz = estimator.pose_wxyz()
             return pose[:, :3], pose_wxyz[:, 3:7], velocity
+        if "Vision" in args.task:
+            raise RuntimeError(
+                f"Task {args.task!r} is a vision task and no module state estimator is attached, "
+                "so the guarded insertion would close its loop on simulator truth. Refusing to "
+                "run a perception claim on an oracle."
+            )
         blade_position, blade_orientation = attached_blade_pose_world(self.task)
         return (
             blade_position - self.task.scene.env_origins,
@@ -1566,6 +1984,29 @@ class WorkflowDriver:
         velocity = attached_blade_velocity(task)
         blade_local = blade.data.root_pos_w - task.scene.env_origins
         tool_local = tool - task.scene.env_origins
+        trace_tool_rot = end_effector_pose_world(task)[1]
+        module_attitude = torch.linalg.vector_norm(
+            axis_angle_from_quat(
+                quat_mul(
+                    self.relocation_staging_rot.unsqueeze(0).expand_as(blade.data.root_quat_w),
+                    quat_inv(blade.data.root_quat_w),
+                )
+            ),
+            dim=-1,
+        )
+        tool_attitude_error = torch.linalg.vector_norm(
+            axis_angle_from_quat(quat_mul(self.relocation_desired_tool_rot, quat_inv(trace_tool_rot))),
+            dim=-1,
+        )
+        mount_rotation = torch.linalg.vector_norm(
+            axis_angle_from_quat(
+                quat_mul(
+                    task.scene["robot"].data.root_quat_w,
+                    quat_inv(task.scene["mount_anchor"].data.root_quat_w),
+                )
+            ),
+            dim=-1,
+        )
         rows = torch.cat(
             (
                 self._column(float(step)),
@@ -1586,6 +2027,12 @@ class WorkflowDriver:
                 tool_local.to(torch.float64),
                 torch.linalg.vector_norm(velocity[:, :3], dim=-1).to(torch.float64).unsqueeze(-1),
                 torch.linalg.vector_norm(velocity[:, 3:], dim=-1).to(torch.float64).unsqueeze(-1),
+                module_attitude.to(torch.float64).unsqueeze(-1),
+                tool_attitude_error.to(torch.float64).unsqueeze(-1),
+                mount_rotation.to(torch.float64).unsqueeze(-1),
+                (task.scene["robot"].data.root_pos_w[:, 1] - task.scene.env_origins[:, 1])
+                .to(torch.float64)
+                .unsqueeze(-1),
             ),
             dim=-1,
         )
@@ -1854,7 +2301,7 @@ class WorkflowDriver:
                     # next driver step; latch-off behavior is unchanged.
                     if RELOCATE_TRANSIT_HOLD or self.release_latch_required:
                         self.gripper.retain_latch[cleared] = False
-                    self._plan_lateral_transit(cleared, tool, tool_rot, blade_x)
+                    self._plan_lateral_transit(cleared, tool, tool_rot, blade_x, step)
                 else:
                     self.waypoint_read[cleared] = (self.waypoint_write[cleared] - 1).clamp_min(0)
 
@@ -2626,7 +3073,19 @@ class WorkflowDriver:
 
         # --- insert -> seated --------------------------------------------------
         inserting = self.phase == INSERT
-        if self.rigid_transit and bool(inserting.any()):
+        if self.rigid_transit and self.insert_controller == "policy" and bool(inserting.any()):
+            # **The policy's own action stands.** It was already written into
+            # ``self.actions`` above, from the same observation group it was
+            # trained on; all this branch does is decline to overwrite it. The
+            # form lock is released here exactly as the guarded path releases it,
+            # because a policy trained on a pad-held module cannot be handed a
+            # welded one, and the seating predicate is the same predicate.
+            fired = self._step_policy_insert(inserting, step)
+            self._finish(fired, step)
+            self.predicate_fired[fired] = True
+            if SEATED_RETAIN:
+                self.gripper.retain_latch[fired] = True
+        elif self.rigid_transit and bool(inserting.any()):
             fired = self._step_guarded_insert(inserting, step, tool, tool_rot)
             self._finish(fired, step)
             self.predicate_fired[fired] = True
@@ -2812,6 +3271,7 @@ class WorkflowDriver:
                 self._record_settle(settling, step)
         self.phase_started[self.phase != entry_phase] = step
         self._apply_scales()
+        self._apply_joint_overrides()
 
     def _rigid_tool_command(
         self,
@@ -2879,20 +3339,290 @@ class WorkflowDriver:
         target_rot: torch.Tensor,
         scale: torch.Tensor,
         attitude_authority: float | torch.Tensor,
+        command_gain: torch.Tensor | None = None,
+        position_gain: torch.Tensor | None = None,
     ) -> None:
         """Command one bounded Cartesian correction toward a tool pose.
 
         ``attitude_authority`` may be per environment, because the last transit
         leg needs a different one from the legs that cross.
+
+        ``command_gain`` scales the whole six-vector after clamping, so it slows
+        the loop without turning the commanded twist. Rate-limiting one half of
+        it does turn the twist, and that is measured: see ``_step_rigid_transit``.
         """
 
         self.actions[ids, :3] = ((target_pos - tool[ids]) / scale[:3]).clamp(-1.0, 1.0)
         rotation_error = axis_angle_from_quat(quat_mul(target_rot, quat_inv(tool_rot[ids])))
         if not isinstance(attitude_authority, torch.Tensor):
             attitude_authority = rotation_error.new_tensor(attitude_authority)
+        # **Per environment means per row, and the missing axis here is why every
+        # rigid-transit result on this branch is n = 1.**
+        #
+        # ``rotation_error`` is (environments, 3) and a per-environment authority
+        # is (environments,). ``torch.clamp`` broadcasts from the trailing axis,
+        # so those two align only when the number of environments is 1 or 3 --
+        # any other count raises, mid-transit, at whatever step the tenth or the
+        # thirty-second environment happened to enter the leg. That is why the
+        # rail stage was only ever run at one environment and why
+        # ``run_robot_carried.sh certify`` has no pooled report to show: it could
+        # not reach one. The dead ``elif`` beside this caller had the unsqueeze;
+        # this path never did.
+        if attitude_authority.dim() == 1:
+            attitude_authority = attitude_authority.unsqueeze(-1)
         self.actions[ids, 3:6] = torch.clamp(
             rotation_error / scale[3:6], -attitude_authority, attitude_authority
         )
+        if position_gain is not None:
+            self.actions[ids, :3] *= position_gain.unsqueeze(-1)
+        if command_gain is not None:
+            self.actions[ids, :6] *= command_gain.unsqueeze(-1)
+
+    def _check_forward_kinematics(self, tool: torch.Tensor, tool_rot: torch.Tensor) -> None:
+        """Refuse to command a solved pose until the chain agrees with the sim.
+
+        ``scripts/check_workcell_geometry.py`` validates the same closed-form
+        kinematics against eight configurations the simulator recorded, and it
+        agrees to 0.006 mm. That is a check on the parameters. This is a check on
+        *this run*: that the six joints the action term drives, in the order it
+        drives them, are the six the Denavit-Hartenberg table describes, and that
+        the tool frame the solver aims is the tool frame the driver measures.
+
+        Both are needed. The first cannot see a permuted joint list or a changed
+        ``body_offset``; the second cannot see a wrong link length. Run once, on
+        the real configuration, before the first solved leg is commanded.
+        """
+
+        if self.solved_ik_forward_agreement_m >= 0.0:
+            return
+        robot = self.task.scene["robot"]
+        joints = robot.data.joint_pos[:, self.arm_joint_ids][:, self.arm_dh_permutation]
+        position, rotation = batched_tool_pose(joints)
+        inverse_root = quat_inv(robot.data.root_quat_w)
+        measured_position = quat_apply(inverse_root, tool - robot.data.root_pos_w)
+        measured_rotation = matrix_from_quat(quat_mul(inverse_root, tool_rot))
+        worst_position = float((position - measured_position).abs().max())
+        worst_attitude = float(
+            torch.linalg.vector_norm(
+                batched_rotation_vector(rotation.transpose(-1, -2) @ measured_rotation), dim=-1
+            ).max()
+        )
+        self.solved_ik_forward_agreement_m = worst_position
+        self.solved_ik_forward_agreement_rad = worst_attitude
+        if worst_position > SOLVED_IK_FK_AGREEMENT_M or worst_attitude > SOLVED_IK_FK_AGREEMENT_RAD:
+            raise RuntimeError(
+                "The closed-form arm kinematics disagree with the simulator's tool frame by "
+                f"{worst_position * 1000:.3f} mm and {worst_attitude * 1000:.3f} mrad, against "
+                f"{SOLVED_IK_FK_AGREEMENT_M * 1000:.3f} mm and "
+                f"{SOLVED_IK_FK_AGREEMENT_RAD * 1000:.3f} mrad. Refusing to command joint "
+                "targets from a chain that is not this arm."
+            )
+
+    def _seed_solved_setpoints(
+        self, ids: torch.Tensor, leg: torch.Tensor, tool: torch.Tensor, tool_rot: torch.Tensor
+    ) -> None:
+        """Start a leg's setpoint at the pose the arm is actually in.
+
+        Every leg boundary is a step change in the *target*; this is what stops it
+        being a step change in the *command*. The old follower needed a 90-step
+        ramp on the position channels for the same reason, and the ramp cost it
+        the attitude correction it was not allowed to touch. A setpoint that
+        begins where the arm is and walks at one action scale has no boundary.
+        """
+
+        if ids.numel() == 0:
+            return
+        self.solved_setpoint_pos[ids] = tool[ids]
+        self.solved_setpoint_rot[ids] = tool_rot[ids]
+        self.solved_setpoint_leg[ids] = leg
+        # And the joint target starts at the joints, so a refused solve holds the
+        # arm where it is rather than commanding a pose nothing has produced.
+        self.solved_joint_targets[ids] = self.task.scene["robot"].data.joint_pos[ids][
+            :, self.arm_joint_ids
+        ]
+
+    def _command_solved_tool_pose(
+        self,
+        ids: torch.Tensor,
+        target_pos: torch.Tensor,
+        target_rot: torch.Tensor,
+        scale: torch.Tensor,
+    ) -> None:
+        """Walk the setpoint one action scale on and solve joint targets for it.
+
+        The bound is the same action scale the Cartesian follower used -- 2 mm
+        along the rack axis, 1 mm across it, 8 mrad -- so the legs take about the
+        same time. What changes is where the command is anchored. The follower
+        drove *current pose plus delta* and re-read the current pose every control
+        step, which integrates the joints' lag into the command. This drives an
+        absolute setpoint that converges to the leg's target and then stops, so
+        there is nothing to integrate and the leg settles instead of cycling.
+
+        The solve is in the robot's own base frame, taken from the live root pose,
+        so the rail carriage's lateral offset is carried rather than assumed away.
+        """
+
+        if ids.numel() == 0:
+            return
+        robot = self.task.scene["robot"]
+        setpoint_pos = self.solved_setpoint_pos[ids]
+        setpoint_rot = self.solved_setpoint_rot[ids]
+        setpoint_pos = setpoint_pos + (target_pos - setpoint_pos).clamp(-scale[:3], scale[:3])
+        turn = axis_angle_from_quat(quat_mul(target_rot, quat_inv(setpoint_rot))).clamp(
+            -scale[3:6], scale[3:6]
+        )
+        angle = torch.linalg.vector_norm(turn, dim=-1)
+        axis = turn / angle.clamp_min(1.0e-12).unsqueeze(-1)
+        setpoint_rot = quat_mul(quat_from_angle_axis(angle, axis), setpoint_rot)
+        setpoint_rot = setpoint_rot / torch.linalg.vector_norm(setpoint_rot, dim=-1, keepdim=True)
+        self.solved_setpoint_pos[ids] = setpoint_pos
+        self.solved_setpoint_rot[ids] = setpoint_rot
+
+        inverse_root = quat_inv(robot.data.root_quat_w[ids])
+        local_pos = quat_apply(inverse_root, setpoint_pos - robot.data.root_pos_w[ids])
+        local_rot = matrix_from_quat(quat_mul(inverse_root, setpoint_rot))
+        seed = robot.data.joint_pos[ids][:, self.arm_joint_ids][:, self.arm_dh_permutation]
+        # Double precision for the solve itself. It is six by six on a handful of
+        # environments, so it costs nothing, and it means the residual the solver
+        # reports is a statement about the pose rather than about float32: the
+        # refusal threshold below is a millimetre, and single precision through a
+        # damped normal-equation solve does not resolve one reliably at this
+        # scale. The command that leaves here is cast back to the actuator dtype.
+        solved, position_residual, attitude_residual = batched_solve_ik(
+            local_pos.double(),
+            local_rot.double(),
+            seed.double(),
+            iterations=TRANSIT_SOLVED_IK_ITERATIONS,
+        )
+        reached = (position_residual <= TRANSIT_SOLVED_IK_POSITION_LIMIT_M) & (
+            attitude_residual <= TRANSIT_SOLVED_IK_ATTITUDE_LIMIT_RAD
+        )
+        targets = torch.zeros_like(solved)
+        targets[:, self.arm_dh_permutation] = solved
+        targets = targets.to(self.solved_joint_targets.dtype)
+        if bool(reached.any()):
+            self.solved_joint_targets[ids[reached]] = targets[reached]
+        self.solved_joint_hold[ids] = True
+        self.solved_ik_steps[ids] += 1
+        if bool((~reached).any()):
+            self.solved_ik_refusals[ids[~reached]] += 1
+        self.solved_ik_worst_position_residual_m[ids] = torch.maximum(
+            self.solved_ik_worst_position_residual_m[ids],
+            position_residual.to(self.solved_ik_worst_position_residual_m.dtype),
+        )
+        self.solved_ik_worst_attitude_residual_rad[ids] = torch.maximum(
+            self.solved_ik_worst_attitude_residual_rad[ids],
+            attitude_residual.to(self.solved_ik_worst_attitude_residual_rad.dtype),
+        )
+
+    def _apply_joint_overrides(self) -> None:
+        """Publish the joint hold mask once, at the end of the step.
+
+        The mask is one piece of state with two writers: the rail carriage freezes
+        the arm's posture while the base indexes, and a solved leg commands the
+        posture it solved. Two callers writing it on the same control step is how
+        one of them silently wins -- which is what happened to the legacy
+        shuttle's own hold -- so it is written here, once, from both.
+        """
+
+        if self.base_rail_enabled:
+            return
+        self.solved_joint_hold &= self.phase == TRANSIT
+        self.arm.set_joint_hold_mask(self.rail_indexing | self.solved_joint_hold)
+        ids = torch.nonzero(self.solved_joint_hold, as_tuple=False).squeeze(-1)
+        if ids.numel() > 0:
+            self.arm.set_joint_target_override(ids, self.solved_joint_targets[ids])
+
+    def _park_robot_rail(self, env_ids: torch.Tensor) -> None:
+        """Return the carriage to the source bay for the named environments."""
+
+        offsets = self.rail_base_offset_m[env_ids]
+        if bool((offsets.abs() > 1.0e-9).any()):
+            robot = self.task.scene["robot"]
+            anchor = self.task.scene["mount_anchor"]
+            for asset in (robot, anchor):
+                pose = torch.cat((asset.data.root_pos_w[env_ids], asset.data.root_quat_w[env_ids]), dim=-1)
+                pose[:, 1] -= offsets
+                asset.write_root_pose_to_sim(pose, env_ids=env_ids)
+        self.rail_base_offset_m[env_ids] = 0.0
+        self.rail_index_steps[env_ids] = 0
+        self.rail_indexing[env_ids] = False
+        self.arm.set_joint_hold_mask(self.rail_indexing)
+
+    def _index_robot_rail(
+        self,
+        ids: torch.Tensor,
+        crossing: torch.Tensor,
+        lateral_error: torch.Tensor,
+    ) -> None:
+        """Drive the rail carriage under the robot while the arm holds still.
+
+        Closed on the *module's* measured lateral error, not on a commanded
+        carriage position, so the rail lands the module on the destination bay's
+        centre line whatever the capture and extraction left behind. The module
+        is welded to the wrist while this runs -- the whole robot, arm and
+        payload move together as one body -- so the module is carried by the
+        robot here exactly as it is on every other leg.
+
+        The arm's joint targets are held for the duration rather than left to
+        the follower. A differential IK asked for a zero Cartesian delta while
+        its own base is moving counter-moves all six joints to preserve the old
+        *world* tool pose, which is the opposite of riding the rail; the action
+        term already has ``set_joint_hold_mask`` for exactly this.
+
+        **This indexes a base that is already fixed to the world.** The load
+        path of the carriage is not modelled, in the same way and for the same
+        reason as the form lock's break-rated joint, and it is disclosed in the
+        report. What is *not* simplified is the thing being claimed: the module
+        is never written, never constrained to the world, and never held by
+        anything but the robot.
+        """
+
+        task = self.task
+        robot = task.scene["robot"]
+        anchor = task.scene["mount_anchor"]
+        if self.rail_spawn_root_y is None:
+            self.rail_spawn_root_y = robot.data.root_pos_w[:, 1].clone()
+        moving = torch.zeros(task.num_envs, dtype=torch.bool, device=self.rail_indexing.device)
+        moving[ids] = crossing
+        self.rail_indexing = moving
+        self.arm.set_joint_hold_mask(moving)
+        if not bool(moving.any()):
+            return
+        moving_ids = torch.nonzero(moving, as_tuple=False).squeeze(-1)
+        wanted = lateral_error[crossing]
+        stride = torch.clamp(wanted, -self.robot_rail_step_m, self.robot_rail_step_m)
+        if not self.rail_verified and bool((self.rail_index_steps[moving_ids] >= 10).any()):
+            # **Checked against the simulator, not against the command.** A root
+            # write that a fixed-base articulation ignores produces a crossing
+            # that never crosses and reads exactly like an unreachable pose --
+            # which is the failure mode ``--robot_base_x`` produced three times
+            # in this project before anyone noticed. Ten steps in, the base has
+            # to have moved by what was asked of it.
+            self.rail_verified = True
+            expected = self.rail_base_offset_m[moving_ids]
+            observed = robot.data.root_pos_w[moving_ids, 1] - self.rail_spawn_root_y[moving_ids]
+            worst = float((observed - expected).abs().max())
+            if worst > 0.5 * self.robot_rail_step_m:
+                raise RuntimeError(
+                    f"The rail commanded {float(expected.abs().max()) * 1000:.2f} mm of carriage "
+                    f"travel and the base moved {float(observed.abs().max()) * 1000:.2f} mm. "
+                    "Refusing to report a crossing the base did not make."
+                )
+        self.rail_base_offset_m[moving_ids] += stride
+        self.rail_travel_m[moving_ids] = self.rail_base_offset_m[moving_ids].abs()
+        self.rail_index_steps[moving_ids] += 1
+
+        root_pose = torch.cat((robot.data.root_pos_w[moving_ids], robot.data.root_quat_w[moving_ids]), dim=-1)
+        root_pose[:, 1] += stride
+        robot.write_root_pose_to_sim(root_pose, env_ids=moving_ids)
+        # The anchor goes with it. ``robot_mount_unstable`` ends the episode when
+        # the two differ by more than 16.5 mm on any axis, so a carriage that
+        # leaves its anchor behind fails on the seventeenth millimetre of a
+        # 220 mm index -- and fails as an unreachable pose rather than as a bug.
+        anchor_pose = torch.cat((anchor.data.root_pos_w[moving_ids], anchor.data.root_quat_w[moving_ids]), dim=-1)
+        anchor_pose[:, 1] += stride
+        anchor.write_root_pose_to_sim(anchor_pose, env_ids=moving_ids)
 
     def _step_rigid_transit(self, transiting: torch.Tensor, step: int, tool: torch.Tensor, tool_rot: torch.Tensor) -> torch.Tensor:
         """Fly the carried module through three waypoints, in module space.
@@ -2961,29 +3691,207 @@ class WorkflowDriver:
         # control steps against the 0.5779 m it needs. Full authority reaches the
         # staging pose; a quarter of it does not reach the mouth. The trade is
         # recorded and the authority stays where the crossing legs need it.
-        authority = RIGID_TRANSIT_ATTITUDE_AUTHORITY
-        target_tool_pos, target_tool_rot = self._rigid_tool_command(
-            ids,
-            target_pos_local + task.scene.env_origins[ids],
-            target_rot,
-            tool_rot[ids],
-            blade.data.root_pos_w[ids],
+        # **The squaring legs get a smaller step than the legs that travel, and
+        # the reason is the size of the error they are trying to remove.**
+        #
+        # ``_drive_tool_to`` commands ``rotation_error / scale`` clamped to the
+        # authority, so at full authority every step of a squaring leg commands
+        # a full ``scale[3:6]`` of rotation -- 8 mrad on the transit scale. The
+        # differential IK is in relative mode: it re-anchors on the tool's
+        # *current* pose each control step and drives to current + delta across
+        # the decimation, so while the joints lag the deltas accumulate ahead of
+        # the arm and the leg overshoots. Measured, the squaring leg at the
+        # source bay does not converge, it limit-cycles: 8.9, 16.1, 9.9 mrad on
+        # successive samples, an amplitude of about one action scale, against a
+        # channel that admits 2.22.
+        #
+        # Rate-limiting the *rotation* alone was tried and reverted: at a quarter
+        # authority the same leg diverges to 2.29 rad, because a squaring leg is
+        # not a pure rotation -- rotating the module about where it stands moves
+        # the tool about 50 mm -- so a solver rate-limited out of the rotation
+        # takes the translation instead and the wrist winds. See
+        # ``RIGID_TRANSIT_SQUARE_AUTHORITY``, which stays at 1.0.
+        #
+        # ``RIGID_TRANSIT_SQUARE_GAIN`` is the other half of that finding and
+        # the one that works: it scales the whole six-vector, so the commanded
+        # twist keeps its direction and only its size changes. That is what a
+        # proportional loop overshooting its target needs, and what the loop is
+        # doing is overshooting -- it re-anchors on the tool's current pose each
+        # control step and drives to current + delta across the decimation, so
+        # while the joints lag the deltas accumulate ahead of the arm and it
+        # cycles at about one action scale.
+        squaring = (leg == 3) | (leg == 1)
+        authority = torch.where(
+            squaring,
+            torch.full_like(orientation_error, RIGID_TRANSIT_SQUARE_AUTHORITY),
+            torch.full_like(orientation_error, RIGID_TRANSIT_ATTITUDE_AUTHORITY),
         )
-        self._drive_tool_to(ids, tool, tool_rot, target_tool_pos, target_tool_rot, self.scales[TRANSIT], authority)
+        command_gain = torch.full_like(orientation_error, RIGID_TRANSIT_SQUARE_GAIN)
+        # **Every leg boundary is a step change in the target, and the arm
+        # lurches through it.** Leg 0's tool target is 450 mm from leg 1's, so
+        # the position command saturates on the step the leg changes and the
+        # solver spends the transient on whatever it can reach. Measured across
+        # that boundary: 4 control steps, module 14 mm forward, **24 mm down**,
+        # attitude 15 mrad to 31. A 24 mm drop is larger than any clearance this
+        # rack has on the vertical axis, so the entry is decided by the
+        # transient rather than by the delivery that preceded it.
+        #
+        # Ramping the whole command in over ``RIGID_TRANSIT_ENTRY_RAMP_STEPS``
+        # makes the boundary continuous. It costs the ramp's length in travel
+        # time and nothing else.
+        # **The ramp is on the position channels and never on the rotation, and
+        # that distinction is the whole of it.**
+        #
+        # Ramped across all six, the boundary into leg 0 removes the attitude
+        # correction at the instant the leg changes -- and the correction is not
+        # optional there, because the arm is holding the module against the
+        # pads' closure rather than merely aiming it. Measured with the ramp on
+        # all six: the tool went 14.8 mrad to 69 over 24 control steps while the
+        # ramp was near zero, and came back to 25 as the ramp restored it. The
+        # module went with it, and because it hangs 340 mm in front of the tool
+        # and the position target is inverted through the tool's *current*
+        # attitude, 60 mrad of tool error walked the module 24 mm down.
+        #
+        # Rotation therefore keeps full authority on every leg, always, and the
+        # ramp applies only to the channels whose target actually jumps.
+        steps_in_leg = (step - self.transit_leg_entered[ids]).clamp(min=0).to(command_gain.dtype)
+        entry_ramp = (steps_in_leg / float(RIGID_TRANSIT_ENTRY_RAMP_STEPS)).clamp(max=1.0)
+        # **The last leg's position command is bounded so the solver keeps its
+        # attitude, and this is the one knob on it that had not been tried.**
+        #
+        # Leg 0 asks for a 450 mm advance. At full authority the position
+        # channel saturates and the solver gives the attitude away instead:
+        # measured, the tool goes from 12.6 mrad to 46 over sixteen control
+        # steps. That would be survivable if the module were on the tool, but it
+        # hangs 340 mm in front of it and the position target is inverted
+        # through the tool's *current* attitude, so 33 mrad of tool error walks
+        # the module's commanded height down by 0.34 * 0.033 = 11 mm. Measured
+        # drop over the same sixteen steps: 13.4 mm, from a channel centre it
+        # was sitting on to 16 mm below the floor plate.
+        #
+        # Bounding the rotation on this leg was tried in an earlier session and
+        # made it decelerate into the lead-in. That is the other channel. This
+        # one leaves the attitude alone and slows the advance, which is the
+        # trade in the direction a 340 mm lever arm needs.
+        position_gain = torch.where(
+            leg == 0,
+            torch.full_like(orientation_error, RELOCATE_FINAL_LEG_POSITION_AUTHORITY),
+            torch.ones_like(orientation_error),
+        )
+        position_gain = torch.where(squaring, position_gain, torch.minimum(position_gain, entry_ramp))
+        if self.robot_rail_enabled:
+            # Leg 2 is the crossing, and with a rail it is the carriage's leg
+            # rather than the arm's. Everything else is unchanged, including the
+            # criterion that ends it: the module's own lateral error.
+            self._index_robot_rail(ids, leg == 2, position_error[:, 1])
+        # **Which controller flies the leg, and why the split is where it is.**
+        #
+        # While the form lock is a weld, the module's pose *is* the tool's pose
+        # through a fixed offset, so the tool pose that puts the module where the
+        # leg wants it is an inversion and not a control problem -- and it can be
+        # taken through the attitude being asked for rather than the attitude the
+        # tool happens to have, which is what makes the position converge without
+        # waiting for the attitude. That inversion plus a solved IK is exact, and
+        # it is what every leg gets while the lock holds.
+        #
+        # Once the lock softens the module is on a spring and its pose is no
+        # longer determined by the tool's. The inversion stops being exact, the
+        # feed-forward leaves a steady-state error, and the mating needs the
+        # module-space trim in ``_rigid_tool_command`` -- so those steps go back to
+        # the Cartesian follower, which is the controller that has one.
+        #
+        # The rail's crossing leg is neither: the carriage owns it and the arm
+        # holds its posture, which ``_index_robot_rail`` has already arranged.
+        solved = torch.zeros_like(leg, dtype=torch.bool)
+        if TRANSIT_SOLVED_IK:
+            self._check_forward_kinematics(tool, tool_rot)
+            solved = grapple_latch_rigid(task)[ids] & ~self.latch_softened[ids]
+            if self.robot_rail_enabled:
+                solved &= leg != 2
+        follower = ~solved
+        if bool(solved.any()):
+            solved_ids = ids[solved]
+            # The exact tool pose for the module pose this leg wants. Through the
+            # *desired* attitude, because with a weld and an absolute solve there
+            # is no reason to invert through the attitude the tool has now.
+            exact_rot = quat_mul(
+                target_rot[solved], quat_inv(self.relocation_blade_relative_rot_to_tool[solved_ids])
+            )
+            exact_pos = (
+                target_pos_local[solved]
+                + task.scene.env_origins[solved_ids]
+                - quat_apply(exact_rot, self.relocation_blade_relative_to_tool[solved_ids])
+            )
+            solved_leg = leg[solved]
+            fresh = self.solved_setpoint_leg[solved_ids] != solved_leg
+            self._seed_solved_setpoints(solved_ids[fresh], solved_leg[fresh], tool, tool_rot)
+            self._command_solved_tool_pose(solved_ids, exact_pos, exact_rot, self.scales[TRANSIT])
+            # No Cartesian command is executed for these environments, so none is
+            # recorded either. The joint targets are the command.
+            self.actions[solved_ids, :6] = 0.0
+        if bool(follower.any()):
+            follower_ids = ids[follower]
+            self.solved_joint_hold[follower_ids] = False
+            self.solved_setpoint_leg[follower_ids] = -1
+            target_tool_pos, target_tool_rot = self._rigid_tool_command(
+                follower_ids,
+                target_pos_local[follower] + task.scene.env_origins[follower_ids],
+                target_rot[follower],
+                tool_rot[follower_ids],
+                blade.data.root_pos_w[follower_ids],
+            )
+            self._drive_tool_to(
+                follower_ids, tool, tool_rot, target_tool_pos, target_tool_rot,
+                self.scales[TRANSIT], authority[follower], command_gain[follower],
+                position_gain[follower],
+            )
 
-        squared = (orientation_error <= INSERTION_ORIENTATION_TOLERANCE_RAD) & (
+        # **The squaring legs are gated on what the channel admits, not on what
+        # the seating check tolerates**, and the two differ by a factor of 24.
+        #
+        # ``INSERTION_ORIENTATION_TOLERANCE_RAD`` is 52.36 mrad. A 450 mm rigid
+        # module in a channel with 0.5 mm of vertical relief per side sweeps
+        # ``w + L*sin(theta)`` and stops fitting above 2.22 mrad, so a squaring
+        # leg allowed to finish at 52 mrad hands the insertion a module that
+        # cannot enter -- while every condition in the report reads true. That
+        # is what the seating grid was measuring all along.
+        #
+        # ``stalled`` below is the escape: a leg that cannot reach this is ended
+        # by its own timeout and the residual it stopped at is recorded per leg,
+        # so tightening the gate turns a silent pass into a measurement.
+        squared = (orientation_error <= RELOCATION_CHANNEL_ACCEPTANCE_RAD) & (
             torch.linalg.vector_norm(position_error, dim=-1) <= INSERT_HANDOFF_POSITION_TOLERANCE_M
         )
         retreat_done = (leg == 4) & (position_error[:, 0].abs() <= 0.005)
-        cross_done = (leg == 2) & (position_error[:, 1:].abs().amax(dim=-1) <= 0.005)
+        # **The crossing is judged on the axis that owns it.**
+        #
+        # Without a rail the arm crosses, so it can close y and z together and
+        # the leg is judged on both. With one, the carriage owns y and only y,
+        # and the module's z sits 8 to 12 mm below the staging height because
+        # extraction left it there -- so a leg gated on both axes can never
+        # finish and is ended by its timeout instead. Measured that way: the
+        # crossing was cut off with 16.8 mm of lateral error still open, which
+        # is more than the destination bay's lead-in catches per side, and the
+        # module drove its leading corner into the flare two legs later.
+        #
+        # The z correction is not lost, it belongs to the squaring leg that
+        # follows, which converges position to 2.0 mm.
+        cross_axes = slice(1, 2) if self.robot_rail_enabled else slice(1, 3)
+        cross_done = (leg == 2) & (position_error[:, cross_axes].abs().amax(dim=-1) <= 0.005)
         square_done = ((leg == 3) | (leg == 1)) & squared
         met = retreat_done | cross_done | square_done
         # A leg that has converged as far as this arm's own branch allows is
         # finished whether or not it met its gate, and the residual it stopped
         # at is the measurement. Recorded per leg, per environment.
-        stalled = (~met) & (
-            (step - self.transit_leg_entered[ids]) >= RIGID_TRANSIT_LEG_TIMEOUT_STEPS
+        leg_budget = torch.where(
+            squaring,
+            torch.full_like(leg, RIGID_TRANSIT_SQUARE_TIMEOUT_STEPS),
+            torch.full_like(leg, RIGID_TRANSIT_LEG_TIMEOUT_STEPS),
         )
+        leg_budget = torch.where(
+            leg == 0, torch.full_like(leg, RIGID_TRANSIT_INSERT_TIMEOUT_STEPS), leg_budget
+        )
+        stalled = (~met) & ((step - self.transit_leg_entered[ids]) >= leg_budget)
         if bool(stalled.any()):
             stalled_ids = ids[stalled]
             self.transit_leg_forced[leg[stalled], stalled_ids] = True
@@ -3006,8 +3914,28 @@ class WorkflowDriver:
         # Everything before this point wants the weld: 2.3 mm of drift across a
         # 450 mm flight against 808 mm on the pads alone. Everything after wants
         # the spring, because a lead-in aligns a part by pushing it.
+        # **Softened where the module meets the lead-in, not where the leg
+        # changes**, and the difference is 50 mrad of attitude.
+        #
+        # Softening at the leg boundary put the biggest state change in the
+        # interface on the same control step as the biggest step change in the
+        # target -- leg 0's tool target is 450 mm from leg 1's. Measured across
+        # that instant: the module went from 14.8 mrad and sitting on the
+        # channel's centre line to 65 mrad and 13 mm low, in sixteen steps, and
+        # its leading corner then caught the bay's lower lead-in. Run with the
+        # lock kept rigid the same transient is 15 to 31 mrad, so about two
+        # thirds of it is the softening and one third is the target jump; the
+        # entry ramp above handles the second, and this handles the first.
+        #
+        # The trigger is the physical one the softening is *for*: the module's
+        # leading face reaching the lead-in, which is where the rack takes over.
+        module_front_x = module_pos[:, 0] + 0.5 * BLADE_LENGTH_M
         mating = torch.zeros_like(transiting)
-        mating[ids] = advance[ids] & (leg == 1)
+        mating[ids] = (
+            (leg == 0)
+            & (module_front_x >= FLARE_LEADING_X - MATING_SOFTEN_LEAD_M)
+            & ~self.latch_softened[ids]
+        )
         if MATING_MODE == "rigid":
             mating = torch.zeros_like(mating)
         if bool(mating.any()):
@@ -3016,6 +3944,15 @@ class WorkflowDriver:
             self.latch_softened_at[mating & (self.latch_softened_at < 0)] = step
         self.waypoint_read[advance] = (self.waypoint_read[advance] - 1).clamp_min(0)
         self.transit_leg_entered[advance] = step
+        if self.robot_rail_enabled and bool(advance.any()):
+            # Hand the arm back the moment the carriage leg is over, so the
+            # squaring leg that follows is a normal servo at a bay the arm is now
+            # standing square to.
+            released = torch.zeros_like(self.rail_indexing)
+            released[ids] = advance[ids] & (leg == 2)
+            if bool(released.any()):
+                self.rail_indexing &= ~released
+                self.arm.set_joint_hold_mask(self.rail_indexing)
 
         # **The hand-off contract is the receiving controller's precondition,
         # and this chain's receiver is not the learned policy.**
@@ -3036,21 +3973,69 @@ class WorkflowDriver:
         # a 2.5 mm gate -- and sat there while the clock ran out, because
         # nothing downstream needed the missing 0.07 mm.
         velocity = attached_blade_velocity(task)[ids]
-        axial_error = position_error[:, 0].abs()
         lateral_error = torch.linalg.vector_norm(position_error[:, 1:], dim=-1)
         if MATING_MODE == "compliant":
-            pose_ready = (axial_error <= INSERTION_AXIAL_DEPTH_TOLERANCE_M) & (
+            # **One-sided on depth, because deeper is progress and not error.**
+            #
+            # The receiving controller starts from wherever the module is and
+            # advances toward the seated plane, so a module that has passed the
+            # staging depth is closer to what the receiver wants, not further. A
+            # two-sided window on the same number says the opposite, and it has
+            # exactly one behaviour when the leg overshoots: nothing hands over,
+            # the leg is ended by its own timeout, the timeout resets the leg's
+            # entry step, and the run sits there until the step budget expires.
+            # Measured, on the run that regenerated this branch's seated
+            # evidence: the module reached 0.6763 -- the seated pose, at 13.5
+            # mrad, correctly -- 91 mm past a staging pose at 0.5779, and the
+            # chain never left transit.
+            #
+            # Nothing downstream needs the module to be *at* the staging depth.
+            # What it needs is the module inside the bay's own catch, which is
+            # the lateral condition beside this one.
+            pose_ready = (position_error[:, 0] <= INSERTION_AXIAL_DEPTH_TOLERANCE_M) & (
                 lateral_error <= SLOT_ENTRY_RAMP_CATCH_M
             )
         else:
             pose_ready = (
                 torch.linalg.vector_norm(position_error, dim=-1) <= INSERT_HANDOFF_POSITION_TOLERANCE_M
             )
+        # **The attitude the hand-off allows is what the channel admits, not what
+        # the seating check tolerates.**
+        #
+        # This gate used to be ``INSERTION_ORIENTATION_TOLERANCE_RAD``, 52.36
+        # mrad, and the squaring legs above were tightened to the channel's own
+        # acceptance while it was left alone -- so a leg that could not finish
+        # square was still allowed to hand over crooked, which is the same fault
+        # in the same file, one gate further down.
+        #
+        # Measured, with the squaring legs converging for the first time: the
+        # transit handed over at 52.4 mrad, the module wedged in the destination
+        # channel 53 mm short of the seated plane, and the guarded advance's stall
+        # detector held its target rather than pushing -- all of it correct
+        # behaviour downstream of one number that was 2 to 24 times too loose. A
+        # 450 mm module engaged over l with c of clearance per side fits while its
+        # tilt is under 2c/l, which is 26 mrad where it stopped and 2.2 mrad on
+        # the rack as built.
+        # **And a gate the last leg cannot meet ends the leg, not the run.**
+        #
+        # Tightening a hand-off gate on a controller that may not reach it turns a
+        # measured failure into a hang: nothing arrives, the leg is ended by its
+        # own timeout, the timeout re-stamps the leg's entry step, and the chain
+        # sits in transit until the step budget expires. That is what the old
+        # two-sided depth window did. So the last leg's timeout is also its
+        # escape: once it has been forced, the hand-off happens anyway and the
+        # report says the contract was not met and at what attitude. A stall is
+        # then a row in the evidence rather than an absence of one.
+        forced_handoff = (leg <= 0) & self.transit_leg_forced[0][ids]
+        self.transit_handoff_forced[ids] |= forced_handoff
+        self.transit_handoff_orientation_rad[ids] = torch.where(
+            forced_handoff, orientation_error, self.transit_handoff_orientation_rad[ids]
+        )
         arrived = torch.zeros_like(transiting)
         arrived[ids] = (
             (leg <= 0)
             & pose_ready
-            & (orientation_error <= INSERTION_ORIENTATION_TOLERANCE_RAD)
+            & ((orientation_error <= RELOCATION_HANDOFF_ATTITUDE_RAD) | forced_handoff)
             & (torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= INSERTION_LINEAR_VELOCITY_LIMIT_MPS)
             & (torch.linalg.vector_norm(velocity[:, 3:], dim=-1) <= INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS)
         )
@@ -3102,6 +4087,57 @@ class WorkflowDriver:
             + (LATCH_MODULE_FACE_DEPTH_M - engaged_far)
             - GUARDED_INSERT_RELEASE_MARGIN_M
         )
+
+    def _step_policy_insert(self, inserting: torch.Tensor, step: int) -> torch.Tensor:
+        """Let the trained insert checkpoint seat the module.
+
+        The arm's Cartesian command for these environments is the policy's, left
+        exactly as it was written. What this does is the housekeeping the guarded
+        path also does and the policy cannot: hold the closure, release the form
+        lock's rigidity so the lead-in has something it can push, and enforce the
+        geometric interlock that keeps an engaged jaw out of the slot mouth.
+
+        There is no guarding here, deliberately. A learned controller that needs
+        an envelope check wrapped around it is not being measured, so the two
+        arms of ``--insert_controller`` differ in the controller and in nothing
+        else. The consequence is that perception is *not* in this loop -- the
+        policy sees what its observation group gives it and nothing stops it -- and
+        the report says so.
+        """
+
+        task = self.task
+        ids = torch.nonzero(inserting, as_tuple=False).squeeze(-1)
+        still_rigid = inserting & grapple_latch_rigid(task)
+        if MATING_MODE == "rigid":
+            still_rigid = torch.zeros_like(still_rigid)
+        if bool(still_rigid.any()):
+            soften_grapple_latch(task, still_rigid)
+            self.latch_softened |= still_rigid
+            self.latch_softened_at[still_rigid & (self.latch_softened_at < 0)] = step
+        self.gripper.retain_latch[inserting] = False
+        self.policy_insert_steps[ids] += 1
+
+        # The same geometric interlock the guarded path enforces: an engaged jaw
+        # enters the slot mouth once the module centre passes a derived depth, and
+        # simulator truth is used for it deliberately, because it protects the
+        # rack from a mechanism rather than deciding a perception question.
+        true_blade_x = _blade_centre_x(task)[ids]
+        due_to_release = torch.zeros_like(inserting)
+        due_to_release[ids] = (true_blade_x >= self.guarded_insert_release_x[ids]) & grapple_latch_rigid(task)[ids]
+        if bool(due_to_release.any()):
+            release_grapple_latch(task, due_to_release)
+            self.latch_released |= due_to_release
+            self.latch_released_at[due_to_release & (self.latch_released_at < 0)] = step
+
+        seated = grapple_insertion_success_mask(task)
+        fired = inserting & seated & (
+            torch.ones_like(seated) if MATING_MODE == "rigid" else ~grapple_latch_rigid(task)
+        )
+        if bool(fired.any()):
+            release_grapple_latch(task, fired)
+            self.latch_released |= fired
+            self.latch_released_at[fired & (self.latch_released_at < 0)] = step
+        return fired
 
     def _step_guarded_insert(self, inserting: torch.Tensor, step: int, tool: torch.Tensor, tool_rot: torch.Tensor) -> torch.Tensor:
         """Drive the module into the second bay, guarded, and let go on the way.
@@ -3198,7 +4234,8 @@ class WorkflowDriver:
             module_pos + task.scene.env_origins[ids],
         )
         self._drive_tool_to(
-            ids, tool, tool_rot, target_tool_pos, target_tool_rot, self.scales[INSERT], RIGID_TRANSIT_ATTITUDE_AUTHORITY
+            ids, tool, tool_rot, target_tool_pos, target_tool_rot, self.scales[TRANSIT],
+            RIGID_TRANSIT_ATTITUDE_AUTHORITY,
         )
         # Hold the module firmly while it is being driven between rails. The
         # operating rule this project measured is capture gently, hold hard to
@@ -3271,6 +4308,7 @@ class WorkflowDriver:
         tool: torch.Tensor,
         tool_rot: torch.Tensor,
         blade_x: torch.Tensor,
+        step: int = 0,
     ) -> None:
         """Lay out the path from the first bay to the second, three waypoints.
 
@@ -3427,10 +4465,46 @@ class WorkflowDriver:
             # measured to give some of it back.
             self.module_leg_pos[1, ids] = crossed
             self.module_leg_rot[1, ids] = square_rot
-            # 0: in, to the pose the insertion begins from.
-            self.module_leg_pos[0, ids] = staging
+            # 0: the pose the insertion begins from, and it is now the same
+            # pose for both receivers.
+            #
+            # It was not. The learned insert policy used to reset at one exact
+            # rack pose deep inside the mouth, so handing to it meant driving
+            # there, and aiming this leg at that pose while the *guarded*
+            # controller was receiving is what made the transit perform the
+            # insertion and left the phase labelled "insert" with 0.7 mm of it.
+            #
+            # The insert task's reset now spans the whole stroke -- see
+            # ``mdp.reset_grapple_insert_stroke`` and
+            # ``scripts/solve_insert_reset_bank.py`` -- so the module at the
+            # mouth is inside the policy's distribution as well as being the
+            # guarded advance's own precondition. That makes the last leg a
+            # no-op for both, and the seating stroke belongs to the phase that
+            # guards it whichever controller is guarding.
+            #
+            # ``RELOCATION_INSERT_STAGING_POS`` is kept because the hand-off
+            # contract still states the pose the *policy* was certified from,
+            # and a run of the old checkpoint has to be able to ask for it.
+            self.module_leg_pos[0, ids] = staging if LEG_ZERO_AT_POLICY_RESET else crossed
             self.module_leg_rot[0, ids] = square_rot
-            self.transit_leg_entered[ids] = 0
+            # **The first leg enters now, not at step zero.**
+            #
+            # A leg is timed out when ``step - transit_leg_entered`` passes its
+            # budget, so a first leg stamped with zero has already spent the
+            # whole episode before it begins. The capture and the extraction
+            # take about 400 control steps between them, which is exactly the
+            # retreat's budget, so the retreat was ended by its own timeout on
+            # its first step in every run this branch has recorded -- reported
+            # as forced, at whatever residual the extraction happened to leave,
+            # 90 mm on the seed this was found on.
+            #
+            # The retreat is not cosmetic. Its whole purpose is to get the
+            # module's nose out from between the lead-in flares *before*
+            # anything rotates it, and skipping it hands that job to the
+            # squaring leg that follows, which has the same axial target and
+            # therefore squares the module while its nose is still inside the
+            # flare -- the one thing the retreat exists to avoid.
+            self.transit_leg_entered[ids] = step
         if self.base_rail_enabled:
             # The physical shuttle accepts the ORU as soon as learned
             # extraction clears the rails.  It owns the collision-clear axial
@@ -3634,6 +4708,59 @@ class WorkflowDriver:
         return rows[env_ids]
 
 
+def _base_mount_compliance_report(task, driver) -> dict[str, object]:
+    """State whether the authored satellite mount is in the load path.
+
+    **It is not, on this workcell, and every number about it is identically
+    zero for that reason rather than because the mount is stiff.**
+
+    ``CompliantD6JointCfg`` is authored between ``MountAnchor`` and
+    ``Robot/base_link`` at 12 kN/m and 600 N-m/rad, and ``robot_mount_unstable``
+    is written to end an episode when the two disagree by more than 16.5 mm. But
+    the grapple robot spawns with ``fix_root_link``, so PhysX welds the
+    articulation root to the world and an external spring on that body has
+    nothing to deflect. Measured across every step of every run on this branch,
+    ``mount_rotation_rad`` is 0.000000.
+
+    Reported here as a configuration fact rather than as an observation, because
+    a zero deflection is exactly what a *successful* compliant mount also looks
+    like, and the two must not be confusable. Any claim about this workcell
+    tolerating base compliance is unsupported until the root is floating and the
+    capture and extraction skills are re-certified against it.
+
+    The joint is not deleted, and that is deliberate: its spawner also relocates
+    the UR10e articulation root (``relocate_robot_articulation_root``), so
+    removing it from the scene changes the robot rather than only removing a
+    claim. Deleting it is a change to make alongside the floating root, not
+    instead of it.
+    """
+
+    articulation = getattr(getattr(task.cfg.scene, "robot", None), "spawn", None)
+    fixed_root = getattr(getattr(articulation, "articulation_props", None), "fix_root_link", None)
+    measured = float(driver.rail_max_mount_rotation_axis_rad.max())
+    in_load_path = fixed_root is False
+    if not in_load_path and measured > 0.0:
+        raise RuntimeError(
+            "The robot root is fixed to the world, so the compliant mount joint carries nothing, "
+            f"yet a mount rotation of {measured:.9f} rad was measured. One of the two is wrong; "
+            "refusing to report both."
+        )
+    return {
+        "authored": True,
+        "bodies": "MountAnchor to Robot/base_link",
+        "robot_root_fixed_to_world": fixed_root,
+        "in_load_path": in_load_path,
+        "max_measured_mount_rotation_rad": measured,
+        "why_zero": (
+            "the articulation root is welded to the world by fix_root_link, so the external "
+            "spring has nothing to deflect"
+            if not in_load_path
+            else "measured"
+        ),
+        "claim_supported_about_base_compliance_tolerance": in_load_path,
+    }
+
+
 def _transit_retention_report(driver, arguments) -> dict[str, object]:
     """Summarise what happened to the tool-to-module transform during transit.
 
@@ -3708,6 +4835,92 @@ def _transit_retention_report(driver, arguments) -> dict[str, object]:
             for index in range(RIGID_TRANSIT_LEGS - 1, -1, -1)
         ],
         "retreat_clear_blade_centre_x_m": summarize(driver.transit_clear_centre_x, sampled),
+        # **Whether the hand-off contract was met, or waived.** The contract is
+        # the receiving controller's precondition and the last leg may fail to
+        # reach it; when that happens the hand-off still occurs, so that the
+        # failure is a measured insertion attempt from a stated attitude rather
+        # than a chain sitting in transit until the clock runs out.
+        "handoff_contract_attitude_rad": RELOCATION_HANDOFF_ATTITUDE_RAD,
+        "handoff_contract_derivation": (
+            "what the destination channel and its lead-in admit, 2c/l over the engaged "
+            "length, which is the same requirement the squaring legs are gated on; it is not "
+            "INSERTION_ORIENTATION_TOLERANCE_RAD, which is the seated success check and is 6.5 "
+            "times looser"
+        ),
+        "environments_handed_over_without_meeting_it": int(
+            (driver.transit_handoff_forced & sampled).sum()
+        ),
+        "attitude_at_a_waived_handoff_rad": summarize(
+            driver.transit_handoff_orientation_rad, sampled & driver.transit_handoff_forced
+        ),
+        # **Which controller actually flew the legs.** The label is keyed on the
+        # controller and not on the flag: ``control_steps`` is counted where a
+        # solved joint target was commanded, so a run that fell back to the
+        # Cartesian follower reports zero here rather than reporting an
+        # intention. ``forward_kinematics_agreement`` is this run's own check
+        # that the chain being solved is the chain in the simulator.
+        "scripted_leg_controller": {
+            "solved_inverse_kinematics_enabled": TRANSIT_SOLVED_IK,
+            "method": (
+                "a tool setpoint walked toward the leg target at one action scale per control "
+                "step, turned into arm joint targets by a damped-least-squares solve seeded "
+                "from the measured joints, and commanded through set_joint_target_override"
+            ),
+            "replaces": (
+                "IsaacLab differential IK in relative mode, which re-anchors on the tool pose "
+                "every control step and therefore integrates the joints' lag into the command"
+            ),
+            "actuator_targets_only": True,
+            "iterations_per_solve": TRANSIT_SOLVED_IK_ITERATIONS,
+            "control_steps": summarize(driver.solved_ik_steps.to(torch.float32), sampled),
+            "solves_refused_for_residual": summarize(
+                driver.solved_ik_refusals.to(torch.float32), sampled
+            ),
+            "worst_solve_position_residual_m": summarize(
+                driver.solved_ik_worst_position_residual_m, sampled
+            ),
+            "worst_solve_attitude_residual_rad": summarize(
+                driver.solved_ik_worst_attitude_residual_rad, sampled
+            ),
+            "forward_kinematics_agreement_m": driver.solved_ik_forward_agreement_m,
+            "forward_kinematics_agreement_rad": driver.solved_ik_forward_agreement_rad,
+            "compliant_steps_use_the_cartesian_follower": (
+                "the solved inversion assumes the module's pose is the tool's pose through a "
+                "fixed offset, which is true while the form lock is a weld and false once it "
+                "softens; softened steps need the module-space trim and go back to the "
+                "Cartesian follower"
+            ),
+        },
+        # What the destination channel physically admits, alongside the legs
+        # above. A squaring leg that stops inside the seating check's 52.36 mrad
+        # has still failed if it is outside this, and every earlier run in this
+        # branch reported "orientation: true" on a module too crooked to enter.
+        # The rail, when one is fitted. Reported next to the retention numbers
+        # above deliberately: those are what say the module stayed on the robot
+        # while the robot moved, which is the whole claim a rail has to defend.
+        "robot_rail": (
+            {
+                "carries": "the robot",
+                "module_moved_by": "the robot only",
+                "step_m": driver.robot_rail_step_m,
+                "travel_m": summarize(driver.rail_travel_m, sampled),
+                "index_steps": summarize(driver.rail_index_steps.to(torch.float32), sampled),
+                "arm_joint_targets_held_during_index": True,
+                "simplification": (
+                    "the carriage indexes a base that is already fixed to the world; its own load "
+                    "path is not modelled, in the same way and for the same reason as the form "
+                    "lock's break-rated joint. The module is never written, never constrained to "
+                    "the world, and never held by anything but the robot."
+                ),
+            }
+            if driver.robot_rail_enabled
+            else None
+        ),
+        "channel_angular_acceptance_rad": RELOCATION_CHANNEL_ACCEPTANCE_RAD,
+        "channel_angular_acceptance_derivation": (
+            "2 * channel clearance per side / module length, from "
+            "scripts/check_workcell_geometry.py and evidence/workcell_geometry_check.json"
+        ),
         "max_tool_to_module_position_drift_m": summarize(driver.transit_max_drift_m, sampled),
         "max_tool_to_module_orientation_drift_rad": summarize(driver.transit_max_drift_rad, sampled),
         "terminal_tool_to_module_position_drift_m": summarize(driver.transit_final_drift_m, sampled),
@@ -3861,6 +5074,29 @@ def main() -> dict[str, object]:
         globals()["MATING_MODE"] = args.mating_mode
         env_cfg.base_rail_enabled = args.base_rail_on_relocation
         env_cfg.configure_robustness(0)
+        if args.robot_base_x is not None or args.robot_base_y is not None:
+            # **After configure_robustness, because it replaces scene.robot
+            # wholesale**, which is the second of the three layers of the
+            # ``--robot_base_x`` defect recorded in scripts/calibrate_grasp_pose.py.
+            # The third is the mount anchor: ``robot_mount_unstable`` ends the
+            # episode when the robot root and the anchor differ by more than
+            # 16.5 mm, so an anchor left behind fires that termination on step 1
+            # and the arm never acts. Both are handled here.
+            base = list(env_cfg.scene.robot.init_state.pos)
+            moved = list(base)
+            if args.robot_base_x is not None:
+                moved[0] = args.robot_base_x
+            if args.robot_base_y is not None:
+                moved[1] = args.robot_base_y
+            env_cfg.scene.robot.init_state.pos = tuple(moved)
+            anchor = getattr(env_cfg.scene, "mount_anchor", None)
+            if anchor is not None:
+                anchor.init_state.pos = tuple(moved)
+            print(
+                f"[INFO] Robot base moved from {tuple(round(v, 4) for v in base)} "
+                f"to {tuple(round(v, 4) for v in moved)}, mount anchor with it",
+                flush=True,
+            )
         if args.base_rail_on_relocation:
             env_cfg.configure_base_rail()
         if (
@@ -3918,6 +5154,41 @@ def main() -> dict[str, object]:
         if args.module_mass_kg is not None:
             env_cfg.scene.spare_blade.spawn.mass_props.mass = args.module_mass_kg
             print(f"[INFO] Module mass set to {args.module_mass_kg} kg")
+        if args.module_cross_section_m is not None:
+            length = float(tuple(env_cfg.scene.spare_blade.spawn.size)[0])
+            env_cfg.scene.spare_blade.spawn.size = (
+                length,
+                float(args.module_cross_section_m[0]),
+                float(args.module_cross_section_m[1]),
+            )
+            print(f"[INFO] Module cross-section set to {env_cfg.scene.spare_blade.spawn.size} m")
+        if args.rack_lateral_clearance_mm is not None:
+            # The guide *body* centre is half a guide thickness outboard of the
+            # face the module runs against, and reading the centre as the face
+            # is the mistake that turns a 0.75 mm channel into a 9.75 mm one.
+            half_width = 0.5 * float(tuple(env_cfg.scene.spare_blade.spawn.size)[1])
+            moved = 0
+            for name in dir(env_cfg.scene):
+                if "guide" not in name.lower():
+                    continue
+                entity = getattr(env_cfg.scene, name, None)
+                position = getattr(getattr(entity, "init_state", None), "pos", None)
+                if position is None:
+                    continue
+                # Each guide belongs to a bay, and a bay is not at y = 0. Its
+                # own bay's centre line is the one it is offset from, so find
+                # that first; keying on the sign of y would move the second
+                # bay's pair to the wrong side of the rack.
+                bay = min((0.0, SECOND_SLOT_CENTER_Y), key=lambda centre_y: abs(position[1] - centre_y))
+                thickness = float(tuple(entity.spawn.size)[1])
+                offset = half_width + 1.0e-3 * args.rack_lateral_clearance_mm + 0.5 * thickness
+                sign = 1.0 if position[1] > bay else -1.0
+                entity.init_state.pos = (position[0], bay + sign * offset, position[2])
+                moved += 1
+            print(
+                f"[INFO] Rack guides moved to {args.rack_lateral_clearance_mm:.3f} mm clearance "
+                f"per side; {moved} guide bodies"
+            )
         if args.stable_lighting:
             # Recording only, and the report says so, so a clip can never be
             # mistaken for a measurement made under easier conditions.
@@ -4009,8 +5280,9 @@ def main() -> dict[str, object]:
         policies = {
             "capture": CheckpointPolicy(args.grasp_checkpoint, device),
             "extract": CheckpointPolicy(args.extract_checkpoint, device),
-            "insert": CheckpointPolicy(args.insert_checkpoint, device),
         }
+        if args.insert_checkpoint is not None:
+            policies["insert"] = CheckpointPolicy(args.insert_checkpoint, device)
         for name, policy in policies.items():
             print(
                 f"[INFO] {name:8s} obs={policy.observation_dim:3d} act={policy.action_dim} "
@@ -4049,6 +5321,9 @@ def main() -> dict[str, object]:
             release_latch_required=args.latch_on_release,
             base_rail_enabled=args.base_rail_on_relocation,
             base_rail_arm_mode=args.base_rail_arm_mode,
+            robot_rail_enabled=args.robot_rail_on_relocation,
+            robot_rail_step_m=args.robot_rail_step_m,
+            insert_controller=args.insert_controller,
         )
         collecting = args.episodes > 0
         recorder = TerminalEpisodeRecorder(WORKFLOW_METRIC_FIELDS) if collecting else None
@@ -4144,9 +5419,19 @@ def main() -> dict[str, object]:
             )
 
         combined = (
-            hashlib.sha256("".join(policies[name].sha256 for name in ("capture", "extract", "insert")).encode())
+            hashlib.sha256(
+                "".join(policies[name].sha256 for name in ("capture", "extract", "insert") if name in policies).encode()
+            )
             .hexdigest()
             .upper()
+        )
+        # The same condition ``WorkflowDriver.rigid_transit`` is built from, and
+        # the one that selects ``_step_guarded_insert`` over the learned policy.
+        guarded_insert = (
+            args.workflow == "relocate"
+            and args.latch_on_release
+            and not args.base_rail_on_relocation
+            and args.insert_controller == "guarded"
         )
         result: dict[str, object] = {
             "task": args.task,
@@ -4165,20 +5450,34 @@ def main() -> dict[str, object]:
                 }
                 for path in WORKFLOW_RUNTIME_SOURCES
             ],
-            "loaded_but_not_executed_policies": (
-                ["insert"] if args.workflow == "relocate" and args.base_rail_on_relocation else []
-            ),
+            # **Keyed on which controller actually runs, not on the shuttle
+            # flag, and it used to be the shuttle flag.**
+            #
+            # ``guarded_insert`` above selects ``_step_guarded_insert`` on
+            # ``self.rigid_transit`` -- relocate, with the form lock, without the
+            # payload shuttle -- and on that path the learned insert policy is
+            # loaded, hashed, and never asked for an action. The label said
+            # otherwise: it branched on ``base_rail_on_relocation``, so every
+            # robot-carried report claimed "insert" as a learned phase and an
+            # empty unexecuted list. That is the one label this project's
+            # honesty rests on, and it was reporting a policy certified at
+            # 10.50% pooled and 0.00% in its near stage as the thing performing
+            # the insertion in the video.
+            "loaded_but_not_executed_policies": (["insert"] if guarded_insert and "insert" in policies else []),
             "learned_phases": {
                 "remove": ["capture", "extract"],
                 "install": ["capture", "insert"],
                 "relocate": (
-                    ["capture", "extract"] if args.base_rail_on_relocation else ["capture", "extract", "insert"]
+                    ["capture", "extract"] if guarded_insert or args.base_rail_on_relocation
+                    else ["capture", "extract", "insert"]
                 ),
             }[args.workflow],
             "scripted_phases": ["seat"]
             + (
                 ["payload_handoff", "shuttle_retreat", "cross_bay", "guarded_insert"]
                 if args.workflow == "relocate" and args.base_rail_on_relocation
+                else ["transit", "guarded_insert"]
+                if guarded_insert
                 else ["transit"]
                 if args.workflow == "relocate"
                 else []
@@ -4188,6 +5487,47 @@ def main() -> dict[str, object]:
             # the payload-stage baseline, so the two can be read side by side
             # and the baseline cannot quietly borrow this section's language.
             "robot_carried_transit": _transit_retention_report(driver, args),
+            # The authored satellite mount, and whether it is carrying anything.
+            # A zero deflection is what a stiff compliant mount and an absent one
+            # both look like, so this says which.
+            "base_mount_compliance": _base_mount_compliance_report(task, driver),
+            # The guarded advance, which is the phase that decides whether the
+            # module seats. It was tracking all of this and publishing none of
+            # it, so a run that stopped short had to be diagnosed from a depth
+            # and a tilt.
+            "guarded_insertion": {
+                "controller": "scripted, bounded axial advance on the deployed estimate",
+                "axial_step_m": GUARDED_INSERT_AXIAL_STEP_M,
+                "lateral_tolerance_m": GUARDED_INSERT_LATERAL_TOLERANCE_M,
+                "orientation_tolerance_rad": GUARDED_INSERT_ORIENTATION_TOLERANCE_RAD,
+                "orientation_tolerance_is_what_the_entry_flare_catches": True,
+                "why_not_depth_dependent": (
+                    "2c/l is the law but c changes along the stroke -- 8.00 mm at the nominal "
+                    "lead-in surfaces and 12.61 mm in the relieved channel behind them -- and a "
+                    "bound built from the lead-in gap alone gives 35.6 mrad at full engagement "
+                    "against modules that measurably seat at 46.7"
+                ),
+                "lead_in_vertical_half_gap_m": LEAD_IN_VERTICAL_HALF_GAP_M,
+                "max_lead_m": GUARDED_INSERT_MAX_LEAD_M,
+                "advancing_steps": [int(value) for value in driver.guarded_insert_steps],
+                "held_steps_outside_the_envelope": [
+                    int(value) for value in driver.guarded_insert_holds
+                ],
+                "held_steps_because_the_module_refused": [
+                    int(value) for value in driver.guarded_insert_stalls
+                ],
+                "terminal_axial_target_m": [float(value) for value in driver.guarded_insert_target_x],
+                "terminal_attitude_axis_angle_rad": [
+                    [float(component) for component in row] for row in driver.guarded_insert_attitude
+                ],
+                "reads": (
+                    "advancing_steps counts control steps where the estimate was inside the "
+                    "envelope and the module was following; held_steps_outside_the_envelope is "
+                    "perception failing closed; held_steps_because_the_module_refused is the "
+                    "commanded target a full mating stroke ahead of a module that is not moving, "
+                    "which is a wedge and not a lag"
+                ),
+            },
             "insert_handoff_contract": (
                 {
                     "receiver": (

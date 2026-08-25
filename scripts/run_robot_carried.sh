@@ -8,7 +8,9 @@
 #   scripts/run_robot_carried.sh latched    # can a robot-side form lock carry it
 #   scripts/run_robot_carried.sh sweep      # what rating does the lock need
 #   scripts/run_robot_carried.sh certify    # multi-seed state batch
+#   scripts/run_robot_carried.sh rail       # the robot on a lateral rail
 #   scripts/run_robot_carried.sh rgbd       # one full RGB-D end-to-end run
+#   scripts/run_robot_carried.sh follower   # the same run on the old controller
 #
 # ``passive`` is expected to fail and is not a failure of the session: it is the
 # control that makes the latch a measured necessity rather than a convenience.
@@ -132,11 +134,25 @@ case "$stage" in
     # The state batch. Three held-out seeds, pooled the way every other claim in
     # this repository is pooled, so the robot-carried chain gets a Wilson
     # interval rather than an anecdote.
+    # **With the rail.** This stage used to omit --robot_rail_on_relocation,
+    # which certified a configuration the project's own measurements say does not
+    # work: without a rail the arm has to translate the bay pitch at the retreat
+    # depth, where its realised authority is 0.72, and the destination squaring
+    # leg has never converged. A pooled number for that is a pooled number about
+    # the wrong workcell.
+    # CERT_TAG names the run so a re-certification cannot overwrite the report
+    # it is supposed to be compared against. The default is the *before*, which
+    # is preserved evidence, so a bare re-run of this stage would have replaced
+    # the baseline with the result.
+    CERT_TAG="${CERT_TAG:-relocate}"
+    CERT_TITLE="${CERT_TITLE:-Robot-carried servicing workflow: relocation, bay 1 to bay 2}"
     rows=()
-    for seed in 4070 5070 6070; do
-      out="$OUT/certify_seed${seed}"
+    for seed in ${SEEDS:-4070 5070 6070}; do
+      out="$OUT/certify_${CERT_TAG}_seed${seed}"
       echo "[$(date +%H:%M:%S)] CERTIFY robot-carried relocation, seed ${seed}"
       chain --num_envs "${ENVS:-32}" --episodes "${EPISODES:-32}" --seed "$seed" \
+          --steps "${STEPS:-5000}" \
+          --robot_rail_on_relocation \
           --latch_on_release --latch_joint_mode fixed \
           --latch_rated_force_n "${LATCH_N:-20000}" --latch_rated_torque_nm "${LATCH_NM:-1000}" \
         --latch_position_stiffness_n_per_m "${MATING_K:-40000}" \
@@ -144,23 +160,77 @@ case "$stage" in
         --destination_channel_relief_m "${RELIEF:-0.0046125}" \
         --mating_mode "${MATING_MODE:-compliant}" \
         --mating_force_cap_n "${MATING_CAP:-1000}" \
+          ${CHAIN_EXTRA:-} \
           --report "${out}_report.json" --episode_metrics "${out}.npz" \
           > "${out}.log" 2>&1
       echo "[$(date +%H:%M:%S)]   exit=$?"
       rows+=("${out}.npz")
     done
     "$PYTHON" scripts/aggregate_evaluation.py --episodes "${rows[@]}" \
-        --output "evidence/workflow_robot_carried_relocate_certification.json" \
-        --title "Robot-carried servicing workflow: relocation, bay 1 to bay 2" \
+        --output "evidence/workflow_robot_carried_${CERT_TAG}_certification.json" \
+        --title "$CERT_TITLE" \
         --scope \
           "Simulation only. No result here was produced on real hardware." \
           "One continuous episode: learned capture, learned extraction, robot-carried transit on a visible robot-side form lock, guarded robot-driven insertion, release after settling." \
           "No world-mounted payload stage, no direct module pose write, and no teleport is active. The module is carried by the arm throughout." \
           "Capture and extraction are trained policies; the seat, the transit and the insertion are scripted and labelled as such." \
+          "The transit legs are commanded from a solved inverse kinematics through actuator targets; the robot rides a lateral rail whose own load path is not modelled." \
           "Success is the workflow's own condition re-checked after a 0.70 s settling window." \
-        > "$OUT/aggregate_certify.log" 2>&1
-    echo "[$(date +%H:%M:%S)] aggregate exit=$?"
-    tail -6 "$OUT/aggregate_certify.log"
+        > "$OUT/aggregate_certify_${CERT_TAG}.log" 2>&1
+    echo "[$(date +%H:%M:%S)] aggregate exit=$? -> evidence/workflow_robot_carried_${CERT_TAG}_certification.json"
+    tail -6 "$OUT/aggregate_certify_${CERT_TAG}.log"
+    ;;
+
+  rail)
+    # The robot on a lateral rail, which is what the crossing leg needs.
+    #
+    # The arm cannot hold the module square while translating the bay pitch at
+    # the retreat depth: the differential IK's realised authority there is 0.72
+    # and the squaring leg that follows has never converged in any run this
+    # branch recorded. Moving the base back recovers the authority and loses the
+    # capture policy, measured at both 100 mm and 50 mm. A rail loses neither,
+    # because parked opposite a bay the arm's configuration is the one it has at
+    # bay 1. See scripts/check_workcell_geometry.py and section 6a of
+    # docs/service_interface_spec.md.
+    #
+    # The rail carries the ROBOT. It is not --base_rail_on_relocation, which
+    # hands the module to a world-mounted shuttle and is kept only as a
+    # labelled historical baseline.
+    echo "[$(date +%H:%M:%S)] RAIL robot-carried relocation, ${ENVS:-1} envs"
+    chain --num_envs "${ENVS:-1}" --steps "${STEPS:-6500}" --seed "${SEED:-4070}" \
+        --robot_rail_on_relocation \
+        --latch_on_release --latch_joint_mode fixed \
+        --latch_rated_force_n "${LATCH_N:-1000000}" --latch_rated_torque_nm "${LATCH_NM:-1000000}" \
+        --latch_position_stiffness_n_per_m "${MATING_K:-40000}" \
+        --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-20000}" \
+        --destination_channel_relief_m "${RELIEF:-0.0046125}" \
+        --mating_mode "${MATING_MODE:-compliant}" \
+        --mating_force_cap_n "${MATING_CAP:-1000}" \
+        --report "${REPORT:-$OUT/rail_report.json}" \
+        --handoff_trace "${TRACE:-$OUT/rail_trace.npz}" \
+        > "${LOG:-$OUT/rail.log}" 2>&1
+    echo "[$(date +%H:%M:%S)] rail exit=$?"
+    ;;
+
+  follower)
+    # The control for the solved-IK legs: the same run, same seed, same rail, on
+    # IsaacLab's relative-mode differential IK. Kept as a stage rather than as a
+    # remembered environment variable, because "the new controller is better" is
+    # a claim and a claim needs its counterfactual next to it in the evidence.
+    echo "[$(date +%H:%M:%S)] FOLLOWER control, relative-mode differential IK, ${ENVS:-1} envs"
+    TRANSIT_SOLVED_IK=0 chain --num_envs "${ENVS:-1}" --steps "${STEPS:-6500}" --seed "${SEED:-4070}" \
+        --robot_rail_on_relocation \
+        --latch_on_release --latch_joint_mode fixed \
+        --latch_rated_force_n "${LATCH_N:-1000000}" --latch_rated_torque_nm "${LATCH_NM:-1000000}" \
+        --latch_position_stiffness_n_per_m "${MATING_K:-40000}" \
+        --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-20000}" \
+        --destination_channel_relief_m "${RELIEF:-0.0046125}" \
+        --mating_mode "${MATING_MODE:-compliant}" \
+        --mating_force_cap_n "${MATING_CAP:-1000}" \
+        --report "${REPORT:-$OUT/follower_report.json}" \
+        --handoff_trace "${TRACE:-$OUT/follower_trace.npz}" \
+        > "${LOG:-$OUT/follower.log}" 2>&1
+    echo "[$(date +%H:%M:%S)] follower exit=$?"
     ;;
 
   rgbd)
@@ -190,7 +260,7 @@ case "$stage" in
     ;;
 
   *)
-    echo "usage: scripts/run_robot_carried.sh {passive|latched|sweep|smoke|mating|certify|rgbd}"
+    echo "usage: scripts/run_robot_carried.sh {rail|follower|passive|latched|sweep|smoke|mating|certify|rgbd}"
     exit 2
     ;;
 esac

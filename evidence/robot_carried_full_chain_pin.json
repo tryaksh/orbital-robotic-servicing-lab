@@ -1,0 +1,4595 @@
+{
+  "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
+  "visual_randomization": "on",
+  "workflow": "relocate",
+  "seed": 4070,
+  "num_envs": 32,
+  "curriculum_stage": 0,
+  "checkpoints": {
+    "capture": "logs\\rl_games\\zero_g_blade_insertion_contact\\grapple_grasp_l0_seed70_v7m130\\nn\\last_zero_g_blade_insertion_contact_ep_3100_rew_30.262873.pth",
+    "extract": "logs\\rl_games\\zero_g_blade_insertion_contact\\grapple_extract_l0_seed70_v18pin\\nn\\last_zero_g_blade_insertion_contact_ep_12600_rew_172.70488.pth",
+    "insert": "logs\\rl_games\\zero_g_blade_insertion_contact\\grapple_insert_l0_seed70_v13m130\\nn\\last_zero_g_blade_insertion_contact_ep_8000_rew_-42.01845.pth"
+  },
+  "checkpoint_sha256": {
+    "capture": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+    "extract": "ADC247AB0E9403761A3108228019AE7BE4DC408155B414B6BF0226102E5CCA54",
+    "insert": "CFBB09E2DDC7AF11E180DD772C42F5D86AB20EA56BD0A00F2FEB2EA378B4EC69"
+  },
+  "policy_set_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+  "runtime_source_bindings": [
+    {
+      "path": "scripts/run_workflow_demo.py",
+      "sha256": "1a41fa67a1185b94059a91edcbe3ca40262403967a77b922f480654439209522"
+    },
+    {
+      "path": "src/zero_g_blade_swap/fiducial.py",
+      "sha256": "233554bc271c3e730b7b73748911429fd3036d92c468fec5679c8311727a8ab7"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/assets.py",
+      "sha256": "c524197d5deab93e6169756585f0dabd23273658fcbbaae14c15ec7b7b02ef68"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/mdp/perception.py",
+      "sha256": "0489b39b6551d3d6b9067dc9a06ee8b9f3d6e9aec1e1020632ac89adf94737de"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/scene_cfg.py",
+      "sha256": "5d610803665d12c780abc12be7bafa2c20cc80b6ba97be9ba55ce116fcd4fd68"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py",
+      "sha256": "31e13118a8af8f5120c8182c7c8753ba6e05e65166d7aa2c4bcd48ed2eb4f69a"
+    }
+  ],
+  "loaded_but_not_executed_policies": [
+    "insert"
+  ],
+  "learned_phases": [
+    "capture",
+    "extract"
+  ],
+  "scripted_phases": [
+    "seat",
+    "transit",
+    "guarded_insert"
+  ],
+  "robot_carried_transit": {
+    "carrier": "six_axis_robot",
+    "claim_is_that_the_robot_carried_the_module": true,
+    "environments_that_entered_transit": 30,
+    "environments_retaining_the_planned_transform_throughout": 30,
+    "retention_limit_position_m": 0.0025,
+    "retention_limit_orientation_rad": 0.05236,
+    "retention_limit_derivation": "the insert hand-off envelope, read backwards: the transit is planned from the tool-to-module transform measured at rail release, so drift in it lands on the staging pose one for one",
+    "reference_frame": "tool frame at the instant extraction cleared the rails",
+    "flare_leading_plane_x_m": 0.371753,
+    "nominal_clear_blade_centre_x_m": 0.146753,
+    "flare_clearance_margin_m": 0.01,
+    "measured_front_overhang_m": {
+      "count": 30,
+      "mean": 0.229965,
+      "p50": 0.229933,
+      "p95": 0.230731,
+      "max": 0.23099,
+      "min": 0.228999
+    },
+    "legs": [
+      {
+        "leg": 4,
+        "role": "retreat",
+        "environments_forced_by_timeout": 0,
+        "residual_orientation_rad": null,
+        "residual_position_m": null
+      },
+      {
+        "leg": 3,
+        "role": "square_at_source",
+        "environments_forced_by_timeout": 19,
+        "residual_orientation_rad": {
+          "count": 19,
+          "mean": 0.008413,
+          "p50": 0.00744,
+          "p95": 0.012933,
+          "max": 0.013566,
+          "min": 0.006767
+        },
+        "residual_position_m": {
+          "count": 19,
+          "mean": 0.006933,
+          "p50": 0.006569,
+          "p95": 0.009011,
+          "max": 0.00914,
+          "min": 0.006064
+        }
+      },
+      {
+        "leg": 2,
+        "role": "cross",
+        "environments_forced_by_timeout": 0,
+        "residual_orientation_rad": null,
+        "residual_position_m": null
+      },
+      {
+        "leg": 1,
+        "role": "square_at_destination",
+        "environments_forced_by_timeout": 14,
+        "residual_orientation_rad": {
+          "count": 14,
+          "mean": 0.01231,
+          "p50": 0.010354,
+          "p95": 0.020067,
+          "max": 0.022063,
+          "min": 0.007886
+        },
+        "residual_position_m": {
+          "count": 14,
+          "mean": 0.008908,
+          "p50": 0.007901,
+          "p95": 0.012803,
+          "max": 0.013797,
+          "min": 0.006747
+        }
+      },
+      {
+        "leg": 0,
+        "role": "insert_approach",
+        "environments_forced_by_timeout": 0,
+        "residual_orientation_rad": null,
+        "residual_position_m": null
+      }
+    ],
+    "retreat_clear_blade_centre_x_m": {
+      "count": 30,
+      "mean": 0.131788,
+      "p50": 0.131752,
+      "p95": 0.132528,
+      "max": 0.132754,
+      "min": 0.130763
+    },
+    "handoff_contract_attitude_rad": 0.035556,
+    "handoff_contract_derivation": "what the destination channel and its lead-in admit, 2c/l over the engaged length, which is the same requirement the squaring legs are gated on; it is not INSERTION_ORIENTATION_TOLERANCE_RAD, which is the seated success check and is 6.5 times looser",
+    "environments_handed_over_without_meeting_it": 0,
+    "attitude_at_a_waived_handoff_rad": null,
+    "scripted_leg_controller": {
+      "solved_inverse_kinematics_enabled": true,
+      "method": "a tool setpoint walked toward the leg target at one action scale per control step, turned into arm joint targets by a damped-least-squares solve seeded from the measured joints, and commanded through set_joint_target_override",
+      "replaces": "IsaacLab differential IK in relative mode, which re-anchors on the tool pose every control step and therefore integrates the joints' lag into the command",
+      "actuator_targets_only": true,
+      "iterations_per_solve": 40,
+      "control_steps": {
+        "count": 30,
+        "mean": 1372.200073,
+        "p50": 1245.0,
+        "p95": 2414.0,
+        "max": 2414.0,
+        "min": 104.0
+      },
+      "solves_refused_for_residual": {
+        "count": 30,
+        "mean": 0.0,
+        "p50": 0.0,
+        "p95": 0.0,
+        "max": 0.0,
+        "min": 0.0
+      },
+      "worst_solve_position_residual_m": {
+        "count": 30,
+        "mean": 0.0,
+        "p50": 0.0,
+        "p95": 1e-06,
+        "max": 1e-06,
+        "min": 0.0
+      },
+      "worst_solve_attitude_residual_rad": {
+        "count": 30,
+        "mean": 1e-06,
+        "p50": 1e-06,
+        "p95": 1e-06,
+        "max": 1e-06,
+        "min": 1e-06
+      },
+      "forward_kinematics_agreement_m": 1e-06,
+      "forward_kinematics_agreement_rad": 1e-06,
+      "compliant_steps_use_the_cartesian_follower": "the solved inversion assumes the module's pose is the tool's pose through a fixed offset, which is true while the form lock is a weld and false once it softens; softened steps need the module-space trim and go back to the Cartesian follower"
+    },
+    "robot_rail": {
+      "carries": "the robot",
+      "module_moved_by": "the robot only",
+      "step_m": 0.001,
+      "travel_m": {
+        "count": 30,
+        "mean": 0.239267,
+        "p50": 0.24,
+        "p95": 0.242,
+        "max": 0.242,
+        "min": 0.227
+      },
+      "index_steps": {
+        "count": 30,
+        "mean": 239.266678,
+        "p50": 240.0,
+        "p95": 242.0,
+        "max": 242.0,
+        "min": 227.0
+      },
+      "arm_joint_targets_held_during_index": true,
+      "simplification": "the carriage indexes a base that is already fixed to the world; its own load path is not modelled, in the same way and for the same reason as the form lock's break-rated joint. The module is never written, never constrained to the world, and never held by anything but the robot."
+    },
+    "channel_angular_acceptance_rad": 0.008,
+    "channel_angular_acceptance_derivation": "2 * channel clearance per side / module length, from scripts/check_workcell_geometry.py and evidence/workcell_geometry_check.json",
+    "max_tool_to_module_position_drift_m": {
+      "count": 30,
+      "mean": 0.00086,
+      "p50": 0.000854,
+      "p95": 0.000925,
+      "max": 0.000985,
+      "min": 0.000786
+    },
+    "max_tool_to_module_orientation_drift_rad": {
+      "count": 30,
+      "mean": 0.002352,
+      "p50": 0.002307,
+      "p95": 0.002535,
+      "max": 0.00281,
+      "min": 0.002151
+    },
+    "terminal_tool_to_module_position_drift_m": {
+      "count": 30,
+      "mean": 0.000831,
+      "p50": 0.000821,
+      "p95": 0.000912,
+      "max": 0.000966,
+      "min": 0.000751
+    },
+    "terminal_tool_to_module_orientation_drift_rad": {
+      "count": 30,
+      "mean": 0.002336,
+      "p50": 0.002289,
+      "p95": 0.00253,
+      "max": 0.00279,
+      "min": 0.002134
+    },
+    "max_grip_error_m": {
+      "count": 30,
+      "mean": 0.012887,
+      "p50": 0.01255,
+      "p95": 0.014243,
+      "max": 0.014764,
+      "min": 0.012254
+    },
+    "max_grip_attitude_rad": {
+      "count": 30,
+      "mean": 0.05926,
+      "p50": 0.057842,
+      "p95": 0.066808,
+      "max": 0.069225,
+      "min": 0.053454
+    },
+    "min_grip_drive_torque_nm": {
+      "count": 30,
+      "mean": 10.000001,
+      "p50": 10.0,
+      "p95": 10.0,
+      "max": 10.0,
+      "min": 10.0
+    },
+    "tool_travel_m": {
+      "count": 30,
+      "mean": 0.299298,
+      "p50": 0.297946,
+      "p95": 0.306123,
+      "max": 0.308777,
+      "min": 0.291373
+    },
+    "module_travel_m": {
+      "count": 30,
+      "mean": 0.268571,
+      "p50": 0.266845,
+      "p95": 0.274217,
+      "max": 0.27619,
+      "min": 0.262815
+    },
+    "control_steps_before_retention_was_lost": null,
+    "observed_per_environment": [
+      {
+        "env": 0,
+        "entered_transit": true,
+        "samples": 1499,
+        "max_position_drift_m": 0.000913,
+        "max_orientation_drift_rad": 0.002491,
+        "terminal_position_drift_m": 0.000868,
+        "terminal_orientation_drift_rad": 0.002468,
+        "tool_travel_m": 0.308777,
+        "module_travel_m": 0.27619,
+        "measured_front_overhang_m": 0.230608,
+        "retreat_clear_blade_centre_x_m": 0.131145,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 1,
+        "entered_transit": true,
+        "samples": 344,
+        "max_position_drift_m": 0.000853,
+        "max_orientation_drift_rad": 0.002281,
+        "terminal_position_drift_m": 0.00083,
+        "terminal_orientation_drift_rad": 0.002267,
+        "tool_travel_m": 0.29203,
+        "module_travel_m": 0.263887,
+        "measured_front_overhang_m": 0.229368,
+        "retreat_clear_blade_centre_x_m": 0.132385,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 2,
+        "entered_transit": true,
+        "samples": 345,
+        "max_position_drift_m": 0.000863,
+        "max_orientation_drift_rad": 0.002301,
+        "terminal_position_drift_m": 0.000821,
+        "terminal_orientation_drift_rad": 0.002263,
+        "tool_travel_m": 0.294817,
+        "module_travel_m": 0.265313,
+        "measured_front_overhang_m": 0.229622,
+        "retreat_clear_blade_centre_x_m": 0.132131,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 3,
+        "entered_transit": true,
+        "samples": 2656,
+        "max_position_drift_m": 0.000787,
+        "max_orientation_drift_rad": 0.002211,
+        "terminal_position_drift_m": 0.000751,
+        "terminal_orientation_drift_rad": 0.002206,
+        "tool_travel_m": 0.300575,
+        "module_travel_m": 0.270738,
+        "measured_front_overhang_m": 0.230019,
+        "retreat_clear_blade_centre_x_m": 0.131734,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 4,
+        "entered_transit": true,
+        "samples": 2655,
+        "max_position_drift_m": 0.000912,
+        "max_orientation_drift_rad": 0.002477,
+        "terminal_position_drift_m": 0.000882,
+        "terminal_orientation_drift_rad": 0.002471,
+        "tool_travel_m": 0.303155,
+        "module_travel_m": 0.274217,
+        "measured_front_overhang_m": 0.230237,
+        "retreat_clear_blade_centre_x_m": 0.131516,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 5,
+        "entered_transit": true,
+        "samples": 2643,
+        "max_position_drift_m": 0.000892,
+        "max_orientation_drift_rad": 0.002418,
+        "terminal_position_drift_m": 0.000871,
+        "terminal_orientation_drift_rad": 0.002399,
+        "tool_travel_m": 0.305322,
+        "module_travel_m": 0.269918,
+        "measured_front_overhang_m": 0.23099,
+        "retreat_clear_blade_centre_x_m": 0.130763,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 6,
+        "entered_transit": true,
+        "samples": 1485,
+        "max_position_drift_m": 0.000825,
+        "max_orientation_drift_rad": 0.002229,
+        "terminal_position_drift_m": 0.000796,
+        "terminal_orientation_drift_rad": 0.002205,
+        "tool_travel_m": 0.296639,
+        "module_travel_m": 0.266182,
+        "measured_front_overhang_m": 0.229828,
+        "retreat_clear_blade_centre_x_m": 0.131925,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 7,
+        "entered_transit": false,
+        "samples": 0,
+        "max_position_drift_m": 0.0,
+        "max_orientation_drift_rad": 0.0,
+        "terminal_position_drift_m": 0.0,
+        "terminal_orientation_drift_rad": 0.0,
+        "tool_travel_m": 0.0,
+        "module_travel_m": 0.0,
+        "measured_front_overhang_m": 0.0,
+        "retreat_clear_blade_centre_x_m": 0.0,
+        "retained_throughout": false,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 8,
+        "entered_transit": true,
+        "samples": 2657,
+        "max_position_drift_m": 0.000821,
+        "max_orientation_drift_rad": 0.002193,
+        "terminal_position_drift_m": 0.000786,
+        "terminal_orientation_drift_rad": 0.002187,
+        "tool_travel_m": 0.308229,
+        "module_travel_m": 0.276094,
+        "measured_front_overhang_m": 0.230731,
+        "retreat_clear_blade_centre_x_m": 0.131022,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 9,
+        "entered_transit": true,
+        "samples": 2656,
+        "max_position_drift_m": 0.0008,
+        "max_orientation_drift_rad": 0.002301,
+        "terminal_position_drift_m": 0.000772,
+        "terminal_orientation_drift_rad": 0.002292,
+        "tool_travel_m": 0.301279,
+        "module_travel_m": 0.271186,
+        "measured_front_overhang_m": 0.230015,
+        "retreat_clear_blade_centre_x_m": 0.131737,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 10,
+        "entered_transit": true,
+        "samples": 2656,
+        "max_position_drift_m": 0.00087,
+        "max_orientation_drift_rad": 0.002323,
+        "terminal_position_drift_m": 0.000828,
+        "terminal_orientation_drift_rad": 0.002289,
+        "tool_travel_m": 0.303071,
+        "module_travel_m": 0.27258,
+        "measured_front_overhang_m": 0.230098,
+        "retreat_clear_blade_centre_x_m": 0.131655,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 11,
+        "entered_transit": true,
+        "samples": 2656,
+        "max_position_drift_m": 0.000904,
+        "max_orientation_drift_rad": 0.002485,
+        "terminal_position_drift_m": 0.000873,
+        "terminal_orientation_drift_rad": 0.002411,
+        "tool_travel_m": 0.300144,
+        "module_travel_m": 0.270693,
+        "measured_front_overhang_m": 0.23003,
+        "retreat_clear_blade_centre_x_m": 0.131723,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 12,
+        "entered_transit": true,
+        "samples": 1482,
+        "max_position_drift_m": 0.000838,
+        "max_orientation_drift_rad": 0.002266,
+        "terminal_position_drift_m": 0.000813,
+        "terminal_orientation_drift_rad": 0.002255,
+        "tool_travel_m": 0.293996,
+        "module_travel_m": 0.264347,
+        "measured_front_overhang_m": 0.229297,
+        "retreat_clear_blade_centre_x_m": 0.132456,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 13,
+        "entered_transit": true,
+        "samples": 347,
+        "max_position_drift_m": 0.000854,
+        "max_orientation_drift_rad": 0.0025,
+        "terminal_position_drift_m": 0.000826,
+        "terminal_orientation_drift_rad": 0.002482,
+        "tool_travel_m": 0.294325,
+        "module_travel_m": 0.264548,
+        "measured_front_overhang_m": 0.229419,
+        "retreat_clear_blade_centre_x_m": 0.132334,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 14,
+        "entered_transit": true,
+        "samples": 2657,
+        "max_position_drift_m": 0.000805,
+        "max_orientation_drift_rad": 0.002162,
+        "terminal_position_drift_m": 0.000767,
+        "terminal_orientation_drift_rad": 0.002134,
+        "tool_travel_m": 0.306123,
+        "module_travel_m": 0.273987,
+        "measured_front_overhang_m": 0.230358,
+        "retreat_clear_blade_centre_x_m": 0.131395,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 15,
+        "entered_transit": true,
+        "samples": 354,
+        "max_position_drift_m": 0.000948,
+        "max_orientation_drift_rad": 0.002535,
+        "terminal_position_drift_m": 0.000916,
+        "terminal_orientation_drift_rad": 0.00253,
+        "tool_travel_m": 0.295602,
+        "module_travel_m": 0.265679,
+        "measured_front_overhang_m": 0.229574,
+        "retreat_clear_blade_centre_x_m": 0.132179,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 16,
+        "entered_transit": true,
+        "samples": 355,
+        "max_position_drift_m": 0.000816,
+        "max_orientation_drift_rad": 0.002241,
+        "terminal_position_drift_m": 0.000791,
+        "terminal_orientation_drift_rad": 0.00224,
+        "tool_travel_m": 0.298734,
+        "module_travel_m": 0.266944,
+        "measured_front_overhang_m": 0.229919,
+        "retreat_clear_blade_centre_x_m": 0.131833,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 17,
+        "entered_transit": true,
+        "samples": 1484,
+        "max_position_drift_m": 0.00083,
+        "max_orientation_drift_rad": 0.002251,
+        "terminal_position_drift_m": 0.000812,
+        "terminal_orientation_drift_rad": 0.002246,
+        "tool_travel_m": 0.296839,
+        "module_travel_m": 0.26642,
+        "measured_front_overhang_m": 0.229919,
+        "retreat_clear_blade_centre_x_m": 0.131834,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 18,
+        "entered_transit": true,
+        "samples": 2657,
+        "max_position_drift_m": 0.000793,
+        "max_orientation_drift_rad": 0.002151,
+        "terminal_position_drift_m": 0.000766,
+        "terminal_orientation_drift_rad": 0.002147,
+        "tool_travel_m": 0.305452,
+        "module_travel_m": 0.273632,
+        "measured_front_overhang_m": 0.230251,
+        "retreat_clear_blade_centre_x_m": 0.131502,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 19,
+        "entered_transit": true,
+        "samples": 1489,
+        "max_position_drift_m": 0.000786,
+        "max_orientation_drift_rad": 0.002162,
+        "terminal_position_drift_m": 0.000752,
+        "terminal_orientation_drift_rad": 0.002148,
+        "tool_travel_m": 0.297946,
+        "module_travel_m": 0.266619,
+        "measured_front_overhang_m": 0.230001,
+        "retreat_clear_blade_centre_x_m": 0.131752,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 20,
+        "entered_transit": true,
+        "samples": 349,
+        "max_position_drift_m": 0.000918,
+        "max_orientation_drift_rad": 0.002586,
+        "terminal_position_drift_m": 0.000893,
+        "terminal_orientation_drift_rad": 0.002584,
+        "tool_travel_m": 0.293095,
+        "module_travel_m": 0.264063,
+        "measured_front_overhang_m": 0.229225,
+        "retreat_clear_blade_centre_x_m": 0.132528,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 21,
+        "entered_transit": true,
+        "samples": 346,
+        "max_position_drift_m": 0.000879,
+        "max_orientation_drift_rad": 0.002377,
+        "terminal_position_drift_m": 0.000856,
+        "terminal_orientation_drift_rad": 0.002337,
+        "tool_travel_m": 0.294349,
+        "module_travel_m": 0.265042,
+        "measured_front_overhang_m": 0.229633,
+        "retreat_clear_blade_centre_x_m": 0.13212,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 22,
+        "entered_transit": true,
+        "samples": 349,
+        "max_position_drift_m": 0.000837,
+        "max_orientation_drift_rad": 0.002307,
+        "terminal_position_drift_m": 0.000798,
+        "terminal_orientation_drift_rad": 0.002289,
+        "tool_travel_m": 0.29784,
+        "module_travel_m": 0.266845,
+        "measured_front_overhang_m": 0.229933,
+        "retreat_clear_blade_centre_x_m": 0.13182,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 23,
+        "entered_transit": false,
+        "samples": 0,
+        "max_position_drift_m": 0.0,
+        "max_orientation_drift_rad": 0.0,
+        "terminal_position_drift_m": 0.0,
+        "terminal_orientation_drift_rad": 0.0,
+        "tool_travel_m": 0.0,
+        "module_travel_m": 0.0,
+        "measured_front_overhang_m": 0.0,
+        "retreat_clear_blade_centre_x_m": 0.0,
+        "retained_throughout": false,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 24,
+        "entered_transit": true,
+        "samples": 2642,
+        "max_position_drift_m": 0.000888,
+        "max_orientation_drift_rad": 0.002439,
+        "terminal_position_drift_m": 0.000859,
+        "terminal_orientation_drift_rad": 0.002419,
+        "tool_travel_m": 0.30486,
+        "module_travel_m": 0.270433,
+        "measured_front_overhang_m": 0.230895,
+        "retreat_clear_blade_centre_x_m": 0.130857,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 25,
+        "entered_transit": true,
+        "samples": 2656,
+        "max_position_drift_m": 0.000893,
+        "max_orientation_drift_rad": 0.002464,
+        "terminal_position_drift_m": 0.00087,
+        "terminal_orientation_drift_rad": 0.002446,
+        "tool_travel_m": 0.30272,
+        "module_travel_m": 0.27323,
+        "measured_front_overhang_m": 0.230357,
+        "retreat_clear_blade_centre_x_m": 0.131396,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 26,
+        "entered_transit": true,
+        "samples": 2648,
+        "max_position_drift_m": 0.000792,
+        "max_orientation_drift_rad": 0.002156,
+        "terminal_position_drift_m": 0.000769,
+        "terminal_orientation_drift_rad": 0.002153,
+        "tool_travel_m": 0.304673,
+        "module_travel_m": 0.271158,
+        "measured_front_overhang_m": 0.230567,
+        "retreat_clear_blade_centre_x_m": 0.131186,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 27,
+        "entered_transit": true,
+        "samples": 345,
+        "max_position_drift_m": 0.000925,
+        "max_orientation_drift_rad": 0.002498,
+        "terminal_position_drift_m": 0.000912,
+        "terminal_orientation_drift_rad": 0.002494,
+        "tool_travel_m": 0.291373,
+        "module_travel_m": 0.262815,
+        "measured_front_overhang_m": 0.228999,
+        "retreat_clear_blade_centre_x_m": 0.132754,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 28,
+        "entered_transit": true,
+        "samples": 2649,
+        "max_position_drift_m": 0.000892,
+        "max_orientation_drift_rad": 0.002414,
+        "terminal_position_drift_m": 0.000881,
+        "terminal_orientation_drift_rad": 0.002405,
+        "tool_travel_m": 0.304905,
+        "module_travel_m": 0.269676,
+        "measured_front_overhang_m": 0.230688,
+        "retreat_clear_blade_centre_x_m": 0.131065,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 29,
+        "entered_transit": true,
+        "samples": 1482,
+        "max_position_drift_m": 0.000831,
+        "max_orientation_drift_rad": 0.002219,
+        "terminal_position_drift_m": 0.000801,
+        "terminal_orientation_drift_rad": 0.0022,
+        "tool_travel_m": 0.294411,
+        "module_travel_m": 0.264973,
+        "measured_front_overhang_m": 0.229532,
+        "retreat_clear_blade_centre_x_m": 0.132221,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 30,
+        "entered_transit": true,
+        "samples": 1486,
+        "max_position_drift_m": 0.000854,
+        "max_orientation_drift_rad": 0.002326,
+        "terminal_position_drift_m": 0.00082,
+        "terminal_orientation_drift_rad": 0.002318,
+        "tool_travel_m": 0.296117,
+        "module_travel_m": 0.265953,
+        "measured_front_overhang_m": 0.229737,
+        "retreat_clear_blade_centre_x_m": 0.132016,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      },
+      {
+        "env": 31,
+        "entered_transit": true,
+        "samples": 345,
+        "max_position_drift_m": 0.000985,
+        "max_orientation_drift_rad": 0.00281,
+        "terminal_position_drift_m": 0.000966,
+        "terminal_orientation_drift_rad": 0.00279,
+        "tool_travel_m": 0.291528,
+        "module_travel_m": 0.263768,
+        "measured_front_overhang_m": 0.229104,
+        "retreat_clear_blade_centre_x_m": 0.132649,
+        "retained_throughout": true,
+        "driver_step_retention_lost": null
+      }
+    ]
+  },
+  "base_mount_compliance": {
+    "authored": true,
+    "bodies": "MountAnchor to Robot/base_link",
+    "robot_root_fixed_to_world": true,
+    "in_load_path": false,
+    "max_measured_mount_rotation_rad": 0.0,
+    "why_zero": "the articulation root is welded to the world by fix_root_link, so the external spring has nothing to deflect",
+    "claim_supported_about_base_compliance_tolerance": false
+  },
+  "guarded_insertion": {
+    "controller": "scripted, bounded axial advance on the deployed estimate",
+    "axial_step_m": 0.001,
+    "lateral_tolerance_m": 0.016633,
+    "orientation_tolerance_rad": 0.073924,
+    "orientation_tolerance_is_what_the_entry_flare_catches": true,
+    "why_not_depth_dependent": "2c/l is the law but c changes along the stroke -- 8.00 mm at the nominal lead-in surfaces and 12.61 mm in the relieved channel behind them -- and a bound built from the lead-in gap alone gives 35.6 mrad at full engagement against modules that measurably seat at 46.7",
+    "lead_in_vertical_half_gap_m": 0.008,
+    "max_lead_m": 0.025,
+    "advancing_steps": [
+      549,
+      537,
+      545,
+      537,
+      549,
+      538,
+      537,
+      0,
+      538,
+      537,
+      549,
+      537,
+      548,
+      548,
+      538,
+      548,
+      537,
+      549,
+      537,
+      537,
+      548,
+      546,
+      549,
+      0,
+      542,
+      549,
+      538,
+      548,
+      538,
+      537,
+      546,
+      537
+    ],
+    "held_steps_outside_the_envelope": [
+      0,
+      0,
+      13,
+      24,
+      0,
+      0,
+      16,
+      0,
+      0,
+      28,
+      25,
+      22,
+      0,
+      0,
+      27,
+      25,
+      0,
+      28,
+      0,
+      25,
+      0,
+      12,
+      25,
+      0,
+      32,
+      0,
+      0,
+      0,
+      0,
+      15,
+      19,
+      13
+    ],
+    "held_steps_because_the_module_refused": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "terminal_axial_target_m": [
+      0.676,
+      0.669736,
+      0.676,
+      0.669357,
+      0.676,
+      0.668984,
+      0.669331,
+      0.0,
+      0.669575,
+      0.66936,
+      0.676,
+      0.669364,
+      0.676,
+      0.676,
+      0.669938,
+      0.676,
+      0.669247,
+      0.676,
+      0.669036,
+      0.669128,
+      0.676,
+      0.676,
+      0.676,
+      0.0,
+      0.673047,
+      0.676,
+      0.669504,
+      0.676,
+      0.669412,
+      0.669574,
+      0.676,
+      0.670029
+    ],
+    "terminal_attitude_axis_angle_rad": [
+      [
+        2.1e-05,
+        -0.045754,
+        -0.001179
+      ],
+      [
+        3.4e-05,
+        -0.046332,
+        -0.001935
+      ],
+      [
+        5.8e-05,
+        -0.045754,
+        -0.002799
+      ],
+      [
+        5.5e-05,
+        -0.046379,
+        -0.002834
+      ],
+      [
+        3.3e-05,
+        -0.045754,
+        -0.001774
+      ],
+      [
+        2.9e-05,
+        -0.046408,
+        -0.001687
+      ],
+      [
+        5.3e-05,
+        -0.046382,
+        -0.002764
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        3.1e-05,
+        -0.04635,
+        -0.001535
+      ],
+      [
+        5.6e-05,
+        -0.04638,
+        -0.002752
+      ],
+      [
+        3.6e-05,
+        -0.045754,
+        -0.002108
+      ],
+      [
+        4.3e-05,
+        -0.046381,
+        -0.002357
+      ],
+      [
+        4.8e-05,
+        -0.045754,
+        -0.002469
+      ],
+      [
+        2.9e-05,
+        -0.045753,
+        -0.001567
+      ],
+      [
+        6e-05,
+        -0.046318,
+        -0.00309
+      ],
+      [
+        3e-05,
+        -0.045754,
+        -0.001598
+      ],
+      [
+        5.4e-05,
+        -0.046383,
+        -0.002573
+      ],
+      [
+        4.5e-05,
+        -0.045753,
+        -0.00225
+      ],
+      [
+        5.6e-05,
+        -0.046404,
+        -0.002718
+      ],
+      [
+        4.9e-05,
+        -0.046403,
+        -0.002617
+      ],
+      [
+        2.8e-05,
+        -0.045753,
+        -0.001806
+      ],
+      [
+        4e-05,
+        -0.045754,
+        -0.002093
+      ],
+      [
+        4e-05,
+        -0.045754,
+        -0.00208
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        5.7e-05,
+        -0.045979,
+        -0.003019
+      ],
+      [
+        3.9e-05,
+        -0.045755,
+        -0.002016
+      ],
+      [
+        3e-05,
+        -0.046356,
+        -0.001682
+      ],
+      [
+        2.5e-05,
+        -0.045753,
+        -0.001315
+      ],
+      [
+        2.5e-05,
+        -0.046363,
+        -0.001499
+      ],
+      [
+        5.4e-05,
+        -0.046356,
+        -0.00282
+      ],
+      [
+        4.9e-05,
+        -0.045754,
+        -0.002481
+      ],
+      [
+        3.3e-05,
+        -0.04631,
+        -0.001917
+      ]
+    ],
+    "reads": "advancing_steps counts control steps where the estimate was inside the envelope and the module was following; held_steps_outside_the_envelope is perception failing closed; held_steps_because_the_module_refused is the commanded target a full mating stroke ahead of a module that is not moving, which is a wedge and not a lag"
+  },
+  "insert_handoff_contract": {
+    "receiver": "guarded_robot_driven_insertion",
+    "axial_tolerance_m": 0.012,
+    "lateral_tolerance_m": 0.016633,
+    "orientation_tolerance_rad": 0.05236,
+    "note": "The tolerance is the receiving controller's own precondition. The learned policy's is its reset distribution; the guarded controller's is the bay's lead-in catch, which is what it needs to finish the job."
+  },
+  "transit_planner": {
+    "type": "cartesian_clearance_translate_then_stationary_alignment",
+    "lateral_crossing_attitude": "unconstrained_for_fixed_latch_only",
+    "physical_d6_drive_target_step_m": null,
+    "physical_d6_drive_target_range_m": null,
+    "kinematic_mount_transform_writes": false,
+    "physical_d6_translation_drive_target_writes": [],
+    "physical_d6_rotation_drive_target_writes": [],
+    "physical_d6_rotation_target_limit_deg": null,
+    "arm_joint_position_target_hold": null,
+    "stage_arm_stiffness_multiplier": null,
+    "physical_payload_stage_handoff": false,
+    "arm_mode": null,
+    "robot_or_payload_state_writes": false,
+    "destination_interface": null,
+    "rail_force_measured": null,
+    "observed_per_environment": [
+      {
+        "env": 0,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.671816,
+          -0.216131,
+          0.718148
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.088916,
+          0.003869,
+          -0.001853
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -2e-06,
+          -0.045663,
+          8.6e-05
+        ],
+        "joint_replay_stop_index": 18,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.176265,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.22453,
+          -1.258593,
+          1.754574,
+          2.758364,
+          -1.336639,
+          -1.608589
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.212761,
+          -1.136122,
+          1.578308,
+          2.797055,
+          -1.332972,
+          -1.634507
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 1,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.664807,
+          -0.218097,
+          0.720535
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.081907,
+          0.001903,
+          0.000535
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.026683,
+          -0.033411,
+          -0.00936
+        ],
+        "joint_replay_stop_index": 17,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.184709,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.218339,
+          -1.261536,
+          1.764745,
+          2.735739,
+          -1.33383,
+          -1.600355
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.226529,
+          -1.129094,
+          1.580036,
+          2.772578,
+          -1.351574,
+          -1.600994
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 2,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.674952,
+          -0.222726,
+          0.717266
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.092052,
+          -0.002726,
+          -0.002734
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          0.000149,
+          -0.041732,
+          -0.00716
+        ],
+        "joint_replay_stop_index": 17,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.177604,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.217802,
+          -1.2549,
+          1.754933,
+          2.741858,
+          -1.338844,
+          -1.599132
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.22001,
+          -1.125533,
+          1.577329,
+          2.764922,
+          -1.339213,
+          -1.597649
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 3,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.667418,
+          -0.213634,
+          0.717961
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.084518,
+          0.006366,
+          -0.002039
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          2.2e-05,
+          -0.044831,
+          -0.00099
+        ],
+        "joint_replay_stop_index": 15,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.149635,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.222777,
+          -1.264906,
+          1.765696,
+          2.746395,
+          -1.339901,
+          -1.596766
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.232782,
+          -1.165458,
+          1.616062,
+          2.807195,
+          -1.322959,
+          -1.604808
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 4,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.663108,
+          -0.220853,
+          0.718486
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.080208,
+          -0.000853,
+          -0.001514
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          0.000956,
+          -0.046069,
+          -0.010218
+        ],
+        "joint_replay_stop_index": 18,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.176845,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.225688,
+          -1.259452,
+          1.754581,
+          2.761856,
+          -1.331314,
+          -1.604992
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.211171,
+          -1.135651,
+          1.577736,
+          2.804564,
+          -1.363123,
+          -1.60746
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 5,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.661367,
+          -0.221333,
+          0.71867
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.078467,
+          -0.001333,
+          -0.00133
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.001594,
+          -0.046058,
+          -0.009675
+        ],
+        "joint_replay_stop_index": 17,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.185949,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.247152,
+          -1.266463,
+          1.766814,
+          2.749859,
+          -1.310035,
+          -1.606565
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.229399,
+          -1.136678,
+          1.580865,
+          2.797173,
+          -1.30828,
+          -1.617747
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 6,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.668817,
+          -0.219,
+          0.7198
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.085917,
+          0.001,
+          -0.0002
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.019003,
+          -0.037173,
+          0.000205
+        ],
+        "joint_replay_stop_index": 13,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.134573,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.22048,
+          -1.264083,
+          1.765799,
+          2.742662,
+          -1.338975,
+          -1.597241
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.233406,
+          -1.166107,
+          1.631226,
+          2.765301,
+          -1.342413,
+          -1.595109
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 7,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.213996,
+          0.251401,
+          1.594981
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          -0.368904,
+          0.471401,
+          0.874981
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          0.3285,
+          2.057731,
+          2.288732
+        ],
+        "joint_replay_stop_index": 0,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 2.642655,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.289268,
+          -1.042359,
+          1.568644,
+          2.642655,
+          -1.250271,
+          -1.47805
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 8,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.662721,
+          -0.222627,
+          0.719362
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.079821,
+          -0.002627,
+          -0.000638
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.010122,
+          -0.041276,
+          -0.030863
+        ],
+        "joint_replay_stop_index": 17,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.167085,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.226617,
+          -1.265987,
+          1.76395,
+          2.755365,
+          -1.343174,
+          -1.600779
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.219456,
+          -1.151272,
+          1.596865,
+          2.804921,
+          -1.351737,
+          -1.626074
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 9,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.661394,
+          -0.220234,
+          0.719549
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.078494,
+          -0.000234,
+          -0.000451
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.011911,
+          -0.040489,
+          -0.025975
+        ],
+        "joint_replay_stop_index": 17,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.184029,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.222662,
+          -1.264533,
+          1.765546,
+          2.745095,
+          -1.336883,
+          -1.599571
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.234384,
+          -1.135326,
+          1.581517,
+          2.794492,
+          -1.316982,
+          -1.59975
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 10,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.66517,
+          -0.220043,
+          0.718407
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.08227,
+          -4.3e-05,
+          -0.001593
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          5e-05,
+          -0.045755,
+          -0.002166
+        ],
+        "joint_replay_stop_index": 14,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.120024,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.220006,
+          -1.256252,
+          1.754858,
+          2.747996,
+          -1.337742,
+          -1.602432
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.228468,
+          -1.176242,
+          1.634833,
+          2.814217,
+          -1.334793,
+          -1.60261
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 11,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.664643,
+          -0.22592,
+          0.718499
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.081743,
+          -0.00592,
+          -0.001501
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          0.003453,
+          -0.045822,
+          -0.031254
+        ],
+        "joint_replay_stop_index": 14,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.139396,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.222071,
+          -1.2641,
+          1.765617,
+          2.743353,
+          -1.336941,
+          -1.598861
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.230895,
+          -1.168658,
+          1.626221,
+          2.787482,
+          -1.334395,
+          -1.600976
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 12,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.669644,
+          -0.218215,
+          0.718848
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.086744,
+          0.001785,
+          -0.001152
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.009881,
+          -0.042529,
+          -0.006909
+        ],
+        "joint_replay_stop_index": 16,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.130434,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.214084,
+          -1.255209,
+          1.754766,
+          2.743369,
+          -1.346601,
+          -1.596811
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.234045,
+          -1.170773,
+          1.624333,
+          2.800626,
+          -1.339159,
+          -1.585661
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 13,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.675375,
+          -0.223104,
+          0.720326
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.092475,
+          -0.003104,
+          0.000326
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.06082,
+          -0.03227,
+          0.000385
+        ],
+        "joint_replay_stop_index": 15,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.130385,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.212969,
+          -1.254598,
+          1.754842,
+          2.740894,
+          -1.346327,
+          -1.596721
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.242729,
+          -1.171852,
+          1.624456,
+          2.804248,
+          -1.317273,
+          -1.58751
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 14,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.662383,
+          -0.219514,
+          0.718473
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.079483,
+          0.000486,
+          -0.001527
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.000279,
+          -0.046606,
+          0.014385
+        ],
+        "joint_replay_stop_index": 16,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.151413,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.226483,
+          -1.265851,
+          1.763877,
+          2.755351,
+          -1.334118,
+          -1.598537
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.215394,
+          -1.15909,
+          1.612464,
+          2.789146,
+          -1.342087,
+          -1.569411
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 15,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.670174,
+          -0.218515,
+          0.718168
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.087274,
+          0.001485,
+          -0.001832
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          3.7e-05,
+          -0.045755,
+          -0.001616
+        ],
+        "joint_replay_stop_index": 17,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.175947,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.216257,
+          -1.255534,
+          1.755158,
+          2.743804,
+          -1.338403,
+          -1.603155
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.232588,
+          -1.134138,
+          1.579211,
+          2.79531,
+          -1.322646,
+          -1.595952
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 16,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.653824,
+          -0.222205,
+          0.718749
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.070924,
+          -0.002205,
+          -0.001251
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          0.002179,
+          -0.046827,
+          0.016805
+        ],
+        "joint_replay_stop_index": 14,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.131077,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.222004,
+          -1.264206,
+          1.765629,
+          2.743224,
+          -1.336035,
+          -1.599155
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.222125,
+          -1.166083,
+          1.634552,
+          2.775196,
+          -1.352216,
+          -1.598524
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 17,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.664485,
+          -0.219139,
+          0.718668
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.081585,
+          0.000861,
+          -0.001332
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.003297,
+          -0.045131,
+          -0.005442
+        ],
+        "joint_replay_stop_index": 17,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.169597,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.220164,
+          -1.255832,
+          1.755153,
+          2.744662,
+          -1.337392,
+          -1.60043
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.214862,
+          -1.136538,
+          1.585556,
+          2.78475,
+          -1.358599,
+          -1.600019
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 18,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.669821,
+          -0.218063,
+          0.720027
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.086921,
+          0.001937,
+          2.7e-05
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.023284,
+          -0.035463,
+          -0.004062
+        ],
+        "joint_replay_stop_index": 14,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.139052,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.225697,
+          -1.266955,
+          1.765587,
+          2.754428,
+          -1.336866,
+          -1.598661
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.218817,
+          -1.170675,
+          1.626536,
+          2.790807,
+          -1.338349,
+          -1.60421
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 19,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.669595,
+          -0.221197,
+          0.718239
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.086695,
+          -0.001197,
+          -0.001761
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          6.9e-05,
+          -0.046071,
+          -0.002981
+        ],
+        "joint_replay_stop_index": 17,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.186409,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.221893,
+          -1.264584,
+          1.766531,
+          2.742373,
+          -1.33577,
+          -1.602601
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.229638,
+          -1.136217,
+          1.580122,
+          2.802515,
+          -1.312722,
+          -1.606774
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 20,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.67466,
+          -0.219917,
+          0.718168
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.09176,
+          8.3e-05,
+          -0.001832
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          4.3e-05,
+          -0.045754,
+          -0.001841
+        ],
+        "joint_replay_stop_index": 17,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.168581,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.212139,
+          -1.254828,
+          1.754799,
+          2.742002,
+          -1.345249,
+          -1.598305
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.220416,
+          -1.137017,
+          1.586218,
+          2.790425,
+          -1.36916,
+          -1.5951
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 21,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.669834,
+          -0.221526,
+          0.718268
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.086934,
+          -0.001526,
+          -0.001732
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          0.000175,
+          -0.045933,
+          -0.007608
+        ],
+        "joint_replay_stop_index": 14,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.128177,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.216734,
+          -1.254831,
+          1.755082,
+          2.741241,
+          -1.342631,
+          -1.597607
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.236292,
+          -1.166067,
+          1.626904,
+          2.775812,
+          -1.332703,
+          -1.598273
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 22,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.673177,
+          -0.221062,
+          0.718228
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.090277,
+          -0.001062,
+          -0.001772
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          4.8e-05,
+          -0.045755,
+          -0.00209
+        ],
+        "joint_replay_stop_index": 18,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.169585,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.218146,
+          -1.255544,
+          1.755085,
+          2.743864,
+          -1.343239,
+          -1.602331
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.216207,
+          -1.142618,
+          1.5855,
+          2.807222,
+          -1.352627,
+          -1.6139
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 23,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.744412,
+          -0.002351,
+          0.728958
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.161512,
+          0.217649,
+          0.008958
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          0.032338,
+          -0.063939,
+          -0.00795
+        ],
+        "joint_replay_stop_index": 0,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 2.761365,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.21878,
+          -1.232244,
+          1.676586,
+          2.761365,
+          -1.322623,
+          -1.58615
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 24,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.670421,
+          -0.220591,
+          0.718975
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.087521,
+          -0.000591,
+          -0.001025
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.004882,
+          -0.042445,
+          -0.003537
+        ],
+        "joint_replay_stop_index": 16,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.125447,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.249983,
+          -1.259717,
+          1.758175,
+          2.751124,
+          -1.288777,
+          -1.611005
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.236484,
+          -1.161626,
+          1.632728,
+          2.76665,
+          -1.310908,
+          -1.593956
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 25,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.666276,
+          -0.220393,
+          0.718192
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.083376,
+          -0.000393,
+          -0.001808
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          4.6e-05,
+          -0.045755,
+          -0.002029
+        ],
+        "joint_replay_stop_index": 16,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.175325,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.223518,
+          -1.257788,
+          1.754376,
+          2.755806,
+          -1.337811,
+          -1.601771
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.213954,
+          -1.126789,
+          1.579051,
+          2.763477,
+          -1.326772,
+          -1.60403
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 26,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.659565,
+          -0.220259,
+          0.718191
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.076665,
+          -0.000259,
+          -0.001809
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.000151,
+          -0.045856,
+          0.006578
+        ],
+        "joint_replay_stop_index": 17,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.171548,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.237496,
+          -1.265526,
+          1.765016,
+          2.751058,
+          -1.31689,
+          -1.607229
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.221977,
+          -1.153162,
+          1.593468,
+          2.823083,
+          -1.33248,
+          -1.625335
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 27,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.674634,
+          -0.219655,
+          0.720254
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.091734,
+          0.000345,
+          0.000254
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.032567,
+          -0.034526,
+          -0.000686
+        ],
+        "joint_replay_stop_index": 16,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.167999,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.210571,
+          -1.253999,
+          1.754712,
+          2.73851,
+          -1.347472,
+          -1.596929
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.229474,
+          -1.139494,
+          1.586712,
+          2.79749,
+          -1.344676,
+          -1.58998
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 28,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.656326,
+          -0.22096,
+          0.717738
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.073426,
+          -0.00096,
+          -0.002262
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          5.4e-05,
+          -0.043837,
+          -0.002443
+        ],
+        "joint_replay_stop_index": 16,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.147778,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.236674,
+          -1.264176,
+          1.765076,
+          2.745773,
+          -1.317069,
+          -1.60564
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.217191,
+          -1.165119,
+          1.617298,
+          2.799157,
+          -1.348206,
+          -1.608675
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 29,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.660122,
+          -0.220049,
+          0.719091
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.077222,
+          -4.9e-05,
+          -0.000909
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.005956,
+          -0.043788,
+          0.005824
+        ],
+        "joint_replay_stop_index": 14,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.134717,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.218665,
+          -1.263074,
+          1.765156,
+          2.741183,
+          -1.337037,
+          -1.599122
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.235333,
+          -1.175094,
+          1.630438,
+          2.803384,
+          -1.324741,
+          -1.59985
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 30,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.67534,
+          -0.220322,
+          0.718168
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.09244,
+          -0.000322,
+          -0.001832
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          5.7e-05,
+          -0.045755,
+          -0.002484
+        ],
+        "joint_replay_stop_index": 14,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.126652,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.218047,
+          -1.256117,
+          1.755095,
+          2.74652,
+          -1.342205,
+          -1.598526
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.223277,
+          -1.157542,
+          1.628443,
+          2.748989,
+          -1.358117,
+          -1.592987
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      },
+      {
+        "env": 31,
+        "rail_commanded_control_steps": 0,
+        "rail_terminal_drive_target_m": 0.0,
+        "rail_goal_drive_target_m": 0.0,
+        "stage_terminal_drive_target_xyz_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_terminal_rotation_drive_target_xyz_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_engaged": false,
+        "payload_stage_control_steps": 0,
+        "payload_stage_last_staging_error_world_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "payload_stage_last_staging_error_stage_frame_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stage_retreat_done": false,
+        "stage_lateral_done": false,
+        "stage_attitude_done": false,
+        "stage_pose_staged": false,
+        "stage_aligned": false,
+        "stage_aligning": false,
+        "terminal_waypoint_read": 0,
+        "terminal_driver_phase": "done",
+        "terminal_blade_position_xyz_m": [
+          0.658839,
+          -0.21981,
+          0.720024
+        ],
+        "terminal_staging_position_error_xyz_m": [
+          0.075939,
+          0.00019,
+          2.4e-05
+        ],
+        "terminal_staging_orientation_error_axis_angle_rad": [
+          -0.016433,
+          -0.038172,
+          0.000276
+        ],
+        "joint_replay_stop_index": 16,
+        "joint_replay_terminal_index": 0,
+        "joint_replay_control_steps": 0,
+        "joint_replay_terminal_max_joint_error_rad": 0.136674,
+        "joint_replay_terminal_current_joints_rad": [
+          -0.214567,
+          -1.262835,
+          1.764062,
+          2.74328,
+          -1.335504,
+          -1.604218
+        ],
+        "joint_replay_terminal_target_joints_rad": [
+          -0.232301,
+          -1.176162,
+          1.627388,
+          2.809981,
+          -1.349045,
+          -1.607739
+        ],
+        "max_mount_translation_deflection_m": 0.0,
+        "max_mount_translation_axis_m": 0.0,
+        "max_mount_rotation_axis_rad": 0.0,
+        "max_payload_stage_tracking_error_norm_m": 0.0,
+        "max_payload_stage_tracking_error_axis_m": 0.0,
+        "max_payload_stage_rotation_from_capture_axis_rad": 0.0
+      }
+    ]
+  },
+  "success_definition": "the workflow's own condition re-checked after a 0.70 s settling window, not the instant a predicate fired",
+  "capture_interface": {
+    "type": "break_rated_fixed_joint",
+    "engagement": "after_rail_release",
+    "rated_force_n": 1000000.0,
+    "rated_torque_nm": 1000000.0,
+    "position_stiffness_n_per_m": null,
+    "position_damping_ratio": null,
+    "rotation_stiffness_nm_per_rad": null,
+    "rotation_damping_ratio": null,
+    "reaction_wrench_on_robot_modelled": true,
+    "states": [
+      "rigid_for_transport",
+      "compliant_for_mating",
+      "released_after_seating"
+    ],
+    "mating_mode": "compliant",
+    "mating_compliance_n_per_m": 40000.0,
+    "mating_compliance_nm_per_rad": 20000.0,
+    "mating_stroke_m": 0.025,
+    "mating_force_cap_n": 1000.0,
+    "destination_channel_relief_m": 0.004613,
+    "load_measurement": "break_threshold_only_reaction_magnitude_not_exposed",
+    "observed_per_environment": [
+      {
+        "env": 0,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 377,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 1874,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 2443,
+        "released_at_driver_step": 2422,
+        "carriage_seek_travel_m": 0.01185,
+        "guarded_advance_steps": 549,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          2.1e-05,
+          -0.045754,
+          -0.001179
+        ],
+        "guarded_terminal_target_x_m": 0.676,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.00023,
+        "max_relative_orientation_error_rad": 0.000792,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 1,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 353,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 695,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 1252,
+        "released_at_driver_step": 1231,
+        "carriage_seek_travel_m": 0.011837,
+        "guarded_advance_steps": 537,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          3.4e-05,
+          -0.046332,
+          -0.001935
+        ],
+        "guarded_terminal_target_x_m": 0.669736,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000193,
+        "max_relative_orientation_error_rad": 0.00058,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 2,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 321,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 664,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 1242,
+        "released_at_driver_step": 1221,
+        "carriage_seek_travel_m": 0.011965,
+        "guarded_advance_steps": 545,
+        "guarded_hold_steps": 13,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          5.8e-05,
+          -0.045754,
+          -0.002799
+        ],
+        "guarded_terminal_target_x_m": 0.676,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000206,
+        "max_relative_orientation_error_rad": 0.00075,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 3,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 340,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 2994,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 3575,
+        "released_at_driver_step": 3554,
+        "carriage_seek_travel_m": 0.011969,
+        "guarded_advance_steps": 537,
+        "guarded_hold_steps": 24,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          5.5e-05,
+          -0.046379,
+          -0.002834
+        ],
+        "guarded_terminal_target_x_m": 0.669357,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000209,
+        "max_relative_orientation_error_rad": 0.000962,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 4,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 375,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 3028,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 3597,
+        "released_at_driver_step": 3576,
+        "carriage_seek_travel_m": 0.011842,
+        "guarded_advance_steps": 549,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          3.3e-05,
+          -0.045754,
+          -0.001774
+        ],
+        "guarded_terminal_target_x_m": 0.676,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000215,
+        "max_relative_orientation_error_rad": 0.000861,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 5,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 307,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 2948,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 3506,
+        "released_at_driver_step": 3485,
+        "carriage_seek_travel_m": 0.011813,
+        "guarded_advance_steps": 538,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          2.9e-05,
+          -0.046408,
+          -0.001687
+        ],
+        "guarded_terminal_target_x_m": 0.668984,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000229,
+        "max_relative_orientation_error_rad": 0.000725,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 6,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 316,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 1799,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 2372,
+        "released_at_driver_step": 2351,
+        "carriage_seek_travel_m": 0.011953,
+        "guarded_advance_steps": 537,
+        "guarded_hold_steps": 16,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          5.3e-05,
+          -0.046382,
+          -0.002764
+        ],
+        "guarded_terminal_target_x_m": 0.669331,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000228,
+        "max_relative_orientation_error_rad": 0.000956,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 7,
+        "ever_engaged": false,
+        "first_engagement_episode_step": null,
+        "softened_for_mating": false,
+        "softened_at_driver_step": null,
+        "released_after_seating": false,
+        "hand_opened_after_settling_verification": false,
+        "hand_opened_at_driver_step": null,
+        "released_at_driver_step": null,
+        "carriage_seek_travel_m": 0.0,
+        "guarded_advance_steps": 0,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "guarded_terminal_target_x_m": 0.0,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.0,
+        "max_relative_orientation_error_rad": 0.0,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 8,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 348,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 3003,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 3561,
+        "released_at_driver_step": 3540,
+        "carriage_seek_travel_m": 0.011735,
+        "guarded_advance_steps": 538,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          3.1e-05,
+          -0.04635,
+          -0.001535
+        ],
+        "guarded_terminal_target_x_m": 0.669575,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000213,
+        "max_relative_orientation_error_rad": 0.000803,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 9,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 319,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 2973,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 3558,
+        "released_at_driver_step": 3537,
+        "carriage_seek_travel_m": 0.012048,
+        "guarded_advance_steps": 537,
+        "guarded_hold_steps": 28,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          5.6e-05,
+          -0.04638,
+          -0.002752
+        ],
+        "guarded_terminal_target_x_m": 0.66936,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000215,
+        "max_relative_orientation_error_rad": 0.000859,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 10,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 356,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 3010,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 3604,
+        "released_at_driver_step": 3583,
+        "carriage_seek_travel_m": 0.011992,
+        "guarded_advance_steps": 549,
+        "guarded_hold_steps": 25,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          3.6e-05,
+          -0.045754,
+          -0.002108
+        ],
+        "guarded_terminal_target_x_m": 0.676,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000248,
+        "max_relative_orientation_error_rad": 0.000889,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 11,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 331,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 2985,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 3564,
+        "released_at_driver_step": 3543,
+        "carriage_seek_travel_m": 0.011974,
+        "guarded_advance_steps": 537,
+        "guarded_hold_steps": 22,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          4.3e-05,
+          -0.046381,
+          -0.002357
+        ],
+        "guarded_terminal_target_x_m": 0.669364,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.00023,
+        "max_relative_orientation_error_rad": 0.000841,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 12,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 329,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 1809,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 2377,
+        "released_at_driver_step": 2356,
+        "carriage_seek_travel_m": 0.01193,
+        "guarded_advance_steps": 548,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          4.8e-05,
+          -0.045754,
+          -0.002469
+        ],
+        "guarded_terminal_target_x_m": 0.676,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000217,
+        "max_relative_orientation_error_rad": 0.000795,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 13,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 349,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 694,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 1262,
+        "released_at_driver_step": 1241,
+        "carriage_seek_travel_m": 0.011932,
+        "guarded_advance_steps": 548,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          2.9e-05,
+          -0.045753,
+          -0.001567
+        ],
+        "guarded_terminal_target_x_m": 0.676,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000213,
+        "max_relative_orientation_error_rad": 0.000714,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 14,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 371,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 3026,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 3611,
+        "released_at_driver_step": 3590,
+        "carriage_seek_travel_m": 0.011801,
+        "guarded_advance_steps": 538,
+        "guarded_hold_steps": 27,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          6e-05,
+          -0.046318,
+          -0.00309
+        ],
+        "guarded_terminal_target_x_m": 0.669938,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000186,
+        "max_relative_orientation_error_rad": 0.000866,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 15,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 366,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 718,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 1311,
+        "released_at_driver_step": 1290,
+        "carriage_seek_travel_m": 0.01197,
+        "guarded_advance_steps": 548,
+        "guarded_hold_steps": 25,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          3e-05,
+          -0.045754,
+          -0.001598
+        ],
+        "guarded_terminal_target_x_m": 0.676,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000251,
+        "max_relative_orientation_error_rad": 0.000799,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 16,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 323,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 676,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 1233,
+        "released_at_driver_step": 1212,
+        "carriage_seek_travel_m": 0.011956,
+        "guarded_advance_steps": 537,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          5.4e-05,
+          -0.046383,
+          -0.002573
+        ],
+        "guarded_terminal_target_x_m": 0.669247,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000253,
+        "max_relative_orientation_error_rad": 0.000796,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 17,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 316,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 1798,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 2395,
+        "released_at_driver_step": 2374,
+        "carriage_seek_travel_m": 0.012018,
+        "guarded_advance_steps": 549,
+        "guarded_hold_steps": 28,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          4.5e-05,
+          -0.045753,
+          -0.00225
+        ],
+        "guarded_terminal_target_x_m": 0.676,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000234,
+        "max_relative_orientation_error_rad": 0.000852,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 18,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 341,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 2996,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 3553,
+        "released_at_driver_step": 3532,
+        "carriage_seek_travel_m": 0.011778,
+        "guarded_advance_steps": 537,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          5.6e-05,
+          -0.046404,
+          -0.002718
+        ],
+        "guarded_terminal_target_x_m": 0.669036,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000197,
+        "max_relative_orientation_error_rad": 0.000918,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 19,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 327,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 1814,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 2396,
+        "released_at_driver_step": 2375,
+        "carriage_seek_travel_m": 0.011977,
+        "guarded_advance_steps": 537,
+        "guarded_hold_steps": 25,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          4.9e-05,
+          -0.046403,
+          -0.002617
+        ],
+        "guarded_terminal_target_x_m": 0.669128,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000216,
+        "max_relative_orientation_error_rad": 0.000819,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 20,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 355,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 702,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 1270,
+        "released_at_driver_step": 1249,
+        "carriage_seek_travel_m": 0.01193,
+        "guarded_advance_steps": 548,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          2.8e-05,
+          -0.045753,
+          -0.001806
+        ],
+        "guarded_terminal_target_x_m": 0.676,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000223,
+        "max_relative_orientation_error_rad": 0.000785,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 21,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 339,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 683,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 1261,
+        "released_at_driver_step": 1240,
+        "carriage_seek_travel_m": 0.011924,
+        "guarded_advance_steps": 546,
+        "guarded_hold_steps": 12,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          4e-05,
+          -0.045754,
+          -0.002093
+        ],
+        "guarded_terminal_target_x_m": 0.676,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000195,
+        "max_relative_orientation_error_rad": 0.000772,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 22,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 426,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 773,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 1367,
+        "released_at_driver_step": 1346,
+        "carriage_seek_travel_m": 0.01202,
+        "guarded_advance_steps": 549,
+        "guarded_hold_steps": 25,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          4e-05,
+          -0.045754,
+          -0.00208
+        ],
+        "guarded_terminal_target_x_m": 0.676,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000227,
+        "max_relative_orientation_error_rad": 0.000805,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 23,
+        "ever_engaged": false,
+        "first_engagement_episode_step": null,
+        "softened_for_mating": false,
+        "softened_at_driver_step": null,
+        "released_after_seating": false,
+        "hand_opened_after_settling_verification": false,
+        "hand_opened_at_driver_step": null,
+        "released_at_driver_step": null,
+        "carriage_seek_travel_m": 0.0,
+        "guarded_advance_steps": 0,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "guarded_terminal_target_x_m": 0.0,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.0,
+        "max_relative_orientation_error_rad": 0.0,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 24,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 322,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 2962,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 3556,
+        "released_at_driver_step": 3535,
+        "carriage_seek_travel_m": 0.011774,
+        "guarded_advance_steps": 542,
+        "guarded_hold_steps": 32,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          5.7e-05,
+          -0.045979,
+          -0.003019
+        ],
+        "guarded_terminal_target_x_m": 0.673047,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000204,
+        "max_relative_orientation_error_rad": 0.000571,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 25,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 357,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 3011,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 3580,
+        "released_at_driver_step": 3559,
+        "carriage_seek_travel_m": 0.01174,
+        "guarded_advance_steps": 549,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          3.9e-05,
+          -0.045755,
+          -0.002016
+        ],
+        "guarded_terminal_target_x_m": 0.676,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000224,
+        "max_relative_orientation_error_rad": 0.00089,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 26,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 334,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 2980,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 3538,
+        "released_at_driver_step": 3517,
+        "carriage_seek_travel_m": 0.011853,
+        "guarded_advance_steps": 538,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          3e-05,
+          -0.046356,
+          -0.001682
+        ],
+        "guarded_terminal_target_x_m": 0.669504,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000223,
+        "max_relative_orientation_error_rad": 0.000753,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 27,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 340,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 683,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 1251,
+        "released_at_driver_step": 1230,
+        "carriage_seek_travel_m": 0.011901,
+        "guarded_advance_steps": 548,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          2.5e-05,
+          -0.045753,
+          -0.001315
+        ],
+        "guarded_terminal_target_x_m": 0.676,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000197,
+        "max_relative_orientation_error_rad": 0.000645,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 28,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 378,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 3025,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 3583,
+        "released_at_driver_step": 3562,
+        "carriage_seek_travel_m": 0.01174,
+        "guarded_advance_steps": 538,
+        "guarded_hold_steps": 0,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          2.5e-05,
+          -0.046363,
+          -0.001499
+        ],
+        "guarded_terminal_target_x_m": 0.669412,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000159,
+        "max_relative_orientation_error_rad": 0.000683,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 29,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 331,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 1811,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 2383,
+        "released_at_driver_step": 2362,
+        "carriage_seek_travel_m": 0.01192,
+        "guarded_advance_steps": 537,
+        "guarded_hold_steps": 15,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          5.4e-05,
+          -0.046356,
+          -0.00282
+        ],
+        "guarded_terminal_target_x_m": 0.669574,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000202,
+        "max_relative_orientation_error_rad": 0.000714,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 30,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 282,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 1766,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 2351,
+        "released_at_driver_step": 2330,
+        "carriage_seek_travel_m": 0.011999,
+        "guarded_advance_steps": 546,
+        "guarded_hold_steps": 19,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          4.9e-05,
+          -0.045754,
+          -0.002481
+        ],
+        "guarded_terminal_target_x_m": 0.676,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000226,
+        "max_relative_orientation_error_rad": 0.00093,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      },
+      {
+        "env": 31,
+        "ever_engaged": true,
+        "first_engagement_episode_step": 363,
+        "softened_for_mating": true,
+        "softened_at_driver_step": 706,
+        "released_after_seating": true,
+        "hand_opened_after_settling_verification": true,
+        "hand_opened_at_driver_step": 1276,
+        "released_at_driver_step": 1255,
+        "carriage_seek_travel_m": 0.011795,
+        "guarded_advance_steps": 537,
+        "guarded_hold_steps": 13,
+        "guarded_stall_steps": 0,
+        "guarded_terminal_attitude_axis_angle_rad": [
+          3.3e-05,
+          -0.04631,
+          -0.001917
+        ],
+        "guarded_terminal_target_x_m": 0.670029,
+        "engagements_refused_out_of_seek_travel": 0,
+        "max_relative_position_error_m": 0.000182,
+        "max_relative_orientation_error_rad": 0.000699,
+        "max_applied_force_n": null,
+        "max_applied_torque_nm": null,
+        "force_saturated": null,
+        "torque_saturated": null,
+        "force_saturation_control_steps": null,
+        "torque_saturation_control_steps": null
+      }
+    ]
+  },
+  "reached_phase": "done",
+  "timeline": [],
+  "final": {
+    "axial_error_m": 0.004184,
+    "lateral_error_m": 0.004289,
+    "orientation_error_rad": 0.045663,
+    "grip_error_m": 0.013377,
+    "grip_attitude_rad": 0.066131,
+    "blade_centre_x_m": 0.671816
+  },
+  "insertion_conditions": {
+    "axial_depth": true,
+    "lateral_alignment": false,
+    "orientation": true,
+    "linear_velocity": true,
+    "angular_velocity": true,
+    "grasp_position": true,
+    "grasp_orientation": true
+  },
+  "predicate_fired": true,
+  "completed": true,
+  "seated_conditions_still_held_after_settling": true,
+  "all_conditions_including_released_gripper": true,
+  "conditions_still_held_after_settling": true
+}
