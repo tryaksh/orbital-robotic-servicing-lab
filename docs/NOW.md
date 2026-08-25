@@ -47,6 +47,15 @@ The two befores are preserved, because a before is what makes an after mean
 anything: 31.25% (`workflow_robot_carried_relocate_certification.json`), then
 96.88% (`workflow_robot_carried_m130_guarded_certification.json`).
 
+> **Provenance caveat, and it applies to every number on this page.** This run —
+> like all nine reports that record source hashes — was produced on **uncommitted
+> working-tree code**. Four of its six recorded `runtime_source_bindings` match no
+> commit in the repository's 266-commit history. The run happened and the episodes
+> are the episodes, but it **cannot be reproduced from this repository**, and
+> nobody can say what differed. Verify with
+> `python scripts/check_source_provenance.py --depth 200`. Closing this is
+> `NEXT_WORK.md` **T0**, ahead of everything else.
+
 ### Skills
 
 Three curriculum stages on each of three held-out seeds, 500 episodes a point.
@@ -144,6 +153,10 @@ Every item below is a bounded task in [`NEXT_WORK.md`](NEXT_WORK.md), with
 evidence, reproduction path, acceptance gate and expected compute. Summarised
 here so this file stays the one place the state is described:
 
+- **No certification is reproducible from committed code.** All nine reports that
+  record source hashes were produced on uncommitted working-tree state, across
+  three sessions. This does not make a number wrong; it makes it uncheckable
+  (T0, and it outranks the rest).
 - The chain is certified on the state task and perception on rendered frames, and
   the two have never been combined at scale — **the highest-value missing
   measurement** (T1).
@@ -214,8 +227,9 @@ scripts/sweep_chain_robustness.sh && python scripts/report_chain_robustness.py
 # Geometry, no simulator, about a second.
 python scripts/check_workcell_geometry.py
 
-# Is any published number stale? Both halves of the question.
-python scripts/check_criterion_currency.py      # did the criterion move under it
+# Is any published number stale, and can it still be reproduced?
+python scripts/check_criterion_currency.py         # did the criterion move under it
+python scripts/check_source_provenance.py --depth 200  # do the source bytes still exist
 python scripts/build_evidence_manifest.py --check
 ```
 

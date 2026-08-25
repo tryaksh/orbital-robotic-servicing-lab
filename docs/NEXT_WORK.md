@@ -1,7 +1,8 @@
 # Next work
 
 Every known weakness, exposed defect, unverified assumption and scalability
-limit in this repository, as a bounded task. Prioritised: **T1 first.**
+limit in this repository, as a bounded task. Prioritised: **T0 first** — it is
+about whether any of the other numbers can be checked at all.
 
 Each task states the evidence it starts from, the code it touches, how to run
 it, what would count as done, and roughly what it costs. Read
@@ -21,9 +22,93 @@ training runs do not.
 
 ---
 
+## T0 — No certification is reproducible from committed code
+
+**Found by this audit, and it outranks everything below it, because it is about
+whether the other numbers can be checked at all.**
+
+**Where it stands.** Nine reports record `runtime_source_bindings`: the SHA-256 of
+each source file *as it was on disk when the run happened*. That is a strong
+provenance record, and nothing had ever verified it. Verified now, against 200 of
+this repository's 266 commits:
+
+```
+9 reports carry source bindings; 9 cannot be fully recovered from git.
+```
+
+Every one. Including `robot_carried_full_chain_pin.json`, the single end-to-end
+run of the chain that carries the headline 97.92%. For the pooled certification,
+four of the six recorded bindings — `run_workflow_demo.py` (the chain driver,
+which owns the phase budgets and the settled re-check), `fiducial.py`,
+`perception.py`, `scene_cfg.py` and `grapple_pin_env_cfg.py` — match **no commit
+in the repository's history**. Only `assets.py` does.
+
+All three certified seeds agree on the same source hashes and on the same
+`policy_set_sha256`, so this is genuinely the certified state and not a mislabelled
+artifact.
+
+**Read this precisely.** It does **not** mean 97.92% is wrong. The run happened,
+the episodes are the episodes, and the arithmetic is unchanged. It means the run
+is **not reproducible from this repository**, and nobody can say what differed
+between the code that produced the number and the code that is committed.
+
+**And the difference is not safely assumed cosmetic.** The natural hypothesis is
+that the previous session ran its measurements and then wrote explanatory comments
+before committing — this repository comments heavily. But the commit that followed
+the certification, `7b3e719`, changed `FIDUCIAL_TAG_CENTER_M` from
+`(0.0, -0.015, 0.100)` to a flush top-face plate and changed
+`FIDUCIAL_TAG_SIZE_M`. Those are geometry constants, not commentary. The chain's
+pooled number runs on the *state* task, where the module pose comes from the
+simulator and the fiducial plate is not in the measurement path, so that
+particular change is very likely irrelevant to the 97.92% — but "very likely
+irrelevant" is an assumption, and this project's rules exist because assumptions
+of that shape have been wrong five times.
+
+**This is systemic, not one lapse.** All nine reports fail, across three sessions.
+The working habit — measure, then write up and commit — guarantees the committed
+bytes differ from the measured bytes every time. The provenance field has been
+recorded faithfully and has never been usable.
+
+**Code.** `scripts/check_source_provenance.py` (new, this audit) is the checker.
+It classifies each binding `recovered` / `working` / `lost`, handles the
+CRLF-versus-LF difference between a Windows checkout and git's storage, and proves
+that conversion on every binding that does match.
+
+**Run it.**
+
+```bash
+python scripts/check_source_provenance.py --depth 200
+```
+
+**Recommended action, in order.**
+
+1. **Change the habit, cheaply.** Commit the code *before* running a
+   certification. Nothing else in this list is worth anything until a number can
+   be tied to a commit.
+2. **Record the anchor in the report.** Have `run_workflow_demo.py` write
+   `git rev-parse HEAD` and the dirty/clean status alongside
+   `runtime_source_bindings`. A hash that matches nothing is a puzzle; a commit
+   SHA plus "working tree dirty" is an answer. This is additive report metadata
+   and cannot move a number — but it edits the chain driver, so it was left as a
+   task rather than done mid-audit without a GPU to test it.
+3. **Re-run the chain certification on committed HEAD** and publish it beside the
+   current one. If it reproduces 97.92% within its Wilson interval, the provenance
+   gap is closed and the number is confirmed. If it does not, that is a finding
+   and the difference must be published, not reconciled.
+
+**Done when.** `check_source_provenance.py` reports `recovered` for the chain's
+certification, and the driver records a commit SHA so the next one cannot drift.
+
+**Cost.** Steps 1 and 2 are minutes and CPU only. Step 3 is one certification
+batch — the same cost as the run being reproduced, and **naturally combined with
+T1**, which re-runs the chain anyway.
+
+---
+
 ## T1 — Certify the chain on the vision task
 
-**The highest-value missing measurement in the project.**
+**The highest-value missing *measurement* in the project** (T0 outranks it as a
+matter of provenance, not of measurement).
 
 **Where it stands.** The pooled 97.92% runs on
 `Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0`, the *state* task: the module
