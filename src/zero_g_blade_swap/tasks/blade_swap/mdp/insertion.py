@@ -389,6 +389,7 @@ def reset_insertion_joints(
     noise_by_stage: tuple[float, ...] = (0.001, 0.002, 0.004),
     poses_by_stage: tuple[tuple[float, ...], ...] = INSERTION_STAGE_ARM_JOINT_POS,
     pose_bank: tuple[tuple[float, ...], ...] | None = None,
+    max_tool_offset_m: float | None = None,
 ) -> None:
     """Reset around the collision-free near-slot pose with curriculum noise.
 
@@ -409,6 +410,30 @@ def reset_insertion_joints(
 
     ``None`` keeps the nominal-plus-noise behaviour exactly, so the three
     promoted insertion certifications describe the reset still in the file.
+
+    ``max_tool_offset_m`` bounds how far the noise may move the **tool**, and it
+    is the difference between a hard initial condition and an impossible one.
+
+    A joint-space box does not map to a bounded grip error. Measured on extract
+    v17m130 at curriculum stage 2, whose box is 0.020 rad: 202 of 513 episodes
+    end within three control steps with the tool a median of 17.4 mm across the
+    pin and a 95th percentile of 47.5 mm, and the pin never fed -- the pads
+    closed on nothing and the policy never acted. Conditional on surviving the
+    reset the same policy scores 83.6%. The certification was measuring the
+    reset.
+
+    The bound is not a chosen tolerance. It is
+    ``WORKFLOW_HANDOVER_GRIP_M``, the grip error the *chain* requires before it
+    will hand a captured module to the next skill and the tolerance the capture
+    skill's own success predicate is written against. An episode that starts
+    outside it is not an extraction this workflow can ever ask for, because the
+    capture phase would still be servoing.
+
+    The noise **direction** is untouched -- only its length is scaled, and only
+    where it would have exceeded the bound -- so the joint-space diversity the
+    stages exist to provide is preserved and what changes is that every drawn
+    state is one a capture could have produced. Two Newton steps on a map that
+    is near-linear over a few hundredths of a radian.
     """
 
     ids = torch.arange(env.num_envs, device=env.device) if env_ids is None else env_ids
@@ -426,6 +451,15 @@ def reset_insertion_joints(
         drawn = torch.randint(bank.shape[0], (len(ids),), device=env.device)
         nominal = bank[drawn]
     noise = (2.0 * torch.rand_like(nominal) - 1.0) * stage_noise.unsqueeze(-1)
+    if max_tool_offset_m is not None:
+        from zero_g_blade_swap.arm_kinematics import batched_tool_pose
+
+        anchor, _ = batched_tool_pose(nominal.to(torch.float64))
+        for _ in range(2):
+            moved, _ = batched_tool_pose((nominal + noise).to(torch.float64))
+            offset = torch.linalg.vector_norm(moved - anchor, dim=-1)
+            scale = (max_tool_offset_m / offset.clamp_min(1.0e-12)).clamp(max=1.0)
+            noise = noise * scale.to(noise.dtype).unsqueeze(-1)
     position = nominal + noise
     velocity = torch.zeros_like(position)
     robot.write_joint_state_to_sim(position, velocity, joint_ids=asset_cfg.joint_ids, env_ids=ids)
@@ -483,11 +517,30 @@ def reset_contact_gripper(
     robot.set_joint_position_target(targets, joint_ids=asset_cfg.joint_ids, env_ids=ids)
 
 
-def insertion_progress_reward(env, command_name: str = "insertion_goal") -> torch.Tensor:
-    """Potential improvement; standing still earns exactly zero before time cost."""
+def insertion_progress_reward(
+    env,
+    command_name: str = "insertion_goal",
+    axial_scale: float = 0.20,
+    lateral_weight: float = 2.0,
+    orientation_weight: float = 0.5,
+) -> torch.Tensor:
+    """Potential improvement; standing still earns exactly zero before time cost.
+
+    The three weights are parameters because the balance between them is a
+    property of the *stroke*, not of insertion in general, and the defaults were
+    set against a 167 mm one.
+
+    Measured on the grapple insert task once its reset spanned the real 529 mm
+    stroke: with the defaults, one control step of axial progress at that task's
+    own action scale moves this cost by 0.02 while a millimetre of lateral
+    jitter -- well inside the channel's own 12.7 mm of play -- moves it by 0.133.
+    The signal that says "go in" was six times smaller than the noise that says
+    "wobble". Certified over 2,403 episodes the policy ended a median of 176 mm
+    short with 20.7 mm of lateral error, having used every step of its clock.
+    """
 
     axial, lateral, orientation = _errors(env, command_name)
-    cost = axial / 0.20 + 2.0 * lateral / 0.015 + 0.5 * orientation / 0.20
+    cost = axial / axial_scale + lateral_weight * lateral / 0.015 + orientation_weight * orientation / 0.20
     previous = getattr(env, "_insertion_previous_cost", None)
     valid = getattr(env, "_insertion_previous_valid", None)
     reward = getattr(env, "_insertion_progress_reward", None)
@@ -543,9 +596,28 @@ def insertion_distance_reward(env, command_name: str = "insertion_goal") -> torc
     return torch.exp(-axial / 0.08 - lateral / 0.010 - orientation / 0.15)
 
 
-def insertion_misalignment_penalty(env, command_name: str = "insertion_goal") -> torch.Tensor:
+def insertion_misalignment_penalty(
+    env,
+    command_name: str = "insertion_goal",
+    engage_m: float = 0.22,
+) -> torch.Tensor:
+    """Charge lateral and angular error while the module is near its channel.
+
+    ``engage_m`` is where the module starts having to be aligned rather than
+    merely close, and it belongs to the rack. The default was set when an
+    insertion began 167 mm out; a stroke that begins at the mouth has to be
+    aligned over all of it, because the lead-in can only walk a module that
+    arrives inside its catch.
+
+    This term is the only continuous pressure toward alignment in the objective.
+    The progress term is potential-based, so a policy that reaches a mediocre
+    alignment and stops is charged nothing more by it -- which is exactly what
+    was measured: 20.7 mm of lateral error against a 2.5 mm success tolerance,
+    held steady for the whole episode.
+    """
+
     axial, lateral, orientation = _errors(env, command_name)
-    near_rack = (axial < 0.22).to(torch.float32)
+    near_rack = (axial < engage_m).to(torch.float32)
     return near_rack * (torch.square(lateral / 0.010) + 0.25 * torch.square(orientation / 0.15))
 
 

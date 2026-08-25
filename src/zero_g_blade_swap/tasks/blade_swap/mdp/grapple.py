@@ -45,6 +45,10 @@ from zero_g_blade_swap.grapple_geometry import (
     GRAPPLE_HEAD_ON_TOOL_ROT,
     GRAPPLE_PIN_COLLAR_X,
     GRAPPLE_PIN_GRIP_OFFSET,
+    GRIP_MAX_APPROACH_BACKOUT_M,
+    GRIP_MAX_APPROACH_FEED_M,
+    GRIP_MAX_TRANSVERSE_M,
+    GRIP_SEATED_APPROACH_OFFSET_M,
     SLOT_MOUTH_X,
 )
 from zero_g_blade_swap.tasks.blade_swap.assets import (
@@ -964,6 +968,80 @@ def grapple_grip_attitude_axes(env) -> torch.Tensor:
     return axis_angle_from_quat(relative).abs()
 
 
+def grapple_grip_offset_axes(env) -> torch.Tensor:
+    """Decompose the tool-to-grip *offset* into the tool's own three axes.
+
+    ``grapple_grip_error_metrics`` reports the magnitude, and the magnitude
+    cannot say what kind of grip loss an episode died of. The pads straddle the
+    wedge across the closing axis and slide along the approach axis, so a
+    residual that is mostly approach is the pads walking along the pin and a
+    residual that is mostly closing or transverse is the module swinging off the
+    pin's axis. Those two have different fixes and the certified column set
+    cannot tell them apart.
+
+    Returns one row per environment as ``(closing, third, approach)``, signed,
+    matching :func:`grapple_grip_attitude_axes`'s convention.
+    """
+
+    vector, _ = grapple_grip_pose_error(env)
+    _, tool_orientation = end_effector_pose_world(env)
+    return quat_apply(quat_inv(tool_orientation), vector)
+
+
+def pin_grip_residuals(env, margin: float = 1.0) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return how far outside the pin's own bounds the grip is, in metres.
+
+    Two numbers per environment, both zero while the grip is inside the bounds
+    ``zero_g_blade_swap.grapple_geometry`` derives from the pin: how far the
+    transverse offset exceeds half a pad width, and how far the offset along the
+    pin lies outside the band between half the wedge fed in and the collar.
+
+    **Why this replaces an isotropic ball.** A tapered pin holds by feeding
+    thicker material between the pads as the module lags the tool. That feed is
+    the load path working -- it is the difference between about 6 N of axial
+    capacity and 77 N -- and it moves the tool 12.0 mm along the pin from the
+    drawing pose every time a pull takes load, measured over 433 successful
+    extractions in a band 0.8 mm wide. Both grip criteria in this project
+    measured the *distance* from the drawing pose, so 12 of the 20 mm that
+    counts as captured and 12 of the 30 mm that counts as dropped were spent
+    before the policy acted, isotropically, in whichever direction happened to
+    consume them.
+
+    Measured on extract v17m130 at stage 0: 50 of 79 failures ended on that ball
+    with 79% of the error energy along the pin and the module 14.7 mm into a
+    525 mm pull. That is the pin seating at the first load transfer being
+    reported as a dropped module. The same run on the cross-section the policy
+    was certified on -- the only thing changed -- loses one episode that way in
+    512, because a module the rails still hold cannot cock in its channel while
+    the pull takes hold.
+
+    Resolved onto the pin's axes the bounds are tighter where it matters: half a
+    pad width across the pin, against 30 mm before, and 5 mm of back-out against
+    the collar, against 30 mm before.
+    """
+
+    offsets = grapple_grip_offset_axes(env)
+    transverse = torch.linalg.vector_norm(offsets[:, :2], dim=-1)
+    approach = offsets[:, 2]
+    # ``margin`` shrinks the bounds toward the seated pose so a reward term can
+    # charge for approaching the edge rather than only for crossing it. The
+    # predicate uses 1.0 and the reward a fraction of it, which is what keeps a
+    # dense term from being a cliff at the exact line the episode dies on.
+    seated = GRIP_SEATED_APPROACH_OFFSET_M
+    feed = seated + margin * (GRIP_MAX_APPROACH_FEED_M - seated)
+    backout = seated + margin * (GRIP_MAX_APPROACH_BACKOUT_M - seated)
+    across = (transverse - margin * GRIP_MAX_TRANSVERSE_M).clamp_min(0.0)
+    along = (feed - approach).clamp_min(0.0) + (approach - backout).clamp_min(0.0)
+    return across, along
+
+
+def pin_grip_intact(env) -> torch.Tensor:
+    """True where the pads still hold the pin by its own geometry."""
+
+    across, along = pin_grip_residuals(env)
+    return (across <= 0.0) & (along <= 0.0)
+
+
 def grapple_grip_error_observation(env) -> torch.Tensor:
     """Six values: the tool-to-grip offset in tool axes, and the attitude error."""
 
@@ -1025,17 +1103,21 @@ def gripper_state_observation(env) -> torch.Tensor:
 def capture_established(
     env,
     torque_threshold: float = GRIP_TORQUE_THRESHOLD_NM,
-    position_tolerance: float = 0.020,
+    position_tolerance: float | None = 0.020,
     orientation_tolerance: float = 0.20,
 ) -> torch.Tensor:
-    """True where the pads are loaded against the pin at the capture attitude."""
+    """True where the pads are loaded against the pin at the capture attitude.
+
+    ``position_tolerance=None`` asks the pin instead of a ball; see
+    :func:`pin_grip_residuals`. The default stays the ball, because the *grasp*
+    skill's certification was produced under it and a capture is judged before
+    any pull has fed the pin anywhere. Extraction passes ``None``, because by
+    then the feed has happened and 12.0 mm of that 20 mm has gone into it.
+    """
 
     position, orientation = grapple_grip_error_metrics(env)
-    return (
-        (grip_drive_torque(env) > torque_threshold)
-        & (position <= position_tolerance)
-        & (orientation <= orientation_tolerance)
-    )
+    held = pin_grip_intact(env) if position_tolerance is None else position <= position_tolerance
+    return (grip_drive_torque(env) > torque_threshold) & held & (orientation <= orientation_tolerance)
 
 
 class TwoStageRobotiqAction(RobotiqBinaryAction):
@@ -1353,7 +1435,7 @@ def capture_failure_reward(env) -> torch.Tensor:
 def grapple_insertion_conditions(
     env,
     command_name: str = "insertion_goal",
-    grip_position_tolerance: float = 0.020,
+    grip_position_tolerance: float | None = None,
     grip_orientation_tolerance: float = 0.20,
 ) -> dict[str, torch.Tensor]:
     """Insertion success, with the grip judged in the head-on convention.
@@ -1368,6 +1450,12 @@ def grapple_insertion_conditions(
     of the goal with the grip holding at 8.3 mm and still timed out in 1024 of
     1024 episodes, because this one condition could not be satisfied. The
     geometric thresholds below are the promoted task's, unchanged.
+
+    ``grasp_position`` asks the pin rather than an isotropic ball, for the reason
+    in :func:`pin_grip_residuals`: a tapered pin holds by feeding, the feed moves
+    the tool 12.0 mm along the pin, and a 20 mm ball about the drawing pose
+    spends most of its budget on the interface working. Pass a float to restore
+    the ball for an archived checkpoint.
     """
 
     axial, lateral, orientation = insertion_error_metrics(env, command_name)
@@ -1386,7 +1474,9 @@ def grapple_insertion_conditions(
         # Keyed with the shared names on purpose. The curriculum term walks
         # INSERTION_SUCCESS_CONDITION_NAMES to attribute timeouts, so renaming
         # these to "grip_*" crashed training with KeyError: 'grasp_position'.
-        "grasp_position": grip_position <= grip_position_tolerance,
+        "grasp_position": (
+            pin_grip_intact(env) if grip_position_tolerance is None else grip_position <= grip_position_tolerance
+        ),
         "grasp_orientation": grip_orientation <= grip_orientation_tolerance,
     }
 
@@ -1491,7 +1581,7 @@ def extraction_success_mask(
     velocity = attached_blade_velocity(env)
     active = (
         (blade_centre_x(env) <= target_x)
-        & capture_established(env)
+        & capture_established(env, position_tolerance=None)
         & (torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= linear_velocity_limit)
         & (torch.linalg.vector_norm(velocity[:, 3:], dim=-1) <= angular_velocity_limit)
     )
@@ -1504,7 +1594,7 @@ def extraction_success_reward(env) -> torch.Tensor:
 
 def extraction_failure(
     env,
-    grip_position_limit: float = 0.030,
+    grip_position_limit: float | None = None,
     grip_orientation_limit: float = 0.35,
 ) -> torch.Tensor:
     """End an extraction that has dropped the blade or left the workspace.
@@ -1512,13 +1602,20 @@ def extraction_failure(
     The workspace bound along x is deliberately different from the insertion
     task's, which treats anything below 0.45 as an escape. That is where a
     successful extraction finishes.
+
+    ``grip_lost`` is :func:`pin_grip_intact`, resolved onto the pin's own axes,
+    and the reasoning is recorded there. ``grip_position_limit`` keeps the old
+    isotropic ball reachable for one purpose only -- re-running an archived
+    checkpoint under the criterion it was certified against -- because a
+    criterion change and a policy change must never be quoted as one number.
     """
 
     position, orientation = grapple_grip_error_metrics(env)
     blade_position, _ = attached_blade_pose_world(env)
     local = blade_position - env.scene.env_origins
+    lost = ~pin_grip_intact(env) if grip_position_limit is None else position > grip_position_limit
     conditions = {
-        "grip_lost": position > grip_position_limit,
+        "grip_lost": lost,
         "grip_attitude_lost": orientation > grip_orientation_limit,
         "workspace_x": (local[:, 0] < -0.10) | (local[:, 0] > 1.10),
         "workspace_yz": (local[:, 1].abs() > 0.30) | (local[:, 2] < 0.40) | (local[:, 2] > 1.10),
@@ -1538,6 +1635,7 @@ def grip_retention_penalty(
     orientation_scale: float = 0.15,
     orientation_weight: float = 0.25,
     max_penalty: float = 25.0,
+    resolve_on_pin: bool = False,
 ) -> torch.Tensor:
     """Penalize the grip drifting, without paying a policy to stand still.
 
@@ -1550,10 +1648,27 @@ def grip_retention_penalty(
     was trading attitude for travel because attitude was very nearly free until
     the episode died on it, which is the policy optimising exactly what it was
     asked to.
+
+    **The position half had the opposite problem and nobody looked.** Its free
+    band is 4 mm about the drawing pose, and the *smallest* grip error physically
+    reachable once a pull takes load is 11.4 mm, because the taper feeds the pin
+    into the pads and that is how it holds 77 N instead of 6. So the term was
+    saturated on its position axis in every step of every episode: a constant
+    charge for the interface working, and a gradient pointing at a pose the
+    collar is in the way of. ``resolve_on_pin`` charges the two residuals the pin
+    itself defines (:func:`pin_grip_residuals`) instead, both of which are zero
+    while the grip is intact and grow only when it is genuinely being lost.
     """
 
     position, orientation = grapple_grip_error_metrics(env)
-    position_excess = ((position - free_m) / 0.010).clamp_min(0.0)
+    if resolve_on_pin:
+        # Charge from two thirds of the way to each bound, so the term has a
+        # gradient across the band the episode can still be saved in rather
+        # than a step at the line it dies on.
+        across, along = pin_grip_residuals(env, margin=0.67)
+        position_excess = (across + along) / 0.010
+    else:
+        position_excess = ((position - free_m) / 0.010).clamp_min(0.0)
     orientation_excess = ((orientation - free_rad) / orientation_scale).clamp_min(0.0)
     return (position_excess.square() + orientation_weight * orientation_excess.square()).clamp(max=max_penalty)
 
@@ -1575,6 +1690,112 @@ def reset_grapple_blade_pose(
     target[:, :3] += env.scene.env_origins[ids]
     blade.write_root_pose_to_sim(target, env_ids=ids)
     blade.write_root_velocity_to_sim(torch.zeros((len(ids), 6), device=env.device), env_ids=ids)
+
+
+def reset_grapple_insert_stroke(
+    env,
+    env_ids: torch.Tensor | None,
+    asset_cfg: SceneEntityCfg,
+    gripper_cfg: SceneEntityCfg,
+    arm_poses_by_bay: tuple[tuple[tuple[float, ...], ...], ...],
+    blade_poses_by_bay: tuple[tuple[tuple[float, ...], ...], ...],
+    finger_positions: tuple[float, ...],
+    hold_positions: tuple[float, ...],
+    noise_rad: float = 0.010,
+    blade_asset_cfg: SceneEntityCfg = SceneEntityCfg("spare_blade"),
+) -> None:
+    """Start an insertion anywhere along the stroke, already holding the module.
+
+    Two things were wrong with the single reset this replaces, and they are
+    different problems.
+
+    **It was one pose.** The insert skill reset at the certified staging pose,
+    167 mm from the seated plane, and the chain hands it the module at the
+    mouth, 529 mm out. Every state the chain produces was 362 mm outside the
+    distribution. ``scripts/solve_insert_reset_bank.py`` solves the stations in
+    between in closed form and gates each on residual, on the DLS controller's
+    realised authority, and on the collar staying clear of the rack mouth.
+
+    **It replayed a capture.** The reset opened the fingers and let the
+    two-stage closure take the pin, which is right while the rails still hold
+    the module and wrong once they do not: at the shallow end of the stroke the
+    module is entirely outside the rack, and closing on a free mass in zero
+    gravity throws it. So the fingers are written at the closure they come to
+    rest at, ``GRAPPLE_FINGER_SEATED_RAD``, and the module is written at the
+    grip offset a loaded pull actually holds -- 12.0 mm along the pin, measured
+    over 433 successful extractions -- instead of at the drawing pose. Nothing
+    closes through free space and nothing has to be shoved into place.
+
+    The module is placed relative to the tool pose the **noised** joints
+    produce, not the nominal one, so joint noise moves the arm and the module
+    together. Widening a per-joint noise box around a fixed module pose is the
+    degenerate reset this project already measured: it produces a large joint
+    deviation *and* a large grip error at once, the pads close on nothing, and
+    the episode is dead on control step 1. A hand-off is a point on a manifold.
+    """
+
+    from zero_g_blade_swap.arm_kinematics import batched_tool_pose
+
+    ids = torch.arange(env.num_envs, device=env.device) if env_ids is None else env_ids
+    robot = env.scene[asset_cfg.name]
+    blade = env.scene[blade_asset_cfg.name]
+    stages = getattr(env, "_insertion_curriculum_stage", None)
+    if stages is None or stages.shape[0] != env.num_envs:
+        stages = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
+        env._insertion_curriculum_stage = stages
+    bays = stages[ids].clamp_max(len(arm_poses_by_bay) - 1)
+
+    arm_bank = robot.data.joint_pos.new_tensor(arm_poses_by_bay)
+    blade_bank = blade.data.root_state_w.new_tensor(blade_poses_by_bay)
+    station = torch.randint(arm_bank.shape[1], (len(ids),), device=env.device)
+    nominal = arm_bank[bays, station]
+    joints = nominal + (2.0 * torch.rand_like(nominal) - 1.0) * noise_rad
+    robot.write_joint_state_to_sim(joints, torch.zeros_like(joints), joint_ids=asset_cfg.joint_ids, env_ids=ids)
+
+    # Where the tool actually is, for these joints. In world, through the
+    # articulation root, because ``batched_tool_pose`` answers in base_link and
+    # the rail moves base_link between bays.
+    tool_local, _ = batched_tool_pose(joints.to(torch.float64))
+    tool_local = tool_local.to(blade.data.root_state_w.dtype)
+    tool_world = robot.data.root_pos_w[ids] + quat_apply(robot.data.root_quat_w[ids], tool_local)
+
+    pose = blade_bank[bays, station].clone()
+    # ``GRAPPLE_PIN_GRIP_OFFSET`` is where the pads sit on an unloaded pin. A
+    # loaded one has fed 12.0 mm further along the taper, and that is the state
+    # the next control step has to be consistent with. The module is square, so
+    # the offset is along world x and the other two axes are the tool's.
+    pose[:, 0] = tool_world[:, 0] - GRAPPLE_PIN_GRIP_OFFSET[0] - GRIP_SEATED_APPROACH_OFFSET_M
+    pose[:, 1] = tool_world[:, 1]
+    pose[:, 2] = tool_world[:, 2]
+    blade.write_root_pose_to_sim(pose, env_ids=ids)
+    blade.write_root_velocity_to_sim(torch.zeros((len(ids), 6), device=env.device), env_ids=ids)
+
+    gripper = env.scene[gripper_cfg.name]
+    fingers = gripper.data.joint_pos.new_tensor(finger_positions).expand(len(ids), -1).clone()
+    gripper.write_joint_state_to_sim(
+        fingers, torch.zeros_like(fingers), joint_ids=gripper_cfg.joint_ids, env_ids=ids
+    )
+    # **Command the holding closure, not the pose the pads are already at.**
+    #
+    # Writing the target equal to the position develops no drive torque, and
+    # ``capture_established`` keys on that torque -- so the grip reads as not
+    # established, the form lock will not engage, and for the few control steps
+    # that takes the module is free and held by pad friction alone. At the
+    # shallow end of this stroke it is outside the rack, where nothing resists
+    # roll and a pair of flat pads cannot: measured, roll reached 252 mrad at the
+    # median within four control steps and the episode died on grip attitude
+    # before the policy acted.
+    #
+    # The chain never has that window. It arrives at the seating phase with the
+    # holding closure commanded and the lock already carrying the module, so
+    # this is what "start in the state the chain hands over" has to mean.
+    holding = gripper.data.joint_pos.new_tensor(hold_positions).expand(len(ids), -1)
+    gripper.set_joint_position_target(holding, joint_ids=gripper_cfg.joint_ids, env_ids=ids)
+    # And latch it, so the two-stage term does not drop back to the gentler
+    # capture closure on its first step and re-open the pads around a free pin.
+    latched = getattr(env, "_grapple_hold_latched", None)
+    if latched is not None and latched.shape[0] == env.num_envs:
+        latched[ids] = True
 
 
 def hold_two_stage_grip(
@@ -1639,6 +1860,7 @@ def reset_grapple_fingers(
 
 __all__ = [
     "EXTRACTED_BLADE_CENTRE_X",
+    "WORKFLOW_HANDOVER_GRIP_M",
     "GRIP_TORQUE_THRESHOLD_NM",
     "SLOT_MOUTH_X",
     "TwoStageRobotiqAction",
@@ -1667,6 +1889,7 @@ __all__ = [
     "grapple_latch_diagnostics",
     "grapple_latched",
     "grapple_grip_error_observation",
+    "grapple_grip_offset_axes",
     "grapple_grip_pose_error",
     "grapple_insertion_conditions",
     "grapple_insertion_success_mask",
@@ -1676,8 +1899,11 @@ __all__ = [
     "grip_retention_penalty",
     "gripper_state_observation",
     "hold_two_stage_grip",
+    "pin_grip_intact",
+    "pin_grip_residuals",
     "record_blade_reset_pose",
     "reset_grapple_blade_pose",
     "reset_grapple_fingers",
+    "reset_grapple_insert_stroke",
     "reset_grapple_progress",
 ]

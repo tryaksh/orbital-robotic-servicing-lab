@@ -16,6 +16,9 @@ from zero_g_blade_swap.evaluation import (
     CONTACT_IMPULSE_FIELD,
     GRIP_ATTITUDE_APPROACH_AXIS_FIELD,
     GRIP_ATTITUDE_THIRD_AXIS_FIELD,
+    GRIP_OFFSET_APPROACH_AXIS_FIELD,
+    GRIP_OFFSET_CLOSING_AXIS_FIELD,
+    GRIP_OFFSET_THIRD_AXIS_FIELD,
     GRIP_YAW_CLOSING_AXIS_FIELD,
     PEAK_CONTACT_FORCE_FIELD,
     SUCCESS_TERMINATIONS,
@@ -26,7 +29,11 @@ from zero_g_blade_swap.evaluation import (
     TerminalEpisodeRecorder,
 )
 
-from .grapple import grapple_grip_attitude_axes, grapple_grip_error_metrics
+from .grapple import (
+    grapple_grip_attitude_axes,
+    grapple_grip_error_metrics,
+    grapple_grip_offset_axes,
+)
 from .insertion import (
     attached_blade_velocity,
     insertion_error_metrics,
@@ -76,6 +83,9 @@ class InsertionTerminalMetrics:
                 GRIP_YAW_CLOSING_AXIS_FIELD,
                 GRIP_ATTITUDE_THIRD_AXIS_FIELD,
                 GRIP_ATTITUDE_APPROACH_AXIS_FIELD,
+                GRIP_OFFSET_CLOSING_AXIS_FIELD,
+                GRIP_OFFSET_THIRD_AXIS_FIELD,
+                GRIP_OFFSET_APPROACH_AXIS_FIELD,
             )
         self.recorder = TerminalEpisodeRecorder(fields) if recorder is None else recorder
         self._blade_mass: torch.Tensor | None = None
@@ -148,6 +158,8 @@ class InsertionTerminalMetrics:
         if self._records_grip_axes:
             axes = grapple_grip_attitude_axes(env).to(dtype=torch.float32)
             columns.extend((axes[:, 0], axes[:, 1], axes[:, 2]))
+            offsets = grapple_grip_offset_axes(env).to(dtype=torch.float32)
+            columns.extend((offsets[:, 0], offsets[:, 1], offsets[:, 2]))
         rows = torch.stack(tuple(columns), dim=-1)
         recorded = self.recorder.record(rows[env_ids].detach().cpu())
         if self._records_contact:

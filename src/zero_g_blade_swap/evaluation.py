@@ -53,6 +53,14 @@ BELIEF_BIAS_FIELD = "belief_bias_m"
 GRIP_YAW_CLOSING_AXIS_FIELD = "grip_attitude_closing_axis_rad"
 GRIP_ATTITUDE_THIRD_AXIS_FIELD = "grip_attitude_third_axis_rad"
 GRIP_ATTITUDE_APPROACH_AXIS_FIELD = "grip_attitude_approach_axis_rad"
+# The same treatment for the grip *offset*. A magnitude cannot say whether the
+# pads slid along the pin or the module swung off its axis, and those two have
+# opposite fixes: the first is a stop on the pin, the second is authority in the
+# wrist. Tool axes, so the components are the gripper's own closing, transverse,
+# and approach directions rather than the world's.
+GRIP_OFFSET_CLOSING_AXIS_FIELD = "grip_offset_closing_axis_m"
+GRIP_OFFSET_THIRD_AXIS_FIELD = "grip_offset_third_axis_m"
+GRIP_OFFSET_APPROACH_AXIS_FIELD = "grip_offset_approach_axis_m"
 
 UNCATEGORIZED_TERMINATION = "uncategorized"
 
@@ -119,6 +127,9 @@ DEFAULT_METRIC_FIELDS = (
     GRIP_YAW_CLOSING_AXIS_FIELD,
     GRIP_ATTITUDE_THIRD_AXIS_FIELD,
     GRIP_ATTITUDE_APPROACH_AXIS_FIELD,
+    GRIP_OFFSET_CLOSING_AXIS_FIELD,
+    GRIP_OFFSET_THIRD_AXIS_FIELD,
+    GRIP_OFFSET_APPROACH_AXIS_FIELD,
 )
 
 CATEGORICAL_FIELDS = ("success", "termination_reason", "curriculum_stage")

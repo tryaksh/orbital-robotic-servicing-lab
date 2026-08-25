@@ -119,6 +119,41 @@ def _parser() -> argparse.ArgumentParser:
         help="Override the randomized blade mass range in kg. Outside the trained range this is a stress test.",
     )
     parser.add_argument(
+        "--legacy_grip_ball_m",
+        type=float,
+        default=None,
+        help=(
+            "Judge the grip as an isotropic ball of this radius about the pin's drawing pose, "
+            "the criterion every certification before 2026-08-24 was produced under, instead of "
+            "the pin-resolved bounds. For one purpose: running an archived checkpoint under the "
+            "criterion it was certified against, so a criterion change and a policy change are "
+            "never quoted as one number. 0.030 is the value that was in the task."
+        ),
+    )
+    parser.add_argument(
+        "--legacy_unbounded_reset",
+        action="store_true",
+        help=(
+            "Draw the reset's joint noise without bounding the grip error it induces, the way "
+            "every certification before 2026-08-24 did. For attribution only: it is what makes "
+            "'the reset was generating unwinnable episodes' a measurement rather than a claim."
+        ),
+    )
+    parser.add_argument(
+        "--blade_cross_section",
+        type=float,
+        nargs=2,
+        metavar=("WIDTH_M", "HEIGHT_M"),
+        default=None,
+        help=(
+            "Override the module's width and height, leaving its length and mass alone. "
+            "The cross-section is what sets how much the rack's own channel constrains the "
+            "module while it is still inside it, so this is the knob that says whether a "
+            "skill's rate is about the skill or about the clearance it was measured at. "
+            "Always out of distribution: no policy trained on a section it was not built for."
+        ),
+    )
+    parser.add_argument(
         "--no_lead_in",
         action="store_true",
         help=(
@@ -172,6 +207,8 @@ if args.force_threshold_n is not None and args.force_threshold_n <= 0.0:
     parser.error("--force_threshold_n must be positive")
 if args.blade_mass_range is not None and not 0.0 < args.blade_mass_range[0] <= args.blade_mass_range[1]:
     parser.error("--blade_mass_range must be positive and ordered LOW HIGH")
+if args.blade_cross_section is not None and min(args.blade_cross_section) <= 0.0:
+    parser.error("--blade_cross_section must be positive")
 if args.minimum_success_rate is not None and not 0.0 <= args.minimum_success_rate <= 1.0:
     parser.error("--minimum_success_rate must be between 0 and 1")
 if "Vision" in args.task or args.video:
@@ -357,7 +394,17 @@ def _apply_stress(env_cfg) -> dict[str, object]:
 
     if args.no_lead_in:
         _disable_lead_in(env_cfg)
-    trained_noise = tuple(env_cfg.events.reset_arm.params["noise_by_stage"])
+    # The insert task's reset writes the arm, the module and the fingers together
+    # from a bank of stations, so it has no ``reset_arm`` term and no per-stage
+    # noise ladder -- one scalar covers every station. Read whichever exists.
+    reset_arm = getattr(env_cfg.events, "reset_arm", None)
+    reset_stroke = getattr(env_cfg.events, "reset_stroke", None)
+    if reset_arm is not None:
+        trained_noise = tuple(reset_arm.params["noise_by_stage"])
+    elif reset_stroke is not None:
+        trained_noise = (float(reset_stroke.params["noise_rad"]),)
+    else:
+        raise ValueError("this task has neither a reset_arm nor a reset_stroke term")
     trained_mass = (
         tuple(env_cfg.events.blade_mass.params["mass_distribution_params"])
         if getattr(env_cfg.events, "blade_mass", None) is not None
@@ -391,12 +438,28 @@ def _apply_stress(env_cfg) -> dict[str, object]:
         # archived rows rather than by re-measuring them. train.py always read
         # the same field correctly; compare its ``collision_enabled is False``.
         "lead_in_present": _lead_in_present(env_cfg),
+        "legacy_grip_ball_m": args.legacy_grip_ball_m,
+        "legacy_unbounded_reset": bool(args.legacy_unbounded_reset),
+        "trained_blade_cross_section_m": None,
+        "blade_cross_section_m": list(args.blade_cross_section) if args.blade_cross_section else None,
     }
+    blade = getattr(env_cfg.scene, "spare_blade", None)
+    if blade is not None and getattr(blade.spawn, "size", None) is not None:
+        stress["trained_blade_cross_section_m"] = list(tuple(blade.spawn.size)[1:])
+    if args.blade_cross_section is not None:
+        if blade is None or getattr(blade.spawn, "size", None) is None:
+            raise ValueError("--blade_cross_section needs a task whose module is a sized chassis")
+        length = float(tuple(blade.spawn.size)[0])
+        blade.spawn.size = (length, float(args.blade_cross_section[0]), float(args.blade_cross_section[1]))
+        print(f"[INFO] Module cross-section overridden to {blade.spawn.size} m (length unchanged)")
     if args.belief_bias_mm is not None and belief_term is None:
         raise ValueError("--belief_bias_mm needs a task whose actor observes a pose belief")
     if args.pose_noise_scale != 1.0:
         scaled = tuple(value * args.pose_noise_scale for value in trained_noise)
-        env_cfg.events.reset_arm.params["noise_by_stage"] = scaled
+        if reset_arm is not None:
+            reset_arm.params["noise_by_stage"] = scaled
+        else:
+            reset_stroke.params["noise_rad"] = scaled[0]
         print(f"[INFO] Reset pose noise scaled {args.pose_noise_scale}x to {scaled} rad")
     if args.blade_mass_range is not None:
         if trained_mass is None:
@@ -421,6 +484,9 @@ def _apply_stress(env_cfg) -> dict[str, object]:
         # Every policy trained with the lead-in present, so evaluating without it
         # is out of distribution by construction.
         or stress["lead_in_present"] is False
+        # A section the policy did not train on changes what the rack's channel
+        # holds, which is task physics rather than an initial condition.
+        or args.blade_cross_section is not None
     )
     return stress
 
@@ -514,6 +580,18 @@ def main() -> dict[str, object]:
             # rating into the event set that is actually installed.
             env_cfg._configure_latch()
             print(f"[INFO] Capture latch rated at {args.latch_rated_torque_nm} N-m")
+        if args.legacy_unbounded_reset:
+            reset_arm = getattr(env_cfg.events, "reset_arm", None)
+            if reset_arm is None or "max_tool_offset_m" not in getattr(reset_arm, "params", {}):
+                raise ValueError("--legacy_unbounded_reset needs a task whose reset bounds the grip error")
+            reset_arm.params = {**reset_arm.params, "max_tool_offset_m": None}
+            print("[INFO] Reset joint noise unbounded (legacy)")
+        if args.legacy_grip_ball_m is not None:
+            failed = getattr(env_cfg.terminations, "extraction_failed", None)
+            if failed is None:
+                raise ValueError("--legacy_grip_ball_m is valid only for a task that ends on extraction_failed")
+            failed.params = {**failed.params, "grip_position_limit": args.legacy_grip_ball_m}
+            print(f"[INFO] Grip judged as a {args.legacy_grip_ball_m * 1000:.1f} mm ball (legacy criterion)")
         if args.grip_axis_metrics:
             if getattr(env_cfg, "tool_target_rot", None) is None:
                 raise ValueError("--grip_axis_metrics is valid only for a head-on capture task")
@@ -717,9 +795,20 @@ def main() -> dict[str, object]:
                 episodes_completed += int(dones.sum())
                 for name in termination_names:
                     termination_counts[name] += int(env.unwrapped.termination_manager.get_term(name).sum())
-                latest_failures = getattr(env.unwrapped, "_insertion_latest_failure_conditions", None)
-                if latest_failures is not None:
-                    failed = env.unwrapped.termination_manager.get_term("insertion_failed")
+                # Two families write the same kind of breakdown under different
+                # names, and only the insertion one was ever read. An extract
+                # certification that reports 1,925 ``extraction_failed`` and
+                # nothing about *which* of the four conditions fired says only
+                # that a policy failed, which is the part already known.
+                for attribute, term in (
+                    ("_insertion_latest_failure_conditions", "insertion_failed"),
+                    ("_grapple_latest_failure_conditions", "extraction_failed"),
+                    ("_grapple_latest_failure_conditions", "capture_failed"),
+                ):
+                    latest_failures = getattr(env.unwrapped, attribute, None)
+                    if latest_failures is None or term not in termination_names:
+                        continue
+                    failed = env.unwrapped.termination_manager.get_term(term)
                     for name, condition in latest_failures.items():
                         failure_condition_counts[name] = failure_condition_counts.get(name, 0) + int(
                             (condition & failed).sum()

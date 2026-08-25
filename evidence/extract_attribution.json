@@ -1,0 +1,121 @@
+{
+  "title": "What each change to the extract task was worth, before any retraining",
+  "evidence_type": "simulation_only",
+  "generated_utc": "2026-08-24T22:07:21.639279+00:00",
+  "question": "Extract certified at 74.27% and 900 epochs of fine-tuning moved it 1.4 points. How much of what follows is a better ruler, how much is a better rack, and how much is a better policy?",
+  "method": "One held-out seed, 512 episodes a point, the same checkpoint throughout. Each row changes one thing and keeps everything before it.",
+  "policy": "grapple_extract_l0_seed70_v17m130, ep 10600, unchanged in every row but the last",
+  "steps": [
+    {
+      "step": "as_certified",
+      "what_changed": "extract v17m130 exactly as it was certified: isotropic 30 mm grip ball, the rack's inherited 15.750 mm lateral clearance, the unbounded joint-noise reset",
+      "stage_0": {
+        "success_rate": 0.845703,
+        "episodes": 512,
+        "wilson_95": {
+          "low": 0.81185,
+          "high": 0.874408
+        },
+        "rows": "artifacts/diag/x_v17_s0_new.npz"
+      },
+      "stage_2": {
+        "success_rate": 0.605469,
+        "episodes": 512,
+        "wilson_95": {
+          "low": 0.562499,
+          "high": 0.646868
+        },
+        "rows": "artifacts/diag/x_v17_s2_new.npz"
+      }
+    },
+    {
+      "step": "pin_resolved_criterion",
+      "what_changed": "same policy, same rack, same reset; the grip is judged on the pin's own axes instead of as a distance from its drawing pose",
+      "stage_0": {
+        "success_rate": 0.820312,
+        "episodes": 512,
+        "wilson_95": {
+          "low": 0.78471,
+          "high": 0.851144
+        },
+        "rows": "artifacts/diag/crit_pin_s0.npz"
+      },
+      "stage_2": {
+        "success_rate": 0.392996,
+        "episodes": 514,
+        "wilson_95": {
+          "low": 0.351716,
+          "high": 0.435864
+        },
+        "rows": "artifacts/diag/crit_pin_s2.npz"
+      }
+    },
+    {
+      "step": "derived_rack_clearance",
+      "what_changed": "same policy, same reset; the channel's lateral clearance is derived from what the pads can follow rather than inherited from a 160 mm module, 15.750 -> 12.689 mm",
+      "stage_0": {
+        "success_rate": 0.838207,
+        "episodes": 513,
+        "wilson_95": {
+          "low": 0.803845,
+          "high": 0.867541
+        },
+        "rows": "artifacts/diag/rack_v17_s0.npz"
+      },
+      "stage_2": {
+        "success_rate": 0.448343,
+        "episodes": 513,
+        "wilson_95": {
+          "low": 0.40585,
+          "high": 0.491604
+        },
+        "rows": "artifacts/diag/rack_v17_s2.npz"
+      }
+    },
+    {
+      "step": "bounded_reset",
+      "what_changed": "same policy; the reset's joint noise is scaled so the grip error it induces stays inside the one the chain requires before it hands a module over",
+      "stage_0": {
+        "success_rate": 0.912109,
+        "episodes": 512,
+        "wilson_95": {
+          "low": 0.884415,
+          "high": 0.933666
+        },
+        "rows": "artifacts/extract_pin/control_v17_s0.npz"
+      },
+      "stage_2": {
+        "success_rate": 0.847953,
+        "episodes": 513,
+        "wilson_95": {
+          "low": 0.814303,
+          "high": 0.876431
+        },
+        "rows": "artifacts/extract_pin/control_v17_s2.npz"
+      }
+    },
+    {
+      "step": "retrained",
+      "what_changed": "the policy, retrained against all of the above",
+      "stage_0": {
+        "success_rate": 0.908,
+        "episodes": 500,
+        "wilson_95": {
+          "low": 0.879461,
+          "high": 0.930317
+        },
+        "rows": "artifacts/certify_skills/extract_v18pin_s0_seed1070.npz"
+      },
+      "stage_2": {
+        "success_rate": 0.852295,
+        "episodes": 501,
+        "wilson_95": {
+          "low": 0.818549,
+          "high": 0.880681
+        },
+        "rows": "artifacts/certify_skills/extract_v18pin_s2_seed1070.npz"
+      }
+    }
+  ],
+  "scope_and_limitations": "One evaluation seed and two of the three curriculum stages, because this table is an attribution rather than a certification. The pooled three-stage, three-seed numbers are in the grapple_extract_* reports."
+}
