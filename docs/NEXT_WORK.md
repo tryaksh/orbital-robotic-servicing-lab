@@ -27,6 +27,24 @@ Compute figures assume the measured machine: RTX 5070 Ti Laptop, 12 GB. A
 1024-environment PPO run fits alongside a small evaluation process; two full
 training runs do not.
 
+## Index — pick one, then read only that section
+
+| # | Task | Cost | Blocks |
+| --- | --- | --- | --- |
+| **T0** | No certification is reproducible from committed code | CPU + 1 cert batch | everything; the paper outright |
+| **T1** | Certify the chain on the vision task | hours, 1 batch | the strongest claim about perception |
+| **T2** | Insert skill: wedged at 84.6 mrad against a 20.5 mrad channel | ~1 h train + 45 m certify | a learned seating phase |
+| **T3** | Three training seeds, so numbers carry a spread | 4+ training runs | any claim about a *method* |
+| **T4** | Exercise robustness levels 1–4 | evaluation only | a degradation curve |
+| **T5** | Randomize the variables the sweep is sensitive to | retrain + re-certify | a tolerance band, not a point |
+| **T6** | Grasp and extract miss the 95% gate | cheap to attribute | the skill numbers |
+| **T7** | The live service runs the superseded w65 policy set | small if folded into T1 | the demo's credibility |
+| **T8** | One epoch, two filenames, two provenance hashes | <1 h, CPU | nothing; a latent trap |
+| **T9** | The insert skill's load path still differs from the chain's | half a day + certify | T2's transfer |
+| **T10** | Test-suite portability | **done 2026-08-25** | — |
+| **T11** | No recording shows the certified chain | ~8 min a clip | the media, and any release |
+| **P1–P7** | [Publication track](#publication-track) — the same work on a submission deadline | see section | Frontiers, 2026-11-09 |
+
 ---
 
 ## T0 — No certification is reproducible from committed code
@@ -161,92 +179,101 @@ than the state task. Budget one overnight batch and time-box it.
 
 ---
 
-## T2 — Finish the insert time-cost run; it is untested, not refuted
+## T2 — The insert skill is wedged, not creeping
 
-**Where it stands.** The learned insert policy certifies at **0.00%** over 1,536
-episodes (`evidence/grapple_insert_v20chain_certification.json`), stopping a
-median of **204 mm short** with the whole clock spent, against tolerances of
-2.5 mm and 52.4 mrad. It is no longer a task-specification problem: seven of the
-eight ways the skill's task disagreed with the chain's seating phase are closed,
-the policy loses the grip in **0** of 128 held-out episodes, and the mean reward
-went **positive for the first time in this project** (−80 → +13.7), with lateral
-error 20.7 → 7.9 mm and orientation 128 → 86 mrad.
+**Where it stands.** The learned insert skill has certified at **0.00%** for this
+project's entire history — 1,536 episodes on the current checkpoint
+(`evidence/grapple_insert_v20chain_certification.json`), a median of **204 mm
+short** against tolerances of 2.5 mm and 52.4 mrad. Seven of the eight ways its
+task disagreed with the chain's seating phase are closed, it loses the grip in
+**0** of 128 held-out episodes, and its mean reward went positive for the first
+time in this project.
 
-It is **creeping, not jamming**: still moving at 3.65 mm/s when the clock stops,
-against the 120 mm/s its action scale allows and the 60 mm/s the scripted advance
-uses to cover the same stroke in nine seconds. Creeping is what the objective paid
-for — progress is potential-based, so covering the stroke pays the same however
-long it takes, and dawdling cost 3 over a whole episode against a success worth 30.
+**The creep reading is refuted.** For a long time the failure was read as the
+policy *creeping* — still moving at 3.65 mm/s when the clock stopped, against
+120 mm/s of authority — and the fix that followed was a time cost sized so a full
+clock costs 12, below the 15 that failing costs. Trained to convergence at 1,400
+epochs and evaluated on 512 held-out episodes, it changes nothing:
 
-**The fix is already in the tree and has not been given a fair test.**
-`elapsed_time_penalty` is weighted −0.40 in `InsertRewardsCfg`, so a full clock
-costs 12 — deliberately *below* the 15 that failing costs, because a time penalty
-larger than the failure penalty makes giving up early the cheaper option. Run
-`grapple_insert_l0_seed70_v21time` had reached only **300 epochs**, and the run
-before it took 800 before its behaviour settled. 300 epochs is too early to read.
+| | median short | terminal speed | clock used |
+| --- | ---: | ---: | ---: |
+| v20chain, time cost −0.10 | 203.6 mm | 3.60 mm/s | 900 / 900 |
+| v21time, time cost −0.40, converged | 202.2 mm | 3.98 mm/s | 900 / 900 |
 
-**Code.** `src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py` ~line
-1205 (the weighting and the reasoning); `scripts/train_insert_stroke.sh`.
+The cost is being **paid, not avoided**. `evidence/insert_attitude_diagnosis.json`.
 
-**Run it.** Resume rather than restart — the run is mid-flight and its reward was
-still climbing (−5.3 → −2.8 → −0.84 at epochs 100/200/300). `--max_iterations` is
-an **absolute** epoch, not a count of further epochs:
+**What the same episodes actually show.** A rigid part of length *L* entering a
+channel with *c* of relief per side fits only while its tilt stays under `2c/L`,
+which for the shipped relief is `SERVICE_DELIVERED_ATTITUDE_RAD` = **20.5 mrad**.
+The module arrives at:
+
+```
+orientation at the end    p5 56.1    median 84.6    p95 119.7 mrad
+channel admits                             20.5 mrad
+```
+
+**Not one episode in 512 ends inside the angle at which the module could enter at
+all.** It is not creeping toward a seat it might reach; it is wedged, and the
+remaining axial command does nothing. v20chain sits at 84.3 mrad, so this was
+never about the time cost.
+
+**Ruled out rather than assumed.** Not the reset —
+`evidence/insert_reset_bank.json` reports `attitude_residual_rad` of 0.0 at every
+station, so the module starts square and the episode takes it to 84.6 mrad. Not
+grip slip — tool-to-handle holds at 12.2 mm with a p95 of 12.48, which is the
+pin's own measured 12 mm feed.
+
+**The mechanism is this project's own thesis.** Two flat pads on a pin cannot
+resist a moment about the closing axis; the chain carries the module on a form
+lock for exactly that reason, and the skill trains without one. What let it go
+unnoticed for so long is that `insertion_misalignment_penalty` normalised
+orientation by **0.15 rad** — the *seated* tolerance, which only applies once the
+channel is already holding the module square. At that scale an 84.6 mrad module
+costs 0.08 a step against the 0.50 the same episode pays for 7.1 mm of lateral,
+so the objective ranked a fatal attitude below a survivable offset.
+
+**What was changed.** The insert task now normalises orientation by the rack's own
+admittance, `SERVICE_DELIVERED_ATTITUDE_RAD`, derived rather than chosen. The
+function default stays 0.15 so every previously published insertion number is
+bit-identical. `tests/test_skill_chain_agreement.py` holds both halves.
+
+**Code.** `mdp/insertion.py::insertion_misalignment_penalty` (the
+`orientation_scale_rad` parameter); `grapple_pin_env_cfg.py::InsertRewardsCfg`
+(the `misalignment` term); `scripts/play.py --latch_enabled` (added here, and how
+the lock-on arm was measured).
+
+**Run it.**
 
 ```bash
 "C:/isaac-sim/python.bat" scripts/train.py --headless \
   --task Isaac-ZeroG-Blade-GrapplePin-InsertTwoSlot-v0 \
   --num_envs 1024 --seed 70 --robustness_level 0 \
-  --max_iterations 1400 --run_name grapple_insert_l0_seed70_v21time \
-  --checkpoint <the highest-epoch checkpoint under that run>/nn/last_...pth
+  --max_iterations 1400 --run_name grapple_insert_l0_seed70_v22attitude
+
+SKILL=Insert CKPT=<highest epoch> TAG=insert_v22attitude \
+scripts/certify_grapple_skills.sh
 ```
 
-Then certify it the same way v20chain was, so the two are comparable:
-`SKILL=Insert CKPT=<path> TAG=v21time scripts/certify_grapple_skills.sh`.
+**Done when.** Orientation at the end drops below the channel's 20.5 mrad
+admittance for a substantial fraction of episodes, and the skill is certified the
+same way every other skill is — three curriculum stages, three held-out seeds —
+with the rate published beside v20chain's 0.00%. **If the attitude comes down and
+the rate does not, publish that too**: it would mean entry angle was necessary and
+not sufficient, which is a further result rather than a failure to report.
 
-**Done when.** Either the median shortfall drops materially from 204 mm and the
-terminal speed rises from 3.65 mm/s toward the 60 mm/s the scripted advance
-achieves — in which case publish the new rate beside v20chain's 0.00% — or it
-does not, in which case **publish that too**. A time cost that does not move the
-creep is a real finding about the objective and belongs in `evidence/` next to
-the negative result it failed to overturn. Either way the chain keeps the
-scripted guarded advance until a policy beats it head to head.
+Then verify it *in the chain*, which is the standard extraction is held to:
+`--insert_controller policy` runs the learned seating head to head against the
+scripted guarded advance on the same workcell. A skill that certifies alone and
+loses in the chain is the failure mode this repository has paid for most.
 
-**Cost.** ~1,100 epochs at 1024 environments ≈ 5.5 min per 100 epochs ≈ **1 hour**
-of GPU, plus ~20 minutes to certify. This is the cheapest open task with a real
-chance of changing a headline claim.
+**Cost.** ~1 hour training at 1024 environments, ~45 minutes for the full
+three-stage certification, ~30 minutes for the chain comparison.
 
-> **Status note, 2026-08-25 audit.** The run was resumed from epoch 300 and
-> **completed at epoch 1400** (exit 0). The checkpoint to evaluate is
-> `logs/rl_games/zero_g_blade_insertion_contact/grapple_insert_l0_seed70_v21time/nn/last_zero_g_blade_insertion_contact_ep_1400_rew_3.8209805.pth`
-> — note the single-underscore form; epoch 1400 exists under both conventions,
-> the same trap as T8.
-> **It was not evaluated**, deliberately: the audit's scope was the repository,
-> not the policy, so the measurement is left here rather than half-done.
->
-> The reward trace does not look like a policy that learned to hurry. Best mean
-> reward by epoch: 300 → −0.84, 700 → +1.98, 900 → +3.46, 1000 → −26.6,
-> 1200 → +2.15, 1300 → −0.06. It oscillates around zero rather than climbing.
-> **Do not read that as a refutation** — the reward functions differ, so v21time
-> and v20chain are not comparable on reward. A full clock costs 12 more under
-> v21time, and v20chain's best of +13.7 minus 12 is +1.7, right inside the band
-> v21time oscillates in. That arithmetic is consistent with the time cost being
-> *paid* rather than *avoided*, which would mean the creep did not move — but it
-> is an inference from reward, not a measurement of speed.
->
-> **Measure it directly**, the way the published figures were produced. The two
-> numbers are per-episode fields, not derived quantities:
->
-> ```bash
-> STAGES=0 SKILL=Insert TAG=insert_v21time \
-> CKPT=logs/.../grapple_insert_l0_seed70_v21time/nn/<highest epoch>.pth \
-> scripts/certify_grapple_skills.sh
-> ```
->
-> Then pool `axial_error_m` and `blade_linear_velocity_mps` from the `.npz`
-> rows. That method reproduces v20chain's published figures exactly — median
-> 203.64 mm short and 3.6 mm/s terminal speed over its 1,536 stage-0 episodes —
-> so the comparison is like for like. Roughly ten minutes at stage 0 on three
-> seeds; the full three-stage certification is nine runs.
+**Note the ordering against T9.** The load path is still pads-only in the skill
+and a compliant form lock in the chain. If T9 is done first, T2's retraining
+happens under the load path the chain actually uses; if not, this measures a
+policy trained on a strictly harder problem than it is deployed into. Either is
+defensible, and which one was done must be stated.
 
 ---
 
