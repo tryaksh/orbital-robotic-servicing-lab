@@ -25,7 +25,7 @@ It is long because it is the evidence trail, not a summary. Three ways in:
   learned and which are not, and the gates it is held to.
 
 For current measured state rather than requirements, read
-[`STATUS.md`](STATUS.md).
+[`NOW.md`](NOW.md).
 
 ---
 
