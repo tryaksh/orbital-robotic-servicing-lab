@@ -1,0 +1,845 @@
+{
+  "title": "Evidence manifest",
+  "what_this_is": "A queryable index of every report in evidence/. Status is derived: canonical from the list in scripts/build_evidence_manifest.py, retracted from evidence/RETRACTED.md, historical otherwise. Quote canonical reports. Never quote a retracted one.",
+  "generated_by": "scripts/build_evidence_manifest.py",
+  "checkpoints_live_outside_git": {
+    "note": "logs/ and checkpoints/ are gitignored, so a clone does not carry the weights any learned number depends on. A report whose checkpoint is unreachable can be read but not reproduced.",
+    "policy_checkpoints": "logs/rl_games/zero_g_blade_insertion_contact/<run>/nn/",
+    "pose_head_checkpoints": "checkpoints/"
+  },
+  "counts": {
+    "canonical": 17,
+    "retracted": 8,
+    "historical": 137
+  },
+  "canonical": {
+    "chain_robustness_sweep.json": {
+      "title": "What breaks the robot-carried chain first",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-25T01:23:35.400041+00:00",
+      "holds_up": "One variable at a time around the certified point: what breaks the chain first."
+    },
+    "extract_attribution.json": {
+      "title": "What each change to the extract task was worth, before any retraining",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-24T22:07:21.639279+00:00",
+      "holds_up": "One change a row on one unchanged checkpoint: criterion, rack, reset, then epochs."
+    },
+    "fiducial_rgbd_service_plate.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification",
+      "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
+      "holds_up": "The perception path the live service runs, certified on rendered frames."
+    },
+    "full_chain_rgbd_service_seed4070.json": {
+      "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "policy_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
+      "checkpoints_sha256": {
+        "capture": "D5506848D6C63E00DF2D5A9397109D7913B57542B163E15574C7F0B9D69C4612",
+        "extract": "5391CD416EC900E07872BF758B54F661A2C141ECF3A1E1D920D9A15AF769B300",
+        "insert": "9159DE38F659A2ED47C56D7E873F1C580A98420340B8FB799C080F4D93A173C0"
+      },
+      "holds_up": "The RGB-D chain end to end, one seed. NOT the pooled rate -- see docs/NEXT_WORK.md T1."
+    },
+    "full_chain_state_16_report.json": {
+      "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
+      "policy_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
+      "checkpoints_sha256": {
+        "capture": "D5506848D6C63E00DF2D5A9397109D7913B57542B163E15574C7F0B9D69C4612",
+        "extract": "5391CD416EC900E07872BF758B54F661A2C141ECF3A1E1D920D9A15AF769B300",
+        "insert": "9159DE38F659A2ED47C56D7E873F1C580A98420340B8FB799C080F4D93A173C0"
+      },
+      "holds_up": "The state-task chain over 16 environments, with the seating conditions itemised."
+    },
+    "grapple_extract_v17m130_on_pin_criterion_certification.json": {
+      "title": "Control: extract v17m130 under the pin-resolved criterion, the derived rack and the bounded reset",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-24T20:40:52+00:00",
+      "overall": {
+        "episodes": 4501,
+        "successes": 3951,
+        "success_rate": 0.877805,
+        "wilson_95": [
+          0.867913,
+          0.887052
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "AFA73BB932C5AD9BCD3C4D3F59AD7862A10076BB31CE6F26D6C162A90FB09AA8",
+      "holds_up": "The control that makes the extract comparison a comparison and not a re-baselining."
+    },
+    "grapple_extract_v18pin_certification.json": {
+      "title": "Head-on grapple-pin extract skill, v18pin, on the pin-resolved grip criterion",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-24T20:27:55+00:00",
+      "overall": {
+        "episodes": 4506,
+        "successes": 3954,
+        "success_rate": 0.877497,
+        "wilson_95": [
+          0.867601,
+          0.886749
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "A83D3CAC1CD3388ACD01BB8C00E5B7B6513A131E9AA664B5FE312AB102690571",
+      "holds_up": "Extraction skill, the checkpoint the chain runs: 87.75% pooled. Misses the gate."
+    },
+    "grapple_grasp_v7m130_on_derived_rack_certification.json": {
+      "title": "Control: grasp v7m130 on the derived rack, criterion unchanged",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-24T20:45:18+00:00",
+      "overall": {
+        "episodes": 4507,
+        "successes": 3862,
+        "success_rate": 0.856889,
+        "wilson_95": [
+          0.846362,
+          0.866809
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+      "holds_up": "Capture skill on the derived rack: 85.69% pooled. Misses the 95% gate."
+    },
+    "grapple_insert_v20chain_certification.json": {
+      "title": "Head-on grapple-pin insert skill, v20chain: the chain's own bay, stroke-wide reset, rebalanced objective",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-25T05:34:13+00:00",
+      "overall": {
+        "episodes": 1536,
+        "successes": 0,
+        "success_rate": 0.0,
+        "wilson_95": [
+          0.0,
+          0.002495
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "AE1139433288939CB987EE26242BF7D5B7B0DA5863644F56618FDA03F597CFC1",
+      "holds_up": "The learned insert skill: 0.00% over 1,536 episodes. Published negative result."
+    },
+    "insert_reset_bank.json": {
+      "title": "Paired arm and module poses along the seating stroke",
+      "evidence_type": "geometry_check_no_simulator",
+      "generated_utc": "2026-08-25T03:11:20.137349+00:00",
+      "holds_up": "The stations an insertion may start from, solved in closed form and gated."
+    },
+    "robot_carried_full_chain_pin.json": {
+      "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "checkpoints_sha256": {
+        "capture": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+        "extract": "ADC247AB0E9403761A3108228019AE7BE4DC408155B414B6BF0226102E5CCA54",
+        "insert": "CFBB09E2DDC7AF11E180DD772C42F5D86AB20EA56BD0A00F2FEB2EA378B4EC69"
+      },
+      "holds_up": "One end-to-end run of the certified chain, with per-policy checkpoint SHA-256."
+    },
+    "robot_carried_rigid_mating_refuted.json": {
+      "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
+      "policy_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
+      "checkpoints_sha256": {
+        "capture": "D5506848D6C63E00DF2D5A9397109D7913B57542B163E15574C7F0B9D69C4612",
+        "extract": "5391CD416EC900E07872BF758B54F661A2C141ECF3A1E1D920D9A15AF769B300",
+        "insert": "9159DE38F659A2ED47C56D7E873F1C580A98420340B8FB799C080F4D93A173C0"
+      },
+      "holds_up": "Why the form lock has to soften for the mating stroke. A refutation, kept."
+    },
+    "service_latch_clearance.json": {
+      "title": "Robot-side service latch clearance, derived from the measured gripper envelope",
+      "evidence_type": "geometric_derivation_no_simulator",
+      "holds_up": "The form lock's clearances, derived from the measured gripper envelope."
+    },
+    "workcell_geometry_check.json": {
+      "title": "Where the arm stands, what authority it has there, and what the channel admits",
+      "evidence_type": "geometry_check_no_simulator",
+      "generated_utc": "2026-08-24T18:27:31.943642+00:00",
+      "holds_up": "Simulator-free: where the arm stands, what the channel admits, which sections fit."
+    },
+    "workflow_robot_carried_m130_guarded_certification.json": {
+      "title": "Robot-carried servicing workflow, bay 1 to bay 2: m130_guarded",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-24T12:11:24+00:00",
+      "overall": {
+        "episodes": 96,
+        "successes": 93,
+        "success_rate": 0.96875,
+        "wilson_95": [
+          0.912113,
+          0.989316
+        ]
+      },
+      "gate_passed": true,
+      "policy_sha256": "36305AC93BB5BB88AB6D0CC953F597639E4916A54E45C4C6295F02874DD04A0B",
+      "holds_up": "The before, one session back: 96.88%. Preserved so the after means something."
+    },
+    "workflow_robot_carried_m130pin_guarded_certification.json": {
+      "title": "Robot-carried servicing workflow: relocation, on the pin-resolved criterion and the derived rack",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-24T22:53:13+00:00",
+      "overall": {
+        "episodes": 96,
+        "successes": 94,
+        "success_rate": 0.979167,
+        "wilson_95": [
+          0.927193,
+          0.994268
+        ]
+      },
+      "gate_passed": true,
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "The chain's headline rate: 97.92% pooled over 96 episodes, three held-out seeds."
+    },
+    "workflow_robot_carried_relocate_certification.json": {
+      "title": "Robot-carried servicing workflow: relocation, bay 1 to bay 2",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-24T07:56:02+00:00",
+      "overall": {
+        "episodes": 96,
+        "successes": 30,
+        "success_rate": 0.3125,
+        "wilson_95": [
+          0.22851,
+          0.410919
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
+      "holds_up": "The before, two sessions back: 31.25%."
+    }
+  },
+  "retracted": {
+    "grapple_extract_certification.json": {
+      "title": "Head-on grapple-pin extract skill",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-10T07:08:37+00:00",
+      "overall": {
+        "episodes": 9051,
+        "successes": 0,
+        "success_rate": 0.0,
+        "wilson_95": [
+          0.0,
+          0.000424
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "48F74DDADF8EC4A0346FB4AEAB3B69C27F4FE8EDD859517C35D4402340DC6A53",
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    },
+    "grapple_extract_v8_certification.json": {
+      "title": "Head-on grapple-pin extract skill, v8 (the checkpoint the workflow demo loads)",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-15T18:21:42+00:00",
+      "overall": {
+        "episodes": 9005,
+        "successes": 6156,
+        "success_rate": 0.68362,
+        "wilson_95": [
+          0.673938,
+          0.693146
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "FE6D454C2C46A137C079200AD346273312894CC46388BE258F471838C22DC724",
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    },
+    "grapple_extract_v9_certification.json": {
+      "title": "Head-on grapple-pin extract skill, v9 (the checkpoint the workflow demo loads)",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-15T19:46:47+00:00",
+      "overall": {
+        "episodes": 9006,
+        "successes": 6084,
+        "success_rate": 0.67555,
+        "wilson_95": [
+          0.665807,
+          0.685142
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "0981265648BC0D8CD37B9A57AB581478CCB8BD173E6F6C70D135AAC7D25333BF",
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    },
+    "grapple_grasp_v5_certification.json": {
+      "title": "Head-on grapple-pin grasp skill, v5 (the checkpoint the workflow demo loads)",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-17T05:03:50+00:00",
+      "overall": {
+        "episodes": 9011,
+        "successes": 8000,
+        "success_rate": 0.887804,
+        "wilson_95": [
+          0.881121,
+          0.894156
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "73D4D29BF55A907A2B31367FF2EA4A18FD7AE2E1413A079D462B5A6E9349C56D",
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    },
+    "vision_workflow_camera_twoslot_certification.json": {
+      "title": "Vision servicing workflow, CAMERA arm: the module pose regressed from 64x64 RGB",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-19T05:42:36+00:00",
+      "overall": {
+        "episodes": 576,
+        "successes": 489,
+        "success_rate": 0.848958,
+        "wilson_95": [
+          0.817409,
+          0.875884
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "B72BCC415DBDAFA7CE9DDF8668415EEEEFDB4658C397664A2650A5FC902D0CE5",
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    },
+    "workflow_install_final_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-15T18:42:34+00:00",
+      "overall": {
+        "episodes": 576,
+        "successes": 486,
+        "success_rate": 0.84375,
+        "wilson_95": [
+          0.811831,
+          0.871114
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "CE15D83BD6FFE2A383E973B45DA83DC432E772DE2D172F3BDA7943C1CB78886C",
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    },
+    "workflow_install_v6insert_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-11T23:00:13+00:00",
+      "overall": {
+        "episodes": 576,
+        "successes": 497,
+        "success_rate": 0.862847,
+        "wilson_95": [
+          0.83234,
+          0.888547
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "EC6BD989F7ABA531A2A8D93469723989BF07B8BE4C435210AABB070747515FAA",
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    },
+    "workflow_remove_certification.json": {
+      "title": "Chained servicing workflow: remove",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-11T17:17:13+00:00",
+      "overall": {
+        "episodes": 576,
+        "successes": 0,
+        "success_rate": 0.0,
+        "wilson_95": [
+          0.0,
+          0.006625
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "C85D2CECD8D7D537EDECF781F4DF5F90F45B50BEA50C37475E783B185325B7FA",
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    }
+  },
+  "historical": {
+    "attitude_wall_lateral_profile.json": {
+      "title": "Grasp-pose kinematic calibration"
+    },
+    "camera_scale.json": {
+      "title": "Servicing camera scale and framing, measured by rendering"
+    },
+    "camera_scale_grapple_w65.json": {
+      "title": "Servicing camera scale and framing, measured by rendering"
+    },
+    "estimate_stability.json": {
+      "title": "Pose estimate stability, with the module held still"
+    },
+    "force_feedback_certification.json": {
+      "title": "Force-feedback insertion policy, contact force in the observation space, PPO epoch 1800, three curriculum stages x three held-out seeds",
+      "generated_utc": "2026-08-09T19:38:02+00:00"
+    },
+    "force_feedback_control_certification.json": {
+      "title": "Matched control: same strict force task trained from scratch without force feedback, PPO epoch 1800, three curriculum stages x three held-out seeds",
+      "generated_utc": "2026-08-09T19:38:20+00:00"
+    },
+    "force_limit_baseline_l2.json": {
+      "title": "Unconstrained Level-2 policy judged under a 60 N force limit",
+      "generated_utc": "2026-08-09T06:57:48+00:00"
+    },
+    "force_limited_ep2500_certification.json": {
+      "title": "Force-limited insertion policy, PPO epoch 2500, three curriculum stages x three held-out seeds",
+      "generated_utc": "2026-08-09T06:57:48+00:00"
+    },
+    "force_strict_ep2500_certification.json": {
+      "title": "Strict force-limited insertion policy, PPO epoch 2500, three curriculum stages x three held-out seeds",
+      "generated_utc": "2026-08-09T07:37:03+00:00"
+    },
+    "grapple_extract_v10_certification.json": {
+      "title": "Head-on grapple-pin extract skill, v10 (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-15T20:59:05+00:00"
+    },
+    "grapple_extract_v11settle_certification.json": {
+      "title": "Head-on grapple-pin extract skill, v11settle (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-16T11:14:30+00:00"
+    },
+    "grapple_extract_v12dose_certification.json": {
+      "title": "Head-on grapple-pin extract skill, v12dose (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-16T13:07:55+00:00"
+    },
+    "grapple_extract_v13unsat_certification.json": {
+      "title": "Head-on grapple-pin extract skill, v13unsat (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-16T17:40:23+00:00"
+    },
+    "grapple_extract_v14reset_certification.json": {
+      "title": "Head-on grapple-pin extract skill, v14reset (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-16T19:12:31+00:00"
+    },
+    "grapple_extract_v16w65_certification.json": {
+      "title": "Head-on grapple-pin extract skill, v16w65 (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-20T01:44:47+00:00"
+    },
+    "grapple_extract_v16w65_on_current_module_control.json": {
+      "title": "Control: the Extract checkpoint the chain used before retraining, evaluated on the 450 x 130 x 20 mm module",
+      "generated_utc": "2026-08-24T10:56:47+00:00"
+    },
+    "grapple_extract_v17m130_certification.json": {
+      "title": "Head-on grapple-pin extract skill, v17m130, on the 450 x 130 x 20 mm module",
+      "generated_utc": "2026-08-24T11:14:14+00:00"
+    },
+    "grapple_extract_v2_certification.json": {
+      "title": "Head-on grapple-pin extract skill",
+      "generated_utc": "2026-08-10T15:59:47+00:00"
+    },
+    "grapple_extract_v4_certification.json": {
+      "title": "Head-on grapple-pin extract skill, v4 (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-11T16:28:18+00:00"
+    },
+    "grapple_extract_v5_certification.json": {
+      "title": "Head-on grapple-pin extract skill, v5 (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-15T05:21:11+00:00"
+    },
+    "grapple_extract_v6_certification.json": {
+      "title": "Head-on grapple-pin extract skill, v6 (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-15T08:00:14+00:00"
+    },
+    "grapple_extract_v7_certification.json": {
+      "title": "Head-on grapple-pin extract skill, v7 (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-15T09:52:45+00:00"
+    },
+    "grapple_extract_v8recert_certification.json": {
+      "title": "GrapplePin extract v8, re-judged on the derived settling limits",
+      "generated_utc": "2026-08-16T13:28:45+00:00"
+    },
+    "grapple_grasp_v2_certification.json": {
+      "title": "Head-on grapple-pin grasp skill",
+      "generated_utc": "2026-08-10T09:26:20+00:00"
+    },
+    "grapple_grasp_v3_certification.json": {
+      "title": "Head-on grapple-pin grasp skill, v3 (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-11T15:49:09+00:00"
+    },
+    "grapple_grasp_v4_certification.json": {
+      "title": "Head-on grapple-pin grasp skill, v4 (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-15T04:05:05+00:00"
+    },
+    "grapple_grasp_v6_certification.json": {
+      "title": "Head-on grapple-pin grasp skill, v6 (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-16T04:29:41+00:00"
+    },
+    "grapple_grasp_v6w65_certification.json": {
+      "title": "Head-on grapple-pin grasp skill, v6w65 (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-19T19:52:01+00:00"
+    },
+    "grapple_grasp_v6w65_on_current_module_control.json": {
+      "title": "Control: the Grasp checkpoint the chain used before retraining, evaluated on the 450 x 130 x 20 mm module",
+      "generated_utc": "2026-08-24T10:50:13+00:00"
+    },
+    "grapple_grasp_v7m130_certification.json": {
+      "title": "Head-on grapple-pin grasp skill, v7m130, on the 450 x 130 x 20 mm module",
+      "generated_utc": "2026-08-24T10:46:32+00:00"
+    },
+    "grapple_insert_certification.json": {
+      "title": "Head-on grapple-pin insert skill",
+      "generated_utc": "2026-08-10T08:23:07+00:00"
+    },
+    "grapple_insert_two_slot_certification.json": {
+      "title": "Head-on grapple-pin insert skill, both rack bays",
+      "generated_utc": "2026-08-17T04:09:12+00:00"
+    },
+    "grapple_insert_two_slot_w65_certification.json": {
+      "title": "Head-on grapple-pin insert skill, both rack bays",
+      "generated_utc": "2026-08-20T02:11:15+00:00"
+    },
+    "grapple_insert_v13m130_certification.json": {
+      "title": "Head-on grapple-pin insert skill, v13m130, on the 450 x 130 x 20 mm module",
+      "generated_utc": "2026-08-24T11:33:59+00:00"
+    },
+    "grapple_insert_v16pin_certification.json": {
+      "title": "Head-on grapple-pin insert skill, v16pin: stroke-wide reset, pin-resolved grip",
+      "generated_utc": "2026-08-25T02:38:01+00:00"
+    },
+    "grapple_insert_v3_certification.json": {
+      "title": "Head-on grapple-pin insert skill",
+      "generated_utc": "2026-08-10T16:55:37+00:00"
+    },
+    "grapple_insert_v5_certification.json": {
+      "title": "Head-on grapple-pin insert skill, v5 (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-11T16:39:42+00:00"
+    },
+    "grapple_insert_v6_certification.json": {
+      "title": "Head-on grapple-pin insert skill, v6 (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-11T22:48:34+00:00"
+    },
+    "grapple_insert_v6clock30_certification.json": {
+      "title": "Head-on grapple-pin insert skill, v6clock30 (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-17T00:35:22+00:00"
+    },
+    "grapple_insert_v6onhandoff_certification.json": {
+      "title": "Head-on grapple-pin insert skill, v6onhandoff (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-16T07:30:40+00:00"
+    },
+    "grapple_insert_v7align_certification.json": {
+      "title": "Head-on grapple-pin insert skill, v7align (the checkpoint the workflow demo loads)",
+      "generated_utc": "2026-08-16T08:30:51+00:00"
+    },
+    "grapple_pin_axial_pull_gate.json": {
+      "title": "Simulated Robotiq 2F-85 axial grasp holding capacity"
+    },
+    "grapple_pin_axial_pull_gate_keyed.json": {
+      "title": "Simulated Robotiq 2F-85 axial grasp holding capacity"
+    },
+    "grapple_pin_axial_pull_gate_yoked.json": {
+      "title": "Simulated Robotiq 2F-85 axial grasp holding capacity"
+    },
+    "grapple_pin_capture_plateau.json": {
+      "title": "Simulated Robotiq 2F-85 axial grasp holding capacity"
+    },
+    "grapple_pin_head_on_pose.json": {
+      "title": "Grasp-pose kinematic calibration"
+    },
+    "grapple_pin_head_on_pose_relocated.json": {
+      "title": "Grasp-pose kinematic calibration"
+    },
+    "grapple_pin_keyed_interference.json": {
+      "title": "Why the keyed grapple pin cannot be built on this gripper",
+      "generated_utc": "2026-08-19T03:30:54+00:00"
+    },
+    "grapple_pin_rated_grip_force.json": {
+      "title": "Simulated Robotiq 2F-85 axial grasp holding capacity"
+    },
+    "grapple_pin_yaw_gate_keyed.json": {
+      "title": "Simulated Robotiq 2F-85 axial grasp holding capacity"
+    },
+    "grapple_pin_yaw_probe_railed_plain.json": {
+      "title": "Simulated Robotiq 2F-85 axial grasp holding capacity"
+    },
+    "grapple_pin_yaw_probe_railed_yoked.json": {
+      "title": "Simulated Robotiq 2F-85 axial grasp holding capacity"
+    },
+    "grasp_axial_pull_gate.json": {
+      "title": "Simulated Robotiq 2F-85 axial grasp holding capacity"
+    },
+    "gripper_collision_envelope.json": {
+      "title": "Robotiq 2F-85 collision envelope in the wrist_3_link frame"
+    },
+    "inference_budget.json": {
+      "title": "Onboard compute budget of the learned components"
+    },
+    "insert_chain_handoff_gate.json": {
+      "title": "Insert v6, unchanged, on the chained-insert task (pre-training gate)",
+      "generated_utc": "2026-08-16T23:40:53+00:00"
+    },
+    "mating_compliance.json": {
+      "title": "Mating compliance for a robot-carried module",
+      "generated_utc": "2026-08-23T06:48:28.749990+00:00"
+    },
+    "module_pose_head.json": {
+      "title": "Module pose regressed from a 64x64 servicing camera"
+    },
+    "module_pose_head_calib.json": {
+      "title": "Module pose regressed from a 64x64 servicing camera"
+    },
+    "module_pose_head_calib_v2.json": {
+      "title": "Module pose regressed from a 64x64 servicing camera"
+    },
+    "module_pose_head_seed91.json": {
+      "title": "Module pose regressed from a 64x64 servicing camera"
+    },
+    "module_pose_head_seed92.json": {
+      "title": "Module pose regressed from a 64x64 servicing camera"
+    },
+    "module_pose_head_two_slot.json": {
+      "title": "Module pose regressed from a 64x64 servicing camera"
+    },
+    "module_pose_head_two_slot_w65_overview.json": {
+      "title": "Module pose regressed from a 256x256 servicing camera"
+    },
+    "module_pose_head_two_slot_w65_overview_validated.json": {
+      "title": "Module pose regressed from a 256x256 servicing camera"
+    },
+    "module_pose_head_two_slot_w65_overview_validated_v2.json": {
+      "title": "Module pose regressed from a 256x256 servicing camera"
+    },
+    "module_pose_head_two_slot_w65_overview_validated_v2_diagnostic.json": {
+      "title": "Overview pose-head generalization failure audit"
+    },
+    "perturbations_bite.json": {
+      "title": "Do the perception perturbations reach the image at all"
+    },
+    "relocate_handoff_to_insert.json": {},
+    "relocate_handoff_to_insert_w65.json": {},
+    "relocate_handoff_to_transit.json": {},
+    "relocate_handoff_to_transit_w65.json": {},
+    "relocation_reach_boundary.json": {
+      "title": "The arm cannot hold the capture attitude at the depths the relocation needs",
+      "generated_utc": "2026-08-19T04:13:25+00:00"
+    },
+    "relocation_rrt_path.json": {
+      "generated_utc": "2026-08-21T01:39:23+00:00"
+    },
+    "rigid_grasp_l0_ep700_certification.json": {
+      "title": "Level-0 secured-grasp blade insertion, PPO epoch 700, three curriculum stages x three held-out seeds",
+      "generated_utc": "2026-08-08T06:38:19+00:00"
+    },
+    "rigid_grasp_l1_ep1200_certification.json": {
+      "title": "Level-1 wide side-rail contact blade insertion, PPO epoch 1200, three curriculum stages x three held-out seeds",
+      "generated_utc": "2026-08-08T10:18:48+00:00"
+    },
+    "rigid_grasp_l2_contact_forces.json": {
+      "title": "Level-2 insertion contact force and impulse, three curriculum stages x three held-out seeds",
+      "generated_utc": "2026-08-09T05:54:41+00:00"
+    },
+    "rigid_grasp_l2_envelope_blade_mass.json": {
+      "title": "Level-2 policy capability envelope: blade mass swept far beyond the trained range",
+      "generated_utc": "2026-08-09T05:38:37+00:00"
+    },
+    "rigid_grasp_l2_envelope_pose_error.json": {
+      "title": "Level-2 policy capability envelope: initial pose error swept beyond the trained range",
+      "generated_utc": "2026-08-09T05:38:37+00:00"
+    },
+    "rigid_grasp_l2_ep1800_certification.json": {
+      "title": "Level-2 tight side rails plus randomized 5-15 kg blade mass, PPO epoch 1800, three curriculum stages x three held-out seeds",
+      "generated_utc": "2026-08-08T23:42:10+00:00"
+    },
+    "robot_carried_full_chain_complete.json": {},
+    "robot_carried_full_chain_seated.json": {},
+    "robot_carried_interface.json": {
+      "title": "Robot-carried bay-to-bay transit, with and without a form lock",
+      "generated_utc": "2026-08-23T10:57:10.687210+00:00"
+    },
+    "robot_carried_rgbd_seed6070.json": {},
+    "robot_carried_rgbd_video_seed6070.json": {},
+    "robot_carried_seating_sweep.json": {
+      "title": "Destination-bay clearance sweep: why the robot-carried seating does not close",
+      "generated_utc": "2026-08-23T11:25:39.027766+00:00"
+    },
+    "uncertain_force_threshold_aware.json": {
+      "title": "Commanded contact-force budget, force-aware",
+      "generated_utc": "2026-08-11T03:05:54+00:00"
+    },
+    "uncertain_force_threshold_blind.json": {
+      "title": "Commanded contact-force budget, force-blind",
+      "generated_utc": "2026-08-11T03:05:55+00:00"
+    },
+    "uncertain_insertion_aware_certification.json": {
+      "title": "Insertion under a 4 mm pose-belief error, force-aware",
+      "generated_utc": "2026-08-11T01:38:14+00:00"
+    },
+    "uncertain_insertion_aware_envelope.json": {
+      "title": "Success against pose-belief error, force-aware",
+      "generated_utc": "2026-08-11T01:38:14+00:00"
+    },
+    "uncertain_insertion_blind_certification.json": {
+      "title": "Insertion under a 4 mm pose-belief error, force-blind",
+      "generated_utc": "2026-08-11T01:38:14+00:00"
+    },
+    "uncertain_insertion_blind_envelope.json": {
+      "title": "Success against pose-belief error, force-blind",
+      "generated_utc": "2026-08-11T01:38:14+00:00"
+    },
+    "vision_camera_run_variance.json": {
+      "title": "Run-to-run variance of the two-bay vision arms, and which of them is deterministic",
+      "generated_utc": "2026-08-19T07:06:24+00:00"
+    },
+    "vision_workflow_blind_align_certification.json": {
+      "title": "Vision servicing workflow, BLIND arm: no image; the module is assumed to be where the rack nominally presents it",
+      "generated_utc": "2026-08-16T20:18:32+00:00"
+    },
+    "vision_workflow_blind_aligned_certification.json": {
+      "title": "Vision servicing workflow, BLIND arm: no image; the module is assumed to be where the rack nominally presents it",
+      "generated_utc": "2026-08-16T05:29:41+00:00"
+    },
+    "vision_workflow_blind_certification.json": {
+      "title": "Vision servicing workflow, BLIND arm: no image; the module is assumed to be where the rack nominally presents it",
+      "generated_utc": "2026-08-16T02:38:29+00:00"
+    },
+    "vision_workflow_blind_insertalign_certification.json": {
+      "title": "Vision servicing workflow, BLIND arm: no image; the module is assumed to be where the rack nominally presents it",
+      "generated_utc": "2026-08-16T09:08:14+00:00"
+    },
+    "vision_workflow_blind_twoslot_certification.json": {
+      "title": "Vision servicing workflow, BLIND arm: no image; the module is assumed to be where the rack nominally presents it",
+      "generated_utc": "2026-08-19T05:59:53+00:00"
+    },
+    "vision_workflow_camera_align_certification.json": {
+      "title": "Vision servicing workflow, CAMERA arm: the module pose regressed from 64x64 RGB",
+      "generated_utc": "2026-08-16T20:45:19+00:00"
+    },
+    "vision_workflow_camera_aligned_certification.json": {
+      "title": "Vision servicing workflow, CAMERA arm: the module pose regressed from 64x64 RGB",
+      "generated_utc": "2026-08-16T06:08:35+00:00"
+    },
+    "vision_workflow_camera_calibrobust_certification.json": {
+      "title": "Vision servicing workflow, CAMERA arm with a calibration-robust pose head",
+      "generated_utc": "2026-08-16T00:00:42+00:00"
+    },
+    "vision_workflow_camera_certification.json": {
+      "title": "Vision servicing workflow, CAMERA arm: the module pose regressed from 64x64 RGB",
+      "generated_utc": "2026-08-15T22:54:16+00:00"
+    },
+    "vision_workflow_camera_insertalign_certification.json": {
+      "title": "Vision servicing workflow, CAMERA arm: the module pose regressed from 64x64 RGB",
+      "generated_utc": "2026-08-16T09:34:04+00:00"
+    },
+    "vision_workflow_oracle_align_certification.json": {
+      "title": "Vision servicing workflow, ORACLE arm: the module pose read from the simulator",
+      "generated_utc": "2026-08-16T21:16:11+00:00"
+    },
+    "vision_workflow_oracle_aligned_certification.json": {
+      "title": "Vision servicing workflow, ORACLE arm: the module pose read from the simulator",
+      "generated_utc": "2026-08-16T06:48:11+00:00"
+    },
+    "vision_workflow_oracle_certification.json": {
+      "title": "Vision servicing workflow, ORACLE arm: the module pose read from the simulator",
+      "generated_utc": "2026-08-15T22:30:36+00:00"
+    },
+    "vision_workflow_oracle_insertalign_certification.json": {
+      "title": "Vision servicing workflow, ORACLE arm: the module pose read from the simulator",
+      "generated_utc": "2026-08-16T09:59:00+00:00"
+    },
+    "vision_workflow_oracle_twoslot_certification.json": {
+      "title": "Vision servicing workflow, ORACLE arm: the module pose read from the simulator",
+      "generated_utc": "2026-08-19T05:23:52+00:00"
+    },
+    "vision_workflow_payload_2kg_certification.json": {
+      "title": "Vision servicing workflow at a 2 kg module",
+      "generated_utc": "2026-08-16T01:13:14+00:00"
+    },
+    "vision_workflow_payload_80kg_certification.json": {
+      "title": "Vision servicing workflow at a 80 kg module",
+      "generated_utc": "2026-08-16T01:38:34+00:00"
+    },
+    "workcell_reach_solution.json": {
+      "title": "A workcell in which the arm holds the capture attitude at every pose the relocation needs",
+      "generated_utc": "2026-08-19T16:32:58+00:00"
+    },
+    "workflow_install_align_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "generated_utc": "2026-08-16T19:33:32+00:00"
+    },
+    "workflow_install_aligned_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "generated_utc": "2026-08-16T04:48:49+00:00"
+    },
+    "workflow_install_attitude_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "generated_utc": "2026-08-17T02:11:10+00:00"
+    },
+    "workflow_install_base_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "generated_utc": "2026-08-15T06:35:30+00:00"
+    },
+    "workflow_install_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "generated_utc": "2026-08-11T17:25:26+00:00"
+    },
+    "workflow_install_clock30retain_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "generated_utc": "2026-08-17T00:50:51+00:00"
+    },
+    "workflow_install_clock_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "generated_utc": "2026-08-15T08:23:31+00:00"
+    },
+    "workflow_install_insertalign_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "generated_utc": "2026-08-16T08:43:00+00:00"
+    },
+    "workflow_install_insertchain_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "generated_utc": "2026-08-17T00:10:54+00:00"
+    },
+    "workflow_install_promoted_certification.json": {
+      "title": "Chained servicing workflow: install, on the promoted checkpoint set",
+      "generated_utc": "2026-08-16T23:40:43+00:00"
+    },
+    "workflow_install_v10_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "generated_utc": "2026-08-15T21:23:54+00:00"
+    },
+    "workflow_install_v7_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "generated_utc": "2026-08-15T10:15:52+00:00"
+    },
+    "workflow_install_v9_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "generated_utc": "2026-08-15T20:15:47+00:00"
+    },
+    "workflow_install_w65_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "generated_utc": "2026-08-20T02:53:32+00:00"
+    },
+    "workflow_install_yoked_certification.json": {
+      "title": "Chained servicing workflow: install",
+      "generated_utc": "2026-08-15T06:16:18+00:00"
+    },
+    "workflow_remove_clock_certification.json": {
+      "title": "Chained servicing workflow: remove",
+      "generated_utc": "2026-08-15T08:12:58+00:00"
+    },
+    "workflow_remove_final_certification.json": {
+      "title": "Chained servicing workflow: remove",
+      "generated_utc": "2026-08-15T18:32:54+00:00"
+    },
+    "workflow_remove_retain_certification.json": {
+      "title": "Chained servicing workflow: remove",
+      "generated_utc": "2026-08-16T18:17:22+00:00"
+    },
+    "workflow_remove_settle_certification.json": {
+      "title": "Chained servicing workflow: remove",
+      "generated_utc": "2026-08-16T11:28:22+00:00"
+    },
+    "workflow_remove_unsat_certification.json": {
+      "title": "Chained servicing workflow: remove",
+      "generated_utc": "2026-08-16T17:53:17+00:00"
+    },
+    "workflow_remove_v10_certification.json": {
+      "title": "Chained servicing workflow: remove",
+      "generated_utc": "2026-08-15T21:12:47+00:00"
+    },
+    "workflow_remove_v7_certification.json": {
+      "title": "Chained servicing workflow: remove",
+      "generated_utc": "2026-08-15T10:05:21+00:00"
+    },
+    "workflow_remove_v9_certification.json": {
+      "title": "Chained servicing workflow: remove",
+      "generated_utc": "2026-08-15T20:00:09+00:00"
+    },
+    "workflow_remove_w65_certification.json": {
+      "title": "Chained servicing workflow: remove",
+      "generated_utc": "2026-08-20T02:37:27+00:00"
+    },
+    "workflow_robot_carried_leadin_check_certification.json": {
+      "title": "Robot-carried relocation, one seed, lead-ins derived from the rails",
+      "generated_utc": "2026-08-24T22:17:49+00:00"
+    },
+    "workflow_robot_carried_m130pin_check_certification.json": {
+      "title": "Robot-carried relocation, one seed, after the criterion and rack changes",
+      "generated_utc": "2026-08-24T20:57:19+00:00"
+    }
+  }
+}
