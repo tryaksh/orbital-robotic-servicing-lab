@@ -122,7 +122,14 @@ def main() -> int:
     if mismatches:
         print(f"NOT COMPARABLE: protocols differ on {', '.join(mismatches)}")
     print(f"DECISION: {decision}")
-    print(f"wrote {args.report.relative_to(ROOT)}")
+    try:
+        written = args.report.relative_to(ROOT)
+    except ValueError:
+        # A report path outside the repository is legitimate -- a smoke run
+        # writing to a scratch directory -- and must not throw after the work
+        # is already done and printed.
+        written = args.report
+    print(f"wrote {written}")
     return 0
 
 
