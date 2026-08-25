@@ -131,13 +131,24 @@ def main() -> int:
         "success_orientation_tolerance_mrad": SUCCESS_ORIENTATION_RAD * 1000.0,
         "arms": arms,
         "what_it_settles": [
-            "The attitude band is set by the channel's lateral throat. Both floors sit just under "
-            f"their own 2c/L -- {before['floor_over_wall']:.3f} and {after['floor_over_wall']:.3f} "
-            "of it -- and the floor moved by 10.3 mrad when the throat moved by 1.6 mm.",
+            "The attitude band is set by the channel's lateral throat: the floor moved 10.28 mrad "
+            "when the throat moved 1.62 mm, on an unchanged checkpoint. The move is 1.4x what the "
+            f"law alone predicts -- 2c/L falls by 7.22 mrad -- so the floor sits at "
+            f"{before['floor_over_wall']:.3f} of its wall on the old rack and "
+            f"{after['floor_over_wall']:.3f} on the new one. The throat is the cause; it is not "
+            "the whole of the quantitative story, and a retrained policy is what would say "
+            "whether the remaining 3.4 mrad is the policy having room it did not have before.",
             "It is not the relief. The relieved channel is 15.68 x 12.61 mm and admits 69.7 mrad "
             "of yaw; the module rests far inside that, against the unrelieved throat the lead-ins "
             "hold at the mouth. evidence/destination_channel_geometry.json measures both.",
             "It is not the policy's. Nothing about the checkpoint changed between these two rows.",
+            "And with the throat out of the way it stops binding: the floor lands at 45.75 mrad, "
+            "3.43 mrad inside the new wall, where it sat 0.36 mrad inside the old one. 45.75 mrad "
+            "is also where the CHAIN's successful episodes seat -- min 45.754, p50 45.815, p95 "
+            "46.452 over 94 episodes in "
+            "workflow_robot_carried_m130pin_guarded_c11065_certification.json -- which is what the "
+            "form lock delivers when no rack surface is fighting it. The skill's tail is still "
+            "wider than the chain's, p95 52.35 against 46.45.",
         ],
         "what_it_does_not_settle": [
             "This is not a certification. One seed, stage 0, 256 episodes, and the policy was "
