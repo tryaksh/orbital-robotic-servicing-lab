@@ -40,7 +40,7 @@ training runs do not.
 | **T6** | Grasp and extract miss the 95% gate | cheap to attribute | the skill numbers |
 | **T7** | The live service runs the superseded w65 policy set | small if folded into T1 | the demo's credibility |
 | **T8** | One epoch, two filenames, two provenance hashes | <1 h, CPU | nothing; a latent trap |
-| **T9** | **The insert blocker.** The skill's load path is pads-only; the chain's is a form lock | half a day + ~2 h GPU | a learned seating phase |
+| **T9** | **The insert blocker.** Give the skill the chain's *mating compliance*, not just "enable the lock" | half a day + ~2 h GPU | a learned seating phase |
 | **T10** | Test-suite portability | **done 2026-08-25** | — |
 | **T11** | No recording shows the certified chain | ~8 min a clip | the media, and any release |
 | **P1–P7** | [Publication track](#publication-track) — the same work on a submission deadline | see section | Frontiers, 2026-11-09 |
@@ -472,43 +472,88 @@ no published number moves.
 
 ---
 
-## T9 — The insert skill's load path still differs from the chain's
+## T9 — The insert blocker: the skill's load path is not the chain's
 
-**Where it stands.** Seven of the eight ways the insert skill's task disagreed
-with the chain's seating phase are closed and held by
-`tests/test_skill_chain_agreement.py`. **The load path is the one still open, and
-it is measured rather than overlooked.**
+**This is now the insert skill's blocking task, not a tidiness item.** T2 tried
+the two cheap explanations and measured both away: the policy is not creeping,
+and the objective's angular scale is not the defect. What is left is the load
+path, and there is direct evidence for it — the module ends at ~84.5 mrad against
+a 52.4 mrad tolerance, and *the angle does not move* when the reward is changed
+three different ways.
 
-The chain seats with the form lock softened to a bounded spring-damper. The skill
-cannot simply switch that on: the lock's joint is authored between the wrist and
-the module at their **spawn** poses, and this task's reset writes the module
-anywhere along 436 mm of stroke, so PhysX resolves the disagreement by snapping
-them together. With the lock as the only change, same checkpoint and seed:
+**Why it is the load path.** Two flat pads on a pin cannot resist a moment about
+the closing axis. This project has measured that four independent ways, and it is
+the entire reason the chain carries the module on a form lock. The chain reaches
+**46 mrad** at the identical seating phase; the skill reaches 84.5. The one
+structural difference is that the chain has the lock and the skill does not.
 
-| | Dead inside ten control steps | Roll about the pin |
+**Three ways of switching it on that do not work, all measured**
+(`evidence/insert_attitude_diagnosis.json`, and `play.py --latch_enabled` makes
+each reproducible in one command):
+
+| Arm | Dead ≤ 10 steps | Orientation |
 | --- | ---: | ---: |
-| Lock on | 125 of 128 | 247.6 mrad |
-| Lock off | 0 of 128 | 9.4 mrad |
+| lock off (as trained and published) | 0% | 84.6 mrad |
+| lock on, engaged on the first qualifying step | 100% | 313.6 mrad |
+| lock on, engaged after 5 control steps | 96.1% | 308.4 mrad |
+| lock on, engaged after 20 control steps | **0%** | **325.1 mrad** |
 
-**Code.** `mdp.GrappleLatch` must re-anchor after a reset — code, not a
-configuration value. The chain's mating numbers are declared on the task next to
-the measurement, so it is a one-line change at the call site once the re-anchor
-exists.
+The last row is the informative one. Deferring engagement **completely removes
+the early-death mode** — which confirms the anchoring timing was a real defect,
+and `engage_after_steps` now exists for it, defaulting to 0 so nothing published
+moves. But the attitude is *worse than with the lock off*. **The timing was real
+and it was not the cause.**
 
-**Why it matters beyond tidiness.** This class of defect — a skill trained on a
-problem the chain does not hand it — is **the failure mode that has cost this
-project the most**. The insert skill certified at 0.00% while holding the grip
-perfectly, because it was being asked for something the geometry forbids. The
-remaining disagreement is the last place that can still be true.
+**The actual reason, and it is already in this repository's own evidence.** The
+insert task's reset places the module **inside** the destination channel, anywhere
+along a 436 mm stroke, so the rails are constraining it at the moment the latch
+engages. A restoring wrench on a module the rails hold fights the rack rather than
+the drift it was built for. `mdp.GrappleLatch`'s own docstring records the same
+effect on extraction: a latch engaged on capture "never moved the rotation it was
+aimed at and collapsed extraction travel from 465 mm to about 25 mm".
 
-**Done when.** `GrappleLatch` re-anchors on reset, the skill runs with the lock in
-the chain's configuration, and the eighth row of
-`tests/test_skill_chain_agreement.py` asserts equality like the other seven.
-Re-certify the insert skill afterwards — the load path is not a cosmetic change
-and the 0.00% was measured without it. **Do this before T2's retraining if both
-are being done**, or T2 trains against a load path the chain does not use.
+The chain never does this. It arms the lock only once the driver says the module
+is **clear of the rails**, and then softens it to the remote-centre *mating
+compliance* at the mouth — soft in rotation, with the centre at the part's own
+tip — precisely so the lead-ins can still walk the module square. A stiff lock
+cannot be reoriented by the channel it is entering, which is the other half of the
+jam (`_configure_latch`, and specification §9.6).
 
-**Cost.** Half a day of implementation. Re-certification is ~20 minutes.
+**So the work is not "enable the lock".** It is to give the skill the chain's
+*mating* configuration:
+
+1. engage the compliance at the mouth rather than the transit form lock —
+   `latch_joint_mode`, the `mating_compliance_joint`, and the remote centre at
+   `MATING_COMPLIANCE_CENTRE`;
+2. anchor it after the reset has settled (`engage_after_steps`, already in);
+3. keep `mating_force_cap_n` and the rotation stiffness at the values the chain
+   seats with — 1 kN and 20 kN·m/rad — since those are measured, not chosen.
+
+**Code.** `src/zero_g_blade_swap/tasks/blade_swap/mdp/grapple.py` (`GrappleLatch`,
+the `_mating_joints` path around the `joint_mode != "compliant"` early return);
+`grapple_pin_env_cfg.py::ZeroGBladeGrapplePinInsertEnvCfg` (`latch_enabled`,
+`latch_joint_mode`, the mating caps); `scripts/run_workflow_demo.py` for how the
+chain sequences arm → soften → release.
+
+**Done when.** The eighth row of `tests/test_skill_chain_agreement.py` asserts the
+load paths are equal like the other seven, and the skill is retrained and verified
+**both ways** — the standard extraction is held to and insertion never has been:
+
+```bash
+CKPT=<retrained checkpoint> TAG=insert_v23lock scripts/verify_insert_skill.sh
+```
+
+That certifies three stages on three held-out seeds, then runs the same checkpoint
+inside the full chain against the scripted guarded advance. **The chain keeps the
+scripted advance unless the chain arm beats it on the same seeds.**
+
+**The gate to watch is attitude, not success.** If the load path is the cause,
+orientation should fall from 84.5 mrad toward the chain's 46 mrad. If it falls and
+the success rate still does not move, **publish that** — it would mean squareness
+was necessary and not sufficient, which is a further result rather than a failure.
+
+**Cost.** Half a day of implementation. ~1 hour training, ~45 minutes to certify
+the skill, ~25 minutes for the chain arm.
 
 ---
 

@@ -404,6 +404,7 @@ class GrappleLatch(ManagerTermBase):
         require_armed: bool = False,
         mating_force_cap_n: float = 400.0,
         mating_torque_cap_nm: float = 40.0,
+        engage_after_steps: int = 0,
     ) -> None:
         del env_ids
         if joint_mode not in ("compliant", "fixed"):
@@ -424,6 +425,23 @@ class GrappleLatch(ManagerTermBase):
         qualified = capture_established(env)
         if require_armed:
             qualified = qualified & env._grapple_latch_armed
+        # **Let the reset settle before anchoring to it.**
+        #
+        # The latch records the live wrist-to-module transform at engagement and
+        # then spends up to its force and torque caps preserving it. On a task
+        # whose reset *writes* the module somewhere along a 436 mm stroke, the
+        # first control step after that write is the worst possible moment to
+        # read the transform: the pair has not been stepped together yet, so the
+        # pose read can belong to either side of the write. Anchoring to it makes
+        # the latch fight a difference that was never physical, and measured on
+        # the insert task that flings the module -- 100% of episodes dead inside
+        # ten control steps at 313.6 mrad and 589.9 mm/s.
+        #
+        # Zero is the default and is bit-identical to before this existed, so
+        # every task and every published number that engaged on the first
+        # qualifying step still does.
+        if engage_after_steps > 0:
+            qualified = qualified & (env.episode_length_buf >= engage_after_steps)
         newly_latched = qualified & ~latched
         blade = env.scene[asset_cfg.name]
         tool_position, tool_orientation = end_effector_pose_world(env)

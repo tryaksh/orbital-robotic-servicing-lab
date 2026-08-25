@@ -1,7 +1,7 @@
 {
   "title": "Why the insert skill does not seat: attitude, not creep",
   "evidence_type": "simulation_only",
-  "generated_utc": "2026-08-25T08:02:08.376049+00:00",
+  "generated_utc": "2026-08-25T08:07:17.534577+00:00",
   "question": "The insert skill certifies at 0.00% and stops ~204 mm short. The published reading was that it creeps because the objective made dawdling nearly free. Is that right?",
   "answer": "No. The time cost trained to convergence changes nothing. What the episodes show is attitude: the module ends at a median 84.6 mrad against the 52.4 mrad a seated module must be inside, so essentially every episode is outside the orientation tolerance by about 1.6x. A 7x stronger angular penalty, trained 400 epochs, moved that by 0.03 mrad -- so the angle is not the policy's to give through pad contact.",
   "success_orientation_tolerance_mrad": 52.3599,
@@ -138,17 +138,85 @@
       "control_steps_median": 900.0,
       "fraction_dead_within_10_steps": 0.0,
       "fraction_inside_success_orientation": 0.0391
+    },
+    {
+      "label": "v21time ep1400, stage 0, form lock engaged after 5 control steps",
+      "episodes": 129,
+      "success_rate": 0.0,
+      "orientation_error_mrad": {
+        "p5": 194.003,
+        "median": 308.384,
+        "p95": 869.711
+      },
+      "axial_short_mm": {
+        "p5": 77.897,
+        "median": 308.388,
+        "p95": 528.742
+      },
+      "lateral_error_mm": {
+        "p5": 3.306,
+        "median": 11.479,
+        "p95": 35.984
+      },
+      "terminal_speed_mm_s": {
+        "p5": 147.864,
+        "median": 598.086,
+        "p95": 1816.445
+      },
+      "tool_to_handle_mm": {
+        "p5": 10.403,
+        "median": 25.788,
+        "p95": 66.525
+      },
+      "control_steps_median": 7.0,
+      "fraction_dead_within_10_steps": 0.9612,
+      "fraction_inside_success_orientation": 0.0
+    },
+    {
+      "label": "v21time ep1400, stage 0, form lock engaged after 20 control steps",
+      "episodes": 128,
+      "success_rate": 0.0,
+      "orientation_error_mrad": {
+        "p5": 118.739,
+        "median": 325.09,
+        "p95": 728.4
+      },
+      "axial_short_mm": {
+        "p5": 73.542,
+        "median": 294.509,
+        "p95": 514.601
+      },
+      "lateral_error_mm": {
+        "p5": 3.496,
+        "median": 13.479,
+        "p95": 38.271
+      },
+      "terminal_speed_mm_s": {
+        "p5": 79.767,
+        "median": 605.096,
+        "p95": 1835.434
+      },
+      "tool_to_handle_mm": {
+        "p5": 10.973,
+        "median": 22.642,
+        "p95": 65.741
+      },
+      "control_steps_median": 23.0,
+      "fraction_dead_within_10_steps": 0.0,
+      "fraction_inside_success_orientation": 0.0078
     }
   ],
   "what_this_refutes": [
     "That the insert skill is creeping toward a seat it might reach with more time pressure. The time cost at -0.40, trained to 1,400 epochs, leaves the median shortfall at 202.2 mm against 203.6 mm without it, and every episode still spends its whole clock. The cost is paid, not avoided.",
     "That the objective was mis-scaled. Normalising orientation by 20.5 mrad instead of 0.15 rad -- a 7x stronger angular penalty -- moved the measured orientation from 84.61 to 84.58 mrad over 400 epochs. Retracted; see evidence/RETRACTED.md.",
-    "That switching the form lock on is a free fix. Engaged on this task the module is flung: 100% of episodes dead inside ten control steps, orientation 313.6 mrad, terminal speed 589.9 mm/s. The lock records its transform before the reset writes the module along the stroke and then fights the difference at up to its 1 kN cap."
+    "That switching the form lock on is a free fix. Engaged on this task the module is flung: 100% of episodes dead inside ten control steps, orientation 313.6 mrad, terminal speed 589.9 mm/s.",
+    "That the fling is only an anchoring-timing problem. Deferring engagement to control step 20 removes the early deaths entirely -- 0% dead inside ten steps against 100% -- and the attitude is no better: 325.1 mrad, worse than the 84.6 mrad the same checkpoint reaches with the lock off. The timing was real and it was not the cause."
   ],
   "what_it_is_not": [
     "Not the reset. evidence/insert_reset_bank.json reports attitude_residual_rad 0.0 at every station, so the module starts square and the episode takes it to 84.6 mrad.",
     "Not grip slip. Tool-to-handle holds at 12.2 mm with a p95 of 12.48, which is the pin's own measured 12 mm feed rather than the pads losing it."
   ],
+  "why_the_lock_cannot_simply_be_switched_on": "The insert task's reset places the module INSIDE the destination channel, anywhere along a 436 mm stroke, so the rails are already constraining it when the latch engages. A restoring wrench on a module the rails hold fights the rack rather than the drift it was designed for -- the same effect this project already measured on extraction, where a latch engaged on capture collapsed the pull from 465 mm to about 25 mm. The chain never does this: it arms the lock only once the module is clear of the rails, and softens it to the remote-centre mating compliance at the mouth so the lead-ins can still walk the module. Reproducing that inside the skill is the work, and it is docs/NEXT_WORK.md T9.",
   "mechanism": "Two flat pads on a pin cannot resist a moment about the closing axis -- the same limit this project measured four independent ways and the reason the chain carries the module on a form lock. With the lock off, contact with the lead-in rotates the module and nothing opposes it. The chain reaches 46 mrad at the same seating phase, and the only difference is that the chain carries the module on the form lock while the skill trains without one. Strengthening the objective does not substitute for that, which is what the 400-epoch null result measured.",
   "scope_and_limitations": [
     "Simulation only. No result here was produced on real hardware.",

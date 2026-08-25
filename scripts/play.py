@@ -67,6 +67,16 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--latch_engage_after_steps",
+        type=int,
+        default=0,
+        help=(
+            "Defer form-lock engagement to this control step. Zero engages on the first "
+            "qualifying step, which is what every published number was measured under; a task "
+            "whose reset writes the module along a stroke needs the pair stepped together first."
+        ),
+    )
+    parser.add_argument(
         "--latch_enabled",
         action="store_true",
         help=(
@@ -594,6 +604,14 @@ def main() -> dict[str, object]:
             env_cfg.configure_robustness(int(env_cfg.robustness_level))
             if getattr(env_cfg.events, "grapple_latch", None) is None:
                 raise RuntimeError("--latch_enabled did not reinstall the grapple latch event")
+            if args.latch_engage_after_steps:
+                env_cfg.events.grapple_latch.params["engage_after_steps"] = (
+                    args.latch_engage_after_steps
+                )
+                print(
+                    f"[INFO] Form lock defers engagement to control step "
+                    f"{args.latch_engage_after_steps}"
+                )
             print(
                 f"[INFO] Form lock ENABLED for this evaluation, joint_mode="
                 f"{env_cfg.latch_joint_mode} (diagnostic; the skill's default is off)"

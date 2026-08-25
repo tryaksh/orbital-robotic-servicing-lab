@@ -117,6 +117,10 @@ def main() -> int:
          "v21time ep1400, stage 0, form lock ENGAGED as the chain runs it"),
         ("artifacts/insert_attitude/probe_ep400.npz",
          "v22attitude ep400, stage 0, orientation penalty 7x stronger (RETRACTED scale)"),
+        ("artifacts/insert_attitude/lock_defer5.npz",
+         "v21time ep1400, stage 0, form lock engaged after 5 control steps"),
+        ("artifacts/insert_attitude/lock_defer20.npz",
+         "v21time ep1400, stage 0, form lock engaged after 20 control steps"),
     ):
         path = ROOT / pattern
         if path.is_file():
@@ -158,8 +162,11 @@ def main() -> int:
             "84.61 to 84.58 mrad over 400 epochs. Retracted; see evidence/RETRACTED.md.",
             "That switching the form lock on is a free fix. Engaged on this task the module is "
             "flung: 100% of episodes dead inside ten control steps, orientation 313.6 mrad, "
-            "terminal speed 589.9 mm/s. The lock records its transform before the reset writes "
-            "the module along the stroke and then fights the difference at up to its 1 kN cap.",
+            "terminal speed 589.9 mm/s.",
+            "That the fling is only an anchoring-timing problem. Deferring engagement to control "
+            "step 20 removes the early deaths entirely -- 0% dead inside ten steps against 100% "
+            "-- and the attitude is no better: 325.1 mrad, worse than the 84.6 mrad the same "
+            "checkpoint reaches with the lock off. The timing was real and it was not the cause.",
         ],
         "what_it_is_not": [
             "Not the reset. evidence/insert_reset_bank.json reports attitude_residual_rad 0.0 at "
@@ -167,6 +174,17 @@ def main() -> int:
             "Not grip slip. Tool-to-handle holds at 12.2 mm with a p95 of 12.48, which is the "
             "pin's own measured 12 mm feed rather than the pads losing it.",
         ],
+        "why_the_lock_cannot_simply_be_switched_on": (
+            "The insert task's reset places the module INSIDE the destination channel, anywhere "
+            "along a 436 mm stroke, so the rails are already constraining it when the latch "
+            "engages. A restoring wrench on a module the rails hold fights the rack rather than "
+            "the drift it was designed for -- the same effect this project already measured on "
+            "extraction, where a latch engaged on capture collapsed the pull from 465 mm to about "
+            "25 mm. The chain never does this: it arms the lock only once the module is clear of "
+            "the rails, and softens it to the remote-centre mating compliance at the mouth so the "
+            "lead-ins can still walk the module. Reproducing that inside the skill is the work, "
+            "and it is docs/NEXT_WORK.md T9."
+        ),
         "mechanism": (
             "Two flat pads on a pin cannot resist a moment about the closing axis -- the same "
             "limit this project measured four independent ways and the reason the chain carries "
