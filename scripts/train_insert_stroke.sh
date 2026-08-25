@@ -19,6 +19,15 @@
 #  * both bays seat at the plane the release interlock permits, and bay 1's goal
 #    is no longer 74 mm past it.
 #
+# **And since 2026-08-25 the task carries the chain's load path itself.** The
+# form lock, softened into the remote-centre mating compliance at control step
+# 5, used to be reachable only through `train.py --latch_mating_compliance` --
+# which `scripts/verify_insert_skill.sh` does not pass to `play.py`, so a
+# checkpoint trained on the lock would have been certified on pad contact alone.
+# It is on `ZeroGBladeGrapplePinInsertTwoSlotEnvCfg` now, so training and
+# certification cannot disagree about it. Passing the flag is harmless and
+# redundant.
+#
 # **From scratch.** Rule 12 permits resuming across a geometry change, but the
 # thing being changed here is the distribution the policy is trained on, and the
 # checkpoint to resume from scores zero. There is nothing to preserve.
@@ -65,13 +74,13 @@ PY
 echo "=============================================================="
 echo "[$(date +%H:%M:%S)] TRAIN insert from scratch, $EPOCHS epochs, run=$RUN"
 echo "=============================================================="
-# 1024 environments, not 512. The note in run_grapple_skills.sh says a
-# 512-environment run "will not share 12 GB with another", which is a statement
-# about running two at once and had been read as a ceiling on one. There is only
-# one run left in this session, so the batch is the lever: 1024 doubles the
-# experience per epoch at well under twice the wall clock, and the fallback below
-# is what makes trying it free rather than a gamble.
-for envs in ${NUM_ENVS:-1024 512}; do
+# 512 environments, and the ceiling is PhysX rather than memory. The task runs
+# `replicate_physics=False` because the form lock is a procedurally authored
+# joint and replication copies only env 0's, so every environment authors its
+# own joint and the scene build cost grows with the count. 1024 is kept as the
+# first attempt for a task that ever runs replicated again; the fallback is what
+# makes trying it free rather than a gamble.
+for envs in ${NUM_ENVS:-512 256}; do
   echo "[$(date +%H:%M:%S)] attempting $envs environments"
   "$PYTHON" scripts/train.py --headless --task "$TASK" \
       --num_envs "$envs" --seed 70 --robustness_level 0 \

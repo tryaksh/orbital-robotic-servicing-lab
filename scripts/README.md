@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-78 scripts. Grouped by the verb their filename starts with.
+80 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -69,11 +69,13 @@ These read `.npz` episode metrics and write `evidence/*.json`.
 
 | Script | What it is |
 | --- | --- |
+| `report_attitude_wall_move.py` | Does the insert skill's attitude floor move with the channel throat? |
 | `report_chain_robustness.py` | Rank what breaks the chain, from the sweep's own per-episode rows. |
 | `report_extract_attribution.py` | One table: what each change to the extract task was worth, on one policy. |
 | `report_insert_attitude.py` | Why the insert skill does not seat: attitude it cannot deliver, not creep. |
 | `report_mating_compliance.py` | Pool the mating-compliance runs into one table, and one specification number. |
 | `report_robot_carried_interface.py` | Pool the robot-carried transit runs into one interface result. |
+| `report_seating_head_to_head.py` | Which seating controller does the chain keep, decided arithmetically. |
 
 ## Analyses — diagnose a specific failure
 

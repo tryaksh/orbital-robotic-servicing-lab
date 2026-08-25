@@ -414,13 +414,16 @@ section 9.8 spends it on the 35.56 mrad hand-off requirement.
 
 > **Requirement.** Channel lateral clearance per side ≤
 > `sqrt(pin_half_width² − vertical_clearance²)`. On this rack, with 8.000 mm of
-> vertical gap and a 15 mm pin half-width, that is **12.689 mm**, and
-> `GUIDE_CENTER_OFFSET_Y` is derived from it rather than inherited.
+> vertical gap and a 15 mm pin half-width, that is **12.689 mm**.
 
-The two bounds leave a window of 10.35 to 12.689 mm and the rack now sits at the
-top of it. It sat **outside** it, at 15.750 mm, from the moment the module was
-thinned: the comment on that constant read "1.5 mm total clearance around the
-160 mm blade" and it did not move when the blade stopped being 160 mm wide.
+That bound is real and it is no longer the binding one. A third requirement,
+below, is tighter, and `GUIDE_CENTER_OFFSET_Y` is derived from the pair that
+binds rather than from this one.
+
+The rack sat **outside** the pads' bound, at 15.750 mm, from the moment the
+module was thinned: the comment on that constant read "1.5 mm total clearance
+around the 160 mm blade" and it did not move when the blade stopped being 160 mm
+wide.
 
 What it cost was measured. On the current module the channel's corner is
 `hypot(15.75, 8.00) = 17.66 mm`, against 0.90 mm on the module the extract skill
@@ -437,15 +440,67 @@ cross-section, so the cell can state its family rather than its one part. Of a
 6 × 6 grid from 110 to 160 mm wide and 14 to 35 mm tall, six sections are
 accepted; the module this project used to run fails **entry** and several
 thinner ones fail **grip**, in the same rack, and until this session the only
-instrument that measured either was a training run. The map is printed by the
+instrument that measured either was a training run. Seven are accepted at the
+derived clearance, because narrowing the channel buys back a section that used
+to fail grip. The map is printed by the
 same script and recorded in `evidence/workcell_geometry_check.json`.
 
-> **Known and not fixed.** `GUIDE_CENTER_OFFSET_Y` is derived as the *largest*
-> lateral clearance the pads can follow, so the shipped 450 × 130 × 20 mm module
-> sits exactly on that bound with no margin. The window runs down to 5.738 mm
-> and a value in the middle of it would leave a few millimetres on both sides.
-> That is a measurement, not an argument, and this session did not have the
-> clock for it.
+### 6.4 The channel may not hold a module outside its own acceptance criterion
+
+The two requirements above are about *entering* the channel and about *holding*
+the module while it moves. Neither says anything about where a module comes to
+rest, and that turns out to be the requirement the seating actually fails.
+
+A rigid part of length `L` fully inside a channel with `c` of clearance per side
+wedges at `2c/L` and **cannot be squarer than that**. So the channel decides the
+attitude of a module that merely rests in it, and if that attitude is outside the
+one a seated module is accepted at, the rack is specifying a part it will then
+reject.
+
+> **Requirement.** Channel lateral clearance per side ≤
+> `L × seated_orientation_tolerance / 2`. On this rack, with a 450 mm module and
+> `INSERTION_ORIENTATION_TOLERANCE_RAD` = 52.36 mrad, that is **11.781 mm**.
+
+At the 12.689 mm the pads' bound gave, `2c/L` is 56.40 mrad and the channel held
+a module **4.04 mrad outside its own acceptance criterion**. That was measured
+rather than argued: of the 91 episodes of `grapple_insert_l0_seed70_v23lock` that
+reached seated depth, terminal attitude *floored* at 56.03 mrad, and narrowing
+the channel to 11.065 mm moved that floor to 45.75 mrad with the same checkpoint,
+the same seed and the same episode count (`evidence/insert_attitude_wall_moved.json`).
+
+**The relief does not enter this.** The destination bay is relieved by 4.6125 mm
+per side, which opens the channel *behind* the lead-ins to 69.7 mrad of yaw. A
+resting module is nowhere near that: the surfaces that hold it are the lead-in
+flares at the mouth, which are authored from the rail face and deliberately do
+not move with the relief (section 6.2). The throat is the requirement, not the
+channel behind it. `evidence/destination_channel_geometry.json` measures both.
+
+### 6.5 Where in the window, and why not on a bound
+
+Three bounds, of which two now bind:
+
+| | Requirement | Bound |
+| --- | --- | ---: |
+| lower | the lead-ins must admit the attitude the transit delivers, 46.0 mrad | `c ≥` 10.350 mm |
+| upper | a resting module must be inside the seated criterion, 52.36 mrad | `c ≤` 11.781 mm |
+| (upper) | the pads must be able to follow the channel's corner | `c ≤` 12.689 mm |
+
+> **Requirement.** `GUIDE_CENTER_OFFSET_Y` is placed at the clearance that
+> maximises the smaller of the two margins — the midpoint *in attitude* between
+> what has to be admitted and what may not be exceeded:
+> `2c/L = (46.00 + 52.36) / 2 = 49.18 mrad`, so **c = 11.065 mm** and the guide
+> body centre sits half a guide thickness outboard of it: **85.065 mm**.
+
+Not on a bound, and that is the specification's own history talking. The
+inherited 15.750 mm was outside the pads' bound and cost measured grips. The
+12.689 mm that replaced it sat exactly *on* that bound and 4.04 mrad outside the
+seated criterion, which cost the insert skill every one of its episodes. A value
+on a bound has no margin for the thing the bound was derived from being slightly
+wrong, and in this rack it has twice been slightly wrong.
+
+The corner the pads must follow improves from exactly their limit to
+`hypot(11.065, 8.000)` = 13.654 mm of 15.000 — a consequence of the placement
+rather than its purpose.
 
 ---
 
@@ -1337,8 +1392,8 @@ seconds. That was taken on the **450 x 160 x 35 mm** module, whose channel had
 channel had 15.75 mm of lateral and 8.00 mm of vertical clearance per side — a
 twenty-fold change in the quantity the conclusion was about, so the conclusion
 had to be re-taken rather than inherited. (The lateral figure has since been
-derived down to 12.689 mm; see section 6.3. The vertical is unchanged, and it is
-the one this conclusion turns on.)
+derived down to 12.689 mm and then to 11.065 mm; see sections 6.3 to 6.5. The
+vertical is unchanged, and it is the one this conclusion turns on.)
 
 It survives, and not narrowly. Same seed, same rail, same everything but
 `--mating_mode rigid`:

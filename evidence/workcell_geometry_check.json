@@ -1,7 +1,7 @@
 {
   "title": "Where the arm stands, what authority it has there, and what the channel admits",
   "evidence_type": "geometry_check_no_simulator",
-  "generated_utc": "2026-08-24T18:27:31.943642+00:00",
+  "generated_utc": "2026-08-25T22:22:28.139095+00:00",
   "question": "Is the destination bay's seating failure caused by where the robot stands, and what attitude does the destination channel actually accept?",
   "method": "scripts/check_workcell_geometry.py. Closed-form UR10e kinematics validated against every configuration evidence/workcell_reach_solution.json recorded from the simulator, then a damped-least-squares IK at the head-on attitude for every required pose in both bays, with the realised authority of the chain's own DLS controller reported at each. The channel's angular acceptance is closed form from the rack dimensions.",
   "kinematic_validation": {
@@ -2259,43 +2259,43 @@
         0.13,
         0.02
       ],
-      "guide_body_centre_offset_m": 0.086689,
-      "guide_inner_face_half_width_m": 0.077689,
+      "guide_body_centre_offset_m": 0.085065,
+      "guide_inner_face_half_width_m": 0.076065,
       "physx_contact_offset_m": 0.003,
       "guide_length_m": 0.6,
-      "lateral_clearance_per_side_m": 0.012689,
+      "lateral_clearance_per_side_m": 0.011065,
       "vertical_clearance_per_side_m": 0.008,
       "seated_engagement_m": 0.45,
       "law": "theta_max = 2 * clearance_per_side / engaged_length",
       "accepted_attitude_rad": [
         {
           "engaged_length_m": 0.05,
-          "lateral_yaw_rad": 0.50756,
+          "lateral_yaw_rad": 0.4426,
           "vertical_pitch_rad": 0.32
         },
         {
           "engaged_length_m": 0.1,
-          "lateral_yaw_rad": 0.25378,
+          "lateral_yaw_rad": 0.2213,
           "vertical_pitch_rad": 0.16
         },
         {
           "engaged_length_m": 0.2,
-          "lateral_yaw_rad": 0.12689,
+          "lateral_yaw_rad": 0.11065,
           "vertical_pitch_rad": 0.08
         },
         {
           "engaged_length_m": 0.362,
-          "lateral_yaw_rad": 0.070105,
+          "lateral_yaw_rad": 0.061133,
           "vertical_pitch_rad": 0.044199
         },
         {
           "engaged_length_m": 0.45,
-          "lateral_yaw_rad": 0.056396,
+          "lateral_yaw_rad": 0.049178,
           "vertical_pitch_rad": 0.035556
         }
       ],
       "seated_requirement_rad": {
-        "yaw": 0.056396,
+        "yaw": 0.049178,
         "pitch": 0.035556
       },
       "deepest_engagement_for_attitude_m": [
@@ -2332,43 +2332,43 @@
         0.13,
         0.02
       ],
-      "guide_body_centre_offset_m": 0.086689,
-      "guide_inner_face_half_width_m": 0.077689,
+      "guide_body_centre_offset_m": 0.085065,
+      "guide_inner_face_half_width_m": 0.076065,
       "physx_contact_offset_m": 0.003,
       "guide_length_m": 0.6,
-      "lateral_clearance_per_side_m": 0.017302,
+      "lateral_clearance_per_side_m": 0.015678,
       "vertical_clearance_per_side_m": 0.012613,
       "seated_engagement_m": 0.45,
       "law": "theta_max = 2 * clearance_per_side / engaged_length",
       "accepted_attitude_rad": [
         {
           "engaged_length_m": 0.05,
-          "lateral_yaw_rad": 0.69206,
+          "lateral_yaw_rad": 0.6271,
           "vertical_pitch_rad": 0.5045
         },
         {
           "engaged_length_m": 0.1,
-          "lateral_yaw_rad": 0.34603,
+          "lateral_yaw_rad": 0.31355,
           "vertical_pitch_rad": 0.25225
         },
         {
           "engaged_length_m": 0.2,
-          "lateral_yaw_rad": 0.173015,
+          "lateral_yaw_rad": 0.156775,
           "vertical_pitch_rad": 0.126125
         },
         {
           "engaged_length_m": 0.362,
-          "lateral_yaw_rad": 0.095588,
+          "lateral_yaw_rad": 0.086616,
           "vertical_pitch_rad": 0.069682
         },
         {
           "engaged_length_m": 0.45,
-          "lateral_yaw_rad": 0.076896,
+          "lateral_yaw_rad": 0.069678,
           "vertical_pitch_rad": 0.056056
         }
       ],
       "seated_requirement_rad": {
-        "yaw": 0.076896,
+        "yaw": 0.069678,
         "pitch": 0.056056
       },
       "deepest_engagement_for_attitude_m": [
@@ -2442,9 +2442,9 @@
         0.13,
         0.02
       ],
-      "channel_width_m": 0.155378,
+      "channel_width_m": 0.15213,
       "channel_height_m": 0.036,
-      "lateral_half_gap_m": 0.012689,
+      "lateral_half_gap_m": 0.011065,
       "vertical_half_gap_m": 0.008,
       "max_roll_rad": 0.124592,
       "roll_law": "w*sin(t) + h*cos(t) <= H and w*cos(t) + h*sin(t) <= W",
@@ -2452,27 +2452,27 @@
         {
           "engaged_length_m": 0.45,
           "pitch_rad": 0.035556,
-          "yaw_rad": 0.056396
+          "yaw_rad": 0.049178
         },
         {
           "engaged_length_m": 0.3,
           "pitch_rad": 0.053333,
-          "yaw_rad": 0.084593
+          "yaw_rad": 0.073767
         },
         {
           "engaged_length_m": 0.2,
           "pitch_rad": 0.08,
-          "yaw_rad": 0.12689
+          "yaw_rad": 0.11065
         },
         {
           "engaged_length_m": 0.1,
           "pitch_rad": 0.16,
-          "yaw_rad": 0.25378
+          "yaw_rad": 0.2213
         }
       ]
     },
     "roll_freedom_multiplier": 19.92,
-    "lateral_freedom_multiplier": 16.92,
+    "lateral_freedom_multiplier": 14.75,
     "vertical_freedom_multiplier": 16.0,
     "why_it_matters": "a pair of flat pads closing on a pin cannot resist a moment about the closing axis, which is roll. While the channel held roll to a few milliradians the grip never had to; the extract skill's own docstring still says the rails constrain five of six motions, and for this section they no longer do",
     "guide_offset_is_not_derived": "GUIDE_CENTER_OFFSET_Y is documented as '1.5 mm total clearance around the 160 mm blade' and was not moved when the blade stopped being 160 mm wide; the same is true of SLOT_UPPER_LIP_CENTER_Z, whose comment quotes 1.0 mm of lift for a 35 mm module"
@@ -2480,15 +2480,26 @@
   "lateral_clearance_window": {
     "question": "how much lateral clearance may the channel have",
     "delivered_attitude_rad": 0.046,
+    "seated_orientation_tolerance_rad": 0.0523599,
     "pad_half_bearing_offset_m": 0.015,
     "vertical_clearance_per_side_m": 0.008,
     "lower_bound_m": 0.01035,
     "lower_bound_reason": "the lead-ins must admit the attitude the transit delivers, 2c/l",
-    "upper_bound_m": 0.012689,
-    "upper_bound_reason": "a module in the corner of its channel must stay inside the pads' half-bearing offset, so hypot(lateral, vertical) <= the pin's half-width",
-    "as_built_m": 0.012689,
+    "upper_bound_m": 0.011781,
+    "upper_bound_reason": "a module that merely rests in the channel wedges at 2c/L and cannot be squarer, so the channel may not hold one outside INSERTION_ORIENTATION_TOLERANCE_RAD",
+    "pad_bound_m": 0.012689,
+    "pad_bound_reason": "a module in the corner of its channel must stay inside the pads' half-bearing offset, so hypot(lateral, vertical) <= the pin's half-width; superseded as the binding upper bound by the seated criterion, and kept because it is what the previous value derived itself from",
+    "pad_bound_still_binds": false,
+    "derived_m": 0.011065,
+    "derived_reason": "the midpoint in attitude between the two bounds, which is the clearance that maximises the smaller of the two margins; sitting on either bound is what the previous two values each did",
+    "derived_resting_attitude_rad": 0.04918,
+    "as_built_m": 0.011065,
+    "as_built_resting_attitude_rad": 0.049178,
+    "as_built_channel_corner_m": 0.013654,
     "inside_the_window": true,
-    "historic_lateral_m": 0.01575
+    "historic_lateral_m": 0.01575,
+    "superseded_lateral_m": 0.012689,
+    "superseded_reason": "derived as the largest clearance the pads can follow, which let a resting module reach 56.40 mrad against a 52.36 mrad acceptance criterion"
   },
   "module_section_envelope": {
     "question": "which module cross-sections does this rack accept",
@@ -2496,19 +2507,19 @@
     "required_half_gap_m": 0.01035,
     "destination_relief_per_side_m": 0.0046125,
     "pad_half_bearing_offset_m": 0.015,
-    "guide_inner_face_half_width_m": 0.077689,
+    "guide_inner_face_half_width_m": 0.076065,
     "channel_height_m": 0.036,
-    "accepted_count": 6,
-    "grip_margin_of_the_shipped_section_m": -0.0,
-    "note_on_the_shipped_section": "GUIDE_CENTER_OFFSET_Y is derived as the *largest* lateral clearance the pads can follow, so the shipped module sits exactly on that bound with no margin. The window runs from 5.738 mm, and a value in the middle of it would leave a few millimetres on both sides. That is a measurement this session did not have the clock to take.",
+    "accepted_count": 7,
+    "grip_margin_of_the_shipped_section_m": 0.001346,
+    "note_on_the_shipped_section": "GUIDE_CENTER_OFFSET_Y used to be derived as the *largest* lateral clearance the pads can follow, so the shipped module sat exactly on that bound with no margin. It is derived now at the equal-margin point between the attitude the transit delivers and the attitude a seated module is accepted at, which leaves 1.35 mm on the pads' bound as a consequence rather than as a target. See lateral_clearance_window.",
     "evaluated_count": 36,
     "sections": [
       {
         "width_m": 0.11,
         "height_m": 0.014,
-        "lateral_half_gap_m": 0.022689,
+        "lateral_half_gap_m": 0.021065,
         "vertical_half_gap_m": 0.011,
-        "channel_corner_m": 0.025215,
+        "channel_corner_m": 0.023764,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
         "accepted": false
@@ -2516,9 +2527,9 @@
       {
         "width_m": 0.11,
         "height_m": 0.018,
-        "lateral_half_gap_m": 0.022689,
+        "lateral_half_gap_m": 0.021065,
         "vertical_half_gap_m": 0.009,
-        "channel_corner_m": 0.024409,
+        "channel_corner_m": 0.022907,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
         "accepted": false
@@ -2526,9 +2537,9 @@
       {
         "width_m": 0.11,
         "height_m": 0.02,
-        "lateral_half_gap_m": 0.022689,
+        "lateral_half_gap_m": 0.021065,
         "vertical_half_gap_m": 0.008,
-        "channel_corner_m": 0.024058,
+        "channel_corner_m": 0.022533,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
         "accepted": false
@@ -2536,9 +2547,9 @@
       {
         "width_m": 0.11,
         "height_m": 0.024,
-        "lateral_half_gap_m": 0.022689,
+        "lateral_half_gap_m": 0.021065,
         "vertical_half_gap_m": 0.006,
-        "channel_corner_m": 0.023469,
+        "channel_corner_m": 0.021903,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
         "accepted": false
@@ -2546,9 +2557,9 @@
       {
         "width_m": 0.11,
         "height_m": 0.03,
-        "lateral_half_gap_m": 0.022689,
+        "lateral_half_gap_m": 0.021065,
         "vertical_half_gap_m": 0.003,
-        "channel_corner_m": 0.022886,
+        "channel_corner_m": 0.021278,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": false,
         "accepted": false
@@ -2556,9 +2567,9 @@
       {
         "width_m": 0.11,
         "height_m": 0.035,
-        "lateral_half_gap_m": 0.022689,
+        "lateral_half_gap_m": 0.021065,
         "vertical_half_gap_m": 0.0005,
-        "channel_corner_m": 0.022695,
+        "channel_corner_m": 0.021071,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": false,
         "accepted": false
@@ -2566,9 +2577,9 @@
       {
         "width_m": 0.12,
         "height_m": 0.014,
-        "lateral_half_gap_m": 0.017689,
+        "lateral_half_gap_m": 0.016065,
         "vertical_half_gap_m": 0.011,
-        "channel_corner_m": 0.02083,
+        "channel_corner_m": 0.01947,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
         "accepted": false
@@ -2576,9 +2587,9 @@
       {
         "width_m": 0.12,
         "height_m": 0.018,
-        "lateral_half_gap_m": 0.017689,
+        "lateral_half_gap_m": 0.016065,
         "vertical_half_gap_m": 0.009,
-        "channel_corner_m": 0.019847,
+        "channel_corner_m": 0.018414,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
         "accepted": false
@@ -2586,9 +2597,9 @@
       {
         "width_m": 0.12,
         "height_m": 0.02,
-        "lateral_half_gap_m": 0.017689,
+        "lateral_half_gap_m": 0.016065,
         "vertical_half_gap_m": 0.008,
-        "channel_corner_m": 0.019414,
+        "channel_corner_m": 0.017947,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
         "accepted": false
@@ -2596,9 +2607,9 @@
       {
         "width_m": 0.12,
         "height_m": 0.024,
-        "lateral_half_gap_m": 0.017689,
+        "lateral_half_gap_m": 0.016065,
         "vertical_half_gap_m": 0.006,
-        "channel_corner_m": 0.018679,
+        "channel_corner_m": 0.017149,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
         "accepted": false
@@ -2606,9 +2617,9 @@
       {
         "width_m": 0.12,
         "height_m": 0.03,
-        "lateral_half_gap_m": 0.017689,
+        "lateral_half_gap_m": 0.016065,
         "vertical_half_gap_m": 0.003,
-        "channel_corner_m": 0.017942,
+        "channel_corner_m": 0.016343,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": false,
         "accepted": false
@@ -2616,9 +2627,9 @@
       {
         "width_m": 0.12,
         "height_m": 0.035,
-        "lateral_half_gap_m": 0.017689,
+        "lateral_half_gap_m": 0.016065,
         "vertical_half_gap_m": 0.0005,
-        "channel_corner_m": 0.017696,
+        "channel_corner_m": 0.016073,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": false,
         "accepted": false
@@ -2626,9 +2637,9 @@
       {
         "width_m": 0.13,
         "height_m": 0.014,
-        "lateral_half_gap_m": 0.012689,
+        "lateral_half_gap_m": 0.011065,
         "vertical_half_gap_m": 0.011,
-        "channel_corner_m": 0.016793,
+        "channel_corner_m": 0.015602,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
         "accepted": false
@@ -2636,19 +2647,19 @@
       {
         "width_m": 0.13,
         "height_m": 0.018,
-        "lateral_half_gap_m": 0.012689,
+        "lateral_half_gap_m": 0.011065,
         "vertical_half_gap_m": 0.009,
-        "channel_corner_m": 0.015557,
+        "channel_corner_m": 0.014263,
         "lead_ins_admit_the_delivered_attitude": true,
-        "pads_can_follow_the_corner": false,
-        "accepted": false
+        "pads_can_follow_the_corner": true,
+        "accepted": true
       },
       {
         "width_m": 0.13,
         "height_m": 0.02,
-        "lateral_half_gap_m": 0.012689,
+        "lateral_half_gap_m": 0.011065,
         "vertical_half_gap_m": 0.008,
-        "channel_corner_m": 0.015,
+        "channel_corner_m": 0.013654,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": true,
         "accepted": true
@@ -2656,9 +2667,9 @@
       {
         "width_m": 0.13,
         "height_m": 0.024,
-        "lateral_half_gap_m": 0.012689,
+        "lateral_half_gap_m": 0.011065,
         "vertical_half_gap_m": 0.006,
-        "channel_corner_m": 0.014036,
+        "channel_corner_m": 0.012587,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": true,
         "accepted": true
@@ -2666,9 +2677,9 @@
       {
         "width_m": 0.13,
         "height_m": 0.03,
-        "lateral_half_gap_m": 0.012689,
+        "lateral_half_gap_m": 0.011065,
         "vertical_half_gap_m": 0.003,
-        "channel_corner_m": 0.013039,
+        "channel_corner_m": 0.011464,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
         "accepted": false
@@ -2676,9 +2687,9 @@
       {
         "width_m": 0.13,
         "height_m": 0.035,
-        "lateral_half_gap_m": 0.012689,
+        "lateral_half_gap_m": 0.011065,
         "vertical_half_gap_m": 0.0005,
-        "channel_corner_m": 0.012699,
+        "channel_corner_m": 0.011076,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
         "accepted": false
@@ -2686,9 +2697,9 @@
       {
         "width_m": 0.14,
         "height_m": 0.014,
-        "lateral_half_gap_m": 0.007689,
+        "lateral_half_gap_m": 0.006065,
         "vertical_half_gap_m": 0.011,
-        "channel_corner_m": 0.013421,
+        "channel_corner_m": 0.012561,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": true,
         "accepted": true
@@ -2696,9 +2707,9 @@
       {
         "width_m": 0.14,
         "height_m": 0.018,
-        "lateral_half_gap_m": 0.007689,
+        "lateral_half_gap_m": 0.006065,
         "vertical_half_gap_m": 0.009,
-        "channel_corner_m": 0.011837,
+        "channel_corner_m": 0.010853,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": true,
         "accepted": true
@@ -2706,9 +2717,9 @@
       {
         "width_m": 0.14,
         "height_m": 0.02,
-        "lateral_half_gap_m": 0.007689,
+        "lateral_half_gap_m": 0.006065,
         "vertical_half_gap_m": 0.008,
-        "channel_corner_m": 0.011096,
+        "channel_corner_m": 0.010039,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": true,
         "accepted": true
@@ -2716,9 +2727,9 @@
       {
         "width_m": 0.14,
         "height_m": 0.024,
-        "lateral_half_gap_m": 0.007689,
+        "lateral_half_gap_m": 0.006065,
         "vertical_half_gap_m": 0.006,
-        "channel_corner_m": 0.009753,
+        "channel_corner_m": 0.008531,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": true,
         "accepted": true
@@ -2726,9 +2737,9 @@
       {
         "width_m": 0.14,
         "height_m": 0.03,
-        "lateral_half_gap_m": 0.007689,
+        "lateral_half_gap_m": 0.006065,
         "vertical_half_gap_m": 0.003,
-        "channel_corner_m": 0.008254,
+        "channel_corner_m": 0.006766,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
         "accepted": false
@@ -2736,9 +2747,9 @@
       {
         "width_m": 0.14,
         "height_m": 0.035,
-        "lateral_half_gap_m": 0.007689,
+        "lateral_half_gap_m": 0.006065,
         "vertical_half_gap_m": 0.0005,
-        "channel_corner_m": 0.007705,
+        "channel_corner_m": 0.006086,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
         "accepted": false
@@ -2746,9 +2757,9 @@
       {
         "width_m": 0.15,
         "height_m": 0.014,
-        "lateral_half_gap_m": 0.002689,
+        "lateral_half_gap_m": 0.001065,
         "vertical_half_gap_m": 0.011,
-        "channel_corner_m": 0.011324,
+        "channel_corner_m": 0.011051,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
         "accepted": false
@@ -2756,9 +2767,9 @@
       {
         "width_m": 0.15,
         "height_m": 0.018,
-        "lateral_half_gap_m": 0.002689,
+        "lateral_half_gap_m": 0.001065,
         "vertical_half_gap_m": 0.009,
-        "channel_corner_m": 0.009393,
+        "channel_corner_m": 0.009063,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
         "accepted": false
@@ -2766,9 +2777,9 @@
       {
         "width_m": 0.15,
         "height_m": 0.02,
-        "lateral_half_gap_m": 0.002689,
+        "lateral_half_gap_m": 0.001065,
         "vertical_half_gap_m": 0.008,
-        "channel_corner_m": 0.00844,
+        "channel_corner_m": 0.008071,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
         "accepted": false
@@ -2776,9 +2787,9 @@
       {
         "width_m": 0.15,
         "height_m": 0.024,
-        "lateral_half_gap_m": 0.002689,
+        "lateral_half_gap_m": 0.001065,
         "vertical_half_gap_m": 0.006,
-        "channel_corner_m": 0.006575,
+        "channel_corner_m": 0.006094,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
         "accepted": false
@@ -2786,9 +2797,9 @@
       {
         "width_m": 0.15,
         "height_m": 0.03,
-        "lateral_half_gap_m": 0.002689,
+        "lateral_half_gap_m": 0.001065,
         "vertical_half_gap_m": 0.003,
-        "channel_corner_m": 0.004029,
+        "channel_corner_m": 0.003183,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
         "accepted": false
@@ -2796,9 +2807,9 @@
       {
         "width_m": 0.15,
         "height_m": 0.035,
-        "lateral_half_gap_m": 0.002689,
+        "lateral_half_gap_m": 0.001065,
         "vertical_half_gap_m": 0.0005,
-        "channel_corner_m": 0.002735,
+        "channel_corner_m": 0.001177,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
         "accepted": false
@@ -2806,7 +2817,7 @@
       {
         "width_m": 0.16,
         "height_m": 0.014,
-        "lateral_half_gap_m": -0.002311,
+        "lateral_half_gap_m": -0.003935,
         "vertical_half_gap_m": 0.011,
         "channel_corner_m": null,
         "lead_ins_admit_the_delivered_attitude": false,
@@ -2816,7 +2827,7 @@
       {
         "width_m": 0.16,
         "height_m": 0.018,
-        "lateral_half_gap_m": -0.002311,
+        "lateral_half_gap_m": -0.003935,
         "vertical_half_gap_m": 0.009,
         "channel_corner_m": null,
         "lead_ins_admit_the_delivered_attitude": false,
@@ -2826,7 +2837,7 @@
       {
         "width_m": 0.16,
         "height_m": 0.02,
-        "lateral_half_gap_m": -0.002311,
+        "lateral_half_gap_m": -0.003935,
         "vertical_half_gap_m": 0.008,
         "channel_corner_m": null,
         "lead_ins_admit_the_delivered_attitude": false,
@@ -2836,7 +2847,7 @@
       {
         "width_m": 0.16,
         "height_m": 0.024,
-        "lateral_half_gap_m": -0.002311,
+        "lateral_half_gap_m": -0.003935,
         "vertical_half_gap_m": 0.006,
         "channel_corner_m": null,
         "lead_ins_admit_the_delivered_attitude": false,
@@ -2846,7 +2857,7 @@
       {
         "width_m": 0.16,
         "height_m": 0.03,
-        "lateral_half_gap_m": -0.002311,
+        "lateral_half_gap_m": -0.003935,
         "vertical_half_gap_m": 0.003,
         "channel_corner_m": null,
         "lead_ins_admit_the_delivered_attitude": false,
@@ -2856,7 +2867,7 @@
       {
         "width_m": 0.16,
         "height_m": 0.035,
-        "lateral_half_gap_m": -0.002311,
+        "lateral_half_gap_m": -0.003935,
         "vertical_half_gap_m": 0.0005,
         "channel_corner_m": null,
         "lead_ins_admit_the_delivered_attitude": false,

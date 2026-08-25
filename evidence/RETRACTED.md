@@ -366,3 +366,46 @@ does not track its own channel surface is a step, not a lead-in.
 seed with `_FLARE_CENTER_Y` derived from the rail face: **93.75%**.
 `tests/test_workcell_geometry.py::test_the_lead_ins_move_with_the_rails_they_continue`
 holds the relationship so the next channel change cannot break it silently.
+
+## 2026-08-25 — "the module rests corner-to-corner against the channel walls" was the wrong surface
+
+**Corrected, not retracted: the conclusion held and the mechanism named in it did
+not.** T9 read the insert skill's terminal-attitude band -- 56.03 to 56.92 mrad
+over the 91 episodes that reached seated depth -- as the module "resting
+corner-to-corner against the channel walls at the largest angle the clearance
+permits", and identified that angle as `2c/L` on `GUIDE_CENTER_OFFSET_Y`'s
+12.689 mm, which is 56.40 mrad.
+
+Two things were wrong with the mechanism.
+
+**The channel walls were nowhere near it.** The destination bay is relieved by
+4.6125 mm per side, so its walls admit 76.90 mrad of yaw and 56.06 mrad of pitch
+-- and the runs in question were taken through `play.py --latch_enabled`, which
+applied the relief a *second* time and opened them to 97.40 and 76.56 mrad. A
+module at 56 mrad in that channel is not touching its walls. What holds it is the
+lead-in throat at the mouth, which is authored from the rail face and
+deliberately does not move with the relief.
+
+**The band is a floor, not a ceiling.** A wedge is an upper limit and would show
+values crowding up to it; the measured p5 is 56.035 mrad and the minimum is
+56.033, with a tail running to 86.5. That is a surface the module cannot get
+*past*, which is what a throat is.
+
+The conclusion survives both corrections, because the throat is set by the same
+constant: `GUIDE_CENTER_OFFSET_Y` places the guides and the flares are derived
+from the rail face, so narrowing it narrows the throat. Tested rather than
+argued, same checkpoint and seed and episode count, in
+`evidence/insert_attitude_wall_moved.json`: 12.689 -> 11.065 mm moves the floor
+from 56.03 mrad to 45.75 mrad.
+
+**And the relief was being applied twice by half the callers**, which is its own
+finding rather than a detail of this one.
+`evidence/destination_channel_geometry.json` measures the destination bay out of
+the built configuration for each entry point: the chain and the skill
+certification built a 17.30 x 12.61 mm channel while skill *training* and every
+lock-on diagnostic built a 21.91 x 17.23 mm one. **The insert skill was trained
+in a rack 4.6 mm per side wider than the rack it was then certified in, on both
+axes.** Every insert number taken before 2026-08-25 carries that, including the
+v23lock row in `insert_attitude_diagnosis.json`; the direction of the resulting
+bias is not known, and the retrain and re-certification below it are on a single
+rack that `scripts/check_destination_channel.py` verifies.

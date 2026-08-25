@@ -18,8 +18,11 @@
 #            scripted guarded advance on the identical workcell. Head to head.
 #
 # The chain arm is the one that decides whether the chain changes. The scripted
-# guarded advance currently certifies at 97.92%, and it keeps the seating phase
-# until a policy beats it on the same three held-out seeds.
+# guarded advance keeps the seating phase until a policy beats it on the same
+# three held-out seeds, and BASELINE below names the arm it has to beat -- which
+# has to be the guarded advance on the *same rack*, or the comparison mixes a
+# geometry change into a controller change. The 97.92% in `docs/NOW.md` was
+# measured at a 12.689 mm channel throat and is not that arm.
 #
 # Usage:
 #   CKPT=logs/.../nn/last_..._ep_1400_....pth TAG=insert_v22attitude \
@@ -37,6 +40,9 @@ CKPT="${CKPT:?set CKPT to the insert checkpoint to verify}"
 TAG="${TAG:?set TAG for the evidence file names}"
 STAGES="${STAGES:-0 1 2}"
 SEEDS="${SEEDS:-4070 5070 6070}"
+# The guarded-advance arm on the same rack, same seeds, same everything but the
+# seating controller. Overridable so a later rack change can name its own.
+BASELINE="${BASELINE:-evidence/workflow_robot_carried_m130pin_guarded_c11065_certification.json}"
 
 if [ ! -f "$CKPT" ]; then echo "MISSING checkpoint: $CKPT"; exit 66; fi
 
@@ -64,8 +70,7 @@ say "STAGE 2/2  the same checkpoint inside the full chain, against the guarded a
 # ---------------------------------------------------------------------------
 # Only the seating controller changes. Same task, same capture and extraction
 # checkpoints, same three held-out seeds, same workcell -- so the difference
-# between this and workflow_robot_carried_m130pin_guarded_certification.json is
-# the seating phase and cannot be anything else.
+# between this and $BASELINE is the seating phase and cannot be anything else.
 INSERT_CKPT="$CKPT" \
 CERT_TAG="${TAG}_chain_policy" \
 CERT_TITLE="Robot-carried relocation, seating driven by the learned insert policy (${TAG})" \
@@ -74,11 +79,19 @@ SEEDS="$SEEDS" \
   scripts/run_robot_carried.sh certify
 say "  -> evidence/workflow_robot_carried_${TAG}_chain_policy_certification.json"
 
+# ---------------------------------------------------------------------------
+# The decision, arithmetically rather than by eye.
+# ---------------------------------------------------------------------------
+"$PYTHON" scripts/report_seating_head_to_head.py \
+    --guarded "$BASELINE" \
+    --policy "evidence/workflow_robot_carried_${TAG}_chain_policy_certification.json" \
+    --report "evidence/seating_controller_head_to_head.json"
+
 echo
-say "DONE. Publish both beside the guarded advance's 97.92%:"
+say "DONE. Publish both, whichever wins:"
 say "  skill  evidence/grapple_${TAG}_certification.json"
 say "  chain  evidence/workflow_robot_carried_${TAG}_chain_policy_certification.json"
-say "  the arm it must beat: evidence/workflow_robot_carried_m130pin_guarded_certification.json"
+say "  the arm it must beat: $BASELINE"
 echo
 say "The chain keeps the scripted advance unless the chain arm beats it on the"
 say "same seeds. A skill number alone does not move the seating phase."
