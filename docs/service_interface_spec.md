@@ -3,6 +3,13 @@
 **What a modular compute unit must present to be robotically serviceable by a
 Robotiq 2F-85-class parallel gripper on a 6-axis arm.**
 
+The setting is on-orbit servicing: replacing a failed compute module on a
+satellite, station or orbital compute platform without an astronaut EVA. That
+matters to the requirements below rather than being background. Every measurement
+here was taken at zero gravity, where nothing settles and the only thing holding
+a module is the robot, so the module's own weight and friction are not available
+to do any of the fixturing a ground assembly takes for granted.
+
 This is the design output of this project. Every number below is derived from a
 measurement in `evidence/`, not chosen. The intent is that a module designer can
 read this without reading the simulation.
