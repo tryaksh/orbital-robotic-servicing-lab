@@ -208,9 +208,36 @@ scripted guarded advance until a policy beats it head to head.
 of GPU, plus ~20 minutes to certify. This is the cheapest open task with a real
 chance of changing a headline claim.
 
-> **Status note.** This run was resumed to epoch 1400 during the 2026-08-25 audit
-> and its outcome is recorded in `NOW.md` §5 and in `evidence/`. If the result is
-> not there, the run did not finish and this task is still open as written.
+> **Status note, 2026-08-25 audit.** The run was resumed from epoch 300 to
+> **1400** and the checkpoints are on disk under
+> `logs/rl_games/zero_g_blade_insertion_contact/grapple_insert_l0_seed70_v21time/nn/`.
+> **It was not evaluated**, deliberately: the audit's scope was the repository,
+> not the policy, so the measurement is left here rather than half-done.
+>
+> The reward trace does not look like a policy that learned to hurry. Best mean
+> reward by epoch: 300 → −0.84, 700 → +1.98, 900 → +3.46, 1000 → −26.6,
+> 1200 → +2.15, 1300 → −0.06. It oscillates around zero rather than climbing.
+> **Do not read that as a refutation** — the reward functions differ, so v21time
+> and v20chain are not comparable on reward. A full clock costs 12 more under
+> v21time, and v20chain's best of +13.7 minus 12 is +1.7, right inside the band
+> v21time oscillates in. That arithmetic is consistent with the time cost being
+> *paid* rather than *avoided*, which would mean the creep did not move — but it
+> is an inference from reward, not a measurement of speed.
+>
+> **Measure it directly**, the way the published figures were produced. The two
+> numbers are per-episode fields, not derived quantities:
+>
+> ```bash
+> STAGES=0 SKILL=Insert TAG=insert_v21time \
+> CKPT=logs/.../grapple_insert_l0_seed70_v21time/nn/<highest epoch>.pth \
+> scripts/certify_grapple_skills.sh
+> ```
+>
+> Then pool `axial_error_m` and `blade_linear_velocity_mps` from the `.npz`
+> rows. That method reproduces v20chain's published figures exactly — median
+> 203.64 mm short and 3.6 mm/s terminal speed over its 1,536 stage-0 episodes —
+> so the comparison is like for like. Roughly ten minutes at stage 0 on three
+> seeds; the full three-stage certification is nine runs.
 
 ---
 
