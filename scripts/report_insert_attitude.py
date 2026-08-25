@@ -123,6 +123,8 @@ def main() -> int:
          "v21time ep1400, stage 0, form lock engaged after 20 control steps"),
         ("artifacts/insert_attitude/lock_mating3.npz",
          "v21time ep1400, stage 0, chain's MATING compliance, zero-shot (policy trained without it)"),
+        ("artifacts/insert_attitude/v23lock_s0_seed1070.npz",
+         "v23lock ep1400, stage 0, TRAINED on the chain's mating compliance"),
     ):
         path = ROOT / pattern
         if path.is_file():
@@ -215,6 +217,43 @@ def main() -> int:
             "the skill trains without one. Strengthening the objective does not substitute for "
             "that, which is what the 400-epoch null result measured."
         ),
+        "the_result_once_the_load_path_matched": {
+            "what_changed": (
+                "Trained on the chain's mating compliance, the median shortfall falls from "
+                "202.2 mm to 98.6 mm and 35.5% of episodes now reach the seated plane within the "
+                "12 mm depth tolerance, against essentially none before. Lateral improves from "
+                "7.10 mm to 4.51 mm. The load path was the blocker for DEPTH, and T9 is confirmed "
+                "in that respect."
+            ),
+            "what_did_not": (
+                "Success is still 0.00%. Orientation is the sole remaining failure and it is not "
+                "the policy's either."
+            ),
+            "why_orientation_cannot_be_met_in_this_rack": (
+                "Among the 91 episodes that reach seated depth, orientation clusters between "
+                "56.03 and 56.92 mrad -- a band under a milliradian wide. That is not a policy "
+                "behaviour, it is a wall: the module is resting corner-to-corner against the "
+                "channel walls at the largest angle the clearance permits. "
+                "scripts/check_workcell_geometry.py names that angle independently as the "
+                "hand-off yaw, 56.40 mrad, and records that measured attitude runs 0.87 to 1.02 "
+                "of 2c/L across eight sweep points. The observed 56.03-56.92 is 0.99 to 1.01 of "
+                "it. "
+                "INSERTION_ORIENTATION_TOLERANCE_RAD is 52.36 mrad. So the angle at which this "
+                "channel holds a module is 4.04 mrad OUTSIDE the angle its own acceptance "
+                "criterion demands, and a module that merely rests in the channel cannot pass. "
+                "The chain reaches 46 mrad because its form lock holds the module squarer than "
+                "the channel does, not because the channel squares it."
+            ),
+            "the_rack_change_this_implies": (
+                "The lateral clearance window is 10.35 mm to 12.69 mm and GUIDE_CENTER_OFFSET_Y "
+                "sits at the top of it, 12.689 mm. 2c/L = 52.36 mrad at c = 11.78 mm, so any "
+                "value at or below that puts a resting module inside the criterion, and the "
+                "window's own lower end of 10.35 mm gives 46.0 mrad with margin. NOW.md has "
+                "carried 'sits exactly on its upper bound ... not measured' as an open item; "
+                "this measures it. NOT CHANGED HERE: the chain's certification was produced at "
+                "12.689 mm, so moving it moves a published number. docs/NEXT_WORK.md T9."
+            ),
+        },
         "scope_and_limitations": [
             "Simulation only. No result here was produced on real hardware.",
             "One PPO training seed. The evaluation seeds are held out.",

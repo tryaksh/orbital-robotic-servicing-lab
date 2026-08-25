@@ -553,11 +553,58 @@ the `_mating_joints` path around the `joint_mode != "compliant"` early return);
 `latch_joint_mode`, the mating caps); `scripts/run_workflow_demo.py` for how the
 chain sequences arm → soften → release.
 
-> **In flight, 2026-08-25.** `grapple_insert_l0_seed70_v23lock` is training under
-> this configuration (512 environments, 1400 epochs). If its checkpoints are on
-> disk, evaluate them first — the whole point is a policy trained on the load path
-> it will be deployed onto. If they are not, the run did not finish and this task
-> is open exactly as written.
+### Result, 2026-08-25: the load path was the depth blocker, and the rack is the rest
+
+`grapple_insert_l0_seed70_v23lock` trained 1,400 epochs at 512 environments under
+this configuration, and it moves the skill further than anything since the task was
+built. Evaluated on 256 held-out episodes at stage 0, with the same configuration
+it trained under:
+
+| | no lock (v21time) | trained on the mating compliance (v23lock) |
+| --- | ---: | ---: |
+| median shortfall | 202.2 mm | **98.6 mm** |
+| episodes reaching seated depth (≤12 mm) | ~0% | **35.5%** |
+| median lateral | 7.10 mm | **4.51 mm** |
+| median orientation | 84.6 mrad | 102.8 mrad |
+| success | 0.00% | 0.00% |
+
+**The load path was the blocker for depth, and T9 is confirmed in that respect.**
+A third of episodes now drive the module home, where none did before.
+
+**Orientation is the sole remaining failure, and it is not the policy's either.**
+Among the 91 episodes that reach seated depth, orientation clusters between
+**56.03 and 56.92 mrad** — a band under a milliradian wide. That is a wall, not a
+behaviour: the module is resting corner-to-corner against the channel walls at the
+largest angle the clearance permits. `check_workcell_geometry.py` names that angle
+independently as the hand-off yaw, **56.40 mrad**, and records measured attitude
+running 0.87–1.02 of `2c/L` across eight sweep points. The observed band is
+0.99–1.01 of it.
+
+`INSERTION_ORIENTATION_TOLERANCE_RAD` is **52.36 mrad**. So **the angle at which
+this channel holds a module is 4.04 mrad outside the angle its own acceptance
+criterion demands.** A module that merely rests in this channel cannot pass. The
+chain reaches 46 mrad because its form lock holds the module squarer than the
+channel does — not because the channel squares it.
+
+**What that implies is a rack change, and the geometry check already brackets it.**
+The lateral clearance window is 10.35 mm to 12.69 mm, and `GUIDE_CENTER_OFFSET_Y`
+sits at the very top of it at 12.689 mm. `2c/L` = 52.36 mrad at **c = 11.78 mm**,
+so any value at or below that puts a resting module inside the criterion, and the
+window's own lower end of 10.35 mm gives 46.0 mrad with margin. `NOW.md` has
+carried *"sits exactly on its upper bound … not measured"* as an open item; this
+measures it.
+
+**Not changed here, deliberately.** The chain's certification was produced at
+12.689 mm, so moving it moves a published number — and the two non-negotiable
+rules apply: do not widen the 52.36 mrad tolerance to make this pass, and if the
+clearance moves, re-run the chain under both values so a geometry change and a
+policy change are never quoted as one number.
+
+**Next, in order.** (1) Re-derive `GUIDE_CENTER_OFFSET_Y` inside its window with
+the criterion as the binding constraint rather than the pads. (2) Re-run the chain
+certification at both clearances. (3) Retrain and re-verify the insert skill with
+`scripts/verify_insert_skill.sh`, which certifies it alone and then head to head
+against the scripted advance in the chain.
 
 **Done when.** The eighth row of `tests/test_skill_chain_agreement.py` asserts the
 load paths are equal like the other seven, and the skill is retrained and verified

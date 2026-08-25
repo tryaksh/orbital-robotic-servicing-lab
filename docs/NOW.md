@@ -193,6 +193,26 @@ here so this file stays the one place the state is described:
   The blocker is the load path — **T9**, not T2.
   `evidence/insert_attitude_diagnosis.json`.
 
+  **T9 landed on 2026-08-25, and it moved the skill further than anything since
+  the task was built.** Trained on the chain's mating compliance, the median
+  shortfall falls **202.2 → 98.6 mm** and **35.5%** of episodes now reach the
+  seated plane, against essentially none before; lateral improves 7.10 → 4.51 mm.
+  Success is still 0.00%, and **orientation is the only condition left**.
+
+  It is not the policy's. Among the 91 episodes that reach depth, orientation
+  clusters between **56.03 and 56.92 mrad** — a band under a milliradian wide,
+  because the module is resting corner-to-corner against the channel walls at the
+  largest angle the clearance permits. `check_workcell_geometry.py` names that
+  angle independently as 56.40 mrad. The success criterion is **52.36 mrad**, so
+  **this channel holds a module 4.04 mrad outside its own acceptance criterion**,
+  and a module that merely rests in it cannot pass. The chain reaches 46 mrad
+  because its form lock holds the module squarer than the channel does.
+
+  That makes it a rack requirement, and the geometry check already brackets it:
+  the clearance window is 10.35–12.69 mm, `GUIDE_CENTER_OFFSET_Y` sits at the top
+  at 12.689 mm, and `2c/L` = 52.36 mrad at **c = 11.78 mm**. **Not changed here** —
+  the chain was certified at 12.689 mm, so moving it moves a published number.
+
   **T9 is unblocked as of 2026-08-25.** Reaching the chain's load path from the
   skill needed three fixes that each masked the next: anchor the lock after the
   reset settles, run `joint_mode="fixed"` (with `"compliant"` the mating joint is
@@ -215,8 +235,13 @@ here so this file stays the one place the state is described:
   `tests/test_skill_chain_agreement.py` (T9).
 - The **live compute service runs the superseded w65 policy set**, two promotions
   behind the certified chain (T7).
-- `GUIDE_CENTER_OFFSET_Y` sits exactly on its upper bound; the window runs down
-  to 5.738 mm and a middle value would leave margin on both sides. Not measured.
+- **`GUIDE_CENTER_OFFSET_Y` sits exactly on its upper bound, and that is now
+  measured to cost the insert skill its last condition.** It is the largest
+  clearance the pads can follow, 12.689 mm, which lets a resting module cock to
+  56.40 mrad against a 52.36 mrad acceptance criterion. `2c/L` meets the criterion
+  at c = 11.78 mm, and the check's own window bottoms at 10.35 mm (46.0 mrad).
+  Re-deriving it with the criterion as the binding constraint is `NEXT_WORK.md`
+  T9; it moves a published number, so the chain must be re-run at both values.
 - **Delivered angle has about 10 mrad of margin** — modules seat at 46 mrad
   against a 56 mrad channel. The only quantity in the certification operating
   against a limit.

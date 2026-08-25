@@ -1,7 +1,7 @@
 {
   "title": "Why the insert skill does not seat: attitude, not creep",
   "evidence_type": "simulation_only",
-  "generated_utc": "2026-08-25T08:16:58.116429+00:00",
+  "generated_utc": "2026-08-25T11:43:51.047128+00:00",
   "question": "The insert skill certifies at 0.00% and stops ~204 mm short. The published reading was that it creeps because the objective made dawdling nearly free. Is that right?",
   "answer": "No. The time cost trained to convergence changes nothing. What the episodes show is attitude: the module ends at a median 84.6 mrad against the 52.4 mrad a seated module must be inside, so essentially every episode is outside the orientation tolerance by about 1.6x. A 7x stronger angular penalty, trained 400 epochs, moved that by 0.03 mrad -- so the angle is not the policy's to give through pad contact.",
   "success_orientation_tolerance_mrad": 52.3599,
@@ -237,6 +237,39 @@
       "control_steps_median": 900.0,
       "fraction_dead_within_10_steps": 0.0,
       "fraction_inside_success_orientation": 0.0
+    },
+    {
+      "label": "v23lock ep1400, stage 0, TRAINED on the chain's mating compliance",
+      "episodes": 256,
+      "success_rate": 0.0,
+      "orientation_error_mrad": {
+        "p5": 56.037,
+        "median": 102.797,
+        "p95": 124.755
+      },
+      "axial_short_mm": {
+        "p5": 0.981,
+        "median": 98.611,
+        "p95": 213.619
+      },
+      "lateral_error_mm": {
+        "p5": 1.482,
+        "median": 4.512,
+        "p95": 7.598
+      },
+      "terminal_speed_mm_s": {
+        "p5": 0.375,
+        "median": 4.3,
+        "p95": 10.066
+      },
+      "tool_to_handle_mm": {
+        "p5": 11.245,
+        "median": 11.593,
+        "p95": 11.889
+      },
+      "control_steps_median": 900.0,
+      "fraction_dead_within_10_steps": 0.0,
+      "fraction_inside_success_orientation": 0.0
     }
   ],
   "what_this_refutes": [
@@ -257,6 +290,12 @@
   ],
   "zero_shot_on_the_mating_compliance": "With all three in place the episodes survive -- 0% dead inside ten control steps, against 100% on the transit lock -- and the module gets 20 mm further in, 182.2 mm short against 202.2 with no lock. Attitude is worse, 113.3 mrad against 84.6, which is expected and is not a result: this policy was trained on pad contact alone and is being evaluated on a load path it has never seen. The measurement that matters is a policy TRAINED under it, which is T9.",
   "mechanism": "Two flat pads on a pin cannot resist a moment about the closing axis -- the same limit this project measured four independent ways and the reason the chain carries the module on a form lock. With the lock off, contact with the lead-in rotates the module and nothing opposes it. The chain reaches 46 mrad at the same seating phase, and the only difference is that the chain carries the module on the form lock while the skill trains without one. Strengthening the objective does not substitute for that, which is what the 400-epoch null result measured.",
+  "the_result_once_the_load_path_matched": {
+    "what_changed": "Trained on the chain's mating compliance, the median shortfall falls from 202.2 mm to 98.6 mm and 35.5% of episodes now reach the seated plane within the 12 mm depth tolerance, against essentially none before. Lateral improves from 7.10 mm to 4.51 mm. The load path was the blocker for DEPTH, and T9 is confirmed in that respect.",
+    "what_did_not": "Success is still 0.00%. Orientation is the sole remaining failure and it is not the policy's either.",
+    "why_orientation_cannot_be_met_in_this_rack": "Among the 91 episodes that reach seated depth, orientation clusters between 56.03 and 56.92 mrad -- a band under a milliradian wide. That is not a policy behaviour, it is a wall: the module is resting corner-to-corner against the channel walls at the largest angle the clearance permits. scripts/check_workcell_geometry.py names that angle independently as the hand-off yaw, 56.40 mrad, and records that measured attitude runs 0.87 to 1.02 of 2c/L across eight sweep points. The observed 56.03-56.92 is 0.99 to 1.01 of it. INSERTION_ORIENTATION_TOLERANCE_RAD is 52.36 mrad. So the angle at which this channel holds a module is 4.04 mrad OUTSIDE the angle its own acceptance criterion demands, and a module that merely rests in the channel cannot pass. The chain reaches 46 mrad because its form lock holds the module squarer than the channel does, not because the channel squares it.",
+    "the_rack_change_this_implies": "The lateral clearance window is 10.35 mm to 12.69 mm and GUIDE_CENTER_OFFSET_Y sits at the top of it, 12.689 mm. 2c/L = 52.36 mrad at c = 11.78 mm, so any value at or below that puts a resting module inside the criterion, and the window's own lower end of 10.35 mm gives 46.0 mrad with margin. NOW.md has carried 'sits exactly on its upper bound ... not measured' as an open item; this measures it. NOT CHANGED HERE: the chain's certification was produced at 12.689 mm, so moving it moves a published number. docs/NEXT_WORK.md T9."
+  },
   "scope_and_limitations": [
     "Simulation only. No result here was produced on real hardware.",
     "One PPO training seed. The evaluation seeds are held out.",
