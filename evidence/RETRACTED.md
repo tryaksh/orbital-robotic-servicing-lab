@@ -30,6 +30,59 @@ other half — whether a report describes the checkpoint a run actually loaded.
 | `vision_workflow_camera_twoslot_certification.json`, the 2026-08-17 run | 65.10% camera; the gate failed by 23.6 points | **One of its three seeds does not reproduce.** Seed 5070 recorded 25.00%; re-run on 2026-08-18 with the identical task, the identical three checkpoints by SHA-256, the identical pose head, 64 environments and 192 episodes, it scores **80.73%**. The other two seeds move within sampling noise, −4.17 and +1.57. The pose head is *best* on the collapsing seed — 2.52 mm mean against 2.65 and 2.53 — and the failures were 142 capture-budget overruns, not the insertion tail the write-up blamed | the re-certification of 2026-08-18, in the same file. The superseded reasoning is kept in `docs/archive/` |
 | the 96.10% capture figure, formerly in `grapple_grasp_v5_certification.json` | 96.10% capture | Certified 9.4 h before `ffac648` tightened `capture_success_mask` from a 20 mm grip tolerance to 10 mm. Re-reading its own episodes could only bound it **between 43% and 96%**, because the criterion is the termination: an episode that ended at 15 mm under the old rule would not have ended at all under the new one | **re-measured 2026-08-17: 88.78% pooled and 79.22% in the worst stage, so it FAILS its 95% gate.** The file now holds that run; the number above exists only here. Both bounds were wrong — the lower far too pessimistic, the upper the stale figure itself |
 
+## Retracted claims that were never published as a rate
+
+Not every wrong claim is a number in a report. This one was a *diagnosis*, made
+and withdrawn on the same day, and it is recorded because it was committed,
+pushed, and written into the README before it was checked.
+
+**"The insert skill is wedged at 84.6 mrad against a channel that admits
+20.5 mrad."** — retracted 2026-08-25.
+
+The 20.5 mrad is `SERVICE_DELIVERED_ATTITUDE_RAD`, and its own definition says
+what it is: the attitude a carried module was measured to *settle* at inside the
+destination channel, after the lead-ins have worked on it. The same comment
+records the arm delivering **63 mrad** at that pose. So it was never the angle at
+which entry becomes impossible, and "four times past the limit at which the
+module can enter at all" was not a statement about a limit.
+
+The second half of the claim — that the objective had been ranking a fatal
+attitude below a survivable offset, because it normalised orientation by 0.15 rad
+— does not hold either. 0.15 rad is calibrated about right against the real
+success tolerance, `INSERTION_ORIENTATION_TOLERANCE_RAD` = 52.4 mrad: at
+tolerance the angular half costs 0.031 against the lateral half's 0.063, and at
+the *observed* errors lateral is 2.8× its tolerance while orientation is 1.6×
+its own. Lateral is the larger violation, so the weighting was not the defect.
+
+The corrected scale was trained for 400 epochs before the error was found.
+**It moved the measured orientation from 84.61 mrad to 84.58 mrad**, and the
+change is reverted.
+
+**What survives, and it is worth more than the claim was.** Three objectives now
+sit beside each other in `evidence/insert_attitude_diagnosis.json` — the baseline
+time cost, a 4× time cost trained to convergence, and a 7× orientation penalty —
+and all three land within 0.4 mrad:
+
+| Objective | Orientation | Inside the 52.4 mrad tolerance |
+| --- | ---: | ---: |
+| baseline time cost | 84.26 mrad | 2.3% |
+| 4× time cost, converged | 84.61 mrad | 2.7% |
+| 7× orientation penalty | 84.58 mrad | 3.9% |
+
+An angle that does not move when the objective is changed three ways is not the
+objective's to give. Two flat pads on a pin cannot resist a moment about the
+closing axis — this project's central measurement — and the chain reaches
+46 mrad at the same seating phase only because it carries the module on a form
+lock. The blocker is the load path: `docs/NEXT_WORK.md` **T9**, not T2.
+
+**How it got published.** The constant was read from its name rather than from
+its definition, and the diagnosis was written before the arithmetic against the
+success tolerance was done. The check that would have caught it is the one this
+repository already states as a rule — derive the number from the parts, and say
+which part — and it was skipped because the name sounded like the answer.
+
+---
+
 ## Not retracted, but scoped: every `main` number describes one workcell
 
 **On branch `industrial-relocation` this is the first thing to know about every

@@ -188,43 +188,40 @@ def test_extraction_agrees_with_the_chain_and_is_the_reason_it_works() -> None:
     assert 'self.events.grapple_latch.params["require_armed"] = self.latch_engages_on_release' in grapple
 
 
-def test_the_insert_objective_is_scaled_to_the_channel_it_must_enter() -> None:
-    """A skill's *objective* has to describe the chain's problem, not just its scene.
+def test_the_insert_objective_is_not_scaled_by_the_settled_attitude() -> None:
+    """A retraction, pinned so it is not re-attempted from the same wrong premise.
 
-    Seven of the eight dimensions above are about the task's geometry and
-    physics. This is the ninth and it is about the reward, because a task can
-    present the right scene and still ask for the wrong thing.
+    On 2026-08-25 this task briefly normalised orientation error by
+    ``SERVICE_DELIVERED_ATTITUDE_RAD`` (20.5 mrad), on the argument that the
+    objective was ranking a fatal attitude below a survivable offset. Both halves
+    were wrong and the change is reverted:
 
-    ``insertion_misalignment_penalty`` normalises orientation error, and its
-    default of 0.15 rad is the *seated* tolerance -- what a module must satisfy
-    once the channel is already holding it square. Entry is the binding
-    constraint and it is four times tighter: a rigid part of length ``L``
-    entering a channel with ``c`` of relief per side fits only while its tilt
-    stays under ``2c/L``, which for the shipped relief is
-    ``SERVICE_DELIVERED_ATTITUDE_RAD`` = 20.5 mrad.
+    * 20.5 mrad is what a module *settles* at after the lead-ins have worked on
+      it -- its own comment records the arm delivering 63 mrad and the flares
+      taking most of it out. It was never the angle at which entry becomes
+      impossible, so "four times past the limit" was not a limit.
+    * the original 0.15 rad is calibrated about right against the real success
+      tolerance, ``INSERTION_ORIENTATION_TOLERANCE_RAD`` = 52.4 mrad. At
+      tolerance the angular half costs 0.031 against the lateral half's 0.063,
+      and at the observed errors lateral is 2.8x its tolerance while orientation
+      is 1.6x its own. Lateral is the larger violation.
 
-    Measured at the default, over 512 held-out episodes on a policy trained to
-    convergence: orientation ends at a median of 84.6 mrad with a 5th percentile
-    of 56.1. Not one episode in five hundred ended inside the angle at which the
-    module could enter at all, and the objective charged 0.08 a step for it --
-    less than the 0.50 the same episode paid for 7.1 mm of lateral. The skill
-    was being paid to prefer a survivable offset over a fatal attitude.
-
-    So the number has to come from the rack rather than be chosen, and it has to
-    keep coming from the rack. ``evidence/insert_attitude_diagnosis.json`` holds
-    the measurement.
+    Trained 400 epochs at the tighter scale, orientation measured 84.58 mrad
+    against 84.61 before. A 7x stronger angular penalty moved the angle by
+    0.03 mrad, which is the useful result: attitude is not the policy's to give
+    through pad contact. See ``evidence/RETRACTED.md`` and NEXT_WORK T9.
     """
 
     grapple = _read("grapple_pin_env_cfg.py")
     insert_rewards = grapple.split("class InsertRewardsCfg", 1)[1].split("class InsertTerminations", 1)[0]
-    assert '"orientation_scale_rad": SERVICE_DELIVERED_ATTITUDE_RAD' in insert_rewards, (
-        "The insert objective must scale orientation by the destination channel's own "
-        "admittance. A literal here is a tuned constant standing in for a derived one."
+    assert "SERVICE_DELIVERED_ATTITUDE_RAD" not in insert_rewards.split("params={")[-1], (
+        "The insert objective is scaling orientation by the SETTLED attitude again. "
+        "That is not the entry limit; see evidence/RETRACTED.md."
     )
-    assert "SERVICE_DELIVERED_ATTITUDE_RAD," in grapple, "the constant must be imported, not redefined"
+    assert '"engage_m": 0.60' in insert_rewards
 
-    # The default stays put so every task that already quotes a number under it
-    # is bit-identical. Changing it would silently move published evidence.
+    # The knob stays -- the right scale is a real question -- but its default is
+    # what every published insertion number was measured under.
     insertion = (TASKS / "mdp" / "insertion.py").read_text(encoding="utf-8")
     assert "orientation_scale_rad: float = 0.15" in insertion, (
         "The default is what every previously published insertion number was measured under."

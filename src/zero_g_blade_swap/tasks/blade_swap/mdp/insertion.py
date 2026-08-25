@@ -616,21 +616,23 @@ def insertion_misalignment_penalty(
     was measured: 20.7 mm of lateral error against a 2.5 mm success tolerance,
     held steady for the whole episode.
 
-    **``orientation_scale_rad`` is what the angular half of that costs, and the
-    default is wrong for any task whose channel is tighter than it.** 0.15 rad
-    is sized against the *seated* orientation tolerance, which a module only has
-    to satisfy once it is already inside and the channel is holding it square.
-    Entry is the binding constraint and it is much tighter: a rigid part of
-    length ``L`` entering a channel with ``c`` of relief per side fits only
-    while its tilt stays under ``2c/L``.
+    **``orientation_scale_rad`` exists because the right scale is a question, and
+    the answer is not obvious.** 0.15 rad is calibrated against the success
+    tolerance, ``INSERTION_ORIENTATION_TOLERANCE_RAD`` = 52.4 mrad: at tolerance
+    the angular half costs 0.031 against the lateral half's 0.063, which is the
+    same shape as the lateral term at its own 2.5 mm.
 
-    Left at 0.15 the term charges 0.25 * (0.0846/0.15)^2 = 0.08 a step for an
-    84.6 mrad module -- a rounding error next to the 0.50 the same episode pays
-    for 7.1 mm of lateral -- while ``2c/L`` says 84.6 mrad is four times past
-    the angle at which the module can enter at all. The objective was telling
-    the policy a fatal attitude was nearly free, and the policy believed it:
-    measured over 512 held-out episodes, orientation ends at a median of
-    84.6 mrad with a 5th percentile of 56.1, against a channel admitting 20.5.
+    A tighter scale was tried and retracted the same day. Normalising by the
+    destination channel's *settled* attitude, 20.5 mrad, was argued to be the
+    entry limit -- it is not; the arm delivers 63 mrad and the lead-ins take most
+    of it out, and 20.5 mrad is the residue they cannot. Trained 400 epochs at
+    that scale the measured orientation moved from 84.61 to 84.58 mrad, which is
+    nothing. See ``evidence/RETRACTED.md``.
+
+    That null result is worth more than the change would have been: a 7x stronger
+    angular penalty that does not move the angle says attitude is not the
+    policy's to give through pad contact, and points at the load path rather than
+    at the objective.
 
     The default is kept so every task that already quotes a number under it is
     bit-identical. Pass the rack's own admittance instead -- see the insert

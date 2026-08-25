@@ -174,15 +174,24 @@ here so this file stays the one place the state is described:
   trained to convergence at 1,400 epochs, moves the shortfall 1.4 mm and every
   episode still spends its whole clock. The cost is paid, not avoided.
 
-  What the same episodes show is a geometric wall. Orientation ends at a median
-  of **84.6 mrad** against a channel admitting **20.5 mrad** (`2c/L`), 5th
-  percentile 56.1 — not one episode in 512 inside the entry angle. The reset is
-  square (`attitude_residual_rad` 0.0 at every station) and the grip holds
-  (12.2 mm, p95 12.48), so the episode takes it there. The objective allowed it:
-  `insertion_misalignment_penalty` normalised orientation by the *seated*
-  tolerance of 0.15 rad, charging 0.08 a step for 84.6 mrad against 0.50 for
-  7.1 mm of lateral. Now derived from the rack's own admittance.
-  `evidence/insert_attitude_diagnosis.json` (T2).
+  What the same episodes show is attitude, and it is not the objective's to fix.
+  The module ends at a median **84.5 mrad** against the **52.4 mrad** a seated
+  module must be inside, with only 2–4% of episodes inside it. Three different
+  reward configurations land within 0.4 mrad of each other:
+
+  | Objective | Orientation | Inside tolerance |
+  | --- | ---: | ---: |
+  | baseline time cost | 84.26 mrad | 2.3% |
+  | 4× time cost, converged | 84.61 mrad | 2.7% |
+  | 7× orientation penalty | 84.58 mrad | 3.9% |
+
+  The reset is square (`attitude_residual_rad` 0.0 at every station) and the grip
+  holds (12.2 mm, p95 12.48), so the episode takes it there and no objective
+  brings it back. **The attitude is set by the interface**: two flat pads on a
+  pin cannot resist a moment about the closing axis, and the chain reaches
+  46 mrad at the same phase only because it carries the module on a form lock.
+  The blocker is the load path — **T9**, not T2.
+  `evidence/insert_attitude_diagnosis.json`.
 - Grasp and extract both miss the 95% gate (85.69% and 87.75% pooled), and
   neither responds to more epochs on the evidence available (T6).
 - Every policy is **one PPO training seed**, so no number carries a spread (T3).

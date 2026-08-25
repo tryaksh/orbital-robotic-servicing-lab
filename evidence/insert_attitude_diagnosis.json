@@ -1,11 +1,11 @@
 {
   "title": "Why the insert skill does not seat: attitude, not creep",
   "evidence_type": "simulation_only",
-  "generated_utc": "2026-08-25T07:24:00.144546+00:00",
+  "generated_utc": "2026-08-25T08:02:08.376049+00:00",
   "question": "The insert skill certifies at 0.00% and stops ~204 mm short. The published reading was that it creeps because the objective made dawdling nearly free. Is that right?",
-  "answer": "No. The time cost trained to convergence changes nothing, and the episodes it produces are wedged rather than slow: the module ends at a median 84.6 mrad against a channel that admits 20.5 mrad, with a 5th percentile of 56.1 mrad. Not one episode in 512 ends inside the angle at which the module could enter the channel at all.",
-  "channel_admittance_mrad": 20.5,
-  "channel_admittance_derivation": "2c/L, for c = SERVICE_DESTINATION_CHANNEL_RELIEF_M per side and L = BLADE_LENGTH_M. The same inequality docs/service_interface_spec.md section 6 derives.",
+  "answer": "No. The time cost trained to convergence changes nothing. What the episodes show is attitude: the module ends at a median 84.6 mrad against the 52.4 mrad a seated module must be inside, so essentially every episode is outside the orientation tolerance by about 1.6x. A 7x stronger angular penalty, trained 400 epochs, moved that by 0.03 mrad -- so the angle is not the policy's to give through pad contact.",
+  "success_orientation_tolerance_mrad": 52.3599,
+  "comparison_note": "Compared against INSERTION_ORIENTATION_TOLERANCE_RAD, the success criterion. An earlier version of this report compared against SERVICE_DELIVERED_ATTITUDE_RAD (20.5 mrad) and called it an entry limit; that is the SETTLED attitude, not an entry limit, and the claim is retracted in evidence/RETRACTED.md.",
   "arms": [
     {
       "label": "v20chain, stage 0, the published 0.00% (time cost at -0.10)",
@@ -38,7 +38,7 @@
       },
       "control_steps_median": 900.0,
       "fraction_dead_within_10_steps": 0.0,
-      "fraction_inside_channel_admittance": 0.0
+      "fraction_inside_success_orientation": 0.0228
     },
     {
       "label": "v21time ep1400, stage 0, time cost at -0.40 trained to convergence",
@@ -71,7 +71,7 @@
       },
       "control_steps_median": 900.0,
       "fraction_dead_within_10_steps": 0.0,
-      "fraction_inside_channel_admittance": 0.0
+      "fraction_inside_success_orientation": 0.0273
     },
     {
       "label": "v21time ep1400, stage 0, form lock ENGAGED as the chain runs it",
@@ -104,18 +104,52 @@
       },
       "control_steps_median": 4.0,
       "fraction_dead_within_10_steps": 1.0,
-      "fraction_inside_channel_admittance": 0.0
+      "fraction_inside_success_orientation": 0.0039
+    },
+    {
+      "label": "v22attitude ep400, stage 0, orientation penalty 7x stronger (RETRACTED scale)",
+      "episodes": 128,
+      "success_rate": 0.0,
+      "orientation_error_mrad": {
+        "p5": 55.123,
+        "median": 84.577,
+        "p95": 121.943
+      },
+      "axial_short_mm": {
+        "p5": 46.575,
+        "median": 207.175,
+        "p95": 279.991
+      },
+      "lateral_error_mm": {
+        "p5": 1.869,
+        "median": 6.992,
+        "p95": 15.576
+      },
+      "terminal_speed_mm_s": {
+        "p5": 0.895,
+        "median": 3.037,
+        "p95": 7.905
+      },
+      "tool_to_handle_mm": {
+        "p5": 11.944,
+        "median": 12.2,
+        "p95": 12.457
+      },
+      "control_steps_median": 900.0,
+      "fraction_dead_within_10_steps": 0.0,
+      "fraction_inside_success_orientation": 0.0391
     }
   ],
   "what_this_refutes": [
     "That the insert skill is creeping toward a seat it might reach with more time pressure. The time cost at -0.40, trained to 1,400 epochs, leaves the median shortfall at 202.2 mm against 203.6 mm without it, and every episode still spends its whole clock. The cost is paid, not avoided.",
+    "That the objective was mis-scaled. Normalising orientation by 20.5 mrad instead of 0.15 rad -- a 7x stronger angular penalty -- moved the measured orientation from 84.61 to 84.58 mrad over 400 epochs. Retracted; see evidence/RETRACTED.md.",
     "That switching the form lock on is a free fix. Engaged on this task the module is flung: 100% of episodes dead inside ten control steps, orientation 313.6 mrad, terminal speed 589.9 mm/s. The lock records its transform before the reset writes the module along the stroke and then fights the difference at up to its 1 kN cap."
   ],
   "what_it_is_not": [
     "Not the reset. evidence/insert_reset_bank.json reports attitude_residual_rad 0.0 at every station, so the module starts square and the episode takes it to 84.6 mrad.",
     "Not grip slip. Tool-to-handle holds at 12.2 mm with a p95 of 12.48, which is the pin's own measured 12 mm feed rather than the pads losing it."
   ],
-  "mechanism": "Two flat pads on a pin cannot resist a moment about the closing axis -- the same limit this project measured four independent ways and the reason the chain carries the module on a form lock. With the lock off, contact with the lead-in rotates the module and nothing opposes it. The objective did not object, because insertion_misalignment_penalty normalised orientation by 0.15 rad: the SEATED tolerance, which applies once the channel is already holding the module square. At that scale an 84.6 mrad module costs 0.08 a step, against the 0.50 the same episode pays for 7.1 mm of lateral. The objective ranked a fatal attitude below a survivable offset.",
+  "mechanism": "Two flat pads on a pin cannot resist a moment about the closing axis -- the same limit this project measured four independent ways and the reason the chain carries the module on a form lock. With the lock off, contact with the lead-in rotates the module and nothing opposes it. The chain reaches 46 mrad at the same seating phase, and the only difference is that the chain carries the module on the form lock while the skill trains without one. Strengthening the objective does not substitute for that, which is what the 400-epoch null result measured.",
   "scope_and_limitations": [
     "Simulation only. No result here was produced on real hardware.",
     "One PPO training seed. The evaluation seeds are held out.",

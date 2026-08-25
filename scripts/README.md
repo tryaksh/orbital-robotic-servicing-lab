@@ -70,7 +70,7 @@ These read `.npz` episode metrics and write `evidence/*.json`.
 | --- | --- |
 | `report_chain_robustness.py` | Rank what breaks the chain, from the sweep's own per-episode rows. |
 | `report_extract_attribution.py` | One table: what each change to the extract task was worth, on one policy. |
-| `report_insert_attitude.py` | Why the insert skill does not seat: it is attitude, not creep. |
+| `report_insert_attitude.py` | Why the insert skill does not seat: attitude it cannot deliver, not creep. |
 | `report_mating_compliance.py` | Pool the mating-compliance runs into one table, and one specification number. |
 | `report_robot_carried_interface.py` | Pool the robot-carried transit runs into one interface result. |
 

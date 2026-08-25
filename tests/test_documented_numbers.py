@@ -80,22 +80,35 @@ def test_the_interface_limit_is_quoted_from_its_own_gate() -> None:
     assert "66.4 N" in README, "README no longer quotes the axial force the task demands"
 
 
-def test_the_insert_diagnosis_is_quoted_against_the_channel_it_failed() -> None:
-    """84.6 mrad against 20.5 mrad admissible is why the insert skill does not seat."""
-    report = json.loads((EVIDENCE / "insert_attitude_diagnosis.json").read_text(encoding="utf-8"))
-    admits = report["channel_admittance_mrad"]
-    assert f"{admits:.1f} mrad" in README or f"**{admits:.1f} mrad**" in README
-    assert f"{admits:.1f} mrad" in NOW or f"**{admits:.1f} mrad**" in NOW
+def test_the_insert_diagnosis_is_quoted_against_the_tolerance_it_missed() -> None:
+    """84.5 mrad against a 52.4 mrad success tolerance, and the null result beside it.
 
-    converged = [
-        arm
+    An earlier version of this test compared against 20.5 mrad and called it the
+    channel's admittance. That was the *settled* attitude, not an entry limit,
+    and the claim is retracted -- so this pins the comparison that survived.
+    """
+    report = json.loads((EVIDENCE / "insert_attitude_diagnosis.json").read_text(encoding="utf-8"))
+    tolerance = report["success_orientation_tolerance_mrad"]
+    assert round(tolerance, 1) == 52.4, f"the orientation tolerance moved to {tolerance}"
+    for document, label in ((README, "docs"), (NOW, "docs/NOW.md")):
+        assert f"{tolerance:.1f} mrad" in document, f"{label} does not quote the {tolerance:.1f} mrad tolerance"
+
+    # The three arms must agree to within a milliradian; that agreement IS the
+    # finding, so a document quoting one without the others would mislead.
+    angles = [
+        arm["orientation_error_mrad"]["median"]
         for arm in report["arms"]
-        if "v21time" in arm["label"] and "lock" not in arm["label"].lower()
+        if "lock" not in arm["label"].lower()
     ]
-    assert converged, "the converged time-cost arm is missing from the diagnosis"
-    median = converged[0]["orientation_error_mrad"]["median"]
-    assert f"{median:.1f} mrad" in README or f"**{median:.1f} mrad**" in README
-    assert f"{median:.1f} mrad" in NOW or f"**{median:.1f} mrad**" in NOW
+    assert len(angles) >= 3, "the diagnosis needs all three objective arms to make its point"
+    assert max(angles) - min(angles) < 1.0, (
+        f"the three objectives no longer agree ({angles}); the 'interface, not reward' "
+        "conclusion rests on them landing together"
+    )
+    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+        assert "84.26" in document and "84.58" in document, (
+            f"{label} does not show the objectives landing together, which is the result"
+        )
 
 
 def test_the_provenance_caveat_is_stated_where_the_number_is() -> None:

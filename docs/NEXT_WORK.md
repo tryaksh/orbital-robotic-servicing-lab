@@ -33,14 +33,14 @@ training runs do not.
 | --- | --- | --- | --- |
 | **T0** | No certification is reproducible from committed code | CPU + 1 cert batch | everything; the paper outright |
 | **T1** | Certify the chain on the vision task | hours, 1 batch | the strongest claim about perception |
-| **T2** | Insert skill: wedged at 84.6 mrad against a 20.5 mrad channel | ~1 h train + 45 m certify | a learned seating phase |
+| **T2** | Insert: attitude is the interface's, not the reward's — **diagnosed, work moved to T9** | done | — |
 | **T3** | Three training seeds, so numbers carry a spread | 4+ training runs | any claim about a *method* |
 | **T4** | Exercise robustness levels 1–4 | evaluation only | a degradation curve |
 | **T5** | Randomize the variables the sweep is sensitive to | retrain + re-certify | a tolerance band, not a point |
 | **T6** | Grasp and extract miss the 95% gate | cheap to attribute | the skill numbers |
 | **T7** | The live service runs the superseded w65 policy set | small if folded into T1 | the demo's credibility |
 | **T8** | One epoch, two filenames, two provenance hashes | <1 h, CPU | nothing; a latent trap |
-| **T9** | The insert skill's load path still differs from the chain's | half a day + certify | T2's transfer |
+| **T9** | **The insert blocker.** The skill's load path is pads-only; the chain's is a form lock | half a day + ~2 h GPU | a learned seating phase |
 | **T10** | Test-suite portability | **done 2026-08-25** | — |
 | **T11** | No recording shows the certified chain | ~8 min a clip | the media, and any release |
 | **P1–P7** | [Publication track](#publication-track) — the same work on a submission deadline | see section | Frontiers, 2026-11-09 |
@@ -179,101 +179,93 @@ than the state task. Budget one overnight batch and time-box it.
 
 ---
 
-## T2 — The insert skill is wedged, not creeping
+## T2 — Insert: the attitude is the interface's, not the objective's
+
+**Status: diagnosed, and the work moved to [T9](#t9--the-insert-skills-load-path-still-differs-from-the-chains).**
+Two candidate fixes have now been tried and measured; neither is the answer, and
+what they rule out is worth more than either would have been.
 
 **Where it stands.** The learned insert skill has certified at **0.00%** for this
-project's entire history — 1,536 episodes on the current checkpoint
+project's entire history — 1,536 held-out episodes
 (`evidence/grapple_insert_v20chain_certification.json`), a median of **204 mm
 short** against tolerances of 2.5 mm and 52.4 mrad. Seven of the eight ways its
-task disagreed with the chain's seating phase are closed, it loses the grip in
-**0** of 128 held-out episodes, and its mean reward went positive for the first
-time in this project.
+task disagreed with the chain's seating phase are closed, and it loses the grip in
+**0** of 128 held-out episodes.
 
-**The creep reading is refuted.** For a long time the failure was read as the
-policy *creeping* — still moving at 3.65 mm/s when the clock stopped, against
-120 mm/s of authority — and the fix that followed was a time cost sized so a full
-clock costs 12, below the 15 that failing costs. Trained to convergence at 1,400
-epochs and evaluated on 512 held-out episodes, it changes nothing:
+### Refuted 1: it is not creeping
+
+The long-standing reading was that the policy *creeps* — still moving at
+3.65 mm/s when the clock stops, against 120 mm/s of authority — and the fix was a
+time cost sized so a full clock costs 12, below the 15 that failing costs.
+Trained to convergence at 1,400 epochs:
 
 | | median short | terminal speed | clock used |
 | --- | ---: | ---: | ---: |
 | v20chain, time cost −0.10 | 203.6 mm | 3.60 mm/s | 900 / 900 |
 | v21time, time cost −0.40, converged | 202.2 mm | 3.98 mm/s | 900 / 900 |
 
-The cost is being **paid, not avoided**. `evidence/insert_attitude_diagnosis.json`.
+The cost is **paid, not avoided**.
 
-**What the same episodes actually show.** A rigid part of length *L* entering a
-channel with *c* of relief per side fits only while its tilt stays under `2c/L`,
-which for the shipped relief is `SERVICE_DELIVERED_ATTITUDE_RAD` = **20.5 mrad**.
-The module arrives at:
+### Refuted 2: it is not the objective's angular scale
 
-```
-orientation at the end    p5 56.1    median 84.6    p95 119.7 mrad
-channel admits                             20.5 mrad
-```
+The module ends at ~**84.5 mrad** against `INSERTION_ORIENTATION_TOLERANCE_RAD`
+= **52.4 mrad**, with only 2–4% of episodes inside. A 7× stronger orientation
+penalty was tried — and briefly published on a mis-read constant, now in
+`evidence/RETRACTED.md`. Trained 400 epochs it moved the angle by **0.03 mrad**.
 
-**Not one episode in 512 ends inside the angle at which the module could enter at
-all.** It is not creeping toward a seat it might reach; it is wedged, and the
-remaining axial command does nothing. v20chain sits at 84.3 mrad, so this was
-never about the time cost.
+| Objective | Orientation | Inside the 52.4 mrad tolerance |
+| --- | ---: | ---: |
+| baseline time cost | 84.26 mrad | 2.3% |
+| 4× time cost, converged | 84.61 mrad | 2.7% |
+| 7× orientation penalty | 84.58 mrad | 3.9% |
 
-**Ruled out rather than assumed.** Not the reset —
-`evidence/insert_reset_bank.json` reports `attitude_residual_rad` of 0.0 at every
-station, so the module starts square and the episode takes it to 84.6 mrad. Not
-grip slip — tool-to-handle holds at 12.2 mm with a p95 of 12.48, which is the
-pin's own measured 12 mm feed.
+**Three objectives, 0.4 mrad apart.** An angle that does not move when the reward
+is changed three different ways is not the reward's to give.
 
-**The mechanism is this project's own thesis.** Two flat pads on a pin cannot
-resist a moment about the closing axis; the chain carries the module on a form
-lock for exactly that reason, and the skill trains without one. What let it go
-unnoticed for so long is that `insertion_misalignment_penalty` normalised
-orientation by **0.15 rad** — the *seated* tolerance, which only applies once the
-channel is already holding the module square. At that scale an 84.6 mrad module
-costs 0.08 a step against the 0.50 the same episode pays for 7.1 mm of lateral,
-so the objective ranked a fatal attitude below a survivable offset.
+### What is left, and it is T9
 
-**What was changed.** The insert task now normalises orientation by the rack's own
-admittance, `SERVICE_DELIVERED_ATTITUDE_RAD`, derived rather than chosen. The
-function default stays 0.15 so every previously published insertion number is
-bit-identical. `tests/test_skill_chain_agreement.py` holds both halves.
+Not the reset — `evidence/insert_reset_bank.json` reports `attitude_residual_rad`
+of 0.0 at every station, so the module starts perfectly square and the episode
+takes it to 84.5 mrad. Not the grip — tool-to-handle holds at 12.2 mm with a p95
+of 12.48, the pin's own measured feed.
 
-**Code.** `mdp/insertion.py::insertion_misalignment_penalty` (the
-`orientation_scale_rad` parameter); `grapple_pin_env_cfg.py::InsertRewardsCfg`
-(the `misalignment` term); `scripts/play.py --latch_enabled` (added here, and how
-the lock-on arm was measured).
+What remains is the load path, and it is this project's own thesis: **two flat
+pads on a pin cannot resist a moment about the closing axis.** The chain reaches
+**46 mrad** at the identical seating phase, and the only difference is that the
+chain carries the module on a form lock while the skill trains without one.
 
-**Run it.**
+Naively switching the lock on does not work either — engaged on this task the
+module is flung, 100% dead inside ten control steps at 313.6 mrad and 589.9 mm/s,
+because the latch anchors its transform before the reset writes the module along
+the stroke and then fights the difference at up to its 1 kN cap. `play.py
+--latch_enabled` exists now to reproduce that in one command.
+
+**So the ordering is settled: do T9 first.** Retraining the insert skill before
+the load path matches the chain trains a policy on a strictly harder problem than
+the one it is deployed into, which is the failure this whole line of work exists
+to stop.
+
+**Evidence.** `evidence/insert_attitude_diagnosis.json` holds all four arms and
+regenerates from recorded rows with `python scripts/report_insert_attitude.py`.
+
+**When T9 lands, verify both halves** — the standard extraction is held to and
+insertion never has been:
 
 ```bash
-"C:/isaac-sim/python.bat" scripts/train.py --headless \
-  --task Isaac-ZeroG-Blade-GrapplePin-InsertTwoSlot-v0 \
-  --num_envs 1024 --seed 70 --robustness_level 0 \
-  --max_iterations 1400 --run_name grapple_insert_l0_seed70_v22attitude
-
-SKILL=Insert CKPT=<highest epoch> TAG=insert_v22attitude \
-scripts/certify_grapple_skills.sh
+CKPT=<the retrained checkpoint> TAG=insert_v23lock scripts/verify_insert_skill.sh
 ```
 
-**Done when.** Orientation at the end drops below the channel's 20.5 mrad
-admittance for a substantial fraction of episodes, and the skill is certified the
-same way every other skill is — three curriculum stages, three held-out seeds —
-with the rate published beside v20chain's 0.00%. **If the attitude comes down and
-the rate does not, publish that too**: it would mean entry angle was necessary and
-not sufficient, which is a further result rather than a failure to report.
+That certifies the skill on three stages and three held-out seeds, then runs the
+same checkpoint inside the full chain against the scripted guarded advance. **The
+chain keeps the scripted advance unless the chain arm beats it on the same
+seeds**; a skill certification alone does not move the seating phase.
 
-Then verify it *in the chain*, which is the standard extraction is held to:
-`--insert_controller policy` runs the learned seating head to head against the
-scripted guarded advance on the same workcell. A skill that certifies alone and
-loses in the chain is the failure mode this repository has paid for most.
+**Cost.** ~1 hour training at 1024 environments, ~45 minutes for the skill
+certification, ~25 minutes for the chain arm.
 
-**Cost.** ~1 hour training at 1024 environments, ~45 minutes for the full
-three-stage certification, ~30 minutes for the chain comparison.
-
-**Note the ordering against T9.** The load path is still pads-only in the skill
-and a compliant form lock in the chain. If T9 is done first, T2's retraining
-happens under the load path the chain actually uses; if not, this measures a
-policy trained on a strictly harder problem than it is deployed into. Either is
-defensible, and which one was done must be stated.
+**If the attitude comes down and the rate does not, publish that too.** It would
+mean squareness was necessary and not sufficient, which is a further result rather
+than a failure to report.
 
 ---
 
@@ -609,12 +601,15 @@ The defensible contribution is what this project did that is unusual:
 2. **An RL objective must be scaled against the constraint that binds, and getting
    that wrong produces a policy that fails geometrically rather than
    statistically.** The insert skill spent this project's entire history at 0.00%
-   while its objective normalised orientation by the *seated* tolerance (0.15 rad)
-   when the binding constraint was *entry* at `2c/L` = 20.5 mrad. The policy
-   converged to 84.6 mrad — wedged, not slow — and every diagnosis that read it as
-   creep proposed a time cost, which is now measured to change nothing. This is a
-   transferable lesson about reward design in contact-rich assembly, and it is the
-   most novel thing here.
+   while it was held by two flat pads that cannot resist a moment about the
+   closing axis. The policy
+   converged to 84.5 mrad against a 52.4 mrad tolerance and *stayed there* under
+   three different objectives — a baseline time cost, a 4× time cost trained to
+   convergence, and a 7× orientation penalty — all within 0.4 mrad. The lesson is
+   sharper than a reward-shaping one: an angle that does not move when the reward
+   is changed three ways is set by the interface, and no objective buys what the
+   gripper cannot deliver. That is a transferable result about contact-rich
+   assembly and it is the most novel thing here.
 3. **Skills trained in isolation silently describe a different problem than the
    chain that runs them.** Eight dimensions differed between the insert skill's
    task and the chain's seating phase, and the skill certified at 0.00% while
@@ -670,8 +665,8 @@ exist and need only re-running at the committed commit and at three seeds:
 | --- | --- |
 | Passive finger grip vs robot-side form lock, for transit | **have** — `robot_carried_interface.json` |
 | Rigid vs compliant mating stroke | **have** — `robot_carried_rigid_mating_refuted.json` |
-| Insert reward: orientation scaled by seated tolerance (0.15 rad) vs channel admittance (`2c/L`) | **new, P2** — the paper's central ablation |
-| Insert time cost −0.10 vs −0.40 | **have** — `insert_attitude_diagnosis.json`, a negative result |
+| Insert: three objectives (baseline, 4× time cost, 7× orientation penalty) all landing at 84.5 mrad | **have** — `insert_attitude_diagnosis.json`; the paper's central ablation |
+| Insert with the form lock vs without, once T9 lands | **T9** — the arm that should move the angle |
 | Learned insert vs scripted guarded advance, head to head in the chain | **have**, needs re-running |
 | Skill-task/chain agreement across 8 dimensions, before and after | **have** — `test_skill_chain_agreement.py` plus the certifications either side |
 | Module cross-section and rack clearance sweep vs the closed-form envelope's prediction | **have** — `chain_robustness_sweep.json` |
