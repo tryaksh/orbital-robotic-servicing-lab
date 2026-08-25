@@ -230,28 +230,35 @@ def main() -> int:
                 "the policy's either."
             ),
             "why_orientation_cannot_be_met_in_this_rack": (
-                "Among the 91 episodes that reach seated depth, orientation clusters between "
-                "56.03 and 56.92 mrad -- a band under a milliradian wide. That is not a policy "
-                "behaviour, it is a wall: the module is resting corner-to-corner against the "
-                "channel walls at the largest angle the clearance permits. "
-                "scripts/check_workcell_geometry.py names that angle independently as the "
-                "hand-off yaw, 56.40 mrad, and records that measured attitude runs 0.87 to 1.02 "
-                "of 2c/L across eight sweep points. The observed 56.03-56.92 is 0.99 to 1.01 of "
-                "it. "
-                "INSERTION_ORIENTATION_TOLERANCE_RAD is 52.36 mrad. So the angle at which this "
-                "channel holds a module is 4.04 mrad OUTSIDE the angle its own acceptance "
-                "criterion demands, and a module that merely rests in the channel cannot pass. "
-                "The chain reaches 46 mrad because its form lock holds the module squarer than "
-                "the channel does, not because the channel squares it."
+                "Among the 91 episodes that reach seated depth, orientation FLOORS at 56.033 "
+                "mrad: p5 is 56.035 and the minimum is 56.033, with a tail to 86.5. A floor is "
+                "a surface the module cannot get past, and 2c/L on the channel's unrelieved "
+                "lateral throat is 56.396 mrad -- the floor is 0.994 of it. "
+                "INSERTION_ORIENTATION_TOLERANCE_RAD is 52.36 mrad, so the angle at which this "
+                "throat holds a module is 4.04 mrad OUTSIDE the angle its own acceptance "
+                "criterion demands, and a module that merely rests in it cannot pass. The chain "
+                "reaches 46 mrad because its form lock holds the module squarer than the rack "
+                "does, not because the rack squares it."
             ),
-            "the_rack_change_this_implies": (
-                "The lateral clearance window is 10.35 mm to 12.69 mm and GUIDE_CENTER_OFFSET_Y "
-                "sits at the top of it, 12.689 mm. 2c/L = 52.36 mrad at c = 11.78 mm, so any "
-                "value at or below that puts a resting module inside the criterion, and the "
-                "window's own lower end of 10.35 mm gives 46.0 mrad with margin. NOW.md has "
-                "carried 'sits exactly on its upper bound ... not measured' as an open item; "
-                "this measures it. NOT CHANGED HERE: the chain's certification was produced at "
-                "12.689 mm, so moving it moves a published number. docs/NEXT_WORK.md T9."
+            "correction_to_the_mechanism_named_here": (
+                "An earlier version of this report called the band the module 'resting "
+                "corner-to-corner against the channel walls at the largest angle the clearance "
+                "permits'. The walls are nowhere near it: the destination bay is relieved, so "
+                "they admit 76.90 mrad of yaw, and these runs went through play.py "
+                "--latch_enabled, which applied the relief a second time and opened them to "
+                "97.40. What holds the module is the lead-in throat at the mouth, which is "
+                "authored from the rail face and does not move with the relief. Same constant, "
+                "so the conclusion is unchanged. evidence/destination_channel_geometry.json and "
+                "evidence/RETRACTED.md."
+            ),
+            "the_rack_change_this_implies_and_what_it_did": (
+                "Changed 2026-08-25. The lateral clearance window is 10.35 mm (the lead-ins must "
+                "admit the 46 mrad the transit delivers) to 11.78 mm (a resting module must be "
+                "inside 52.36 mrad), and GUIDE_CENTER_OFFSET_Y sat above both at 12.689 mm. It "
+                "is derived now at the equal-margin point, 11.065 mm, because both values this "
+                "project has used sat ON a bound. Tested by moving it: same checkpoint, same "
+                "seed, same 256 episodes, the attitude floor goes 56.03 -> 45.75 mrad and "
+                "success 0.00% -> 18.85%. evidence/insert_attitude_wall_moved.json."
             ),
         },
         "scope_and_limitations": [

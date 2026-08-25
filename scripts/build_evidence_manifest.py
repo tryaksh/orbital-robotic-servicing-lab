@@ -112,6 +112,26 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "full_chain_state_16_report.json",
         "The state-task chain over 16 environments, with the seating conditions itemised.",
     ),
+    (
+        "insert_attitude_diagnosis.json",
+        "Why the insert skill does not seat, eight arms: not creep, not the reward, the rack.",
+    ),
+    (
+        "destination_channel_geometry.json",
+        "The destination bay as each entry point actually builds it. Read from the config, not the source.",
+    ),
+    (
+        "insert_attitude_wall_moved.json",
+        "The attitude floor moves with the channel throat: 56.03 -> 45.75 mrad, one checkpoint.",
+    ),
+    (
+        "workflow_robot_carried_m130pin_guarded_c11065_certification.json",
+        "The chain on the derived rack: 97.92% pooled, seed for seed identical to the 12.689 mm run.",
+    ),
+    (
+        "robot_carried_full_chain_c11065.json",
+        "One end-to-end run of that chain -- and the first report here whose source bindings all recover from git.",
+    ),
 )
 
 
