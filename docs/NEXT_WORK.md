@@ -8,6 +8,13 @@ Each task states the evidence it starts from, the code it touches, how to run
 it, what would count as done, and roughly what it costs. Read
 [`NOW.md`](NOW.md) first — it is the canonical state and these tasks assume it.
 
+**Two tracks.** `T0`–`T11` are the engineering backlog, ordered by what the
+repository most needs. [`Publication track`](#publication-track) at the end is the
+same work seen from a paper deadline: which of these a reviewer will insist on,
+in what order, and the few things only a submission needs. They do not conflict —
+`P1` *is* `T0`, `P2` *is* `T3` — the paper section only adds sequencing and the
+claims worth making.
+
 **Two rules are non-negotiable, and they are why some of these tasks are shaped
 the way they are.** Never widen a tolerance to make a gate pass; if a criterion
 is wrong, replace it with one derived from the parts. And when a success or
@@ -540,6 +547,187 @@ each clip needs.
 **Cost.** Minutes per clip. The check that matters costs nothing: read
 `seated_conditions_still_held_after_settling` in the run's report before
 publishing the clip.
+
+---
+
+---
+
+# Publication track
+
+**Target: a submission in 10–12 weeks.** This section exists because the work is
+close to publishable and the gap is *measurement discipline*, not results. It does
+not replace T0–T11; it says which of them a reviewer will insist on, and adds the
+ones only a paper needs.
+
+| Venue | Fit | Deadline / speed | Notes |
+| --- | --- | --- | --- |
+| **Frontiers in Robotics and AI — Space Robotics** | Best topical match: the collection explicitly invites learning-based control, manipulation, simulation and experimental validation for on-orbit servicing | **2026-11-09** — about 11 weeks | First choice. The collection framing matches this project's actual contribution almost exactly. |
+| **Aerospace** (MDPI) | Good, if framed as a servicing problem | ~18.5 days median to first decision | The fastest path. **Must not read as an Isaac Lab demonstration** — lead with the servicing problem and the interface specification, not the simulator. |
+| **IJARS — Service Robotics** | Solid fallback; scope covers space exploration, design, control, simulation and validation | Rolling; 6–12 pages, double-anonymised | The length cap is the binding constraint: this project has more evidence than fits, so the selection has to be deliberate. |
+
+## What the paper actually claims
+
+The temptation is to lead with 97.92%. **That is the weakest available framing** —
+a success rate on one simulated workcell, with no hardware, invites the reviewer
+to ask what it generalises to, and the honest answer is "not measured".
+
+The defensible contribution is what this project did that is unusual:
+
+1. **The binding constraint in robotic servicing of modular hardware is the
+   mechanical interface, not the controller — and here it is quantified.** 6 N of
+   holding force against 66.4 N demanded, a factor of eleven, with tightening the
+   grip measured to make it *worse*. Then a redesign that closes it, with the
+   losing arm kept: on finger pads alone, 0 of 16 environments retain the
+   transform and the module travels 913 mm while the tool travels 168.
+2. **An RL objective must be scaled against the constraint that binds, and getting
+   that wrong produces a policy that fails geometrically rather than
+   statistically.** The insert skill spent this project's entire history at 0.00%
+   while its objective normalised orientation by the *seated* tolerance (0.15 rad)
+   when the binding constraint was *entry* at `2c/L` = 20.5 mrad. The policy
+   converged to 84.6 mrad — wedged, not slow — and every diagnosis that read it as
+   creep proposed a time cost, which is now measured to change nothing. This is a
+   transferable lesson about reward design in contact-rich assembly, and it is the
+   most novel thing here.
+3. **Skills trained in isolation silently describe a different problem than the
+   chain that runs them.** Eight dimensions differed between the insert skill's
+   task and the chain's seating phase, and the skill certified at 0.00% while
+   holding the grip perfectly. The mitigation — a source-level agreement test that
+   runs without a simulator on every commit — is a methodological contribution
+   rather than a bug fix.
+4. **Design-for-serviceability requirements derived from manipulation
+   measurements** rather than chosen: the module cross-section envelope, the
+   two-sided bound on rack clearance, and the lateral indexing accuracy the rail
+   needs.
+
+Claims 2 and 3 are the paper. Claim 1 motivates it. Claim 4 is the deliverable
+that makes it matter to a spacecraft designer. The 97.92% is *evidence for* the
+architecture, reported with its limits — not the headline.
+
+## P1 — Close the provenance gap before writing a word
+
+**This is T0, and for a paper it is not optional.** A reproducibility statement
+that says "the code that produced these numbers is not in the repository" is not
+publishable. Every number in the paper must trace to a commit.
+
+Do T0 steps 1–3, then re-run every certification the manuscript quotes on
+committed code. **Sequence everything else after this** — a number re-measured
+later at a different commit costs a second re-run.
+
+**Gate.** `check_source_provenance.py` reports `recovered` for every report cited.
+
+## P2 — Three training seeds, because one is not a result
+
+**This is T3, and it is the single most likely cause of rejection.** "We trained
+one policy and it scored X" does not support a claim about a *method*. Every
+headline number needs a mean and a spread over at least three training seeds.
+
+It also decides whether claim 2 survives review. The attitude-scale correction has
+to beat the old scale by more than training noise, or it is an anecdote. **Run
+both arms at three seeds each** — the corrected scale and the 0.15 rad original —
+as a controlled ablation on one changed parameter.
+
+**Gate.** Every rate in the manuscript carries a spread, and the attitude
+ablation's effect exceeds the seed spread — or the claim is weakened to match what
+was measured.
+
+**Cost.** Six training runs for the insert ablation, plus two further seeds each
+for grasp and extract. The largest line item here. Start it first and batch it
+overnight.
+
+## P3 — The ablation table the paper is built around
+
+One table, one changed thing per row, all on held-out seeds. Most rows already
+exist and need only re-running at the committed commit and at three seeds:
+
+| Row | Status |
+| --- | --- |
+| Passive finger grip vs robot-side form lock, for transit | **have** — `robot_carried_interface.json` |
+| Rigid vs compliant mating stroke | **have** — `robot_carried_rigid_mating_refuted.json` |
+| Insert reward: orientation scaled by seated tolerance (0.15 rad) vs channel admittance (`2c/L`) | **new, P2** — the paper's central ablation |
+| Insert time cost −0.10 vs −0.40 | **have** — `insert_attitude_diagnosis.json`, a negative result |
+| Learned insert vs scripted guarded advance, head to head in the chain | **have**, needs re-running |
+| Skill-task/chain agreement across 8 dimensions, before and after | **have** — `test_skill_chain_agreement.py` plus the certifications either side |
+| Module cross-section and rack clearance sweep vs the closed-form envelope's prediction | **have** — `chain_robustness_sweep.json` |
+
+The last row deserves its own figure: a closed-form CPU check that predicts every
+simulated cross-section outcome *before* the simulator runs is a strong result for
+a design-tool paper.
+
+## P4 — Perception in the loop, at scale
+
+**This is T1.** A space-robotics reviewer will not accept a manipulation result
+whose object pose comes from the simulator while perception is validated
+separately on still frames. Either report the chain on the vision task, or state
+the split so plainly it cannot be mistaken — and expect to be asked why the
+measurement was not made.
+
+Report the state-task and vision-task rates side by side. The gap *is* the cost of
+perception, and it is a result in itself.
+
+## P5 — Robustness as a curve, not a point
+
+**T4 and T5 together.** Levels 1–3 re-certified on unchanged checkpoints give a
+degradation curve for evaluation cost only, which is the cheapest figure in this
+plan. Randomising the sensitive variables *during* training (T5) is the expensive
+one; if time runs short, publish the degradation curve and name the randomisation
+as future work rather than doing it badly.
+
+Carry the level-4 caveat explicitly: the base compliance is authored and not in
+the load path, so a level-4 number would imply a mount compliance that is not
+being simulated.
+
+## P6 — Say what sim-to-real would take
+
+Required for a space-robotics venue and currently absent. Not experiments — an
+honest, specific analysis:
+
+- what the contact model does and does not represent (contact forces are a
+  relative damage proxy, not an absolute budget);
+- the jaws carry no collider, so pad-on-pin contact is not simulated;
+- the base is fixed, so reaction into the servicing spacecraft is not in the load
+  path — a real free-flyer or a compliant mount changes the problem;
+- no connector mating, cabling, thermal or vacuum effects;
+- which hardware experiment would falsify the interface specification most
+  cheaply.
+
+Reviewers reward a paper that bounds its own claims. This project already has the
+discipline; it has never written it as a section.
+
+## P7 — Make the artifact citable
+
+- **Checkpoints are not in the repository** (`logs/` and `checkpoints/` are
+  gitignored). A reproducibility statement needs them somewhere permanent —
+  Zenodo, with a DOI, is the usual answer and integrates with GitHub releases.
+- Tag the commit the paper describes.
+- `evidence/MANIFEST.json` is already close to a machine-readable artifact index;
+  cite it directly.
+- The demonstration videos (T11) belong with the artifact, and must show the
+  certified chain rather than the current footage.
+
+## Ten-week shape
+
+| Weeks | Work |
+| --- | --- |
+| 1–2 | P1 provenance. Start P2 seed runs immediately — they are the long pole, and everything else can proceed while the GPU is busy. |
+| 3–5 | P2 completes. P3 ablation table assembled from re-run evidence. |
+| 4–6 | P4 vision-chain certification (overlaps P3; different GPU sessions). |
+| 6–7 | P5 degradation curve. T11 media. |
+| 7–9 | Write. P6 sim-to-real section. Figures from `evidence/`. |
+| 9–11 | Internal review against the two non-negotiable rules, then submit. |
+
+**If the schedule slips, cut P5's training randomisation and T2's further insert
+work before cutting P1 or P2.** Provenance and seed spread are what make the paper
+reviewable; an extra ablation only makes it stronger.
+
+## What not to claim
+
+- No hardware result, no flight readiness, no TRL claim.
+- Not "97.92% success at on-orbit servicing" — it is one simulated workcell, one
+  module geometry, one rack, at robustness level 0.
+- Not that the learned skills meet the project's own gate. They do not, and the
+  chain exceeding them is explained rather than glossed.
+- Never quote a skill rate and a chain rate as though they measured the same
+  thing.
 
 ---
 
