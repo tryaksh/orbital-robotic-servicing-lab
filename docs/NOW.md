@@ -192,6 +192,16 @@ here so this file stays the one place the state is described:
   46 mrad at the same phase only because it carries the module on a form lock.
   The blocker is the load path — **T9**, not T2.
   `evidence/insert_attitude_diagnosis.json`.
+
+  **T9 is unblocked as of 2026-08-25.** Reaching the chain's load path from the
+  skill needed three fixes that each masked the next: anchor the lock after the
+  reset settles, run `joint_mode="fixed"` (with `"compliant"` the mating joint is
+  never installed and softening is a no-op), and turn `replicate_physics` off
+  (PhysX copies only env 0's authored joint). `--latch_mating_compliance` sets
+  all three. Zero-shot on a policy trained without the lock, episodes survive and
+  the module gets 20 mm further in; attitude is worse, which is expected for an
+  unseen load path. A policy trained under it —
+  `grapple_insert_l0_seed70_v23lock` — is the measurement that matters.
 - Grasp and extract both miss the 95% gate (85.69% and 87.75% pooled), and
   neither responds to more epochs on the evidence available (T6).
 - Every policy is **one PPO training seed**, so no number carries a spread (T3).
