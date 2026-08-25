@@ -1,0 +1,125 @@
+{
+  "title": "Why the insert skill does not seat: attitude, not creep",
+  "evidence_type": "simulation_only",
+  "generated_utc": "2026-08-25T07:24:00.144546+00:00",
+  "question": "The insert skill certifies at 0.00% and stops ~204 mm short. The published reading was that it creeps because the objective made dawdling nearly free. Is that right?",
+  "answer": "No. The time cost trained to convergence changes nothing, and the episodes it produces are wedged rather than slow: the module ends at a median 84.6 mrad against a channel that admits 20.5 mrad, with a 5th percentile of 56.1 mrad. Not one episode in 512 ends inside the angle at which the module could enter the channel at all.",
+  "channel_admittance_mrad": 20.5,
+  "channel_admittance_derivation": "2c/L, for c = SERVICE_DESTINATION_CHANNEL_RELIEF_M per side and L = BLADE_LENGTH_M. The same inequality docs/service_interface_spec.md section 6 derives.",
+  "arms": [
+    {
+      "label": "v20chain, stage 0, the published 0.00% (time cost at -0.10)",
+      "episodes": 1536,
+      "success_rate": 0.0,
+      "orientation_error_mrad": {
+        "p5": 56.758,
+        "median": 84.258,
+        "p95": 116.388
+      },
+      "axial_short_mm": {
+        "p5": 38.763,
+        "median": 203.641,
+        "p95": 266.418
+      },
+      "lateral_error_mm": {
+        "p5": 1.29,
+        "median": 7.532,
+        "p95": 13.58
+      },
+      "terminal_speed_mm_s": {
+        "p5": 1.058,
+        "median": 3.6,
+        "p95": 7.154
+      },
+      "tool_to_handle_mm": {
+        "p5": 11.897,
+        "median": 12.194,
+        "p95": 12.438
+      },
+      "control_steps_median": 900.0,
+      "fraction_dead_within_10_steps": 0.0,
+      "fraction_inside_channel_admittance": 0.0
+    },
+    {
+      "label": "v21time ep1400, stage 0, time cost at -0.40 trained to convergence",
+      "episodes": 512,
+      "success_rate": 0.0,
+      "orientation_error_mrad": {
+        "p5": 56.14,
+        "median": 84.612,
+        "p95": 119.707
+      },
+      "axial_short_mm": {
+        "p5": 37.128,
+        "median": 202.209,
+        "p95": 263.967
+      },
+      "lateral_error_mm": {
+        "p5": 1.66,
+        "median": 7.104,
+        "p95": 13.007
+      },
+      "terminal_speed_mm_s": {
+        "p5": 1.221,
+        "median": 3.98,
+        "p95": 7.219
+      },
+      "tool_to_handle_mm": {
+        "p5": 11.973,
+        "median": 12.197,
+        "p95": 12.482
+      },
+      "control_steps_median": 900.0,
+      "fraction_dead_within_10_steps": 0.0,
+      "fraction_inside_channel_admittance": 0.0
+    },
+    {
+      "label": "v21time ep1400, stage 0, form lock ENGAGED as the chain runs it",
+      "episodes": 257,
+      "success_rate": 0.0,
+      "orientation_error_mrad": {
+        "p5": 125.312,
+        "median": 313.571,
+        "p95": 949.168
+      },
+      "axial_short_mm": {
+        "p5": 80.467,
+        "median": 306.415,
+        "p95": 528.69
+      },
+      "lateral_error_mm": {
+        "p5": 3.068,
+        "median": 13.326,
+        "p95": 34.285
+      },
+      "terminal_speed_mm_s": {
+        "p5": 95.352,
+        "median": 589.869,
+        "p95": 2043.938
+      },
+      "tool_to_handle_mm": {
+        "p5": 10.054,
+        "median": 23.618,
+        "p95": 60.881
+      },
+      "control_steps_median": 4.0,
+      "fraction_dead_within_10_steps": 1.0,
+      "fraction_inside_channel_admittance": 0.0
+    }
+  ],
+  "what_this_refutes": [
+    "That the insert skill is creeping toward a seat it might reach with more time pressure. The time cost at -0.40, trained to 1,400 epochs, leaves the median shortfall at 202.2 mm against 203.6 mm without it, and every episode still spends its whole clock. The cost is paid, not avoided.",
+    "That switching the form lock on is a free fix. Engaged on this task the module is flung: 100% of episodes dead inside ten control steps, orientation 313.6 mrad, terminal speed 589.9 mm/s. The lock records its transform before the reset writes the module along the stroke and then fights the difference at up to its 1 kN cap."
+  ],
+  "what_it_is_not": [
+    "Not the reset. evidence/insert_reset_bank.json reports attitude_residual_rad 0.0 at every station, so the module starts square and the episode takes it to 84.6 mrad.",
+    "Not grip slip. Tool-to-handle holds at 12.2 mm with a p95 of 12.48, which is the pin's own measured 12 mm feed rather than the pads losing it."
+  ],
+  "mechanism": "Two flat pads on a pin cannot resist a moment about the closing axis -- the same limit this project measured four independent ways and the reason the chain carries the module on a form lock. With the lock off, contact with the lead-in rotates the module and nothing opposes it. The objective did not object, because insertion_misalignment_penalty normalised orientation by 0.15 rad: the SEATED tolerance, which applies once the channel is already holding the module square. At that scale an 84.6 mrad module costs 0.08 a step, against the 0.50 the same episode pays for 7.1 mm of lateral. The objective ranked a fatal attitude below a survivable offset.",
+  "scope_and_limitations": [
+    "Simulation only. No result here was produced on real hardware.",
+    "One PPO training seed. The evaluation seeds are held out.",
+    "The lock-on arm is a diagnostic of the engagement path, not a certification: it is one seed and 257 episodes, and it reproduces a failure already recorded.",
+    "Stage 0 only. The published skill certifications pool three curriculum stages."
+  ]
+}

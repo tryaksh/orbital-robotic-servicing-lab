@@ -47,6 +47,7 @@ from .assets import (
     GRAPPLE_TOOL_OFFSET_POS,
     SECOND_SLOT_ENTRY_LOWER_RAMP_CFG,
     SECOND_SLOT_ENTRY_UPPER_RAMP_CFG,
+    SERVICE_DELIVERED_ATTITUDE_RAD,
     SERVICE_DESTINATION_DYNAMIC_FRICTION,
     SERVICE_DESTINATION_STATIC_FRICTION,
     CompliantD6JointCfg,
@@ -1221,7 +1222,28 @@ class InsertRewardsCfg:
     misalignment = RewTerm(
         func=mdp.insertion_misalignment_penalty,
         weight=-0.30,
-        params={"engage_m": 0.60},
+        # **The angular half was normalised against the wrong tolerance, and
+        # that -- not the time cost -- is why this policy does not seat.**
+        #
+        # 0.15 rad is the *seated* orientation tolerance, which a module only
+        # has to meet once the channel is already holding it square. Entry is
+        # the binding constraint and it is four times tighter: 2c/L for the
+        # shipped relief is SERVICE_DELIVERED_ATTITUDE_RAD, 20.5 mrad, and past
+        # that the module cannot go in at any force.
+        #
+        # Measured on v21time over 512 held-out episodes, with the time cost
+        # trained to convergence at 1,400 epochs:
+        #
+        #   orientation at the end   p5 56.1   median 84.6   p95 119.7 mrad
+        #   channel admits                          20.5 mrad
+        #   axial short              p5 37.1   median 202.2  p95 264.0 mm
+        #
+        # Not one episode in five hundred ends inside the angle at which the
+        # module can enter. At 0.15 an 84.6 mrad module was charged 0.08 a step
+        # against the 0.50 the same episode paid for 7.1 mm of lateral, so the
+        # objective ranked a fatal attitude below a survivable offset. It is the
+        # rack's number, so it is taken from the rack rather than chosen.
+        params={"engage_m": 0.60, "orientation_scale_rad": SERVICE_DELIVERED_ATTITUDE_RAD},
     )
     # Sized against the same measurement: arriving at the plane still moving is
     # the one thing the settled re-check cannot forgive, and -0.04 charged 0.03 a

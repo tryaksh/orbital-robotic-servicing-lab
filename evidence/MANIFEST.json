@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 17,
     "retracted": 8,
-    "historical": 137
+    "historical": 138
   },
   "canonical": {
     "chain_robustness_sweep.json": {
@@ -548,6 +548,10 @@
     },
     "inference_budget.json": {
       "title": "Onboard compute budget of the learned components"
+    },
+    "insert_attitude_diagnosis.json": {
+      "title": "Why the insert skill does not seat: attitude, not creep",
+      "generated_utc": "2026-08-25T07:24:00.144546+00:00"
     },
     "insert_chain_handoff_gate.json": {
       "title": "Insert v6, unchanged, on the chained-insert task (pre-training gate)",

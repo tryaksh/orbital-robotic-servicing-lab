@@ -67,6 +67,15 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--latch_enabled",
+        action="store_true",
+        help=(
+            "Run a grapple skill with the robot-side form lock engaged, which is how the chain "
+            "carries and seats the module. Off by default because that is what every published "
+            "skill number was measured under; this exists to measure the difference."
+        ),
+    )
+    parser.add_argument(
         "--latch_rated_torque_nm",
         type=float,
         default=None,
@@ -572,6 +581,23 @@ def main() -> dict[str, object]:
         if args.episode_length_s is not None:
             env_cfg.episode_length_s = args.episode_length_s
             print(f"[INFO] Episode length overridden to {args.episode_length_s} s (diagnosis only)")
+        if args.latch_enabled:
+            if getattr(env_cfg, "latch_enabled", None) is None:
+                raise ValueError("--latch_enabled is valid only for a grapple-pin task")
+            # `_configure_latch` sets `events.grapple_latch = None` when the
+            # latch is off, and a None cannot be configured back into an event.
+            # `configure_robustness` is the supported way to rebuild the event
+            # set -- its own docstring says it exists so callers may change
+            # things after `parse_env_cfg` -- so flip the flag first and let it
+            # reinstall the term.
+            env_cfg.latch_enabled = True
+            env_cfg.configure_robustness(int(env_cfg.robustness_level))
+            if getattr(env_cfg.events, "grapple_latch", None) is None:
+                raise RuntimeError("--latch_enabled did not reinstall the grapple latch event")
+            print(
+                f"[INFO] Form lock ENABLED for this evaluation, joint_mode="
+                f"{env_cfg.latch_joint_mode} (diagnostic; the skill's default is off)"
+            )
         if args.latch_rated_torque_nm is not None:
             if getattr(env_cfg, "latch_enabled", None) is None:
                 raise ValueError("--latch_rated_torque_nm is valid only for a grapple-pin task")

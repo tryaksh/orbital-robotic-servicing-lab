@@ -600,6 +600,7 @@ def insertion_misalignment_penalty(
     env,
     command_name: str = "insertion_goal",
     engage_m: float = 0.22,
+    orientation_scale_rad: float = 0.15,
 ) -> torch.Tensor:
     """Charge lateral and angular error while the module is near its channel.
 
@@ -614,11 +615,34 @@ def insertion_misalignment_penalty(
     alignment and stops is charged nothing more by it -- which is exactly what
     was measured: 20.7 mm of lateral error against a 2.5 mm success tolerance,
     held steady for the whole episode.
+
+    **``orientation_scale_rad`` is what the angular half of that costs, and the
+    default is wrong for any task whose channel is tighter than it.** 0.15 rad
+    is sized against the *seated* orientation tolerance, which a module only has
+    to satisfy once it is already inside and the channel is holding it square.
+    Entry is the binding constraint and it is much tighter: a rigid part of
+    length ``L`` entering a channel with ``c`` of relief per side fits only
+    while its tilt stays under ``2c/L``.
+
+    Left at 0.15 the term charges 0.25 * (0.0846/0.15)^2 = 0.08 a step for an
+    84.6 mrad module -- a rounding error next to the 0.50 the same episode pays
+    for 7.1 mm of lateral -- while ``2c/L`` says 84.6 mrad is four times past
+    the angle at which the module can enter at all. The objective was telling
+    the policy a fatal attitude was nearly free, and the policy believed it:
+    measured over 512 held-out episodes, orientation ends at a median of
+    84.6 mrad with a 5th percentile of 56.1, against a channel admitting 20.5.
+
+    The default is kept so every task that already quotes a number under it is
+    bit-identical. Pass the rack's own admittance instead -- see the insert
+    task's ``misalignment`` term, which passes
+    ``SERVICE_DELIVERED_ATTITUDE_RAD``.
     """
 
     axial, lateral, orientation = _errors(env, command_name)
     near_rack = (axial < engage_m).to(torch.float32)
-    return near_rack * (torch.square(lateral / 0.010) + 0.25 * torch.square(orientation / 0.15))
+    return near_rack * (
+        torch.square(lateral / 0.010) + 0.25 * torch.square(orientation / orientation_scale_rad)
+    )
 
 
 def insertion_settling_penalty(env, command_name: str = "insertion_goal") -> torch.Tensor:
