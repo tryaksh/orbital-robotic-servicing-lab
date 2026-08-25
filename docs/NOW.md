@@ -167,13 +167,22 @@ here so this file stays the one place the state is described:
 - The chain is certified on the state task and perception on rendered frames, and
   the two have never been combined at scale — **the highest-value missing
   measurement** (T1).
-- The learned insert policy does not seat: 0.00% over 1,536 episodes, stopping a
-  median of 204 mm short with the whole clock spent. It is no longer a
-  task-specification problem — seven of eight disagreements with the chain's
-  seating phase are closed and the mean reward went positive for the first time
-  in this project. It creeps at 3.65 mm/s against 120 mm/s of authority, and the
-  time cost sized against the failure penalty is in the tree with only 300 of
-  ~1400 epochs behind it (T2).
+- **The learned insert policy does not seat, and the reason is now measured
+  rather than inferred.** 0.00% over 1,536 episodes, a median of 204 mm short.
+  The long-standing reading — that it *creeps*, at 3.65 mm/s against 120 mm/s of
+  authority — is **refuted**: the time cost sized against the failure penalty,
+  trained to convergence at 1,400 epochs, moves the shortfall 1.4 mm and every
+  episode still spends its whole clock. The cost is paid, not avoided.
+
+  What the same episodes show is a geometric wall. Orientation ends at a median
+  of **84.6 mrad** against a channel admitting **20.5 mrad** (`2c/L`), 5th
+  percentile 56.1 — not one episode in 512 inside the entry angle. The reset is
+  square (`attitude_residual_rad` 0.0 at every station) and the grip holds
+  (12.2 mm, p95 12.48), so the episode takes it there. The objective allowed it:
+  `insertion_misalignment_penalty` normalised orientation by the *seated*
+  tolerance of 0.15 rad, charging 0.08 a step for 84.6 mrad against 0.50 for
+  7.1 mm of lateral. Now derived from the rack's own admittance.
+  `evidence/insert_attitude_diagnosis.json` (T2).
 - Grasp and extract both miss the 95% gate (85.69% and 87.75% pooled), and
   neither responds to more epochs on the evidence available (T6).
 - Every policy is **one PPO training seed**, so no number carries a spread (T3).
