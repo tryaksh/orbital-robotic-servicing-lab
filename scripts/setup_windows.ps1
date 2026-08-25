@@ -1,3 +1,4 @@
+# Install Isaac Lab and RL-Games against Isaac Sim's interpreter, at the pinned commits.
 [CmdletBinding()]
 param(
     [string]$IsaacSimRoot = 'C:\isaac-sim',
