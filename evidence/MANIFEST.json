@@ -8,9 +8,9 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 22,
+    "canonical": 24,
     "retracted": 8,
-    "historical": 138
+    "historical": 137
   },
   "canonical": {
     "chain_robustness_sweep.json": {
@@ -124,6 +124,23 @@
       "policy_sha256": "AE1139433288939CB987EE26242BF7D5B7B0DA5863644F56618FDA03F597CFC1",
       "holds_up": "The learned insert skill: 0.00% over 1,536 episodes. Published negative result."
     },
+    "grapple_insert_v24rack_certification.json": {
+      "title": "Head-on grapple-pin insert skill, v24rack, on the derived rack and the chain's load path",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-26T01:22:39+00:00",
+      "overall": {
+        "episodes": 3000,
+        "successes": 1103,
+        "success_rate": 0.367667,
+        "wilson_95": [
+          0.350592,
+          0.38508
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "47AA9EFB60F7794BE5CDD1EBD0AD5EC0E94CE00345BCF975D83AE9418D9A1B9F",
+      "holds_up": "The learned insert skill on the derived rack: 36.77% pooled over 3,000 episodes, from 0.00%."
+    },
     "insert_attitude_diagnosis.json": {
       "title": "Why the insert skill does not seat: attitude, not creep",
       "evidence_type": "simulation_only",
@@ -135,6 +152,12 @@
       "evidence_type": "simulation_only",
       "generated_utc": "2026-08-25T23:02:21.870751+00:00",
       "holds_up": "The attitude floor moves with the channel throat: 56.03 -> 45.75 mrad, one checkpoint."
+    },
+    "insert_depth_is_attitude.json": {
+      "title": "The insert skill's depth limit is its attitude, through 2c/theta",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-26T00:57:39.959428+00:00",
+      "holds_up": "What is left of the insert skill: depth is attitude one layer down, through 2c/theta."
     },
     "insert_reset_bank.json": {
       "title": "Paired arm and module poses along the seating stroke",
@@ -597,10 +620,6 @@
     "insert_chain_handoff_gate.json": {
       "title": "Insert v6, unchanged, on the chained-insert task (pre-training gate)",
       "generated_utc": "2026-08-16T23:40:53+00:00"
-    },
-    "insert_depth_is_attitude.json": {
-      "title": "The insert skill's depth limit is its attitude, through 2c/theta",
-      "generated_utc": "2026-08-26T00:57:39.959428+00:00"
     },
     "mating_compliance.json": {
       "title": "Mating compliance for a robot-carried module",

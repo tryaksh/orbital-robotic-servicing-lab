@@ -129,6 +129,14 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "The chain on the derived rack: 97.92% pooled, seed for seed identical to the 12.689 mm run.",
     ),
     (
+        "grapple_insert_v24rack_certification.json",
+        "The learned insert skill on the derived rack: 36.77% pooled over 3,000 episodes, from 0.00%.",
+    ),
+    (
+        "insert_depth_is_attitude.json",
+        "What is left of the insert skill: depth is attitude one layer down, through 2c/theta.",
+    ),
+    (
         "robot_carried_full_chain_c11065.json",
         "One end-to-end run of that chain -- and the first report here whose source bindings all recover from git.",
     ),
