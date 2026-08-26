@@ -252,28 +252,37 @@ certifiable.
   Success is still 0.00%, and **orientation is the only condition left**.
 
   It is not the policy's. Among the 91 episodes that reach depth, orientation
-  clusters between **56.03 and 56.92 mrad** — a band under a milliradian wide,
-  because the module is resting corner-to-corner against the channel walls at the
-  largest angle the clearance permits. `check_workcell_geometry.py` names that
-  angle independently as 56.40 mrad. The success criterion is **52.36 mrad**, so
-  **this channel holds a module 4.04 mrad outside its own acceptance criterion**,
-  and a module that merely rests in it cannot pass. The chain reaches 46 mrad
-  because its form lock holds the module squarer than the channel does.
+  **floors** at 56.033 mrad — a floor, not a spread, and `2c/L` on the channel's
+  unrelieved lead-in throat is 56.396 mrad. The success criterion is **52.36
+  mrad**, so **that throat held a module 4.04 mrad outside its own acceptance
+  criterion**, and a module that merely rested in it could not pass. The chain
+  reaches 46 mrad because its form lock holds the module squarer than the rack
+  does. (The mechanism first published for this said *channel walls*; it is the
+  throat — the walls are relieved and admit 76.90 mrad. `evidence/RETRACTED.md`.)
 
-  That makes it a rack requirement, and the geometry check already brackets it:
-  the clearance window is 10.35–12.69 mm, `GUIDE_CENTER_OFFSET_Y` sits at the top
-  at 12.689 mm, and `2c/L` = 52.36 mrad at **c = 11.78 mm**. **Not changed here** —
-  the chain was certified at 12.689 mm, so moving it moves a published number.
+  **The rack was re-derived on 2026-08-25 and it worked.**
+  `GUIDE_CENTER_OFFSET_Y` 86.689 → 85.065 mm, throat 12.689 → 11.065 mm, derived
+  at the equal-margin point between the 46.0 mrad the transit delivers and the
+  52.36 mrad the criterion accepts. Tested on an unchanged checkpoint before any
+  training: the attitude floor moved **56.03 → 45.75 mrad** and success **0.00%
+  → 18.85%**, the first non-zero insert-skill success recorded here.
+  `evidence/insert_attitude_wall_moved.json`. The chain is certified at both
+  clearances and identical seed for seed, so this cost it nothing.
 
-  **T9 is unblocked as of 2026-08-25.** Reaching the chain's load path from the
-  skill needed three fixes that each masked the next: anchor the lock after the
-  reset settles, run `joint_mode="fixed"` (with `"compliant"` the mating joint is
-  never installed and softening is a no-op), and turn `replicate_physics` off
-  (PhysX copies only env 0's authored joint). `--latch_mating_compliance` sets
-  all three. Zero-shot on a policy trained without the lock, episodes survive and
-  the module gets 20 mm further in; attitude is worse, which is expected for an
-  unseen load path. A policy trained under it —
-  `grapple_insert_l0_seed70_v23lock` — is the measurement that matters.
+  **What is left is depth, and depth is attitude one layer down.** Only 35.8% of
+  episodes reach the seated plane; among those that do, orientation passes 94.6%
+  and lateral 54.8%. The stalled episodes are neither creeping nor slipping —
+  they sit at 96.8 mrad against 46.9 for the ones that seat, and a module held at
+  that angle can engage only 261 mm before it wedges, which is the travel they
+  achieve. **They are as deep as their own attitude permits.** The split is
+  bimodal and every episode starts square, so the divergence is in the episode.
+  `evidence/insert_depth_is_attitude.json`, and it is **`NEXT_WORK.md` T13, the
+  first task in the queue**.
+
+  A policy resumed on the derived rack, `grapple_insert_l0_seed70_v24rack` at
+  epoch 2100, moved mean reward 32.4 → 43.9 and plateaued from ~1800. Its
+  certification was in flight when this was written; see T13.
+
 - Grasp and extract both miss the 95% gate (85.69% and 87.75% pooled), and
   neither responds to more epochs on the evidence available (T6).
 - Every policy is **one PPO training seed**, so no number carries a spread (T3).
@@ -282,9 +291,9 @@ certifiable.
 - **Training randomizes none of the variables the sweep says the chain is
   sensitive to.** A 10 mm error in where the robot parks across the bay takes it
   from 93.75% to 6.25% (T5).
-- The insert skill still differs from the chain's seating phase in the **load
-  path**, and the measurement is recorded in
-  `tests/test_skill_chain_agreement.py` (T9).
+- The insert skill's load path **is** the chain's now, carried by the task rather
+  than by a flag, and `tests/test_skill_chain_agreement.py` holds all eight rows
+  equal (T9, closed).
 - The **live compute service runs the superseded w65 policy set**, two promotions
   behind the certified chain (T7).
 - **Grasp and extract are certified on the *old* rack.** The derived clearance
