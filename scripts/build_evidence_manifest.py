@@ -133,6 +133,14 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "The learned insert skill on the derived rack: 36.77% pooled over 3,000 episodes, from 0.00%.",
     ),
     (
+        "workflow_robot_carried_insert_v24rack_chain_policy_certification.json",
+        "The learned seating policy inside the chain: 0.00%, against 36.77% alone. The gap is the result.",
+    ),
+    (
+        "seating_controller_head_to_head.json",
+        "Which controller seats the module, decided arithmetically on the same rack and seeds.",
+    ),
+    (
         "insert_depth_is_attitude.json",
         "What is left of the insert skill: depth is attitude one layer down, through 2c/theta.",
     ),

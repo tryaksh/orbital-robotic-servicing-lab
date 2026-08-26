@@ -8,7 +8,7 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 24,
+    "canonical": 26,
     "retracted": 8,
     "historical": 137
   },
@@ -195,6 +195,12 @@
       },
       "holds_up": "Why the form lock has to soften for the mating stroke. A refutation, kept."
     },
+    "seating_controller_head_to_head.json": {
+      "title": "Which controller seats the module: the guarded advance or the learned policy",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-26T02:02:08.434741+00:00",
+      "holds_up": "Which controller seats the module, decided arithmetically on the same rack and seeds."
+    },
     "service_latch_clearance.json": {
       "title": "Robot-side service latch clearance, derived from the measured gripper envelope",
       "evidence_type": "geometric_derivation_no_simulator",
@@ -205,6 +211,23 @@
       "evidence_type": "geometry_check_no_simulator",
       "generated_utc": "2026-08-25T22:22:28.139095+00:00",
       "holds_up": "Simulator-free: where the arm stands, what the channel admits, which sections fit."
+    },
+    "workflow_robot_carried_insert_v24rack_chain_policy_certification.json": {
+      "title": "Robot-carried relocation, seating driven by the learned insert policy, v24rack",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-26T02:01:31+00:00",
+      "overall": {
+        "episodes": 96,
+        "successes": 0,
+        "success_rate": 0.0,
+        "wilson_95": [
+          0.0,
+          0.038476
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "0409E1D82C72DC54D6A16D83837B7D6673370CC6674C0E317E6A1A465BA47ED7",
+      "holds_up": "The learned seating policy inside the chain: 0.00%, against 36.77% alone. The gap is the result."
     },
     "workflow_robot_carried_m130_guarded_certification.json": {
       "title": "Robot-carried servicing workflow, bay 1 to bay 2: m130_guarded",

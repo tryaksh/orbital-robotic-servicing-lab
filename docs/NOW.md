@@ -32,7 +32,7 @@ module pose write, no hidden carrier.
 | Seat (0.03 s dwell) | scripted | — |
 | Extract | RL policy | yes — `grapple_extract_v18pin_certification.json` |
 | Transit, 5 legs | solved inverse kinematics, actuator targets | — |
-| Insert | guarded advance on the deployed RGB-D estimate | the learned alternative is measured against it, §5 |
+| Insert | guarded advance on the deployed RGB-D estimate | yes — the learned alternative lost 0.00% to 97.92%, §5 |
 | Back off | scripted, after the settled re-check | — |
 
 A phase may not be called learned unless a policy produced the actions. The
@@ -279,9 +279,19 @@ certifiable.
   `evidence/insert_depth_is_attitude.json`, and it is **`NEXT_WORK.md` T13, the
   first task in the queue**.
 
-  A policy resumed on the derived rack, `grapple_insert_l0_seed70_v24rack` at
-  epoch 2100, moved mean reward 32.4 → 43.9 and plateaued from ~1800. Its
-  certification was in flight when this was written; see T13.
+  **Certified both ways on 2026-08-25, and the two halves disagree violently.**
+  `grapple_insert_l0_seed70_v24rack` at epoch 2100 scores **36.77%** alone —
+  1,103 of 3,000 episodes, three held-out seeds, against the 0.00% this skill
+  had held throughout — and **0.00%** inside the chain, 0 of 96, on the same
+  rack and the same seeds. Not a near miss: terminal axial error is 1.35 m at the
+  median and orientation 2.75 rad, so the module is lost rather than seated
+  short. **The chain keeps the scripted guarded advance**, unanimously.
+  `evidence/seating_controller_head_to_head.json`.
+
+  That gap is the result, not a disappointment. The reset bank samples nine
+  stations uniformly and the chain always hands over at the shallowest, so a
+  pooled skill number was never predictive of a caller's problem — which is
+  exactly what a skill has to fix before it can be composed. T13 starts there.
 
 - Grasp and extract both miss the 95% gate (85.69% and 87.75% pooled), and
   neither responds to more epochs on the evidence available (T6).

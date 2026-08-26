@@ -1,0 +1,27 @@
+{
+  "title": "Which controller seats the module: the guarded advance or the learned policy",
+  "evidence_type": "simulation_only",
+  "generated_utc": "2026-08-26T02:02:08.434741+00:00",
+  "question": "On the same rack, the same three held-out seeds and the same capture and extraction checkpoints, does the learned insert policy seat better than the scripted guarded advance?",
+  "guarded_report": "evidence/workflow_robot_carried_m130pin_guarded_c11065_certification.json",
+  "policy_report": "evidence/workflow_robot_carried_insert_v24rack_chain_policy_certification.json",
+  "protocols_are_comparable": true,
+  "protocol_mismatches": [],
+  "guarded_pooled": 0.979167,
+  "policy_pooled": 0.0,
+  "guarded_by_seed": {
+    "4070": 0.9375,
+    "5070": 1.0,
+    "6070": 1.0
+  },
+  "policy_by_seed": {
+    "4070": 0.0,
+    "5070": 0.0,
+    "6070": 0.0
+  },
+  "policy_wins_pooled": false,
+  "policy_wins_every_seed": false,
+  "decision": "the scripted guarded advance keeps the chain's seating phase",
+  "decision_rule": "the policy takes the seating phase only if it wins pooled AND on every shared seed; a controller better on average and worse on one seed has a failure mode nobody has looked at, and the guarded advance is the one with a published interval",
+  "both_arms_are_published": true
+}

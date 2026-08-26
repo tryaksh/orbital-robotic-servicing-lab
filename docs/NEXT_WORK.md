@@ -141,16 +141,46 @@ guarded advance's 97.92% whether it wins or loses.
 `scripts/report_seating_head_to_head.py` decides that arithmetically: the policy
 takes the seating phase only if it wins pooled **and** on every shared seed.
 
-**In flight when this was written.** `verify_insert_skill.sh` was running against
-the `v24rack` checkpoint at epoch 2100 under `TAG=insert_v24rack`, and it writes
-two reports into `evidence/` under that tag — the skill certification and the
-chain arm. **Look for them before re-running anything.** If they are there and
-uncommitted, they are this task's *before*: commit them, rebuild
-`evidence/MANIFEST.json`, add them to `CANONICAL` in
-`scripts/build_evidence_manifest.py`, and quote them. If only the artifacts under
-`artifacts/certify_skills/` and `artifacts/robotcarried/` exist, the run was
-interrupted partway and `scripts/aggregate_evaluation.py` can still pool whatever
-`.npz` rows landed.
+### Both halves are measured, and they disagree violently
+
+**This is the finding to start from, and it outranks the depth arithmetic above.**
+
+| | skill, alone | inside the chain |
+| --- | ---: | ---: |
+| `v24rack` @ ep 2100 | **36.77%** (1,103 / 3,000) | **0.00%** (0 / 96) |
+| the guarded advance it must beat | — | 97.92% |
+
+`evidence/grapple_insert_v24rack_certification.json`,
+`evidence/workflow_robot_carried_insert_v24rack_chain_policy_certification.json`,
+decision in `evidence/seating_controller_head_to_head.json`. **The chain keeps
+the scripted guarded advance**, unanimously on all three seeds.
+
+**And 0.00% here is not "a bit worse".** Terminal axial error is **1.35 m** at the
+median and terminal orientation **2.75 rad**; 30 of 32 episodes end stuck in the
+insert phase. The module is not being seated short — it is being lost. A skill
+that certifies at 36.77% on its own bank of reset states and then throws the
+module when handed the state the chain actually produces is the exact failure
+this repository has paid for most, and `verify_insert_skill.sh` exists to catch
+it. It caught it.
+
+**Two candidate causes, and they are cheap to separate.**
+
+1. **The hand-off station.** The reset bank has nine stations from the mouth
+   (x = 0.1468) to nearly seated (x = 0.5829), sampled uniformly, so the skill's
+   36.77% is an average over nine different problems. The chain always hands over
+   at the **shallowest** one, needing 529 mm of travel — and the depth analysis
+   above says this policy manages about 290 mm. Evaluate the skill *per station*
+   before anything else: if success at station 0 is near zero, the pooled number
+   was never predictive of the chain and the reset distribution has to be
+   reweighted toward the hand-off.
+2. **The lock state at hand-over.** The skill's reset writes the module, the arm
+   and the fingers together and softens the lock at control step 5. The chain
+   arrives having carried the module rigid and softens at the mouth. If the
+   policy is being handed a lock state its reset never produces, that is the same
+   class of divergence as the load path was, one level finer.
+
+**Do (1) first.** It is one evaluation, it needs no training, and it decides
+whether the skill number means anything for a caller.
 
 **Cost.** ~2 h GPU for a retrain, ~110 min to verify both halves.
 
