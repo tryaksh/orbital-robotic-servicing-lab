@@ -38,7 +38,13 @@ set -u
 
 CKPT="${CKPT:?set CKPT to the insert checkpoint to verify}"
 TAG="${TAG:?set TAG for the evidence file names}"
-STAGES="${STAGES:-0 1 2}"
+# **Stage 0 only, and that is the task rather than a shortcut.** The insert task
+# runs SingleStageCurriculumCfg with max_stage 0, so --curriculum_stage 1 raises
+# "forced insertion stage must be in [0, 0]" and writes no rows. The default was
+# "0 1 2", which cost six fast failures per verification and filled the logs with
+# a ValueError that looks like a defect and is not. The published insert
+# certification is stage 0 on three held-out seeds; this matches it.
+STAGES="${STAGES:-0}"
 SEEDS="${SEEDS:-4070 5070 6070}"
 # The guarded-advance arm on the same rack, same seeds, same everything but the
 # seating controller. Overridable so a later rack change can name its own.
