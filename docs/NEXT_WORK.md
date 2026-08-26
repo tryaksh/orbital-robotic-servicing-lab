@@ -15,6 +15,10 @@ in what order, and the few things only a submission needs. They do not conflict 
 `P1` *is* `T0`, `P2` *is* `T3` — the paper section only adds sequencing and the
 claims worth making.
 
+**Pick up at T13.** It is first because the rack blocker underneath it is now
+closed and the skill is one condition away from being certifiable, and because
+every number it needs already exists.
+
 **Two rules are non-negotiable, and they are why some of these tasks are shaped
 the way they are.** Never widen a tolerance to make a gate pass; if a criterion
 is wrong, replace it with one derived from the parts. And when a success or
@@ -31,6 +35,7 @@ training runs do not.
 
 | # | Task | Cost | Blocks |
 | --- | --- | --- | --- |
+| **T13** | **Make the insert skill seat.** Depth is the last condition, and it is attitude through `2c/theta` | ~2 h GPU | a learned seating phase |
 | **T0** | No certification is reproducible from committed code | CPU + 1 cert batch | everything; the paper outright |
 | **T1** | Certify the chain on the vision task | hours, 1 batch | the strongest claim about perception |
 | **T2** | Insert: attitude is the interface's, not the reward's — **diagnosed, work moved to T9** | done | — |
@@ -45,6 +50,109 @@ training runs do not.
 | **T11** | No recording shows the certified chain | ~8 min a clip | the media, and any release |
 | **T12** | Grasp and extract are certified on the rack before the clearance was derived | ~45 min a skill | the two skill numbers |
 | **P1–P7** | [Publication track](#publication-track) — the same work on a submission deadline | see section | Frontiers, 2026-11-09 |
+
+---
+
+## T13 — Make the insert skill seat: depth is attitude, through `2c/theta`
+
+**Start here.** The rack blocker that stood under this for months is closed (T9),
+the chain is re-certified at both clearances and unaffected, and the skill has
+gone from 0.00% to a measured 18.85% *zero-shot on the wrong training rack*. One
+condition is left and it is diagnosed, not guessed.
+
+**Where it stands.** On the derived rack (`GUIDE_CENTER_OFFSET_Y` 85.065 mm), with
+the chain's load path on by default, `v23lock` evaluated zero-shot over 260
+episodes at stage 0:
+
+| condition, among episodes reaching seated depth | passing |
+| --- | ---: |
+| axial depth ≤ 12 mm | 100% |
+| orientation ≤ 52.36 mrad | 94.6% |
+| lateral ≤ 2.5 mm | 54.8% |
+| both velocity limits, and the grip | 100% |
+
+but only **35.8% reach seated depth at all**, and that is where the rate goes.
+Orientation was the blocker before the rack was derived and is not any more.
+
+**Depth is not a depth problem.** The stalled episodes are not creeping and not
+losing the grip — they differ from the successful ones on exactly one quantity:
+
+```
+stalled  (167)   96.8 mrad attitude   6.13 mm/s   5.10 mm lateral   174.5 mm short
+seated   ( 93)   46.9 mrad attitude   0.69 mm/s   2.46 mm lateral     0.8 mm short
+grip is 11.5 mm along the pin on both, to a tenth of a millimetre
+```
+
+A module held at `theta` can engage at most `2c/theta` before it wedges. At
+96.8 mrad in this bay's relieved channel that is **261 mm**, which is the travel
+the stalled episodes actually achieve. **They are as deep as their own attitude
+permits.** `evidence/insert_depth_is_attitude.json`.
+
+**And it is bimodal, not graded** — ~47 mrad and home, or ~97 mrad and wedged
+partway, with little between. Every episode *starts* square
+(`insert_reset_bank.json` reports `attitude_residual_rad` 0.0 at every station),
+so the divergence happens during the episode.
+
+**The hypothesis to test first, and why.** The one event every episode shares
+early is the form lock softening into the remote-centre mating compliance at
+control step 5 — with the module **already inside the channel**, because this
+task's reset places it anywhere along a 436 mm stroke. The chain never does that:
+it holds the lock **rigid** through transit and softens only at the mouth, and it
+gates its advance on the estimate staying inside the entry envelope. So a soft
+lock on a module the rails are already holding is being asked to do a job the
+chain only ever asks of a module in free space — which is the *same* shape of
+finding as `mdp.GrappleLatch`'s own docstring records for extraction.
+
+Three things to try, cheapest first, one variable at a time:
+
+1. **Soften on depth rather than on a step count.** `latch_engage_after_steps` is
+   a control-step counter; the chain's trigger is geometric. Soften when the
+   module's leading face passes the mouth, so an episode that resets deep is
+   never softened at all.
+2. **Gate the advance on attitude, the way the guarded advance does.** The chain
+   advances only while the estimate is inside `SLOT_ENTRY_RAMP_CATCH_M`; the
+   skill has no such interlock and can push a cocked module. This is a reward or
+   termination term, not a controller — the phase must stay learned.
+3. **Only then, more epochs.** `v24rack` resumed `v23lock` for 700 epochs on the
+   derived rack and moved mean reward 32.4 → 43.9, plateauing from ~1800. Rule 5
+   applies: task corrections have beaten epochs here every time.
+
+**Watch the wall clock, because it is a signal.** Training throughput collapsed
+from ~13 epochs/min to ~1.6 around epoch 2000 with the GPU cool, idle-ish and RAM
+free — PhysX contact cost rising as more episodes actually drive the module into
+the channel. **The run gets slower as the policy gets better**, so budget a
+retrain at roughly half the fps the first thousand epochs suggest.
+
+**Run it.**
+
+```bash
+# the retrain, resuming what exists
+RUN=grapple_insert_l0_seed70_v25 EPOCHS=<resumed_epoch + budget> NUM_ENVS=512 \
+  RESUME_CKPT=logs/rl_games/zero_g_blade_insertion_contact/grapple_insert_l0_seed70_v24rack/nn/last_zero_g_blade_insertion_contact_ep_2100_rew_43.909218.pth \
+  OUT=artifacts/insert_v25 scripts/train_insert_stroke.sh
+
+# both halves: three stages on three held-out seeds, then the chain head to head
+CKPT=<new checkpoint> TAG=insert_v25 scripts/verify_insert_skill.sh
+```
+
+**Done when.** The skill certifies in the same range extraction does — 87.75%
+pooled is the bar the owner set — and the chain arm is published beside the
+guarded advance's 97.92% whether it wins or loses.
+`scripts/report_seating_head_to_head.py` decides that arithmetically: the policy
+takes the seating phase only if it wins pooled **and** on every shared seed.
+
+**In flight when this was written.** `verify_insert_skill.sh` was running against
+the `v24rack` checkpoint at epoch 2100 under `TAG=insert_v24rack`, and it writes
+two reports into `evidence/` under that tag — the skill certification and the
+chain arm. **Look for them before re-running anything.** If they are there and
+uncommitted, they are this task's *before*: commit them, rebuild
+`evidence/MANIFEST.json`, add them to `CANONICAL` in
+`scripts/build_evidence_manifest.py`, and quote them. If only the artifacts under
+`artifacts/certify_skills/` and `artifacts/robotcarried/` exist, the run was
+interrupted partway and `scripts/aggregate_evaluation.py` can still pool whatever
+`.npz` rows landed.
+
+**Cost.** ~2 h GPU for a retrain, ~110 min to verify both halves.
 
 ---
 

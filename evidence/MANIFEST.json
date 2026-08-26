@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 22,
     "retracted": 8,
-    "historical": 137
+    "historical": 138
   },
   "canonical": {
     "chain_robustness_sweep.json": {
@@ -597,6 +597,10 @@
     "insert_chain_handoff_gate.json": {
       "title": "Insert v6, unchanged, on the chained-insert task (pre-training gate)",
       "generated_utc": "2026-08-16T23:40:53+00:00"
+    },
+    "insert_depth_is_attitude.json": {
+      "title": "The insert skill's depth limit is its attitude, through 2c/theta",
+      "generated_utc": "2026-08-26T00:57:39.959428+00:00"
     },
     "mating_compliance.json": {
       "title": "Mating compliance for a robot-carried module",

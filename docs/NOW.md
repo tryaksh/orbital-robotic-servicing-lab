@@ -206,7 +206,11 @@ Each of these was measured, and re-deriving them costs GPU hours that buy nothin
 
 Every item below is a bounded task in [`NEXT_WORK.md`](NEXT_WORK.md), with
 evidence, reproduction path, acceptance gate and expected compute. Summarised
-here so this file stays the one place the state is described:
+here so this file stays the one place the state is described.
+
+**Start at `NEXT_WORK.md` T13**, which is the insert skill and is first because
+the rack blocker under it is closed and it is one condition away from being
+certifiable.
 
 - **No certification is reproducible from committed code.** All nine reports that
   record source hashes were produced on uncommitted working-tree state, across

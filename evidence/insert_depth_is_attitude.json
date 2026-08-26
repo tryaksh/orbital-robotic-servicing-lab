@@ -1,0 +1,93 @@
+{
+  "title": "The insert skill's depth limit is its attitude, through 2c/theta",
+  "evidence_type": "simulation_only",
+  "generated_utc": "2026-08-26T00:57:39.959428+00:00",
+  "question": "With the throat derived from the seated criterion, orientation stopped being the insert skill's failing condition and depth took over: 35.8% reach the seated plane and the rest end a median 174.5 mm short with the clock still running. Is that creeping, jamming, or something else?",
+  "answer": "Something else, and it is attitude again. The stalled episodes sit at 96.8 mrad against 46.9 mrad for the ones that seat, and a module held at that angle can only engage 261 mm before it wedges -- which is the travel the stalled episodes actually achieve. They are not stopping short of a depth they could reach; they are as deep as their own attitude permits.",
+  "law": "a module held at theta can engage at most 2 * clearance_per_side / theta",
+  "relieved_lateral_clearance_per_side_m": 0.015678,
+  "relieved_vertical_clearance_per_side_m": 0.012613,
+  "deepest_engagement_at_the_stalled_attitude_m": 0.2605,
+  "seated_depth_tolerance_m": 0.012,
+  "groups": {
+    "stalled": {
+      "episodes": 167,
+      "orientation_mrad": {
+        "p25": 82.488,
+        "median": 96.82,
+        "p75": 104.78
+      },
+      "lateral_mm": {
+        "p25": 3.441,
+        "median": 5.101,
+        "p75": 7.255
+      },
+      "shortfall_mm": {
+        "p25": 114.033,
+        "median": 174.523,
+        "p75": 212.973
+      },
+      "linear_velocity_mm_s": {
+        "p25": 4.913,
+        "median": 6.132,
+        "p75": 8.468
+      },
+      "angular_velocity_mrad_s": {
+        "p25": 26.772,
+        "median": 31.94,
+        "p75": 35.924
+      },
+      "grip_along_the_pin_mm": {
+        "p25": -11.629,
+        "median": -11.511,
+        "p75": -11.38
+      },
+      "control_steps_median": 900.0
+    },
+    "reached_seated_depth": {
+      "episodes": 93,
+      "orientation_mrad": {
+        "p25": 46.008,
+        "median": 46.855,
+        "p75": 49.071
+      },
+      "lateral_mm": {
+        "p25": 2.229,
+        "median": 2.464,
+        "p75": 3.054
+      },
+      "shortfall_mm": {
+        "p25": 0.71,
+        "median": 0.812,
+        "p75": 1.025
+      },
+      "linear_velocity_mm_s": {
+        "p25": 0.451,
+        "median": 0.688,
+        "p75": 4.12
+      },
+      "angular_velocity_mrad_s": {
+        "p25": 8.444,
+        "median": 13.877,
+        "p75": 27.259
+      },
+      "grip_along_the_pin_mm": {
+        "p25": -11.611,
+        "median": -11.5,
+        "p75": -11.369
+      },
+      "control_steps_median": 879.0
+    }
+  },
+  "what_it_rules_out": [
+    "Creeping. The stalled episodes are still moving at 6.13 mm/s at the median, and the previously refuted reading was that they dawdle; they are held, not slow.",
+    "Grip loss. Both groups hold the pin at 11.5 mm along its axis, the measured feed, with the quartiles overlapping to a tenth of a millimetre.",
+    "A wall at one plane. Terminal module x is spread from 0.43 m to the 0.676 m goal with no single stopping plane, which is what a per-episode attitude limit gives and a fixed obstruction does not."
+  ],
+  "what_it_points_at": "The split is bimodal, not graded: an episode either holds ~47 mrad and drives home or reaches ~97 mrad and wedges partway. Both start square -- insert_reset_bank.json reports attitude_residual_rad 0.0 at every station -- so the divergence happens during the episode. The one event both share early is the form lock softening into the remote-centre mating compliance at control step 5, with the module already inside the channel. The chain never does that: it holds the lock rigid through transit and softens at the mouth, and it gates its advance on the estimate staying inside the entry envelope. Reproducing either of those in the skill is the next measurement, and it is docs/NEXT_WORK.md T13.",
+  "scope_and_limitations": [
+    "Simulation only. No result here was produced on real hardware.",
+    "One checkpoint (grapple_insert_l0_seed70_v23lock), one held-out seed, stage 0, 260 episodes, and the checkpoint was trained on the previous rack.",
+    "The 2c/theta figure uses the tightest relieved clearance; the lateral one gives 324 mm rather than 261, so the arithmetic brackets the observed travel rather than predicting it to a millimetre."
+  ]
+}
