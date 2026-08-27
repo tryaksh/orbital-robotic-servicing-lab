@@ -1,8 +1,8 @@
 # Next work
 
 Every known weakness, exposed defect, unverified assumption and scalability
-limit in this repository, as a bounded task. Prioritised: **T0 first** — it is
-about whether any of the other numbers can be checked at all.
+limit in this repository, as a bounded task. Current priority is set by the
+verified gates in [`NOW.md`](NOW.md), not by this legacy numbering.
 
 Each task states the evidence it starts from, the code it touches, how to run
 it, what would count as done, and roughly what it costs. Read
@@ -15,9 +15,8 @@ in what order, and the few things only a submission needs. They do not conflict 
 `P1` *is* `T0`, `P2` *is* `T3` — the paper section only adds sequencing and the
 claims worth making.
 
-**Pick up at T13.** It is first because the rack blocker underneath it is now
-closed and the skill is one condition away from being certifiable, and because
-every number it needs already exists.
+**Pick up from the gates in `NOW.md`.** T13 remains useful history, but
+station-conditioned evaluation now precedes any further insertion training.
 
 **Two rules are non-negotiable, and they are why some of these tasks are shaped
 the way they are.** Never widen a tolerance to make a gate pass; if a criterion
@@ -36,7 +35,7 @@ training runs do not.
 | # | Task | Cost | Blocks |
 | --- | --- | --- | --- |
 | **T13** | **Make the insert skill seat.** Depth is the last condition, and it is attitude through `2c/theta` | ~2 h GPU | a learned seating phase |
-| **T0** | No certification is reproducible from committed code | CPU + 1 cert batch | everything; the paper outright |
+| **T0** | Nine older source-bound reports are unrecoverable; re-run any result a final claim needs | CPU + certification batches | reproducible claims |
 | **T1** | Certify the chain on the vision task | hours, 1 batch | the strongest claim about perception |
 | **T2** | Insert: attitude is the interface's, not the reward's — **diagnosed, work moved to T9** | done | — |
 | **T3** | Three training seeds, so numbers carry a spread | 4+ training runs | any claim about a *method* |
@@ -186,21 +185,22 @@ whether the skill number means anything for a caller.
 
 ---
 
-## T0 — No certification is reproducible from committed code
+## T0 — Recover source provenance for every result that remains in scope
 
-**Found by this audit, and it outranks everything below it, because it is about
-whether the other numbers can be checked at all.**
+**Partly closed.** Clean-commit provenance is implemented and one current chain
+run recovers. Nine older source-bound reports remain lost.
 
-**Where it stands.** Nine reports record `runtime_source_bindings`: the SHA-256 of
+**Where it stands.** Ten reports record `runtime_source_bindings`: the SHA-256 of
 each source file *as it was on disk when the run happened*. That is a strong
 provenance record, and nothing had ever verified it. Verified now, against 200 of
 this repository's 266 commits:
 
 ```
-9 reports carry source bindings; 9 cannot be fully recovered from git.
+10 reports carry source bindings; 9 cannot be fully recovered from git.
 ```
 
-Every one. Including `robot_carried_full_chain_pin.json`, the single end-to-end
+Nine older reports fail. `robot_carried_full_chain_c11065.json` is the recovered
+exception. The lost set includes `robot_carried_full_chain_pin.json`, an end-to-end
 run of the chain that carries the headline 97.92%. For the pooled certification,
 four of the six recorded bindings — `run_workflow_demo.py` (the chain driver,
 which owns the phase budgets and the settled re-check), `fiducial.py`,
@@ -228,10 +228,9 @@ particular change is very likely irrelevant to the 97.92% — but "very likely
 irrelevant" is an assumption, and this project's rules exist because assumptions
 of that shape have been wrong five times.
 
-**This is systemic, not one lapse.** All nine reports fail, across three sessions.
-The working habit — measure, then write up and commit — guarantees the committed
-bytes differ from the measured bytes every time. The provenance field has been
-recorded faithfully and has never been usable.
+**This was systemic, not one lapse.** Nine older reports fail across three
+sessions. The workflow now records the source commit and tracked dirty state,
+and new evidence generators refuse dirty tracked worktrees.
 
 **Code.** `scripts/check_source_provenance.py` (new, this audit) is the checker.
 It classifies each binding `recovered` / `working` / `lost`, handles the
@@ -246,22 +245,15 @@ python scripts/check_source_provenance.py --depth 200
 
 **Recommended action, in order.**
 
-1. **Change the habit, cheaply.** Commit the code *before* running a
-   certification. Nothing else in this list is worth anything until a number can
-   be tied to a commit.
-2. **Record the anchor in the report.** Have `run_workflow_demo.py` write
-   `git rev-parse HEAD` and the dirty/clean status alongside
-   `runtime_source_bindings`. A hash that matches nothing is a puzzle; a commit
-   SHA plus "working tree dirty" is an answer. This is additive report metadata
-   and cannot move a number — but it edits the chain driver, so it was left as a
-   task rather than done mid-audit without a GPU to test it.
-3. **Re-run the chain certification on committed HEAD** and publish it beside the
+1. **Keep the clean-commit rule.** The driver records commit and dirty status;
+   evidence aggregators fail closed on dirty tracked source.
+2. **Re-run each certification that remains in scope** and publish it beside the
    current one. If it reproduces 97.92% within its Wilson interval, the provenance
    gap is closed and the number is confirmed. If it does not, that is a finding
    and the difference must be published, not reconciled.
 
-**Done when.** `check_source_provenance.py` reports `recovered` for the chain's
-certification, and the driver records a commit SHA so the next one cannot drift.
+**Done when.** `check_source_provenance.py` reports `recovered` for every report
+used by a final claim; lost historical reports remain labelled and preserved.
 
 **Cost.** Steps 1 and 2 are minutes and CPU only. Step 3 is one certification
 batch — the same cost as the run being reproduced, and **naturally combined with

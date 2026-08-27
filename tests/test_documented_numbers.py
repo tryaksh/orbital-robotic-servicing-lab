@@ -73,11 +73,12 @@ def test_the_insert_negative_result_is_quoted_with_its_sample_size() -> None:
 
 
 def test_the_interface_limit_is_quoted_from_its_own_gate() -> None:
-    """6 N held against 66.4 N demanded is the measurement the project rests on."""
+    """The idealized force diagnostic remains visible without becoming a hardware claim."""
     gate = json.loads((EVIDENCE / "grasp_axial_pull_gate.json").read_text(encoding="utf-8"))["gate"]
     required = gate["required_axial_force_n"]
     assert round(required, 1) == 66.4, f"the required axial force moved to {required}"
     assert "66.4 N" in README, "README no longer quotes the axial force the task demands"
+    assert "not a hardware load rating" in README
 
 
 def test_the_insert_diagnosis_is_quoted_against_the_tolerance_it_missed() -> None:
@@ -115,12 +116,19 @@ def test_the_insert_diagnosis_is_quoted_against_the_tolerance_it_missed() -> Non
 
 
 def test_the_provenance_caveat_is_stated_where_the_number_is() -> None:
-    """The chain rate cannot be quoted without saying it is not reproducible yet.
-
-    While T0 is open this is the single most important sentence in either
-    document, and it has to sit next to the figure it qualifies rather than in a
-    footnote somewhere else.
-    """
+    """One source-bound chain run recovers while nine older reports remain lost."""
     for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
         assert "uncommitted" in document, f"{label} drops the provenance caveat (NEXT_WORK T0)"
         assert "T0" in document, f"{label} does not point at the task that closes it"
+        assert "recovered" in document.lower(), f"{label} drops the recovered current run"
+        assert "nine" in document.lower(), f"{label} drops the nine lost source-bound reports"
+
+
+def test_the_boundary_is_not_overstated() -> None:
+    report = json.loads(
+        (EVIDENCE / "serviceability_boundary_validation_v1.json").read_text(encoding="utf-8")
+    )
+    assert report["decision"]["qualified"] is False
+    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+        assert "not qualified" in document.lower(), f"{label} overstates the current boundary"
+        assert "idealized" in document.lower(), f"{label} hides the load-path limitation"

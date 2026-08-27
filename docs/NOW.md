@@ -1,396 +1,152 @@
 # Now
 
-The verified state of this repository. **This file is canonical.** Read it
-before quoting a number or changing a constant. Work to do is in
-[`NEXT_WORK.md`](NEXT_WORK.md); every measurement is indexed in
-[`../evidence/MANIFEST.json`](../evidence/MANIFEST.json).
+Verified repository state. Evidence status is mechanical in
+[`evidence/MANIFEST.json`](../evidence/MANIFEST.json); this file is the concise
+interpretation of that index. Detailed work is in [`NEXT_WORK.md`](NEXT_WORK.md)
+and the frozen study design is in [`PAPER_PLAN.md`](PAPER_PLAN.md).
 
-Last verified: 2026-08-25. Branch: `main`.
+Last verified: 2026-08-26. Active branch:
+`paper/serviceability-qualification`, based on `main` at `bccce6d`.
 
-Everything here is simulated. Nothing has been run on hardware.
+Everything is simulated. Nothing has run on hardware.
 
----
+## Trust snapshot
 
-## 1. What runs
+| Item | Verified state |
+| --- | --- |
+| Evidence | 27 canonical, 8 retracted, 137 historical; quote only canonical |
+| Source provenance | 10 reports carry runtime source bindings; 1 is recovered and 9 are lost |
+| Recovered chain run | `robot_carried_full_chain_c11065.json` |
+| Boundary decision | `not_qualified`; only entry attitude is supported in simulation |
+| CI architecture | core package and tests do not require optional FastAPI imports |
+| Checkpoints | reports contain hashes, but weights under `logs/` and `checkpoints/` are absent from a clone |
+| Hardware claim | none |
 
-**The mission this stands in for:** replacing a failed compute module on an
-orbiting platform, autonomously, without an astronaut EVA. The whole simulation
-runs at `gravity=(0.0, 0.0, 0.0)`, which is not decoration — it is why capture is
-learned rather than scripted. Nothing settles, and squeezing a free-floating mass
-in zero gravity ejects it before the pads close. The README says why that changes
-the problem; the specification is the design output it exists to produce.
+The nine lost reports were produced from uncommitted source that cannot be
+recovered from git. Their episode data remain evidence, but their exact code is
+not reproducible. T0 is therefore narrowed, not erased: re-run any lost report
+that a final claim needs. New reports must start from a clean commit.
 
-One continuous episode, no cuts: a UR10e locates a compute module in a rack bay,
-grips it, pulls it clear, carries it to the neighbouring bay, drives it home, and
-opens its hand only after every seating condition has held for 0.70 s. The robot
-holds the module the whole way — no world constraint, no teleport, no direct
-module pose write, no hidden carrier.
+## What runs
 
-| Phase | Controller | Certified separately |
+One continuous zero-gravity episode uses a UR10e to capture, extract, carry,
+insert and release a compute module. There is no world constraint, teleport,
+direct module pose write or hidden carrier.
+
+| Phase | Executed controller |
+| --- | --- |
+| Grasp | PPO capture policy |
+| Extract | PPO extraction policy |
+| Transit | collision-checked differential IK with a robot-side form lock |
+| Insert | guarded advance on the deployed estimate |
+| Release | deterministic, after all seating conditions hold for 0.70 s |
+
+The chain labels a phase learned only when policy actions actually step it. The
+learned v24 insertion alternative is evaluated separately and does not control
+the certified chain.
+
+## Measured state
+
+### Chain and skills
+
+The guarded state-task chain scores **97.92%**: 94/96 episodes over three
+held-out seeds, Wilson 95% **[92.7%, 99.4%]**. The source-bound single run is
+recoverable; older pooled source bindings are not.
+
+| Certificate | Pooled result | Interpretation |
+| --- | ---: | --- |
+| Grasp v7m130 | **85.69%** | misses the 95% skill gate |
+| Extract v18pin | **87.75%** | misses the 95% skill gate |
+| Insert v20chain | **0.00%**, 0/1,536 | preserved negative result |
+| Insert v24rack, isolated | **36.77%**, 1,103/3,000 | not predictive of the chain handoff |
+| Insert v24rack, in chain | **0.00%**, 0/96 | guarded remains selected |
+
+The older insertion diagnosis remains useful: three objective arms terminated
+at 84.26, 84.61 and 84.58 mrad against a **52.4 mrad** tolerance. Changing the
+reward did not move the interface-limited attitude. Those runs have the source
+provenance caveat above.
+
+Perception is certified separately on 1,024 rendered frames. The 97.92% chain
+rate uses simulator state through the deployed estimator path; RGB-D and the
+chain have not been combined at qualification scale.
+
+### Conditioned insertion
+
+`run_workflow_demo.py` can now start the real chain driver at any of the nine
+closed-form insertion reset stations and records the insertion handoff state.
+`report_conditioned_insertion.py` requires paired guarded/v24 arms with the same
+seed and initial-state SHA-256 and retains both arms.
+
+One station-8, seed-1070 Isaac smoke pair completed from clean commit `269613b`.
+Both controllers failed one episode; v24 ended closer axially. It is a diagnostic
+artifact under `artifacts/`, not canonical evidence. The full 3,456 reset-station
+episodes and 192 chain-handoff episodes remain to run.
+
+### Serviceability boundary
+
+[`serviceability_boundary_validation_v1.json`](../evidence/serviceability_boundary_validation_v1.json)
+is the current fail-closed comparison:
+
+| Dimension | State | Why |
 | --- | --- | --- |
-| Grasp | RL policy | yes — `grapple_grasp_v7m130_on_derived_rack_certification.json` |
-| Seat (0.03 s dwell) | scripted | — |
-| Extract | RL policy | yes — `grapple_extract_v18pin_certification.json` |
-| Transit, 5 legs | solved inverse kinematics, actuator targets | — |
-| Insert | guarded advance on the deployed RGB-D estimate | yes — the learned alternative lost 0.00% to 97.92%, §5 |
-| Back off | scripted, after the settled re-check | — |
+| Rack clearance | mismatch | 6 mm and 16 mm analytical exclusions do not show Wilson-separated loss |
+| Module section | mismatch | 120×16 supports the prediction; 140×26 contradicts it at current sample size |
+| Robot base offset | partial | x = −0.70 m is supported; the +10 mm y loss lacks an analytical bound |
+| Entry attitude | supported in simulation | clearance sweep and throat intervention track `2c/L` within the frozen gate |
+| Capture geometry | analytical only | visual bounding-volume checks pass; canonical contact/load evidence is absent |
+| Load path | idealized and unpaired | rigid failure and compliant success do not share states/seeds or reaction telemetry |
+| Base compliance | excluded | the authored spring is outside the load path because the robot root is fixed |
 
-A phase may not be called learned unless a policy produced the actions. The
-report keys that label on the controller that stepped, never on a flag.
-`docs/service_interface_spec.md` §10 states the split as a requirement.
+The validator changed no tolerance and discarded no arm. The present
+configuration is **not qualified**.
 
-## 2. The numbers
+## Claim limits
 
-### Chain
+- The latch meshes are visual; module retention is a break-rated fixed joint
+  while rigid and a bounded spring-damper while compliant.
+- Historical simulator force probes include a 66.4 N derived axial requirement,
+  but contact geometry and simulator forces are idealized and are not hardware
+  load qualification.
+- The robot root is welded to the world, so servicing-spacecraft reaction and
+  compliant-base tolerance are not modeled.
+- The robustness sweep has 16 episodes per point and ranks sensitivities; it is
+  not a tolerance band.
+- Every policy comes from one training seed.
+- No current video shows the fully certified configuration.
 
-**97.92% pooled** — 94 of 96 episodes, 32 environments on each of three held-out
-seeds, Wilson 95% **[92.7%, 99.4%]**. Per seed: 93.75%, 100%, 100%. The gate is
-95% pooled and 95% worst-case; both pass. Tool-to-module drift through the carry
-is 0.9 mm and 2.5 mrad at the median, 2.3 mm and 6.3 mrad at worst.
+## Reproduce and continue
 
-`evidence/workflow_robot_carried_m130pin_guarded_c11065_certification.json`
+```powershell
+# CPU trust gate
+.\.venv\Scripts\python.exe scripts/check_criterion_currency.py
+.\.venv\Scripts\python.exe scripts/check_source_provenance.py --depth 200
+.\.venv\Scripts\python.exe scripts/build_evidence_manifest.py --check
+.\.venv\Scripts\python.exe scripts/build_script_index.py --check
+.\.venv\Scripts\python.exe -m pytest -m "not isaac and not camera and not benchmark"
 
-**Certified twice, at two rack clearances, and the two are identical.** The
-destination channel's throat was re-derived on 2026-08-25 and moved from
-12.689 mm to 11.065 mm per side, which moves a published number, so the chain was
-re-run under it before anything was allowed to depend on it:
+# Current negative boundary result; non-zero means not qualified
+.\.venv\Scripts\python.exe scripts/validate_serviceability_boundary.py `
+  --output <new-versioned-evidence-path>
 
-| | throat 12.689 mm | throat 11.065 mm |
-| --- | ---: | ---: |
-| pooled | 97.92% (94/96) | **97.92% (94/96)** |
-| seed 4070 | 93.75% | 93.75% |
-| seed 5070 | 100.00% | 100.00% |
-| seed 6070 | 100.00% | 100.00% |
-
-Seed for seed, which is stronger than the pooled agreement on its own. The chain
-never used the headroom that moved: it delivers 46 mrad and its form lock holds
-the module there, so a throat that accepts 49.18 mrad instead of 56.40 is still
-3.2 mrad clear, and the guarded advance's own gates come from
-`SLOT_ENTRY_RAMP_CATCH_M` on the *vertical* ramp, which did not move. The
-12.689 mm run is preserved as
-`evidence/workflow_robot_carried_m130pin_guarded_certification.json`.
-
-The two befores are preserved too, because a before is what makes an after mean
-anything: 31.25% (`workflow_robot_carried_relocate_certification.json`), then
-96.88% (`workflow_robot_carried_m130_guarded_certification.json`).
-
-> **Provenance: the 11.065 mm run is the first one here that recovers.** Every
-> report that records source hashes had been produced on **uncommitted
-> working-tree code** — nine of them, across three sessions, none reproducible
-> from this repository. This one was launched from a clean commit, and
-> `python scripts/check_source_provenance.py --depth 20` reads
-> `robot_carried_full_chain_c11065.json` as **RECOVERED** where the other nine are
-> LOST. That is `NEXT_WORK.md` **T0**'s first recommendation, and it cost nothing
-> but ordering. The nine are still lost and every number that rests on them still
-> carries the caveat.
-
-### Skills
-
-Three curriculum stages on each of three held-out seeds, 500 episodes a point.
-
-| | Pooled | Stage 0 (what the chain runs) | Worst stage |
-| --- | ---: | ---: | ---: |
-| Grasp v7m130, on the derived rack | 85.69% | 99.14% | 78.68% |
-| Extract v17m130, the checkpoint replaced | 87.78% | 91.53% | 82.80% |
-| Extract v18pin, 2,000 further epochs | 87.75% | 91.08% | 84.08% |
-
-**Neither passes the 95% gate, and the chain exceeding both is not a
-contradiction.** The chain is not the product of the skill certifications: those
-pool three curriculum stages while the chain runs stage 0, each phase hands over
-on the *next* phase's precondition rather than on its own success criterion, and
-the guarded seating recovers deliveries a skill certification scores as failures.
-Report both. Quote neither alone.
-
-### Perception
-
-Certified separately, on 1,024 rendered frames
-(`evidence/fiducial_rgbd_service_plate.json`). The chain's 97.92% runs on the
-**state** task, where the module pose comes from the simulator and the guarded
-advance's "deployed estimate" is the deployed code path reading ground truth.
-The RGB-D chain has been run end to end at one seed
-(`evidence/full_chain_rgbd_service_seed4070.json`) and not since the changes that
-produced the current rate. **Putting the two numbers side by side without saying
-this is the easiest way to overstate what is built.** See `NEXT_WORK.md` T1.
-
-## 3. Checkpoints, and what is not in the clone
-
-`logs/` and `checkpoints/` are **gitignored**. A clone carries every report and
-no weights, so every learned number here is readable and not reproducible
-without the files below. Nothing in this repository should claim a capability
-whose checkpoint is unreachable.
-
-```
-logs/rl_games/zero_g_blade_insertion_contact/
-  grapple_grasp_l0_seed70_v7m130/nn/last_..._ep_3100_rew_30.262873.pth     capture
-  grapple_extract_l0_seed70_v18pin/nn/last_..._ep_12600_rew_172.70488.pth  extraction
-  grapple_insert_l0_seed70_v13m130/nn/last_..._ep_8000_rew_-42.01845.pth   loaded, never stepped
-checkpoints/module_pose_head*.pth                                          perception
+# Exact GPU conditioned matrix, from a clean commit
+& .\scripts\run_conditioned_insertion.ps1 -IncludeChainHandoffs `
+  -OutputRoot artifacts\conditioned-insertion\v1 `
+  -EvidencePath evidence\insertion_conditioned_controller_v1.json
 ```
 
-The chain runs **two** policies. The insert checkpoint is loaded because the
-certification loaded it and the policy-set hash covers it; the seating is the
-scripted guarded advance, so it never acts. `--insert_checkpoint` is optional and
-`--insert_controller policy` is what makes it act.
+Do not overwrite v1 evidence. Use a new version only after adding comparison
+arms.
 
-Provenance is mechanical, not remembered: `evidence/robot_carried_full_chain_c11065.json`
-records all three paths and their SHA-256, the pooled report records the combined
-`policy_set_sha256`, and `tests/test_reproduction_path.py` fails if
-`scripts/run_robot_carried.sh` stops defaulting to that set. That file is also the
-one report here whose *source* bindings recover from git;
-`evidence/robot_carried_full_chain_pin.json` is the same record for the 12.689 mm
-run and does not.
+## Branches
 
-## 4. Settled — do not re-litigate
+| Branch | Status |
+| --- | --- |
+| `paper/serviceability-qualification` | Active qualification work; CI decoupling, provenance, conditioned insertion and boundary validation |
+| `main` | Baseline at `bccce6d`; unchanged during this work |
+| `industrial-relocation` | Preserved earlier work, 15 commits behind `main`; not identical to it |
+| `keyed-interface` | Preserved losing keyed-interface exploration; do not delete |
+| `origin/agent/zero-g-blade-swap` | Preserved historical eight-phase line; superseded |
 
-Each of these was measured, and re-deriving them costs GPU hours that buy nothing.
-
-- **The mating stroke must be compliant.** Rigid reaches 0.2275 m and 269 mrad
-  against compliant's 0.6753 m and 7 of 7 conditions.
-  `evidence/robot_carried_rigid_mating_refuted.json`.
-- **The rail carries the robot, never the module.** Parked opposite a bay the
-  arm's configuration is the one it has at bay 1, so no bay needs a skill another
-  bay does not already have. The world-mounted payload shuttle behind
-  `--base_rail_on_relocation` is a labelled historical baseline, unreachable from
-  the live preset, and `tests/test_robot_carried_contract.py` keeps it out.
-- **Do not widen the channel and do not shorten the module.** Both measured, both
-  dead ends. Narrowing is a different question and is now derived.
-- **Extract's ceiling is the task, not the training budget.** 900 epochs moved it
-  1.4 points; 2,000 more moved it 0.0. What moved it — 13 points, on an
-  *unchanged* checkpoint — was fixing the grip criterion, deriving the rack
-  clearance, and bounding the reset. `evidence/extract_attribution.json` separates
-  the four contributions one row at a time.
-- **The module's cross-section is what made extraction hard.** The same unchanged
-  policy scores 99.02% on the section it was built for and 76.95% on the current
-  one, one seed, nothing else different.
-- **A tapered pin holds by feeding.** The pads come to rest 12.0 mm along the pin
-  from its drawing pose on every loaded pull, measured over 433 extractions in a
-  band 0.8 mm wide. The grip criterion is three bounds on the pin's own axes now,
-  two of them *tighter* than the ball they replaced.
-- **"The robot at the end of its own reach into the rack" was wrong.** The seated
-  plane is set by the latch's release interlock, not by reach.
-- **A depth-dependent attitude envelope for the guarded advance** was built,
-  checked against data in hand, and refuted before it ran. It is attractive enough
-  to be reinvented; the reasoning is in the guarded advance's own report under
-  `why_not_depth_dependent`.
-- **Lead-ins have to move with the rails they continue.** Deriving the guide
-  offset moved the rails 3.061 mm inboard while an authored literal stayed put,
-  and the chain scored **0.00%** over 32 episodes on that rack. Both lead-ins are
-  derived from the rail face now and `tests/test_workcell_geometry.py` holds it.
-  See `evidence/RETRACTED.md`.
-- **A rack may not hold a module outside its own acceptance criterion.** A rigid
-  part fully inside a channel with `c` per side wedges at `2c/L` and cannot be
-  squarer, so the channel decides the attitude of a module that merely rests in
-  it. At 12.689 mm that was 56.40 mrad against a 52.36 mrad seated criterion, and
-  no controller fixes a rack that specifies a part it will then reject.
-  `GUIDE_CENTER_OFFSET_Y` is derived from that requirement now, and the chain is
-  certified at both clearances.
-- **Do not place a derived constant on a bound.** Both values this project has
-  used for `GUIDE_CENTER_OFFSET_Y` sat exactly on one: 15.750 mm was outside the
-  pads' bound and cost measured grips, and the 12.689 mm that replaced it sat on
-  the pads' bound and 4.04 mrad outside the seated criterion. The value is placed
-  at the clearance that maximises the smaller of the two margins — the midpoint
-  *in attitude* between the 46.0 mrad the transit delivers and the 52.36 mrad a
-  seated module is accepted at — which is **11.065 mm**, 3.18 mrad clear on each
-  side. Specification §6.5.
-- **Configuration that mutates the scene must write absolute poses.**
-  `configure_service_destination` added the channel relief as an increment, and
-  it is called from `configure_robustness`, which `__post_init__` has already
-  run — so `train.py --robustness_level` and `play.py --latch_enabled` each
-  applied it twice. **The insert skill was trained in a 21.91 x 17.23 mm channel
-  and certified in a 17.30 x 12.61 mm one**, on both axes, for as long as both
-  paths have existed. `scripts/check_destination_channel.py` reads the built
-  configuration rather than the source and reports the applied relief as a
-  multiple; `evidence/destination_channel_geometry.json` is the measurement.
-
-## 5. Open
-
-Every item below is a bounded task in [`NEXT_WORK.md`](NEXT_WORK.md), with
-evidence, reproduction path, acceptance gate and expected compute. Summarised
-here so this file stays the one place the state is described.
-
-**Start at `NEXT_WORK.md` T13**, which is the insert skill and is first because
-the rack blocker under it is closed and it is one condition away from being
-certifiable.
-
-- **No certification is reproducible from committed code.** All nine reports that
-  record source hashes were produced on uncommitted working-tree state, across
-  three sessions. This does not make a number wrong; it makes it uncheckable
-  (T0, and it outranks the rest).
-- The chain is certified on the state task and perception on rendered frames, and
-  the two have never been combined at scale — **the highest-value missing
-  measurement** (T1).
-- **The learned insert policy does not seat, and the reason is now measured
-  rather than inferred.** 0.00% over 1,536 episodes, a median of 204 mm short.
-  The long-standing reading — that it *creeps*, at 3.65 mm/s against 120 mm/s of
-  authority — is **refuted**: the time cost sized against the failure penalty,
-  trained to convergence at 1,400 epochs, moves the shortfall 1.4 mm and every
-  episode still spends its whole clock. The cost is paid, not avoided.
-
-  What the same episodes show is attitude, and it is not the objective's to fix.
-  The module ends at a median **84.5 mrad** against the **52.4 mrad** a seated
-  module must be inside, with only 2–4% of episodes inside it. Three different
-  reward configurations land within 0.4 mrad of each other:
-
-  | Objective | Orientation | Inside tolerance |
-  | --- | ---: | ---: |
-  | baseline time cost | 84.26 mrad | 2.3% |
-  | 4× time cost, converged | 84.61 mrad | 2.7% |
-  | 7× orientation penalty | 84.58 mrad | 3.9% |
-
-  The reset is square (`attitude_residual_rad` 0.0 at every station) and the grip
-  holds (12.2 mm, p95 12.48), so the episode takes it there and no objective
-  brings it back. **The attitude is set by the interface**: two flat pads on a
-  pin cannot resist a moment about the closing axis, and the chain reaches
-  46 mrad at the same phase only because it carries the module on a form lock.
-  The blocker is the load path — **T9**, not T2.
-  `evidence/insert_attitude_diagnosis.json`.
-
-  **T9 landed on 2026-08-25, and it moved the skill further than anything since
-  the task was built.** Trained on the chain's mating compliance, the median
-  shortfall falls **202.2 → 98.6 mm** and **35.5%** of episodes now reach the
-  seated plane, against essentially none before; lateral improves 7.10 → 4.51 mm.
-  Success is still 0.00%, and **orientation is the only condition left**.
-
-  It is not the policy's. Among the 91 episodes that reach depth, orientation
-  **floors** at 56.033 mrad — a floor, not a spread, and `2c/L` on the channel's
-  unrelieved lead-in throat is 56.396 mrad. The success criterion is **52.36
-  mrad**, so **that throat held a module 4.04 mrad outside its own acceptance
-  criterion**, and a module that merely rested in it could not pass. The chain
-  reaches 46 mrad because its form lock holds the module squarer than the rack
-  does. (The mechanism first published for this said *channel walls*; it is the
-  throat — the walls are relieved and admit 76.90 mrad. `evidence/RETRACTED.md`.)
-
-  **The rack was re-derived on 2026-08-25 and it worked.**
-  `GUIDE_CENTER_OFFSET_Y` 86.689 → 85.065 mm, throat 12.689 → 11.065 mm, derived
-  at the equal-margin point between the 46.0 mrad the transit delivers and the
-  52.36 mrad the criterion accepts. Tested on an unchanged checkpoint before any
-  training: the attitude floor moved **56.03 → 45.75 mrad** and success **0.00%
-  → 18.85%**, the first non-zero insert-skill success recorded here.
-  `evidence/insert_attitude_wall_moved.json`. The chain is certified at both
-  clearances and identical seed for seed, so this cost it nothing.
-
-  **What is left is depth, and depth is attitude one layer down.** Only 35.8% of
-  episodes reach the seated plane; among those that do, orientation passes 94.6%
-  and lateral 54.8%. The stalled episodes are neither creeping nor slipping —
-  they sit at 96.8 mrad against 46.9 for the ones that seat, and a module held at
-  that angle can engage only 261 mm before it wedges, which is the travel they
-  achieve. **They are as deep as their own attitude permits.** The split is
-  bimodal and every episode starts square, so the divergence is in the episode.
-  `evidence/insert_depth_is_attitude.json`, and it is **`NEXT_WORK.md` T13, the
-  first task in the queue**.
-
-  **Certified both ways on 2026-08-25, and the two halves disagree violently.**
-  `grapple_insert_l0_seed70_v24rack` at epoch 2100 scores **36.77%** alone —
-  1,103 of 3,000 episodes, three held-out seeds, against the 0.00% this skill
-  had held throughout — and **0.00%** inside the chain, 0 of 96, on the same
-  rack and the same seeds. Not a near miss: terminal axial error is 1.35 m at the
-  median and orientation 2.75 rad, so the module is lost rather than seated
-  short. **The chain keeps the scripted guarded advance**, unanimously.
-  `evidence/seating_controller_head_to_head.json`.
-
-  That gap is the result, not a disappointment. The reset bank samples nine
-  stations uniformly and the chain always hands over at the shallowest, so a
-  pooled skill number was never predictive of a caller's problem — which is
-  exactly what a skill has to fix before it can be composed. T13 starts there.
-
-- Grasp and extract both miss the 95% gate (85.69% and 87.75% pooled), and
-  neither responds to more epochs on the evidence available (T6).
-- Every policy is **one PPO training seed**, so no number carries a spread (T3).
-- Every certification is at **robustness level 0**; levels 1–4 exist and are
-  unexercised (T4).
-- **Training randomizes none of the variables the sweep says the chain is
-  sensitive to.** A 10 mm error in where the robot parks across the bay takes it
-  from 93.75% to 6.25% (T5).
-- The insert skill's load path **is** the chain's now, carried by the task rather
-  than by a flag, and `tests/test_skill_chain_agreement.py` holds all eight rows
-  equal (T9, closed).
-- The **live compute service runs the superseded w65 policy set**, two promotions
-  behind the certified chain (T7).
-- **Grasp and extract are certified on the *old* rack.** The derived clearance
-  narrows the source bay as well as the destination, so 85.69% and 87.75% are
-  numbers taken in a channel this repository no longer builds. The chain re-run
-  exercises both skills in situ and reproduces seed for seed, which bounds the
-  effect at the chain level and says nothing about the skill level. Re-certifying
-  them is `NEXT_WORK.md` **T12**. The predicted direction is favourable: the
-  channel corner the pads have to follow falls from 15.000 mm — exactly their
-  limit — to 13.654 mm.
-- **Delivered angle has about 3 mrad of margin** — modules seat at 46.0 mrad
-  (p95 46.5) against a channel throat that now accepts 49.18. It was ~10 mrad
-  against the 56.40 mrad throat. The margin was deliberately spent: it is the
-  same margin the seated criterion needed on the other side, and §4 records why
-  the value sits between them rather than on either. Still the only quantity in
-  the certification operating against a limit.
-
-### What breaks the chain first
-
-One variable at a time around the certified point, 16 environments and 16
-episodes a point, one seed. Coarse on purpose — the Wilson interval on each point
-is about twenty points wide, so this **ranks** variables rather than measuring
-them. `evidence/chain_robustness_sweep.json`.
-
-| Point | Success | Below nominal |
-| --- | ---: | ---: |
-| nominal | 93.75% | — |
-| module 120 × 16 mm | **0.00%** | 93.75 |
-| robot base +10 mm across the bay | **6.25%** | 87.50 |
-| rack lateral clearance 16 mm | 75.00% | 18.75 |
-| module mass 40 kg | 81.25% | 12.50 |
-| module 140 × 26 mm | 87.50% | 6.25 |
-| module mass 20 kg, rack clearance 6 mm, relief 0 mm | 93.75% | 0.00 |
-| robot base 50 mm further back | 100.00% | −6.25 |
-
-The closed-form envelope in `check_workcell_geometry.py` called every
-cross-section result before the simulator was started. Mass is nearly free — a
-much wider payload band than the interface specification claims.
-
-## 6. Reproducing
-
-```bash
-# The whole job, one environment, end to end. About eight minutes.
-scripts/run_robot_carried.sh rail
-
-# The published 97.92%: 32 environments on each of three held-out seeds.
-# CERT_TAG is required -- the default names preserved evidence.
-CERT_TAG=<name> scripts/run_robot_carried.sh certify
-
-# One skill, three stages, three held-out seeds.
-SKILL=Extract CKPT=<path> TAG=<name> scripts/certify_grapple_skills.sh
-
-# One variable at a time around the certified point.
-scripts/sweep_chain_robustness.sh && python scripts/report_chain_robustness.py
-
-# Geometry, no simulator, about a second.
-python scripts/check_workcell_geometry.py
-
-# Is any published number stale, and can it still be reproduced?
-python scripts/check_criterion_currency.py         # did the criterion move under it
-python scripts/check_source_provenance.py --depth 200  # do the source bytes still exist
-python scripts/build_evidence_manifest.py --check
-```
-
-Two flags exist only so an archived checkpoint can be re-run under the criterion
-it was certified against — which is what keeps a criterion change and a policy
-change from being quoted as one number: `play.py --legacy_grip_ball_m 0.030` and
-`--legacy_unbounded_reset`.
-
-## 7. Where the rest of the reasoning is
-
-`docs/archive/` holds the session handoffs in the order they were written, kept
-for the reasoning and the negative results in them, not for their status claims —
-every one is superseded by this file. `docs/archive/README.md` says what each
-contains.
-
-### Branches
-
-`main` is canonical and carries everything. Two exploration branches are kept as
-refs, and **neither holds any evidence file that `main` does not** — that was
-checked file by file before consolidating, so nothing is lost by ignoring them.
-They are kept for the reasoning in their commit messages:
-
-| Branch | What is in it | Why kept |
-| --- | --- | --- |
-| `keyed-interface` | A keyed pin instead of a tapered one. Five real defects on that geometry, each found and fixed, **none of which moved extraction off 0.00%**. | Its final commit message is the write-up: it ends by naming parameter search as the wrong tool and the missing lead-in geometry as the actual gap. What stands — seated grip offset 19.4 → 0.7 mm, attitude 63.7 → 1.3 mrad, 40 N·m of lateral load held without slip — is worth reading before anyone re-opens a keyed interface. |
-| `agent/zero-g-blade-swap` | The original eight-phase swap line, before the workcell move. | Historical origin. Superseded in every respect; merging it would delete current work. |
-
-`industrial-relocation` was the working branch through 2026-08-25 and is now
-identical to `main`.
+The next gates are the complete conditioned matrix, qualification-count boundary
+arms, paired contact/load-path experiments, a base-compliance path that can
+actually deflect, clean-source reruns for quoted results, and the RGB-D chain.
