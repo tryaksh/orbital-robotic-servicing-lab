@@ -31,7 +31,8 @@ def test_the_rigid_carry_path_is_selected_only_by_the_form_lock() -> None:
     )
     assert "if self.rigid_transit and bool(transiting.any()):" in source
     assert "elif bool(transiting.any()):" in source
-    assert "if self.rigid_transit and bool(inserting.any()):" in source
+    assert "direct_insert = self.rigid_transit or self.insert_only" in source
+    assert "elif direct_insert and bool(inserting.any()):" in source
     assert "elif bool(inserting.any()):" in source
 
 
@@ -200,7 +201,7 @@ def test_the_report_says_the_insertion_is_scripted_on_the_carried_path() -> None
     source = DRIVER.read_text(encoding="utf-8")
     # Keyed on the controller: relocate, with the form lock, without the payload
     # shuttle, and with the guarded advance selected rather than the policy.
-    guarded = source.split("guarded_insert = (")[1].split(")\n")[0]
+    guarded = source.split("guarded_insert = (")[1].split("insert_only =")[0]
     assert 'args.workflow == "relocate"' in guarded
     assert "args.latch_on_release" in guarded
     assert "not args.base_rail_on_relocation" in guarded
@@ -210,10 +211,9 @@ def test_the_report_says_the_insertion_is_scripted_on_the_carried_path() -> None
     # section 10.2 of the interface specification actually asks for. The label
     # has to survive both cases: named when carried and unused, absent when not
     # carried, and never claimed as a learned phase either way.
-    assert (
-        '"loaded_but_not_executed_policies": (["insert"] if guarded_insert and "insert" in policies else []),'
-        in source
-    )
+    assert 'if guarded_insert and "insert" in policies:' in source
+    assert 'loaded_but_not_executed.append("insert")' in source
+    assert '"loaded_but_not_executed_policies": loaded_but_not_executed' in source
     assert 'if args.insert_checkpoint is not None:' in source
     assert 'parser.error("--insert_controller policy needs an --insert_checkpoint to run")' in source
     # And the phase it does run is named in the scripted list.

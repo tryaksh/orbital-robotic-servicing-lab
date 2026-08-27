@@ -55,11 +55,14 @@ TASK = "Isaac-ZeroG-Blade-GrapplePin-Workflow-v0"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_RUNTIME_SOURCES = (
     Path("scripts/run_workflow_demo.py"),
+    Path("src/zero_g_blade_swap/provenance.py"),
     Path("src/zero_g_blade_swap/fiducial.py"),
     Path("src/zero_g_blade_swap/tasks/blade_swap/assets.py"),
     Path("src/zero_g_blade_swap/tasks/blade_swap/mdp/perception.py"),
     Path("src/zero_g_blade_swap/tasks/blade_swap/scene_cfg.py"),
     Path("src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py"),
+    Path("src/zero_g_blade_swap/tasks/blade_swap/insert_reset_bank.py"),
+    Path("src/zero_g_blade_swap/tasks/blade_swap/two_slot_env_cfg.py"),
 )
 #: Control steps between recorded transit waypoints. Four is about 30 mm of pull
 #: at the extraction scale, close enough that the return follows the same arc.
@@ -644,6 +647,16 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--start_insert_station",
+        type=int,
+        default=None,
+        help=(
+            "Diagnostic paired-controller protocol: start directly in INSERT at one solved reset-bank "
+            "station. Requires the two-slot relocation task, curriculum stage 0, no latch or rail, and "
+            "uses a deterministic zero-noise reset. This is not a chain certificate."
+        ),
+    )
+    parser.add_argument(
         "--mating_mode",
         choices=("compliant", "rigid"),
         default="compliant",
@@ -741,6 +754,15 @@ if args.video and args.num_envs > 1:
     parser.error("--video records one workflow; use --num_envs 1")
 if args.insert_controller == "policy" and args.insert_checkpoint is None:
     parser.error("--insert_controller policy needs an --insert_checkpoint to run")
+if args.start_insert_station is not None:
+    if args.start_insert_station < 0:
+        parser.error("--start_insert_station must be non-negative")
+    if "TwoSlot" not in args.task or args.workflow != "relocate":
+        parser.error("--start_insert_station requires a TwoSlot task and --workflow relocate")
+    if args.curriculum_stage != 0:
+        parser.error("--start_insert_station requires --curriculum_stage 0")
+    if args.latch_on_release or args.base_rail_on_relocation or args.robot_rail_on_relocation:
+        parser.error("--start_insert_station compares pad-held insertion without latch or rail options")
 if args.video or "Vision" in args.task:
     # The vision profile renders a camera and drives Replicator randomizers, and
     # both need the rendering extensions up before the app launches. Without
@@ -797,6 +819,13 @@ from zero_g_blade_swap.tasks.blade_swap.mdp.grapple import (
     grip_drive_torque,
     grip_finger_angle,
 )
+from zero_g_blade_swap.tasks.blade_swap.insert_reset_bank import (
+    INSERT_STROKE_ARM_JOINT_POS,
+    INSERT_STROKE_BLADE_POSE,
+)
+from zero_g_blade_swap.tasks.blade_swap.two_slot_env_cfg import (
+    ZeroGBladeGrapplePinInsertTwoSlotEnvCfg,
+)
 from zero_g_blade_swap.tasks.blade_swap.mdp.insertion import (
     INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS,
     INSERTION_AXIAL_DEPTH_TOLERANCE_M,
@@ -828,6 +857,7 @@ from zero_g_blade_swap.arm_kinematics import (
     batched_tool_pose,
 )
 from zero_g_blade_swap.checkpoint_policy import CheckpointPolicy
+from zero_g_blade_swap.provenance import git_source_revision
 from zero_g_blade_swap.grapple_geometry import (
     BLADE_LENGTH_M,
     EXTRACTED_BLADE_CENTRE_X,
@@ -1183,6 +1213,7 @@ class WorkflowDriver:
         robot_rail_enabled: bool = False,
         robot_rail_step_m: float = 0.001,
         insert_controller: str = "guarded",
+        insert_only: bool = False,
     ) -> None:
         self.task = task
         self.policies = policies
@@ -1196,6 +1227,10 @@ class WorkflowDriver:
         #: Which controller performs the seating. Reported, and the report's
         #: honesty labels are keyed on it rather than on any flag beside it.
         self.insert_controller = insert_controller
+        #: Evaluation-only start condition. It selects the same controller
+        #: dispatch used after a real relocation but does not claim the omitted
+        #: capture/extract/transit phases ran.
+        self.insert_only = insert_only
         self.base_rail_enabled = base_rail_enabled
         # **The rail carries the robot. It never touches the module.**
         #
@@ -1219,6 +1254,9 @@ class WorkflowDriver:
         self.base_rail_joint_hold = base_rail_arm_mode == "joint_hold"
         device = task.device
         count = task.num_envs
+        self.conditioned_insert_pending = torch.full(
+            (count,), insert_only, dtype=torch.bool, device=device
+        )
         self.rail_base_offset_m = torch.zeros(count, device=device)
         self.rail_indexing = torch.zeros(count, dtype=torch.bool, device=device)
         self.rail_travel_m = torch.zeros(count, device=device)
@@ -1525,9 +1563,10 @@ class WorkflowDriver:
     def reset_envs(self, env_ids: torch.Tensor, step: int = 0) -> None:
         """Return the named environments to the start of the workflow."""
 
-        self.phase[env_ids] = CAPTURE
+        start_phase = INSERT if self.insert_only else CAPTURE
+        self.phase[env_ids] = start_phase
         self.phase_started[env_ids] = step
-        self.furthest[env_ids] = CAPTURE
+        self.furthest[env_ids] = start_phase
         self.timed_out_in[env_ids] = -1
         self.held[env_ids] = 0
         self.seat_until[env_ids] = 0
@@ -1552,6 +1591,7 @@ class WorkflowDriver:
         self.guarded_insert_holds[env_ids] = 0
         self.guarded_insert_stalls[env_ids] = 0
         self.guarded_insert_attitude[env_ids] = 0.0
+        self.conditioned_insert_pending[env_ids] = self.insert_only
         self.latch_released[env_ids] = False
         self.latch_released_at[env_ids] = -1
         self.latch_softened[env_ids] = False
@@ -2149,6 +2189,12 @@ class WorkflowDriver:
             self.reset_tool_pos[fresh] = tool[fresh]
             self.reset_tool_rot[fresh] = tool_rot[fresh]
             self.reset_tool_valid[fresh] = True
+        conditioned_start = self.conditioned_insert_pending & (self.phase == INSERT)
+        if bool(conditioned_start.any()):
+            self._begin_guarded_insert(conditioned_start, step)
+            self.plan_checked[conditioned_start] = True
+            self.plan_passed[conditioned_start] = True
+            self.conditioned_insert_pending[conditioned_start] = False
 
         # --- capture -> seat ------------------------------------------------
         # Hand over on the *next* skill's precondition, not this one's success
@@ -3073,7 +3119,8 @@ class WorkflowDriver:
 
         # --- insert -> seated --------------------------------------------------
         inserting = self.phase == INSERT
-        if self.rigid_transit and self.insert_controller == "policy" and bool(inserting.any()):
+        direct_insert = self.rigid_transit or self.insert_only
+        if direct_insert and self.insert_controller == "policy" and bool(inserting.any()):
             # **The policy's own action stands.** It was already written into
             # ``self.actions`` above, from the same observation group it was
             # trained on; all this branch does is decline to overwrite it. The
@@ -3085,7 +3132,7 @@ class WorkflowDriver:
             self.predicate_fired[fired] = True
             if SEATED_RETAIN:
                 self.gripper.retain_latch[fired] = True
-        elif self.rigid_transit and bool(inserting.any()):
+        elif direct_insert and bool(inserting.any()):
             fired = self._step_guarded_insert(inserting, step, tool, tool_rot)
             self._finish(fired, step)
             self.predicate_fired[fired] = True
@@ -5074,6 +5121,47 @@ def main() -> dict[str, object]:
         globals()["MATING_MODE"] = args.mating_mode
         env_cfg.base_rail_enabled = args.base_rail_on_relocation
         env_cfg.configure_robustness(0)
+        conditioned_state_sha256 = None
+        if args.start_insert_station is not None:
+            station_count = len(INSERT_STROKE_ARM_JOINT_POS[0])
+            if args.start_insert_station >= station_count:
+                raise ValueError(
+                    f"--start_insert_station must be in [0, {station_count - 1}]"
+                )
+            # Take the reset, destination geometry, and parked robot pose from
+            # the actual task v24 was trained and evaluated in. The workflow
+            # task is retained because it owns both deployed controller paths
+            # and the settled workflow outcome check.
+            insertion_reference = ZeroGBladeGrapplePinInsertTwoSlotEnvCfg()
+            env_cfg.events = insertion_reference.events
+            env_cfg.events.reset_stroke.params["forced_station"] = args.start_insert_station
+            env_cfg.events.reset_stroke.params["noise_rad"] = 0.0
+            env_cfg.events.grapple_latch = None
+            env_cfg.service_destination_channel_relief_m = (
+                insertion_reference.service_destination_channel_relief_m
+            )
+            env_cfg.configure_service_destination()
+            env_cfg.scene.robot.init_state.pos = insertion_reference.scene.robot.init_state.pos
+            env_cfg.scene.mount_anchor.init_state.pos = (
+                insertion_reference.scene.mount_anchor.init_state.pos
+            )
+            conditioned_state = {
+                "protocol": "insertion_condition_v1",
+                "station": args.start_insert_station,
+                "arm_joints": INSERT_STROKE_ARM_JOINT_POS[0][args.start_insert_station],
+                "blade_pose": INSERT_STROKE_BLADE_POSE[0][args.start_insert_station],
+                "noise_rad": 0.0,
+                "robot_root_pos": env_cfg.scene.robot.init_state.pos,
+                "destination_channel_relief_m": env_cfg.service_destination_channel_relief_m,
+            }
+            conditioned_state_sha256 = hashlib.sha256(
+                json.dumps(conditioned_state, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest()
+            print(
+                f"[INFO] Conditioned insertion station {args.start_insert_station}/{station_count - 1}; "
+                f"state={conditioned_state_sha256[:12]} controller={args.insert_controller}",
+                flush=True,
+            )
         if args.robot_base_x is not None or args.robot_base_y is not None:
             # **After configure_robustness, because it replaces scene.robot
             # wholesale**, which is the second of the three layers of the
@@ -5212,8 +5300,8 @@ def main() -> dict[str, object]:
         # generous enough to hide an overrun. It is also what makes a many-seed
         # sweep affordable: an install that finishes at 14 s no longer idles to
         # 45 s before its environment resets.
-        phases = [CAPTURE, SEAT]
-        if args.workflow != "install":
+        phases = [INSERT] if args.start_insert_station is not None else [CAPTURE, SEAT]
+        if args.start_insert_station is None and args.workflow != "install":
             phases.append(EXTRACT)
         # Every workflow that flies the module anywhere needs the transit in its
         # episode, and the relocation was missing from this list -- so its
@@ -5235,15 +5323,15 @@ def main() -> dict[str, object]:
         # along the pull axis at 0.24 m/s and 220 mm across it at 0.12 m/s, so
         # the planned path is 734 mm and about 4.0 s of pure travel. The margin
         # is for closed-loop tracking, not for the distance.
-        if args.workflow == "relocate":
+        if args.start_insert_station is None and args.workflow == "relocate":
             phases.append(TRANSIT)
-        if args.workflow != "remove":
+        if args.start_insert_station is None and args.workflow != "remove":
             phases.append(INSERT)
         budget = sum(
             PHASE_BUDGET_S[index] * (args.transit_slowdown if index == TRANSIT and args.workflow != "relocate" else 1)
             for index in phases
         )
-        if args.workflow != "remove":
+        if args.start_insert_station is None and args.workflow != "remove":
             # The scripted realign runs inside the seat phase, so it is not in
             # PHASE_BUDGET_S and has to be added to the episode explicitly.
             budget += ALIGN_STEPS / 30.0
@@ -5324,7 +5412,10 @@ def main() -> dict[str, object]:
             robot_rail_enabled=args.robot_rail_on_relocation,
             robot_rail_step_m=args.robot_rail_step_m,
             insert_controller=args.insert_controller,
+            insert_only=args.start_insert_station is not None,
         )
+        if args.start_insert_station is not None:
+            driver.reset_envs(torch.arange(task.num_envs, device=task.device), 0)
         collecting = args.episodes > 0
         recorder = TerminalEpisodeRecorder(WORKFLOW_METRIC_FIELDS) if collecting else None
         clock = {"step": 0}
@@ -5407,10 +5498,20 @@ def main() -> dict[str, object]:
         # and produced no file at all, because a dict literal below was missing
         # a workflow key -- and a diagnostic that is thrown away when something
         # else goes wrong is a diagnostic that is missing when it is needed.
+        chain_handoff_sha256 = None
         if args.handoff_trace is not None:
             args.handoff_trace.parent.mkdir(parents=True, exist_ok=True)
             trace = driver.trace_npz()
             np.savez_compressed(args.handoff_trace, **trace)
+            handoff_fields = tuple(str(name) for name in trace["handoff_fields"])
+            insertion_rows = trace["handoff"][
+                trace["handoff"][:, handoff_fields.index("to_phase")] == INSERT
+            ]
+            if insertion_rows.shape[0]:
+                digest = hashlib.sha256()
+                digest.update(json.dumps(handoff_fields, separators=(",", ":")).encode())
+                digest.update(np.ascontiguousarray(insertion_rows, dtype="<f8").tobytes())
+                chain_handoff_sha256 = digest.hexdigest()
             print(
                 f"[INFO] Wrote {args.handoff_trace}: "
                 f"{trace['handoff'].shape[0]} hand-offs, {trace['transit'].shape[0]} transit samples, "
@@ -5428,10 +5529,65 @@ def main() -> dict[str, object]:
         # The same condition ``WorkflowDriver.rigid_transit`` is built from, and
         # the one that selects ``_step_guarded_insert`` over the learned policy.
         guarded_insert = (
-            args.workflow == "relocate"
-            and args.latch_on_release
-            and not args.base_rail_on_relocation
-            and args.insert_controller == "guarded"
+            args.start_insert_station is not None
+            or (
+                args.workflow == "relocate"
+                and args.latch_on_release
+                and not args.base_rail_on_relocation
+            )
+        ) and args.insert_controller == "guarded"
+        insert_only = args.start_insert_station is not None
+        evaluation_condition = (
+            {
+                "protocol": "insertion_condition_v1",
+                "kind": "reset_station",
+                "station": args.start_insert_station,
+                "initial_state_sha256": conditioned_state_sha256,
+                "deterministic_reset": True,
+                "certification": False,
+            }
+            if insert_only
+            else {
+                "protocol": "insertion_condition_v1",
+                "kind": "chain_handoff",
+                "station": None,
+                "initial_state_sha256": chain_handoff_sha256,
+                "deterministic_reset": False,
+                "certification": False,
+            }
+            if chain_handoff_sha256 is not None
+            else None
+        )
+        loaded_but_not_executed = []
+        if insert_only:
+            loaded_but_not_executed.extend(name for name in ("capture", "extract") if name in policies)
+        if guarded_insert and "insert" in policies:
+            loaded_but_not_executed.append("insert")
+        learned_phases = (
+            ([] if guarded_insert else ["insert"])
+            if insert_only
+            else {
+                "remove": ["capture", "extract"],
+                "install": ["capture", "insert"],
+                "relocate": (
+                    ["capture", "extract"] if guarded_insert or args.base_rail_on_relocation
+                    else ["capture", "extract", "insert"]
+                ),
+            }[args.workflow]
+        )
+        scripted_phases = (
+            (["guarded_insert"] if guarded_insert else [])
+            if insert_only
+            else ["seat"]
+            + (
+                ["payload_handoff", "shuttle_retreat", "cross_bay", "guarded_insert"]
+                if args.workflow == "relocate" and args.base_rail_on_relocation
+                else ["transit", "guarded_insert"]
+                if guarded_insert
+                else ["transit"]
+                if args.workflow == "relocate"
+                else []
+            )
         )
         result: dict[str, object] = {
             "task": args.task,
@@ -5440,9 +5596,11 @@ def main() -> dict[str, object]:
             "seed": args.seed,
             "num_envs": task.num_envs,
             "curriculum_stage": args.curriculum_stage,
+            "evaluation_condition": evaluation_condition,
             "checkpoints": {name: str(policy.path) for name, policy in policies.items()},
             "checkpoint_sha256": {name: policy.sha256 for name, policy in policies.items()},
             "policy_set_sha256": combined,
+            "source_revision": git_source_revision(PROJECT_ROOT),
             "runtime_source_bindings": [
                 {
                     "path": path.as_posix(),
@@ -5463,25 +5621,9 @@ def main() -> dict[str, object]:
             # honesty rests on, and it was reporting a policy certified at
             # 10.50% pooled and 0.00% in its near stage as the thing performing
             # the insertion in the video.
-            "loaded_but_not_executed_policies": (["insert"] if guarded_insert and "insert" in policies else []),
-            "learned_phases": {
-                "remove": ["capture", "extract"],
-                "install": ["capture", "insert"],
-                "relocate": (
-                    ["capture", "extract"] if guarded_insert or args.base_rail_on_relocation
-                    else ["capture", "extract", "insert"]
-                ),
-            }[args.workflow],
-            "scripted_phases": ["seat"]
-            + (
-                ["payload_handoff", "shuttle_retreat", "cross_bay", "guarded_insert"]
-                if args.workflow == "relocate" and args.base_rail_on_relocation
-                else ["transit", "guarded_insert"]
-                if guarded_insert
-                else ["transit"]
-                if args.workflow == "relocate"
-                else []
-            ),
+            "loaded_but_not_executed_policies": loaded_but_not_executed,
+            "learned_phases": learned_phases,
+            "scripted_phases": scripted_phases,
             # Whether the robot carried the module, as a number rather than as
             # a claim. Present on every workflow that has a transit, including
             # the payload-stage baseline, so the two can be read side by side
@@ -5496,6 +5638,7 @@ def main() -> dict[str, object]:
             # it, so a run that stopped short had to be diagnosed from a depth
             # and a tilt.
             "guarded_insertion": {
+                "executed": guarded_insert,
                 "controller": "scripted, bounded axial advance on the deployed estimate",
                 "axial_step_m": GUARDED_INSERT_AXIAL_STEP_M,
                 "lateral_tolerance_m": GUARDED_INSERT_LATERAL_TOLERANCE_M,
@@ -5859,14 +6002,21 @@ def main() -> dict[str, object]:
                                 "task": args.task,
                                 "seed": args.seed,
                                 "curriculum_stage": args.curriculum_stage,
+                                "controller": args.insert_controller,
+                                "evaluation_condition": evaluation_condition,
                                 "robustness_level": getattr(env_cfg, "robustness_level", None),
-                                "checkpoint": f"chained {args.workflow}: capture+extract+insert",
+                                "checkpoint": (
+                                    f"conditioned insert: {args.insert_controller}"
+                                    if args.start_insert_station is not None
+                                    else f"chained {args.workflow}: capture+extract+insert"
+                                ),
                                 # One digest over all three policies, so pooling
                                 # runs driven by different checkpoints fails loudly
                                 # in aggregate_evaluation.py exactly as it does for
                                 # a single skill.
                                 "checkpoint_sha256": combined,
                                 "checkpoints": {name: policy.sha256 for name, policy in policies.items()},
+                                "source_revision": git_source_revision(PROJECT_ROOT),
                                 "num_envs": task.num_envs,
                                 "contact_force_limit_n": None,
                                 "workflow": args.workflow,

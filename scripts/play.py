@@ -42,6 +42,17 @@ def _parser() -> argparse.ArgumentParser:
         help="Force an insertion evaluation stage: 0=near, 1=medium, 2=full distance.",
     )
     parser.add_argument(
+        "--reset_station",
+        type=int,
+        default=None,
+        help="Force one solved insertion-stroke station; omitted samples the training bank.",
+    )
+    parser.add_argument(
+        "--deterministic_reset",
+        action="store_true",
+        help="Remove reset joint noise. Required for exact paired initial-state comparisons.",
+    )
+    parser.add_argument(
         "--robustness_level",
         type=int,
         choices=range(5),
@@ -229,6 +240,12 @@ if args.steps < 0 or args.episodes < 0:
     parser.error("--steps and --episodes must be non-negative")
 if args.pose_noise_scale <= 0.0:
     parser.error("--pose_noise_scale must be positive")
+if args.reset_station is not None and args.reset_station < 0:
+    parser.error("--reset_station must be non-negative")
+if args.deterministic_reset and args.reset_station is None:
+    parser.error("--deterministic_reset requires --reset_station")
+if args.deterministic_reset and args.pose_noise_scale != 1.0:
+    parser.error("--deterministic_reset cannot be combined with --pose_noise_scale")
 if args.belief_bias_mm is not None and args.belief_bias_mm < 0.0:
     parser.error("--belief_bias_mm must be non-negative")
 if args.force_threshold_n is not None and args.force_threshold_n <= 0.0:
@@ -260,13 +277,17 @@ from isaaclab_tasks.utils import load_cfg_from_registry, parse_env_cfg
 import zero_g_blade_swap.tasks.blade_swap  # noqa: F401
 from zero_g_blade_swap.evaluation import (
     BLADE_MASS_FIELD,
+    RESET_STATION_FIELD,
     bucket_success_rates,
     group_rows,
     round_floats,
     summarize_terminal_episodes,
 )
+from zero_g_blade_swap.provenance import git_source_revision
 from zero_g_blade_swap.tasks.blade_swap.agents import register_rl_games_networks
 from zero_g_blade_swap.tasks.blade_swap.mdp.terminal_metrics import InsertionTerminalMetrics
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 # Tasks that expose cumulative robustness profiles and a mount-stability term.
@@ -433,6 +454,35 @@ def _apply_stress(env_cfg) -> dict[str, object]:
         trained_noise = (float(reset_stroke.params["noise_rad"]),)
     else:
         raise ValueError("this task has neither a reset_arm nor a reset_stroke term")
+    reset_station_count = None
+    initial_state_sha256 = None
+    if args.reset_station is not None:
+        if reset_stroke is None:
+            raise ValueError("--reset_station needs the insertion-stroke reset")
+        arm_bank = reset_stroke.params["arm_poses_by_bay"]
+        blade_bank = reset_stroke.params["blade_poses_by_bay"]
+        reset_station_count = len(arm_bank[0])
+        if args.reset_station >= reset_station_count:
+            raise ValueError(
+                f"--reset_station must be in [0, {reset_station_count - 1}] for this task"
+            )
+        reset_stroke.params["forced_station"] = args.reset_station
+        if args.deterministic_reset:
+            reset_stroke.params["noise_rad"] = 0.0
+        initial_state = {
+            "task": args.task,
+            "station": args.reset_station,
+            "arm_joints": arm_bank[0][args.reset_station],
+            "blade_pose": blade_bank[0][args.reset_station],
+            "noise_rad": float(reset_stroke.params["noise_rad"]),
+        }
+        initial_state_sha256 = hashlib.sha256(
+            json.dumps(initial_state, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        print(
+            f"[INFO] Reset station forced to {args.reset_station}/{reset_station_count - 1}; "
+            f"deterministic={args.deterministic_reset}"
+        )
     trained_mass = (
         tuple(env_cfg.events.blade_mass.params["mass_distribution_params"])
         if getattr(env_cfg.events, "blade_mass", None) is not None
@@ -468,6 +518,10 @@ def _apply_stress(env_cfg) -> dict[str, object]:
         "lead_in_present": _lead_in_present(env_cfg),
         "legacy_grip_ball_m": args.legacy_grip_ball_m,
         "legacy_unbounded_reset": bool(args.legacy_unbounded_reset),
+        "reset_station": args.reset_station,
+        "reset_station_count": reset_station_count,
+        "deterministic_reset": bool(args.deterministic_reset),
+        "initial_state_sha256": initial_state_sha256,
         "trained_blade_cross_section_m": None,
         "blade_cross_section_m": list(args.blade_cross_section) if args.blade_cross_section else None,
     }
@@ -572,6 +626,12 @@ def _terminal_metrics_report(
         }
     else:
         report["curriculum_stages_present"] = sorted(stages)
+    if RESET_STATION_FIELD in fields:
+        stations = group_rows(rows, RESET_STATION_FIELD, fields)
+        report["by_reset_station"] = {
+            str(station): summarize_terminal_episodes(block, fields, include_successful_metrics=False)
+            for station, block in stations.items()
+        }
     return report
 
 
@@ -922,6 +982,7 @@ def main() -> dict[str, object]:
             "task": args.task,
             "checkpoint": str(checkpoint),
             "checkpoint_sha256": hashlib.sha256(checkpoint.read_bytes()).hexdigest().upper(),
+            "source_revision": git_source_revision(PROJECT_ROOT),
             "device": rl_device,
             "gpu": device_description,
             "num_envs": args.num_envs,
@@ -933,6 +994,8 @@ def main() -> dict[str, object]:
             "minimum_success_rate": args.minimum_success_rate,
             "meets_threshold": meets_threshold,
             "curriculum_stage": args.curriculum_stage,
+            "reset_station": args.reset_station,
+            "initial_state_sha256": stress.get("initial_state_sha256"),
             "robustness_level": getattr(env_cfg, "robustness_level", None),
             "grasp_mode": (
                 "physical_contact"
@@ -969,9 +1032,12 @@ def main() -> dict[str, object]:
                     "task": args.task,
                     "seed": args.seed,
                     "curriculum_stage": args.curriculum_stage,
+                    "reset_station": args.reset_station,
+                    "initial_state_sha256": stress.get("initial_state_sha256"),
                     "robustness_level": getattr(env_cfg, "robustness_level", None),
                     "checkpoint": str(checkpoint),
                     "checkpoint_sha256": result["checkpoint_sha256"],
+                    "source_revision": result["source_revision"],
                     "num_envs": args.num_envs,
                     "contact_force_limit_n": result["contact_force_limit_n"],
                     "stress": stress,

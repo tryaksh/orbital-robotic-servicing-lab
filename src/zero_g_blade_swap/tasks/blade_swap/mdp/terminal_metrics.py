@@ -21,6 +21,7 @@ from zero_g_blade_swap.evaluation import (
     GRIP_OFFSET_THIRD_AXIS_FIELD,
     GRIP_YAW_CLOSING_AXIS_FIELD,
     PEAK_CONTACT_FORCE_FIELD,
+    RESET_STATION_FIELD,
     SUCCESS_TERMINATIONS,
     TERMINAL_METRIC_FIELDS,
     TERMINATION_PRIORITY,
@@ -62,6 +63,7 @@ class InsertionTerminalMetrics:
         # Only the pose-belief tasks carry a bias, and it is the swept axis, so
         # record what each episode actually ran at rather than trusting the flag.
         self._records_belief = getattr(env, "_belief_bias_magnitude_m", None) is not None
+        self._records_reset_station = getattr(env, "_insert_reset_station", None) is not None
         # A head-on capture is held a quarter turn from the top-down grasp
         # convention, so it needs the grapple grip metrics rather than the
         # secured-blade ones. One flag, read in both places that care.
@@ -73,6 +75,8 @@ class InsertionTerminalMetrics:
             fields = (*fields, PEAK_CONTACT_FORCE_FIELD, CONTACT_IMPULSE_FIELD)
         if self._records_belief:
             fields = (*fields, BELIEF_BIAS_FIELD)
+        if self._records_reset_station:
+            fields = (*fields, RESET_STATION_FIELD)
         # Opt-in, and only where a head-on capture makes the decomposition mean
         # anything. Default off so every certification already produced keeps
         # its exact column set and stays poolable with new runs.
@@ -155,6 +159,8 @@ class InsertionTerminalMetrics:
             columns.append(self._impulse)
         if self._records_belief:
             columns.append(belief_bias_magnitude(env).to(dtype=torch.float32))
+        if self._records_reset_station:
+            columns.append(env._insert_reset_station.to(dtype=torch.float32))
         if self._records_grip_axes:
             axes = grapple_grip_attitude_axes(env).to(dtype=torch.float32)
             columns.extend((axes[:, 0], axes[:, 1], axes[:, 2]))

@@ -1740,6 +1740,7 @@ def reset_grapple_insert_stroke(
     finger_positions: tuple[float, ...],
     hold_positions: tuple[float, ...],
     noise_rad: float = 0.010,
+    forced_station: int | None = None,
     blade_asset_cfg: SceneEntityCfg = SceneEntityCfg("spare_blade"),
 ) -> None:
     """Start an insertion anywhere along the stroke, already holding the module.
@@ -1785,7 +1786,18 @@ def reset_grapple_insert_stroke(
 
     arm_bank = robot.data.joint_pos.new_tensor(arm_poses_by_bay)
     blade_bank = blade.data.root_state_w.new_tensor(blade_poses_by_bay)
-    station = torch.randint(arm_bank.shape[1], (len(ids),), device=env.device)
+    station_count = arm_bank.shape[1]
+    if forced_station is None:
+        station = torch.randint(station_count, (len(ids),), device=env.device)
+    else:
+        if not 0 <= forced_station < station_count:
+            raise ValueError(f"forced insertion station must be in [0, {station_count - 1}]")
+        station = torch.full((len(ids),), forced_station, dtype=torch.long, device=env.device)
+    recorded_station = getattr(env, "_insert_reset_station", None)
+    if recorded_station is None or recorded_station.shape[0] != env.num_envs:
+        recorded_station = torch.full((env.num_envs,), -1, dtype=torch.long, device=env.device)
+        env._insert_reset_station = recorded_station
+    recorded_station[ids] = station
     nominal = arm_bank[bays, station]
     joints = nominal + (2.0 * torch.rand_like(nominal) - 1.0) * noise_rad
     robot.write_joint_state_to_sim(joints, torch.zeros_like(joints), joint_ids=asset_cfg.joint_ids, env_ids=ids)

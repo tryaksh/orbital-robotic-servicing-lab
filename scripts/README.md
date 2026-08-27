@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-81 scripts. Grouped by the verb their filename starts with.
+83 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -35,6 +35,7 @@ One stage per question. `run_robot_carried.sh` is the chain.
 | Script | What it is |
 | --- | --- |
 | `run_capture_alignment.sh` | Retrain capture against what the chain actually asks of it, then re-close. |
+| `run_conditioned_insertion.ps1` | Run paired learned/guarded insertion from every reset station and optional chain handoffs. |
 | `run_extract_settling.sh` | Pay the extract policy to arrive settled, which nothing ever did. |
 | `run_extract_settling_dose.sh` | Dose-response on the settling weight, to tell a trade from a threshold. |
 | `run_extract_unsaturated.sh` | Stop the attitude penalty switching itself off where it is needed. |
@@ -71,6 +72,7 @@ These read `.npz` episode metrics and write `evidence/*.json`.
 | --- | --- |
 | `report_attitude_wall_move.py` | Does the insert skill's attitude floor move with the channel throat? |
 | `report_chain_robustness.py` | Rank what breaks the chain, from the sweep's own per-episode rows. |
+| `report_conditioned_insertion.py` | Compare learned and guarded insertion on exactly paired initial conditions. |
 | `report_extract_attribution.py` | One table: what each change to the extract task was worth, on one policy. |
 | `report_insert_attitude.py` | Why the insert skill does not seat: attitude it cannot deliver, not creep. |
 | `report_insert_depth_limit.py` | Why the insert skill stops short: it is attitude again, one layer down. |
