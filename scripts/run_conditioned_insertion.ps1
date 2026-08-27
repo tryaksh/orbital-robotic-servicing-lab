@@ -74,6 +74,16 @@ function Invoke-ConditionedRun {
     if ($LASTEXITCODE -ne 0) {
         throw "Isaac run failed ($LASTEXITCODE): see $log"
     }
+    if (-not (Test-Path -LiteralPath $report -PathType Leaf)) {
+        throw "Isaac run wrote no report despite exit zero: see $log"
+    }
+    $runReport = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
+    if ($runReport.error) {
+        throw "Isaac run reported an internal failure despite exit zero: $($runReport.error); see $log"
+    }
+    if (-not (Test-Path -LiteralPath $metrics -PathType Leaf)) {
+        throw "Isaac run wrote no raw episode metrics despite exit zero: see $log"
+    }
     $rawRuns.Add($metrics)
 }
 

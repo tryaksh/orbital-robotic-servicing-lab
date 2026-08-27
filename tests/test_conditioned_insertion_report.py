@@ -100,5 +100,7 @@ def test_workflow_exposes_same_driver_paths_for_conditioned_stations() -> None:
     assert "insertion_reference = ZeroGBladeGrapplePinInsertTwoSlotEnvCfg()" in source
     assert 'env_cfg.events.reset_stroke.params["noise_rad"] = 0.0' in source
     assert "direct_insert = self.rigid_transit or self.insert_only" in source
+    assert "learned_insert_selected = not (" in source
+    assert "& learned_insert_selected" in source
     assert 'if direct_insert and self.insert_controller == "policy"' in source
     assert "elif direct_insert and bool(inserting.any())" in source

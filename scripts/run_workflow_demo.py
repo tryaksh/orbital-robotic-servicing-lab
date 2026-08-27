@@ -2161,12 +2161,18 @@ class WorkflowDriver:
         if bool(capturing.any()):
             command = self.policies["capture"].act(observations["grasp"])
             self.actions[capturing] = command[capturing]
+        learned_insert_selected = not (
+            (self.rigid_transit or self.insert_only) and self.insert_controller == "guarded"
+        )
         for name, group, mask in (
             ("extract", "extract", (phase == EXTRACT) & ~plan_blocked),
             (
                 "insert",
                 "insert",
-                (phase == INSERT) & ~plan_blocked & ~(self.payload_stage_engaged & self.base_rail_enabled),
+                (phase == INSERT)
+                & ~plan_blocked
+                & ~(self.payload_stage_engaged & self.base_rail_enabled)
+                & learned_insert_selected,
             ),
         ):
             if bool(mask.any()):

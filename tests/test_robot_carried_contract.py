@@ -33,6 +33,8 @@ def test_the_rigid_carry_path_is_selected_only_by_the_form_lock() -> None:
     assert "elif bool(transiting.any()):" in source
     assert "direct_insert = self.rigid_transit or self.insert_only" in source
     assert "elif direct_insert and bool(inserting.any()):" in source
+    assert "learned_insert_selected = not (" in source
+    assert "& learned_insert_selected" in source
     assert "elif bool(inserting.any()):" in source
 
 
