@@ -25,8 +25,8 @@ from zero_g_blade_swap.evaluation import (
     summarize_terminal_episodes,
 )
 
-PROTOCOL = "insertion_condition_v1"
-SCHEMA_VERSION = 1
+PROTOCOL = "insertion_condition_v2"
+SCHEMA_VERSION = 2
 CONTROLLERS = ("guarded", "policy")
 
 
@@ -67,6 +67,9 @@ def load_runs(paths: list[Path]) -> list[dict[str, Any]]:
             raise ValueError(f"{path} does not declare protocol {PROTOCOL}")
         if not condition.get("initial_state_sha256"):
             raise ValueError(f"{path} has no initial-state digest")
+        load_path = condition.get("load_path")
+        if not isinstance(load_path, dict) or not load_path.get("source"):
+            raise ValueError(f"{path} has no explicit load-path condition")
         controller = metadata.get("controller")
         if controller not in CONTROLLERS:
             raise ValueError(f"{path} controller must be one of {CONTROLLERS}, got {controller!r}")
@@ -175,6 +178,17 @@ def build_report(
         }
         if len(hashes) != 1:
             raise ValueError(f"controller arms for {key} did not start from the same state: {sorted(hashes)}")
+        load_paths = {
+            json.dumps(
+                arms[controller]["metadata"]["evaluation_condition"]["load_path"],
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            for controller in CONTROLLERS
+        }
+        if len(load_paths) != 1:
+            raise ValueError(f"controller arms for {key} did not use the same load path")
+        load_path_json = next(iter(load_paths))
         counts = {controller: _counts(arms[controller]) for controller in CONTROLLERS}
         guarded_rate = float(counts["guarded"]["success_rate"])
         policy_rate = float(counts["policy"]["success_rate"])
@@ -183,6 +197,8 @@ def build_report(
             {
                 "condition": {"kind": key[0], "station": key[1], "seed": key[2]},
                 "initial_state_sha256": next(iter(hashes)),
+                "load_path": json.loads(load_path_json),
+                "load_path_sha256": hashlib.sha256(load_path_json.encode()).hexdigest(),
                 "arms": {
                     controller: {
                         "raw_file": str(arms[controller]["path"]),
@@ -212,7 +228,13 @@ def build_report(
         "evidence_type": "paired_conditioned_insertion_controller_comparison",
         "protocol": {
             "name": PROTOCOL,
-            "paired_on": ["condition kind", "reset station when applicable", "seed", "initial-state SHA-256"],
+            "paired_on": [
+                "condition kind",
+                "reset station when applicable",
+                "seed",
+                "initial-state SHA-256",
+                "load-path SHA-256",
+            ],
             "same_success_predicate": True,
             "same_settling_check": True,
             "same_phase_budget": True,
@@ -235,6 +257,7 @@ def build_report(
         "scope_and_limitations": [
             "Simulation evidence only; no hardware contact or load qualification.",
             "Reset-station runs isolate insertion and are not end-to-end chain certificates.",
+            "Reset-station runs reproduce the delayed fixed-to-compliant load path configured by the v24 task.",
             "Chain-handoff pairing is valid only when each batch contains at most one episode per environment.",
             "Both winning and losing controller arms are retained in paired_conditions.",
         ],

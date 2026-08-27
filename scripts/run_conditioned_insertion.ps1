@@ -9,8 +9,8 @@ param(
     [int]$NumEnvs = 64,
     [int]$Episodes = 64,
     [switch]$IncludeChainHandoffs,
-    [string]$OutputRoot = "artifacts\conditioned-insertion\v1",
-    [string]$EvidencePath = "evidence\insertion_conditioned_controller_v1.json"
+    [string]$OutputRoot = "artifacts\conditioned-insertion\v2",
+    [string]$EvidencePath = "evidence\insertion_conditioned_controller_v2.json"
 )
 
 $ErrorActionPreference = "Stop"

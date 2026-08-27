@@ -762,7 +762,10 @@ if args.start_insert_station is not None:
     if args.curriculum_stage != 0:
         parser.error("--start_insert_station requires --curriculum_stage 0")
     if args.latch_on_release or args.base_rail_on_relocation or args.robot_rail_on_relocation:
-        parser.error("--start_insert_station compares pad-held insertion without latch or rail options")
+        parser.error(
+            "--start_insert_station uses the insert task's reset load path and forbids "
+            "workflow latch or rail overrides"
+        )
 if args.video or "Vision" in args.task:
     # The vision profile renders a camera and drives Replicator randomizers, and
     # both need the rendering extensions up before the app launches. Without
@@ -5128,6 +5131,7 @@ def main() -> dict[str, object]:
         env_cfg.base_rail_enabled = args.base_rail_on_relocation
         env_cfg.configure_robustness(0)
         conditioned_state_sha256 = None
+        conditioned_load_path = None
         if args.start_insert_station is not None:
             station_count = len(INSERT_STROKE_ARM_JOINT_POS[0])
             if args.start_insert_station >= station_count:
@@ -5142,23 +5146,50 @@ def main() -> dict[str, object]:
             env_cfg.events = insertion_reference.events
             env_cfg.events.reset_stroke.params["forced_station"] = args.start_insert_station
             env_cfg.events.reset_stroke.params["noise_rad"] = 0.0
-            env_cfg.events.grapple_latch = None
+            if env_cfg.events.grapple_latch is None:
+                raise RuntimeError("the v24 insertion reference has no grapple-latch reset load path")
+            # Fixed release and D6 mating joints are procedurally authored per
+            # environment. Copy both assets and the non-replicated scene mode
+            # from the task rather than merely copying its event term: a latch
+            # flag without its physical joints is not the state v24 saw.
+            env_cfg.scene.replicate_physics = insertion_reference.scene.replicate_physics
+            env_cfg.scene.clone_in_fabric = insertion_reference.scene.clone_in_fabric
+            env_cfg.scene.release_latch_joint = insertion_reference.scene.release_latch_joint
+            env_cfg.scene.mating_compliance_joint = insertion_reference.scene.mating_compliance_joint
             env_cfg.service_destination_channel_relief_m = (
                 insertion_reference.service_destination_channel_relief_m
             )
             env_cfg.configure_service_destination()
-            env_cfg.scene.robot.init_state.pos = insertion_reference.scene.robot.init_state.pos
-            env_cfg.scene.mount_anchor.init_state.pos = (
-                insertion_reference.scene.mount_anchor.init_state.pos
-            )
+            env_cfg.scene.robot = insertion_reference.scene.robot
+            env_cfg.scene.mount_anchor = insertion_reference.scene.mount_anchor
+            latch_params = env_cfg.events.grapple_latch.params
+            mating_spawn = env_cfg.scene.mating_compliance_joint.spawn
+            conditioned_load_path = {
+                "source": "ZeroGBladeGrapplePinInsertTwoSlotEnvCfg",
+                "joint_mode": latch_params["joint_mode"],
+                "engage_after_steps": latch_params["engage_after_steps"],
+                "soften_on_engage": latch_params["soften_on_engage"],
+                "require_armed": latch_params["require_armed"],
+                "rated_force_n": latch_params["rated_force_n"],
+                "rated_torque_nm": latch_params["rated_torque_nm"],
+                "mating_force_cap_n": latch_params["mating_force_cap_n"],
+                "mating_torque_cap_nm": latch_params["mating_torque_cap_nm"],
+                "mating_translation_stiffness_n_per_m": mating_spawn.translation_stiffness,
+                "mating_rotation_stiffness_nm_per_rad": mating_spawn.rotation_stiffness,
+                "mating_translation_limit_m": mating_spawn.translation_limit,
+                "mating_rotation_limit_deg": mating_spawn.rotation_limit_deg,
+                "scene_replication": env_cfg.scene.replicate_physics,
+                "clone_in_fabric": env_cfg.scene.clone_in_fabric,
+            }
             conditioned_state = {
-                "protocol": "insertion_condition_v1",
+                "protocol": "insertion_condition_v2",
                 "station": args.start_insert_station,
                 "arm_joints": INSERT_STROKE_ARM_JOINT_POS[0][args.start_insert_station],
                 "blade_pose": INSERT_STROKE_BLADE_POSE[0][args.start_insert_station],
                 "noise_rad": 0.0,
                 "robot_root_pos": env_cfg.scene.robot.init_state.pos,
                 "destination_channel_relief_m": env_cfg.service_destination_channel_relief_m,
+                "load_path": conditioned_load_path,
             }
             conditioned_state_sha256 = hashlib.sha256(
                 json.dumps(conditioned_state, sort_keys=True, separators=(",", ":")).encode()
@@ -5545,19 +5576,34 @@ def main() -> dict[str, object]:
         insert_only = args.start_insert_station is not None
         evaluation_condition = (
             {
-                "protocol": "insertion_condition_v1",
+                "protocol": "insertion_condition_v2",
                 "kind": "reset_station",
                 "station": args.start_insert_station,
                 "initial_state_sha256": conditioned_state_sha256,
+                "load_path": conditioned_load_path,
                 "deterministic_reset": True,
                 "certification": False,
             }
             if insert_only
             else {
-                "protocol": "insertion_condition_v1",
+                "protocol": "insertion_condition_v2",
                 "kind": "chain_handoff",
                 "station": None,
                 "initial_state_sha256": chain_handoff_sha256,
+                "load_path": {
+                    "source": "workflow_chain_handoff",
+                    "joint_mode": args.latch_joint_mode if args.latch_on_release else None,
+                    "mating_mode": args.mating_mode if args.latch_on_release else None,
+                    "rated_force_n": args.latch_rated_force_n if args.latch_on_release else None,
+                    "rated_torque_nm": args.latch_rated_torque_nm if args.latch_on_release else None,
+                    "mating_force_cap_n": args.mating_force_cap_n if args.latch_on_release else None,
+                    "position_stiffness_n_per_m": (
+                        args.latch_position_stiffness_n_per_m if args.latch_on_release else None
+                    ),
+                    "rotation_stiffness_nm_per_rad": (
+                        args.latch_rotation_stiffness_nm_per_rad if args.latch_on_release else None
+                    ),
+                },
                 "deterministic_reset": False,
                 "certification": False,
             }
@@ -5829,6 +5875,41 @@ def main() -> dict[str, object]:
                 ),
             },
         }
+        if insert_only and conditioned_load_path is not None:
+            # The station protocol owns its load path through the insertion
+            # task, not through --latch_on_release. Report the controller's
+            # actual mechanism rather than falling through to the workflow
+            # flag's "friction only" label.
+            result["capture_interface"].update(
+                {
+                    "type": "task_reset_fixed_to_compliant_form_lock",
+                    "engagement": (
+                        f"after_{conditioned_load_path['engage_after_steps']}_control_steps_"
+                        "then_softened_on_engage"
+                    ),
+                    "rated_force_n": conditioned_load_path["rated_force_n"],
+                    "rated_torque_nm": conditioned_load_path["rated_torque_nm"],
+                    "position_stiffness_n_per_m": conditioned_load_path[
+                        "mating_translation_stiffness_n_per_m"
+                    ],
+                    "rotation_stiffness_nm_per_rad": conditioned_load_path[
+                        "mating_rotation_stiffness_nm_per_rad"
+                    ],
+                    "reaction_wrench_on_robot_modelled": True,
+                    "states": ["delayed_rigid_engagement", "compliant_for_mating"],
+                    "mating_mode": "compliant",
+                    "mating_compliance_n_per_m": conditioned_load_path[
+                        "mating_translation_stiffness_n_per_m"
+                    ],
+                    "mating_compliance_nm_per_rad": conditioned_load_path[
+                        "mating_rotation_stiffness_nm_per_rad"
+                    ],
+                    "mating_stroke_m": conditioned_load_path["mating_translation_limit_m"],
+                    "mating_force_cap_n": conditioned_load_path["mating_force_cap_n"],
+                    "destination_channel_relief_m": env_cfg.service_destination_channel_relief_m,
+                    "load_measurement": "joint_constraint_without_reaction_wrench_telemetry",
+                }
+            )
         result["capture_interface"]["observed_per_environment"] = [
             {
                 "env": index,

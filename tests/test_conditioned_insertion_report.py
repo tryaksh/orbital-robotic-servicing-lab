@@ -44,6 +44,12 @@ def _run(controller: str, station: int, seed: int, successes: int, digest: str |
                 "kind": "reset_station",
                 "station": station,
                 "initial_state_sha256": digest or f"state-{station}",
+                "load_path": {
+                    "source": "ZeroGBladeGrapplePinInsertTwoSlotEnvCfg",
+                    "joint_mode": "fixed",
+                    "engage_after_steps": 5,
+                    "soften_on_engage": True,
+                },
             },
             "source_revision": {"available": True, "commit": "a" * 40, "dirty": False},
             "checkpoints": {"insert": "B" * 64} if controller == "policy" else {},
@@ -79,6 +85,15 @@ def test_report_rejects_mismatched_states_and_missing_arms() -> None:
         REPORT.build_report([_run("policy", 0, 1070, 4)])
 
 
+def test_report_rejects_mismatched_load_paths() -> None:
+    guarded = _run("guarded", 0, 1070, 4)
+    policy = _run("policy", 0, 1070, 4)
+    policy["metadata"]["evaluation_condition"]["load_path"]["engage_after_steps"] = 0
+
+    with pytest.raises(ValueError, match="same load path"):
+        REPORT.build_report([guarded, policy])
+
+
 def test_loader_rejects_dirty_provenance(tmp_path: Path) -> None:
     path = tmp_path / "dirty.npz"
     metadata = _run("policy", 0, 1070, 4)["metadata"]
@@ -99,6 +114,11 @@ def test_workflow_exposes_same_driver_paths_for_conditioned_stations() -> None:
     assert '"--start_insert_station"' in source
     assert "insertion_reference = ZeroGBladeGrapplePinInsertTwoSlotEnvCfg()" in source
     assert 'env_cfg.events.reset_stroke.params["noise_rad"] = 0.0' in source
+    assert "env_cfg.events.grapple_latch = None" not in source
+    assert "env_cfg.scene.release_latch_joint = insertion_reference.scene.release_latch_joint" in source
+    assert "env_cfg.scene.mating_compliance_joint = insertion_reference.scene.mating_compliance_joint" in source
+    assert '"load_path": conditioned_load_path' in source
+    assert '"type": "task_reset_fixed_to_compliant_form_lock"' in source
     assert "direct_insert = self.rigid_transit or self.insert_only" in source
     assert "learned_insert_selected = not (" in source
     assert "& learned_insert_selected" in source
