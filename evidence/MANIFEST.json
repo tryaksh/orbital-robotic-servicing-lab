@@ -8,7 +8,7 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 26,
+    "canonical": 27,
     "retracted": 8,
     "historical": 137
   },
@@ -205,6 +205,12 @@
       "title": "Robot-side service latch clearance, derived from the measured gripper envelope",
       "evidence_type": "geometric_derivation_no_simulator",
       "holds_up": "The form lock's clearances, derived from the measured gripper envelope."
+    },
+    "serviceability_boundary_validation_v1.json": {
+      "title": "Serviceability boundary validation against simulation",
+      "evidence_type": "analytical_boundary_against_simulation",
+      "generated_utc": "2026-08-27T01:13:24.458530+00:00",
+      "holds_up": "The current fail-closed boundary result: entry attitude supported; five dimensions unresolved or contradicted."
     },
     "workcell_geometry_check.json": {
       "title": "Where the arm stands, what authority it has there, and what the channel admits",

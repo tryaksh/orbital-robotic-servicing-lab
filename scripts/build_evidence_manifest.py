@@ -148,6 +148,10 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "robot_carried_full_chain_c11065.json",
         "One end-to-end run of that chain -- and the first report here whose source bindings all recover from git.",
     ),
+    (
+        "serviceability_boundary_validation_v1.json",
+        "The current fail-closed boundary result: entry attitude supported; five dimensions unresolved or contradicted.",
+    ),
 )
 
 
