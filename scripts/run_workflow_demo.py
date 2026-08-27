@@ -1019,6 +1019,11 @@ WORKFLOW_METRIC_FIELDS = (
     "grip_attitude_rad",
     "predicate_fired",
     "all_conditions_after_settling",
+    # Per-episode proof that a configured load path actually became the load
+    # path. Configuration alone cannot distinguish an exercised mechanism from
+    # an event that never qualified.
+    "latch_engaged_in_episode",
+    "latch_compliant_in_episode",
     # What the estimator was actually wrong by, averaged and at its worst over
     # the episode. Without this a vision arm can only be diagnosed by inference:
     # the two-bay camera arm collapsed to 25.00% on one seed of three and the
@@ -1432,6 +1437,9 @@ class WorkflowDriver:
         # this accumulator the report would say "never engaged" precisely when
         # the terminal run is the one we need to inspect.
         self.latch_ever_engaged = torch.zeros(count, dtype=torch.bool, device=device)
+        self.latch_ever_softened = torch.zeros(count, dtype=torch.bool, device=device)
+        self.episode_latch_engaged = torch.zeros(count, dtype=torch.bool, device=device)
+        self.episode_latch_softened = torch.zeros(count, dtype=torch.bool, device=device)
         #: Whether the driver commanded the form lock to let go, and when. A
         #: latch that is never released is a weld, and the report has to be able
         #: to tell the two apart.
@@ -1599,6 +1607,8 @@ class WorkflowDriver:
         self.latch_released_at[env_ids] = -1
         self.latch_softened[env_ids] = False
         self.latch_softened_at[env_ids] = -1
+        self.episode_latch_engaged[env_ids] = False
+        self.episode_latch_softened[env_ids] = False
         self.gripper_released[env_ids] = False
         self.gripper_released_at[env_ids] = -1
         self.transit_reference_pos_tool[env_ids] = 0.0
@@ -1901,6 +1911,15 @@ class WorkflowDriver:
             newly_observed
         ]
         self.latch_ever_engaged |= engaged
+        self.episode_latch_engaged |= engaged
+        compliant = latch["compliant"]
+        newly_compliant = compliant & ~self.latch_softened
+        self.latch_softened_at[newly_compliant & (self.latch_softened_at < 0)] = (
+            self.task.episode_length_buf[newly_compliant & (self.latch_softened_at < 0)].to(torch.long)
+        )
+        self.latch_softened |= compliant
+        self.latch_ever_softened |= compliant
+        self.episode_latch_softened |= compliant
         self.latch_seek_travel_m[newly_observed] = latch["seek_travel_m"][newly_observed]
         self.latch_seek_refusals = torch.maximum(self.latch_seek_refusals, latch["seek_refusals"])
         self.latch_max_position_error_m = torch.maximum(self.latch_max_position_error_m, latch["max_position_error_m"])
@@ -4739,6 +4758,8 @@ class WorkflowDriver:
             "grip_attitude_rad": grip_attitude.to(torch.float64),
             "predicate_fired": self.predicate_fired.to(torch.float64),
             "all_conditions_after_settling": self.all_conditions.to(torch.float64),
+            "latch_engaged_in_episode": self.episode_latch_engaged.to(torch.float64),
+            "latch_compliant_in_episode": self.episode_latch_softened.to(torch.float64),
             "perceived_error_mean_m": self.perceived_error_sum / self.perceived_error_steps.clamp_min(1.0),
             "perceived_error_max_m": self.perceived_error_max,
         }
@@ -5919,9 +5940,9 @@ def main() -> dict[str, object]:
                     if bool(driver.latch_ever_engaged[index])
                     else None
                 ),
-                "softened_for_mating": bool(driver.latch_softened[index]),
+                "softened_for_mating": bool(driver.latch_ever_softened[index]),
                 "softened_at_driver_step": (
-                    int(driver.latch_softened_at[index]) if bool(driver.latch_softened[index]) else None
+                    int(driver.latch_softened_at[index]) if bool(driver.latch_ever_softened[index]) else None
                 ),
                 "released_after_seating": bool(driver.latch_released[index]),
                 "hand_opened_after_settling_verification": bool(driver.gripper_released[index]),

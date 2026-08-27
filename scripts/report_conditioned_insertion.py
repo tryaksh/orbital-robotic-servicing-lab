@@ -103,7 +103,7 @@ def _condition_key(run: dict[str, Any]) -> tuple[str, int | None, int]:
 
 def _counts(run: dict[str, Any]) -> dict[str, Any]:
     summary = summarize_terminal_episodes(run["rows"], run["fields"], include_successful_metrics=False)
-    return {
+    counts = {
         key: summary[key]
         for key in (
             "episodes",
@@ -116,6 +116,15 @@ def _counts(run: dict[str, Any]) -> dict[str, Any]:
             "non_finite_metric_episodes",
         )
     }
+    field_index = {name: index for index, name in enumerate(run["fields"])}
+    for field, output in (
+        ("latch_engaged_in_episode", "episodes_with_latch_engaged"),
+        ("latch_compliant_in_episode", "episodes_with_latch_compliant"),
+    ):
+        if field not in field_index:
+            raise ValueError(f"{run['path']} is missing required load-path field {field}")
+        counts[output] = int((run["rows"][:, field_index[field]] > 0.5).sum())
+    return counts
 
 
 def _pooled_counts(runs: list[dict[str, Any]]) -> dict[str, Any]:

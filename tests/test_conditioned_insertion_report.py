@@ -31,11 +31,16 @@ def _rows(successes: int, episodes: int = 4) -> np.ndarray:
 
 
 def _run(controller: str, station: int, seed: int, successes: int, digest: str | None = None):
+    fields = (*TERMINAL_METRIC_FIELDS, "latch_engaged_in_episode", "latch_compliant_in_episode")
+    rows = np.zeros((4, len(fields)), dtype=np.float64)
+    rows[:, : len(TERMINAL_METRIC_FIELDS)] = _rows(successes)
+    rows[:, fields.index("latch_engaged_in_episode")] = 1.0
+    rows[:, fields.index("latch_compliant_in_episode")] = 1.0
     return {
         "path": Path(f"{controller}_{station}_{seed}.npz"),
         "file_sha256": controller.upper(),
-        "fields": TERMINAL_METRIC_FIELDS,
-        "rows": _rows(successes),
+        "fields": fields,
+        "rows": rows,
         "metadata": {
             "seed": seed,
             "controller": controller,
@@ -100,8 +105,8 @@ def test_loader_rejects_dirty_provenance(tmp_path: Path) -> None:
     metadata["source_revision"]["dirty"] = True
     np.savez_compressed(
         path,
-        rows=_rows(4),
-        fields=np.asarray(TERMINAL_METRIC_FIELDS),
+        rows=_run("policy", 0, 1070, 4)["rows"],
+        fields=np.asarray(_run("policy", 0, 1070, 4)["fields"]),
         metadata=np.asarray(json.dumps(metadata)),
     )
 
@@ -119,6 +124,8 @@ def test_workflow_exposes_same_driver_paths_for_conditioned_stations() -> None:
     assert "env_cfg.scene.mating_compliance_joint = insertion_reference.scene.mating_compliance_joint" in source
     assert '"load_path": conditioned_load_path' in source
     assert '"type": "task_reset_fixed_to_compliant_form_lock"' in source
+    assert '"latch_engaged_in_episode"' in source
+    assert '"latch_compliant_in_episode"' in source
     assert "direct_insert = self.rigid_transit or self.insert_only" in source
     assert "learned_insert_selected = not (" in source
     assert "& learned_insert_selected" in source
