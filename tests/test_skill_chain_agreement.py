@@ -19,7 +19,6 @@ What the insert skill trained on, against what the chain ran it in, before
 | Channel a run is built with | doubled the relief when a caller re-selected the level | applied once |
 | Module at reset | one pose, 362 mm from the hand-off | at the mouth |
 | Seated goal | 0.75 m in bay 1 | 0.676 m, the depth release permits |
-| Axial action scale | 45 mm/s, sized for 167 mm | the same field, sized for 529 mm |
 
 The bay's own configuration function records what the first four of those cost:
 a module delivered from outside "cocked to 36 mrad, exactly the 2c/L the channel
@@ -28,9 +27,13 @@ every mating variant tried". The skill was being asked for something the geometr
 forbids, which is why it certified at 0.00% while holding the grip perfectly.
 
 All eight are equal now. The load path was the last, and closing it moved the
-median shortfall from 202.2 mm to 98.6 mm; the ninth row above was found while
-closing it, and is the reason the skill's training rack and its certification
-rack are now the same rack.
+median shortfall from 202.2 mm to 98.6 mm.
+
+A separate defect affected both sides equally: InsertActionsCfg specified the
+120 mm/s controller sized for the 529 mm stroke, but the task never assigned
+that field and silently inherited capture's old 45 mm/s controller. Since the
+chain correctly reads the task field, it inherited the same wrong value. The
+contract below now checks both the shared read and the task assignment.
 
 These are source-level assertions on purpose: they run in CI with no GPU and no
 simulator, which is this repository's rule for anything that has to keep being
@@ -214,6 +217,27 @@ def test_the_chain_reads_each_skills_own_scale_and_clock() -> None:
     assert "def certified_episode_length_s" in workflow
     driver = DRIVER.read_text(encoding="utf-8")
     assert "INSERT_ACTION_SCALE," in driver
+
+
+def test_insertion_installs_its_own_action_configuration() -> None:
+    """The long-stroke controller must not silently inherit capture's scale.
+
+    InsertActionsCfg was defined at 4 mm/control-step for the 529 mm stroke, but
+    the insertion task omitted the dataclass field override and therefore ran
+    GrapplePinActionsCfg at 1.5 mm/control-step. Extraction already makes this
+    assignment explicitly. Pin both declarations so a tuned action set cannot
+    become dead configuration again.
+    """
+
+    grapple = _read("grapple_pin_env_cfg.py")
+    insert_actions = grapple.split("class InsertActionsCfg", 1)[1].split(
+        "class InsertStrokeEventsCfg", 1
+    )[0]
+    insert_task = grapple.split("class ZeroGBladeGrapplePinInsertEnvCfg", 1)[1].split(
+        "class ZeroGBladeGrapplePinGraspPlayEnvCfg", 1
+    )[0]
+    assert "scale=(0.004, 0.00075, 0.00075, 0.006, 0.006, 0.006)" in insert_actions
+    assert "actions: InsertActionsCfg = InsertActionsCfg()" in insert_task
 
 
 def test_extraction_agrees_with_the_chain_and_is_the_reason_it_works() -> None:

@@ -1335,6 +1335,13 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
     """
 
     observations: InsertObservationsCfg = InsertObservationsCfg()
+    # Install the insertion controller declared above. Without this override the
+    # class silently inherited GrapplePinActionsCfg from capture, so every
+    # insertion run used the old 1.5 mm/control-step axial scale while this
+    # task's 529 mm stroke, reward balance and 30 s budget were designed around
+    # InsertActionsCfg's 4.0 mm/control-step scale. Extraction explicitly
+    # installs its own action set; insertion must do the same.
+    actions: InsertActionsCfg = InsertActionsCfg()
     events: ExtractEventsCfg = ExtractEventsCfg()
     rewards: InsertRewardsCfg = InsertRewardsCfg()
     terminations: InsertTerminationsCfg = InsertTerminationsCfg()
