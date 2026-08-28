@@ -24,10 +24,12 @@ from zero_g_blade_swap.evaluation import (
     round_floats,
     summarize_terminal_episodes,
 )
+from zero_g_blade_swap.provenance import git_source_revision
 
 PROTOCOL = "insertion_condition_v2"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 CONTROLLERS = ("guarded", "policy")
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -114,6 +116,7 @@ def _counts(run: dict[str, Any]) -> dict[str, Any]:
             "instability_terminations",
             "safety_abort_terminations",
             "non_finite_metric_episodes",
+            "terminal_metrics",
         )
     }
     field_index = {name: index for index, name in enumerate(run["fields"])}
@@ -275,7 +278,13 @@ def build_report(
 
 def main() -> int:
     args = _parser().parse_args()
+    aggregation_source = git_source_revision(ROOT)
+    if not aggregation_source.get("available") or not aggregation_source.get("commit"):
+        raise SystemExit("cannot identify the aggregation source revision")
+    if aggregation_source.get("dirty") is not False:
+        raise SystemExit("refusing to aggregate evidence from a dirty tracked worktree")
     report = build_report(load_runs(args.runs), args.expected_policy_sha256)
+    report["aggregation_source_revision"] = aggregation_source
     report["generated_utc"] = datetime.now(UTC).replace(microsecond=0).isoformat()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(round_floats(report), indent=2) + "\n", encoding="utf-8")

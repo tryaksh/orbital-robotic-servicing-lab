@@ -73,6 +73,8 @@ def test_report_keeps_each_losing_arm_and_applies_every_condition_rule() -> None
 
     assert [row["losing_arm"] for row in report["paired_conditions"]] == ["policy", "guarded"]
     assert all(set(row["arms"]) == {"guarded", "policy"} for row in report["paired_conditions"])
+    assert "axial_error_m" in report["paired_conditions"][0]["arms"]["policy"]["terminal_metrics"]
+    assert report["paired_conditions"][0]["arms"]["policy"]["terminal_metrics"]["axial_error_m"]["count"] == 4
     assert report["overall"]["by_controller"]["guarded"]["episodes"] == 8
     assert report["decision"]["policy_not_worse_on_every_paired_condition_and_pooled"] is False
     assert report["decision"]["recommended_controller"] == "guarded"
