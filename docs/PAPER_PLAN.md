@@ -131,14 +131,14 @@ every paired condition and is not worse pooled. Both arms remain in the JSON.
 | E0 | CPU geometry currency | current constants vs preserved simulator configurations | 8 recorded configurations plus exact queried geometry | passes |
 | E1 | Rack clearance | 6 mm, 11.065 mm nominal, 16 mm; then bracket 10.350 and 11.781 mm bounds on both sides | existing 16/arm is diagnostic; qualification target 3 seeds × 32/arm | mismatch; retain all three arms |
 | E2 | Module section | 120×16, 130×20 nominal, 140×26 mm; add near-boundary sections selected by the closed form | existing 16/arm is diagnostic; qualification target 3×32/arm | one outside arm supports, one contradicts |
-| E3 | Robot base | nominal, x = −0.70 m, y = nominal +10 mm; bracket the base-y failure | 3×32/arm | x supported; y analytical arm missing |
+| E3 | Robot base | nominal, x = −0.70 m, y = nominal +10 mm; bracket the base-y failure | 3×32/arm | +10 mm is analytically feasible but has a separated simulation loss: mismatch |
 | E4 | Entry attitude | recorded relief sweep and unchanged-checkpoint throat intervention | preserve existing arms; repeat on 3 seeds for qualification | supported in simulation only |
 | E5 | Capture geometry/load | analytical latch clearances, contact-enabled axial/lateral/moment pull, pad-only control | 3 seeds × 32 in simulation; 3 specimens × 10 cycles/direction on rig | analytical only; hardware absent |
 | E6 | Load-path type | rigid and compliant form lock on identical state digests and seeds | 3×32/arm with reaction-load telemetry | existing arms are unpaired and idealized |
 | E7 | Base compliance | fixed root control and compliant mount connected in the articulation load path | 3×32/arm; sweep derived stiffness/damping, not arbitrary wobble | excluded: current root is fixed |
-| H0 | Reset stations | stations 0–8 × seeds 1070/2070/3070 × guarded/v24 | 64 episodes per arm, 3,456 total | runner implemented; one station-8 diagnostic pair only |
-| H1 | Real chain handoffs | seeds 4070/5070/6070 × guarded/v24 | 32 episodes per arm, 192 total | runner implemented; full matrix pending |
-| H2 | Certificate agreement | isolated v24 certificate versus H0/H1 | report all strata and pooled | pending H0/H1 |
+| H0 | Reset stations | stations 0–8 × seeds 1070/2070/3070 × guarded/v24 | 64 episodes per arm, 3,456 total | complete: v24 786/1,728, guarded 0/1,728; v24 is zero at stations 0–3 |
+| H1 | Real chain handoffs | seeds 4070/5070/6070 × guarded/v24 | 32 episodes per arm, 192 total | complete: guarded 94/96, v24 0/96 |
+| H2 | Certificate agreement | isolated v24 certificate versus H0/H1 | report all strata and pooled | complete: isolated pooled success does not predict the caller's state |
 
 The minimum physical test is an instrumented capture-interface coupon, not a
 full orbital mock-up: three independently assembled specimens, ten
@@ -150,16 +150,22 @@ stand in for this measurement.
 ## Evidence and commands
 
 The current boundary result is
-`evidence/serviceability_boundary_validation_v1.json`: `not_qualified`. Only
+`evidence/serviceability_boundary_validation_v2.json`: `not_qualified`. Only
 entry attitude is supported; rack clearance and module section mismatch, base
-offset is partial, capture is analytical-only, and load-path evidence is
+offset also mismatches, capture is analytical-only, and load-path evidence is
 idealized/unpaired. This negative result is the starting state, not a gate to
 reinterpret.
+
+The completed controller comparison is
+`evidence/insertion_conditioned_controller_v3.json`. Its raw simulations are
+bound to clean commit `daa53d6` and its aggregation to clean commit `e6d841d`.
+The 27 reset pairs and three chain-handoff pairs retain both controllers and
+their terminal physical errors.
 
 CPU checks:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/validate_serviceability_boundary.py --output evidence/serviceability_boundary_validation_v1.json
+.\.venv\Scripts\python.exe scripts/validate_serviceability_boundary.py --output <new-versioned-evidence-path>
 .\.venv\Scripts\python.exe scripts/build_evidence_manifest.py --check
 .\.venv\Scripts\python.exe -m pytest -m "not isaac and not camera and not benchmark"
 ```
@@ -172,8 +178,8 @@ available:
 
 ```powershell
 & .\scripts\run_conditioned_insertion.ps1 -IncludeChainHandoffs `
-  -OutputRoot artifacts\conditioned-insertion\v1 `
-  -EvidencePath evidence\insertion_conditioned_controller_v1.json
+  -OutputRoot artifacts\conditioned-insertion\reproduction `
+  -EvidencePath evidence\insertion_conditioned_controller_v4.json
 ```
 
 ## Evidence gates before writing
@@ -181,9 +187,8 @@ available:
 - [x] Core CI imports without optional FastAPI and the CPU suite passes.
 - [x] Boundary protocol, tolerances and losing-arm retention are executable and
   versioned.
-- [x] Reset-station and chain-handoff pairing code is implemented and has passed
-  an Isaac station-8 end-to-end smoke test.
-- [ ] H0 and H1 complete on a clean commit; every arm and state digest retained.
+- [x] H0 and H1 are complete on a clean commit; all 60 arms, state digests and
+  losing controllers are retained.
 - [ ] E1–E3 are repeated at qualification counts and boundary contradictions are
   resolved or reported as exclusions.
 - [ ] E5 has contact/load evidence; otherwise claims remain geometric only.

@@ -1,0 +1,1446 @@
+{
+  "schema_version": 1,
+  "evidence_type": "paired_conditioned_insertion_controller_comparison",
+  "protocol": {
+    "name": "insertion_condition_v1",
+    "paired_on": [
+      "condition kind",
+      "reset station when applicable",
+      "seed",
+      "initial-state SHA-256"
+    ],
+    "same_success_predicate": true,
+    "same_settling_check": true,
+    "same_phase_budget": true,
+    "certification": false
+  },
+  "source_revision": {
+    "commit": "3e078bcdf1985b69093e2f5f80c99a3b71cd937c",
+    "dirty": false
+  },
+  "learned_policy": {
+    "name": "v24",
+    "checkpoint_sha256": "47AA9EFB60F7794BE5CDD1EBD0AD5EC0E94CE00345BCF975D83AE9418D9A1B9F"
+  },
+  "overall": {
+    "by_controller": {
+      "guarded": {
+        "episodes": 1824,
+        "successes": 94,
+        "success_rate": 0.051535,
+        "success_rate_wilson_95": {
+          "low": 0.042298,
+          "high": 0.062657
+        }
+      },
+      "policy": {
+        "episodes": 1824,
+        "successes": 54,
+        "success_rate": 0.029605,
+        "success_rate_wilson_95": {
+          "low": 0.022761,
+          "high": 0.038427
+        }
+      }
+    },
+    "policy_minus_guarded_success_rate": -0.02193
+  },
+  "paired_conditions": [
+    {
+      "condition": {
+        "kind": "chain_handoff",
+        "station": null,
+        "seed": 4070
+      },
+      "initial_state_sha256": "ae73a728fe663a4514655db86a0042d9edbbdd2e8ce92adcf4797c11a510d49f",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\chain_handoff_seed4070_guarded.npz",
+          "raw_file_sha256": "B7B0DA8F91F87A8B1B7AE02B43E7FDF4A53822C6764286C15E1821006F58569A",
+          "episodes": 32,
+          "successes": 30,
+          "success_rate": 0.9375,
+          "success_rate_wilson_95": {
+            "low": 0.798529,
+            "high": 0.982689
+          },
+          "termination_reasons": {
+            "insertion_success": 30,
+            "time_out": 2
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\chain_handoff_seed4070_policy.npz",
+          "raw_file_sha256": "B82257E9D35B9861F07D21EA247FAF478E111F0B8C4609ADC3E7BEC5E841D87A",
+          "episodes": 32,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.107179
+          },
+          "termination_reasons": {
+            "time_out": 32
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": -0.9375,
+      "losing_arm": "policy"
+    },
+    {
+      "condition": {
+        "kind": "chain_handoff",
+        "station": null,
+        "seed": 5070
+      },
+      "initial_state_sha256": "69f7dd5bd64fea0fbb1ab0f65b7006286219f3a7314851637a80003d84c8d851",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\chain_handoff_seed5070_guarded.npz",
+          "raw_file_sha256": "B0319B023FCB1478453C2E458C06DBC661EBCBEDB855E610A766AF85B5FB7A59",
+          "episodes": 32,
+          "successes": 32,
+          "success_rate": 1.0,
+          "success_rate_wilson_95": {
+            "low": 0.892821,
+            "high": 1.0
+          },
+          "termination_reasons": {
+            "insertion_success": 32
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\chain_handoff_seed5070_policy.npz",
+          "raw_file_sha256": "FA080B87BADBBF181B8875AE268F95F17CCBED22D0350B595B8432BDBECEAB3C",
+          "episodes": 32,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.107179
+          },
+          "termination_reasons": {
+            "time_out": 32
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": -1.0,
+      "losing_arm": "policy"
+    },
+    {
+      "condition": {
+        "kind": "chain_handoff",
+        "station": null,
+        "seed": 6070
+      },
+      "initial_state_sha256": "351ee8a391880785fa0f9a11f89b28ee5c00d53b25b330e6374f6aff3fae5710",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\chain_handoff_seed6070_guarded.npz",
+          "raw_file_sha256": "382399CC931DA071E4E02A0181577FD5E8A51C39DED25A2002613901069B10AA",
+          "episodes": 32,
+          "successes": 32,
+          "success_rate": 1.0,
+          "success_rate_wilson_95": {
+            "low": 0.892821,
+            "high": 1.0
+          },
+          "termination_reasons": {
+            "insertion_success": 32
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\chain_handoff_seed6070_policy.npz",
+          "raw_file_sha256": "EF58E7063481DE37D3B2BDB7F4AE15C777BDDEA3A402CF696F8371D6649F7903",
+          "episodes": 32,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.107179
+          },
+          "termination_reasons": {
+            "time_out": 32
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": -1.0,
+      "losing_arm": "policy"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 0,
+        "seed": 1070
+      },
+      "initial_state_sha256": "cedda342e45bbe3f069833965bc19661f0cd9656ecb508a5cf2b2ff24fa7ae5a",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_00_seed1070_guarded.npz",
+          "raw_file_sha256": "41CCB1F1AA250FBEB3AE81E8C2C2C3C64B15BC17AB28E8504801436B0FC45719",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_00_seed1070_policy.npz",
+          "raw_file_sha256": "FF9D1A1D58FEB4F49D2E489A6E6E83180E51E8C073AC0215292F268E0A6480B0",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 0,
+        "seed": 2070
+      },
+      "initial_state_sha256": "cedda342e45bbe3f069833965bc19661f0cd9656ecb508a5cf2b2ff24fa7ae5a",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_00_seed2070_guarded.npz",
+          "raw_file_sha256": "A96B8B8D3E5FB2EF9C49DF6F4A4424A59EFB5689D4D71BB7FA28BAD0F004372D",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_00_seed2070_policy.npz",
+          "raw_file_sha256": "E2C3B328F6D0448A44DBF877E48DE89DB76778209CA689E8C300731E37ADE982",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 0,
+        "seed": 3070
+      },
+      "initial_state_sha256": "cedda342e45bbe3f069833965bc19661f0cd9656ecb508a5cf2b2ff24fa7ae5a",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_00_seed3070_guarded.npz",
+          "raw_file_sha256": "EE8D9CEB2087EA72621B18D69D8E975FE4F0C0682FA96F912D021A3AADB385EC",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_00_seed3070_policy.npz",
+          "raw_file_sha256": "18D762F75A24F02EF9EB78407118725E673ADC6A4DC0E181088E01B3085615A1",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 1,
+        "seed": 1070
+      },
+      "initial_state_sha256": "d58aaed596924a166be8045e6a5da78255727f8f7b93af3d8f2745892e2c3854",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_01_seed1070_guarded.npz",
+          "raw_file_sha256": "E4411AB8E7CAED9027A8F14339F5A99BDE390302A1F7DD7A363FE505D229A768",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_01_seed1070_policy.npz",
+          "raw_file_sha256": "B4F246694D33A4E1C5D499603C3FEEEB99BF56877A14711A49F9F19E517734E4",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 1,
+        "seed": 2070
+      },
+      "initial_state_sha256": "d58aaed596924a166be8045e6a5da78255727f8f7b93af3d8f2745892e2c3854",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_01_seed2070_guarded.npz",
+          "raw_file_sha256": "4DEB5BFEF13551C4488D13360D866C1F879E82E49470D947D07F9FA7B0B477FC",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_01_seed2070_policy.npz",
+          "raw_file_sha256": "FA44B0C083DBA43E32232CBE261F58C44515F665A3287941190C4ECDE2805817",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 1,
+        "seed": 3070
+      },
+      "initial_state_sha256": "d58aaed596924a166be8045e6a5da78255727f8f7b93af3d8f2745892e2c3854",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_01_seed3070_guarded.npz",
+          "raw_file_sha256": "01C078A3E34C75A039EAE9B6A5CC05E3957456DAA1E27E680184B8B96DEC72B4",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_01_seed3070_policy.npz",
+          "raw_file_sha256": "59A09378EF189E79BE419D91D50598F7565FB09114D18F14DFBF98EC1B80EF26",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 2,
+        "seed": 1070
+      },
+      "initial_state_sha256": "6bd8ebd3304764122b8e325cccfd4e5e25a4373b83a18e458c2fd471fa41e3b5",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_02_seed1070_guarded.npz",
+          "raw_file_sha256": "67C348EAE5B3536A7614A4690EF1DEB9807EDFABA298D6A8C9572B5F33CBA091",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_02_seed1070_policy.npz",
+          "raw_file_sha256": "7DD2FD7616A1E5FB2536D72AF817EB43D2D8ECC8292E016C50482BD7F09378AF",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 2,
+        "seed": 2070
+      },
+      "initial_state_sha256": "6bd8ebd3304764122b8e325cccfd4e5e25a4373b83a18e458c2fd471fa41e3b5",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_02_seed2070_guarded.npz",
+          "raw_file_sha256": "72FBFA675634C0304A19FCAC920971E9A0548C0E061CC91746F41A68F4647221",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_02_seed2070_policy.npz",
+          "raw_file_sha256": "1124B5C0C6E4CA70950D8984DEBA8E110AB11EE2C7A801C9DC0567B0FC8A4A59",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 2,
+        "seed": 3070
+      },
+      "initial_state_sha256": "6bd8ebd3304764122b8e325cccfd4e5e25a4373b83a18e458c2fd471fa41e3b5",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_02_seed3070_guarded.npz",
+          "raw_file_sha256": "3784245F49BFB3518371C0F8130A5BEF9DAD611649B9AC794198E025591A297E",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_02_seed3070_policy.npz",
+          "raw_file_sha256": "30E5F5E7F54D99EB2D1C64A4461BB7BD1BBF91F630D8344F4B66D29D5A537483",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 3,
+        "seed": 1070
+      },
+      "initial_state_sha256": "73b531cf3e8ca9d27b07ecebabf531e0f4e13e2afbc3b677199d18061df5b775",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_03_seed1070_guarded.npz",
+          "raw_file_sha256": "952CD3C43F6967941DB9ADA441B1121AC04D89313B6BFEF65D06757B1A5A2575",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_03_seed1070_policy.npz",
+          "raw_file_sha256": "4B8814A3DE4E3A30B05BA285B3AA99CA8C81EF135B229287FDAF9DA5D5D5DFEC",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 3,
+        "seed": 2070
+      },
+      "initial_state_sha256": "73b531cf3e8ca9d27b07ecebabf531e0f4e13e2afbc3b677199d18061df5b775",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_03_seed2070_guarded.npz",
+          "raw_file_sha256": "AF1BD61C8A57C5823DA756F23559563B305BD139FE98793C992A1235730DDDCD",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_03_seed2070_policy.npz",
+          "raw_file_sha256": "58FC5BB3A7C0CDC51593D2F6E17D8848B5486944643EC74327CF055AED9444CC",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 3,
+        "seed": 3070
+      },
+      "initial_state_sha256": "73b531cf3e8ca9d27b07ecebabf531e0f4e13e2afbc3b677199d18061df5b775",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_03_seed3070_guarded.npz",
+          "raw_file_sha256": "EFE4C6D5A8E76E70B87FF8259BFBEDB8EDBDBC2B343C0CE1515A0629C7B20BB2",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_03_seed3070_policy.npz",
+          "raw_file_sha256": "77B55C3CED32F27BE1B087E196E99E528894BF7D95753F19AAF8D081171CAB99",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 4,
+        "seed": 1070
+      },
+      "initial_state_sha256": "fb8684777d9d275c855aa2a93a45cb975ccdbb1e28330bf2df76677700e801bf",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_04_seed1070_guarded.npz",
+          "raw_file_sha256": "7BBB7DFAE9AA057026D334B7CEC1563961DF8E3A699158A474C9079EAEC3F25F",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_04_seed1070_policy.npz",
+          "raw_file_sha256": "ED279F0B9AA6DD54D8641B288F7DCCC0FAC99503BC83E73F1943EA5AB2BD50F2",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 4,
+        "seed": 2070
+      },
+      "initial_state_sha256": "fb8684777d9d275c855aa2a93a45cb975ccdbb1e28330bf2df76677700e801bf",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_04_seed2070_guarded.npz",
+          "raw_file_sha256": "433CAD73781ACC7B97FD1FEAAB8E92E8FF644E85B2196A5F331040148F3DA900",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_04_seed2070_policy.npz",
+          "raw_file_sha256": "2D71E4AE6FC77F1544FBCA42138C7B2F7F24D217AE33FC0FB4C53A36449ECAE8",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 4,
+        "seed": 3070
+      },
+      "initial_state_sha256": "fb8684777d9d275c855aa2a93a45cb975ccdbb1e28330bf2df76677700e801bf",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_04_seed3070_guarded.npz",
+          "raw_file_sha256": "141C322261676220934BB893927B958837E987634747349FF70AC9A463C020DD",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_04_seed3070_policy.npz",
+          "raw_file_sha256": "A620E8FB66235E24561FDCA2797D8907111FAA11F1850F579054095E4D7BA6E5",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 5,
+        "seed": 1070
+      },
+      "initial_state_sha256": "77f3d0e401a46c8dc7b9b8648a89b54fd4b31845ebcd653174ffb6c55e556696",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_05_seed1070_guarded.npz",
+          "raw_file_sha256": "387BB9A8C12A47E0125EA7D617CAE5D422A843AAD6211FAB78D0A4771AA60CCB",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_05_seed1070_policy.npz",
+          "raw_file_sha256": "DF53CB4185420F9D01F14C2847499DC2BEB77D7460C25AE4C481242054CB8FAE",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 5,
+        "seed": 2070
+      },
+      "initial_state_sha256": "77f3d0e401a46c8dc7b9b8648a89b54fd4b31845ebcd653174ffb6c55e556696",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_05_seed2070_guarded.npz",
+          "raw_file_sha256": "8DB978985BFF58412008DAD0379EE62EE1A9C4313E68443F83DAB65BFA74B605",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_05_seed2070_policy.npz",
+          "raw_file_sha256": "046340E7D675DBB20498BF188200127CA256530E82D087526F524B2B1C9F365A",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 5,
+        "seed": 3070
+      },
+      "initial_state_sha256": "77f3d0e401a46c8dc7b9b8648a89b54fd4b31845ebcd653174ffb6c55e556696",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_05_seed3070_guarded.npz",
+          "raw_file_sha256": "178D0D7F5FA81D75708348679538EA365473075488027F3D8DE3ECA55F6C1DDC",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_05_seed3070_policy.npz",
+          "raw_file_sha256": "8AEF92B9E9644DB0362780F7F81B9CCC5C44DC776F31D6A83FF37013C6F811BD",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 6,
+        "seed": 1070
+      },
+      "initial_state_sha256": "34296a847ac61f92373e390f055442421bf8edd9f39ac214adf35edfdb01d2c8",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_06_seed1070_guarded.npz",
+          "raw_file_sha256": "2785ED2891D7AB5DD62063FA4B1F6C9839788AA440FBA33DF317274B34005A88",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_06_seed1070_policy.npz",
+          "raw_file_sha256": "80D3C94EC563563A6163B9E0ABCCC4C2F0FEDB236A25B3FF5AD74AB8DF5F4850",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 6,
+        "seed": 2070
+      },
+      "initial_state_sha256": "34296a847ac61f92373e390f055442421bf8edd9f39ac214adf35edfdb01d2c8",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_06_seed2070_guarded.npz",
+          "raw_file_sha256": "0D45C06397EC8CBF7FC7CBD80A6290BDDB2484D84F6E667B2C943E6D77A1A6CB",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_06_seed2070_policy.npz",
+          "raw_file_sha256": "978D03A1A8E54CBB5AC655C30DD9E83D88AED7D1440B0F8E5EDF1004D606A434",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 6,
+        "seed": 3070
+      },
+      "initial_state_sha256": "34296a847ac61f92373e390f055442421bf8edd9f39ac214adf35edfdb01d2c8",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_06_seed3070_guarded.npz",
+          "raw_file_sha256": "6B620EA582488188C2C3A4EED9C08C32062CF6E3AC0CEB2D1E8E90E0BF9E6B6F",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_06_seed3070_policy.npz",
+          "raw_file_sha256": "96B9E858BD717114325156CB660AEC562AD0CD812C005509AD62340E6536B5FD",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 7,
+        "seed": 1070
+      },
+      "initial_state_sha256": "9283713da8e480e4db8ee1805301bac06fbebc2510eee65562ea1cc14fcdbb5d",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_07_seed1070_guarded.npz",
+          "raw_file_sha256": "A1FE375F9D5162FC3C0DFFF3F024B7939CE07A0E453AB12B747297E775ACED20",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_07_seed1070_policy.npz",
+          "raw_file_sha256": "92A00DF06629577194460E29159F5FA695D77B900C7C5EAB053B701D83F04ABB",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 7,
+        "seed": 2070
+      },
+      "initial_state_sha256": "9283713da8e480e4db8ee1805301bac06fbebc2510eee65562ea1cc14fcdbb5d",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_07_seed2070_guarded.npz",
+          "raw_file_sha256": "5DFF1E58A7485AEFB5F0EE936D53B4FFE932EF58665006D1B4FDD05084CCA2B2",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_07_seed2070_policy.npz",
+          "raw_file_sha256": "D5C41D8B13DFE2E9ECBD8B73F25C35E7C599D7DA23209971B064D0219F3DDCFA",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 7,
+        "seed": 3070
+      },
+      "initial_state_sha256": "9283713da8e480e4db8ee1805301bac06fbebc2510eee65562ea1cc14fcdbb5d",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_07_seed3070_guarded.npz",
+          "raw_file_sha256": "7BDA64A1E58D771EF9BD992045766E96A0B93918D99FD129BE70D60AF657BDD0",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_07_seed3070_policy.npz",
+          "raw_file_sha256": "1239001EFCFAD5CDBD3285D8DADEA1F986E91F0F2E740FED6FBCE7EC25BB22EB",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.0,
+      "losing_arm": "tie"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 8,
+        "seed": 1070
+      },
+      "initial_state_sha256": "fc4b22649578419434d68fae9629af5a54e629ffed482b5ad6227697d77e40e2",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_08_seed1070_guarded.npz",
+          "raw_file_sha256": "A07A8C900BE3EA1E171999D814CE6EA1A903C18DE4D5A3E4EF15CDC0A9018EED",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_08_seed1070_policy.npz",
+          "raw_file_sha256": "A3ABE6F0CA9E37E0A834788A50E4CCC77449CCF61EEE529B6FBB50601980603F",
+          "episodes": 64,
+          "successes": 18,
+          "success_rate": 0.28125,
+          "success_rate_wilson_95": {
+            "low": 0.185934,
+            "high": 0.401339
+          },
+          "termination_reasons": {
+            "insertion_success": 18,
+            "time_out": 46
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.28125,
+      "losing_arm": "guarded"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 8,
+        "seed": 2070
+      },
+      "initial_state_sha256": "fc4b22649578419434d68fae9629af5a54e629ffed482b5ad6227697d77e40e2",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_08_seed2070_guarded.npz",
+          "raw_file_sha256": "7765D997F2E11541FF2B1C5B6BD5C9E6FBE53623738E66CBB81EDC4858A8F3DA",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_08_seed2070_policy.npz",
+          "raw_file_sha256": "01582B0025E14E6045ADAE378D5F4BD347A8D78CDF55A97ACF577E618CECE50E",
+          "episodes": 64,
+          "successes": 18,
+          "success_rate": 0.28125,
+          "success_rate_wilson_95": {
+            "low": 0.185934,
+            "high": 0.401339
+          },
+          "termination_reasons": {
+            "insertion_success": 18,
+            "time_out": 46
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.28125,
+      "losing_arm": "guarded"
+    },
+    {
+      "condition": {
+        "kind": "reset_station",
+        "station": 8,
+        "seed": 3070
+      },
+      "initial_state_sha256": "fc4b22649578419434d68fae9629af5a54e629ffed482b5ad6227697d77e40e2",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_08_seed3070_guarded.npz",
+          "raw_file_sha256": "4347658A269AD0648131B7BB755E67A2EF9C666000D72783DE9777FBEE346CA0",
+          "episodes": 64,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.056624
+          },
+          "termination_reasons": {
+            "time_out": 64
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\station_08_seed3070_policy.npz",
+          "raw_file_sha256": "E0ADAF9F6BCEB3852DACF3E00867256D99FB3EFFBDE4BF256A8C86AE2B43FF15",
+          "episodes": 64,
+          "successes": 18,
+          "success_rate": 0.28125,
+          "success_rate_wilson_95": {
+            "low": 0.185934,
+            "high": 0.401339
+          },
+          "termination_reasons": {
+            "insertion_success": 18,
+            "time_out": 46
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": 0.28125,
+      "losing_arm": "guarded"
+    }
+  ],
+  "decision": {
+    "policy_not_worse_on_every_paired_condition_and_pooled": false,
+    "recommended_controller": "guarded",
+    "rule_frozen_before_results": "replace guarded only if policy is not worse at every paired condition and in the pooled rate"
+  },
+  "scope_and_limitations": [
+    "Simulation evidence only; no hardware contact or load qualification.",
+    "Reset-station runs isolate insertion and are not end-to-end chain certificates.",
+    "Chain-handoff pairing is valid only when each batch contains at most one episode per environment.",
+    "Both winning and losing controller arms are retained in paired_conditions."
+  ],
+  "generated_utc": "2026-08-27T04:18:31+00:00"
+}

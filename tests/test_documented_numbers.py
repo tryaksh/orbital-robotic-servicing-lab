@@ -126,7 +126,7 @@ def test_the_provenance_caveat_is_stated_where_the_number_is() -> None:
 
 def test_the_boundary_is_not_overstated() -> None:
     report = json.loads(
-        (EVIDENCE / "serviceability_boundary_validation_v1.json").read_text(encoding="utf-8")
+        (EVIDENCE / "serviceability_boundary_validation_v2.json").read_text(encoding="utf-8")
     )
     assert report["decision"]["qualified"] is False
     for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):

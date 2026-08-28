@@ -8,9 +8,9 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 27,
-    "retracted": 8,
-    "historical": 137
+    "canonical": 30,
+    "retracted": 9,
+    "historical": 139
   },
   "canonical": {
     "chain_robustness_sweep.json": {
@@ -73,6 +73,23 @@
       "policy_sha256": "AFA73BB932C5AD9BCD3C4D3F59AD7862A10076BB31CE6F26D6C162A90FB09AA8",
       "holds_up": "The control that makes the extract comparison a comparison and not a re-baselining."
     },
+    "grapple_extract_v18pin_c11065_certification.json": {
+      "title": "Head-on grapple-pin extraction skill on the derived rack, unchanged v18pin checkpoint",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-28T00:59:25+00:00",
+      "overall": {
+        "episodes": 9004,
+        "successes": 7891,
+        "success_rate": 0.876388,
+        "wilson_95": [
+          0.869429,
+          0.883027
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "ADC247AB0E9403761A3108228019AE7BE4DC408155B414B6BF0226102E5CCA54",
+      "holds_up": "Unchanged extraction checkpoint re-measured on the derived rack: 87.64% over 9,004 episodes; no clearance gain."
+    },
     "grapple_extract_v18pin_certification.json": {
       "title": "Head-on grapple-pin extract skill, v18pin, on the pin-resolved grip criterion",
       "evidence_type": "simulation_only",
@@ -89,6 +106,23 @@
       "gate_passed": false,
       "policy_sha256": "A83D3CAC1CD3388ACD01BB8C00E5B7B6513A131E9AA664B5FE312AB102690571",
       "holds_up": "Extraction skill, the checkpoint the chain runs: 87.75% pooled. Misses the gate."
+    },
+    "grapple_grasp_v7m130_c11065_certification.json": {
+      "title": "Head-on grapple-pin grasp skill on the derived rack, unchanged v7m130 checkpoint",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-28T01:07:09+00:00",
+      "overall": {
+        "episodes": 9009,
+        "successes": 7829,
+        "success_rate": 0.86902,
+        "wilson_95": [
+          0.861896,
+          0.87583
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+      "holds_up": "Unchanged capture checkpoint re-measured on the derived rack: 86.90% over 9,009 episodes; still below gate."
     },
     "grapple_grasp_v7m130_on_derived_rack_certification.json": {
       "title": "Control: grasp v7m130 on the derived rack, criterion unchanged",
@@ -165,6 +199,11 @@
       "generated_utc": "2026-08-25T03:11:20.137349+00:00",
       "holds_up": "The stations an insertion may start from, solved in closed form and gated."
     },
+    "insertion_conditioned_controller_v3.json": {
+      "evidence_type": "paired_conditioned_insertion_controller_comparison",
+      "generated_utc": "2026-08-28T01:09:15+00:00",
+      "holds_up": "Paired v24 and guarded insertion at all nine reset stations and real chain handoffs; every losing arm retained."
+    },
     "robot_carried_full_chain_c11065.json": {
       "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
@@ -206,10 +245,10 @@
       "evidence_type": "geometric_derivation_no_simulator",
       "holds_up": "The form lock's clearances, derived from the measured gripper envelope."
     },
-    "serviceability_boundary_validation_v1.json": {
+    "serviceability_boundary_validation_v2.json": {
       "title": "Serviceability boundary validation against simulation",
       "evidence_type": "analytical_boundary_against_simulation",
-      "generated_utc": "2026-08-27T01:13:24.458530+00:00",
+      "generated_utc": "2026-08-28T01:10:58.110603+00:00",
       "holds_up": "The current fail-closed boundary result: entry attitude supported; five dimensions unresolved or contradicted."
     },
     "workcell_geometry_check.json": {
@@ -371,6 +410,11 @@
       },
       "gate_passed": false,
       "policy_sha256": "73D4D29BF55A907A2B31367FF2EA4A18FD7AE2E1413A079D462B5A6E9349C56D",
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    },
+    "insertion_conditioned_controller_v1.json": {
+      "evidence_type": "paired_conditioned_insertion_controller_comparison",
+      "generated_utc": "2026-08-27T04:18:31+00:00",
       "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
     },
     "vision_workflow_camera_twoslot_certification.json": {
@@ -650,6 +694,9 @@
       "title": "Insert v6, unchanged, on the chained-insert task (pre-training gate)",
       "generated_utc": "2026-08-16T23:40:53+00:00"
     },
+    "insertion_chain_handoff_controller_v1.json": {
+      "generated_utc": "2026-08-27T06:07:43+00:00"
+    },
     "mating_compliance.json": {
       "title": "Mating compliance for a robot-carried module",
       "generated_utc": "2026-08-23T06:48:28.749990+00:00"
@@ -733,6 +780,10 @@
     "robot_carried_seating_sweep.json": {
       "title": "Destination-bay clearance sweep: why the robot-carried seating does not close",
       "generated_utc": "2026-08-23T11:25:39.027766+00:00"
+    },
+    "serviceability_boundary_validation_v1.json": {
+      "title": "Serviceability boundary validation against simulation",
+      "generated_utc": "2026-08-27T01:13:24.458530+00:00"
     },
     "uncertain_force_threshold_aware.json": {
       "title": "Commanded contact-force budget, force-aware",

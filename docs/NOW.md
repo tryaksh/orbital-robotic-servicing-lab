@@ -5,7 +5,7 @@ Verified repository state. Evidence status is mechanical in
 interpretation of that index. Detailed work is in [`NEXT_WORK.md`](NEXT_WORK.md)
 and the frozen study design is in [`PAPER_PLAN.md`](PAPER_PLAN.md).
 
-Last verified: 2026-08-26. Active branch:
+Last verified: 2026-08-27. Active branch:
 `paper/serviceability-qualification`, based on `main` at `bccce6d`.
 
 Everything is simulated. Nothing has run on hardware.
@@ -14,7 +14,7 @@ Everything is simulated. Nothing has run on hardware.
 
 | Item | Verified state |
 | --- | --- |
-| Evidence | 27 canonical, 8 retracted, 137 historical; quote only canonical |
+| Evidence | 30 canonical, 9 retracted, 139 historical; quote only canonical |
 | Source provenance | 10 reports carry runtime source bindings; 1 is recovered and 9 are lost |
 | Recovered chain run | `robot_carried_full_chain_c11065.json` |
 | Boundary decision | `not_qualified`; only entry attitude is supported in simulation |
@@ -55,8 +55,8 @@ recoverable; older pooled source bindings are not.
 
 | Certificate | Pooled result | Interpretation |
 | --- | ---: | --- |
-| Grasp v7m130 | **85.69%** | misses the 95% skill gate |
-| Extract v18pin | **87.75%** | misses the 95% skill gate |
+| Grasp v7m130, current rack | **86.90%**, 7,829/9,009 | unchanged checkpoint; misses the 95% gate |
+| Extract v18pin, current rack | **87.64%**, 7,891/9,004 | unchanged checkpoint; misses the 95% gate |
 | Insert v20chain | **0.00%**, 0/1,536 | preserved negative result |
 | Insert v24rack, isolated | **36.77%**, 1,103/3,000 | not predictive of the chain handoff |
 | Insert v24rack, in chain | **0.00%**, 0/96 | guarded remains selected |
@@ -66,32 +66,48 @@ at 84.26, 84.61 and 84.58 mrad against a **52.4 mrad** tolerance. Changing the
 reward did not move the interface-limited attitude. Those runs have the source
 provenance caveat above.
 
+The current-rack skill reruns use the same checkpoint hashes as the earlier
+85.69% grasp and 87.75% extraction certificates. Their Wilson intervals overlap
+the earlier results. Narrowing the rack therefore did not repair either skill;
+the predicted extraction benefit from the smaller channel corner is refuted.
+
 Perception is certified separately on 1,024 rendered frames. The 97.92% chain
 rate uses simulator state through the deployed estimator path; RGB-D and the
 chain have not been combined at qualification scale.
 
 ### Conditioned insertion
 
-`run_workflow_demo.py` can now start the real chain driver at any of the nine
-closed-form insertion reset stations and records the insertion handoff state.
-`report_conditioned_insertion.py` requires paired guarded/v24 arms with the same
-seed and initial-state SHA-256 and retains both arms.
+[`insertion_conditioned_controller_v3.json`](../evidence/insertion_conditioned_controller_v3.json)
+pairs guarded and v24 insertion on identical seeds, initial-state hashes,
+budgets and fixed-to-compliant load paths. All 60 arms ran from clean commit
+`daa53d6`; aggregation is bound to clean commit `e6d841d`.
 
-One station-8, seed-1070 Isaac smoke pair completed from clean commit `269613b`.
-Both controllers failed one episode; v24 ended closer axially. It is a diagnostic
-artifact under `artifacts/`, not canonical evidence. The full 3,456 reset-station
-episodes and 192 chain-handoff episodes remain to run.
+| Start condition | Guarded | v24 |
+| --- | ---: | ---: |
+| Reset stations 0–3 | 0/768 | 0/768 |
+| Reset station 4 | 0/192 | 75/192 |
+| Reset station 5 | 0/192 | 165/192 |
+| Reset station 6 | 0/192 | 174/192 |
+| Reset station 7 | 0/192 | 192/192 |
+| Reset station 8 | 0/192 | 180/192 |
+| Real chain handoff | **94/96** | **0/96** |
+
+Across reset stations alone, v24 is 786/1,728 (**45.49%**) and guarded is
+0/1,728. The isolated skill has learned the late stroke, not the state its caller
+provides. The predeclared every-condition rule therefore keeps guarded insertion.
+The earlier combined v1 report is retracted because its reset arms disabled the
+task's load path; its valid handoff-only rows remain preserved separately.
 
 ### Serviceability boundary
 
-[`serviceability_boundary_validation_v1.json`](../evidence/serviceability_boundary_validation_v1.json)
+[`serviceability_boundary_validation_v2.json`](../evidence/serviceability_boundary_validation_v2.json)
 is the current fail-closed comparison:
 
 | Dimension | State | Why |
 | --- | --- | --- |
 | Rack clearance | mismatch | 6 mm and 16 mm analytical exclusions do not show Wilson-separated loss |
 | Module section | mismatch | 120×16 supports the prediction; 140×26 contradicts it at current sample size |
-| Robot base offset | partial | x = −0.70 m is supported; the +10 mm y loss lacks an analytical bound |
+| Robot base offset | mismatch | +10 mm rail-stop error is kinematically feasible but causes a Wilson-separated simulation loss |
 | Entry attitude | supported in simulation | clearance sweep and throat intervention track `2c/L` within the frozen gate |
 | Capture geometry | analytical only | visual bounding-volume checks pass; canonical contact/load evidence is absent |
 | Load path | idealized and unpaired | rigid failure and compliant success do not share states/seeds or reaction telemetry |
@@ -130,12 +146,11 @@ configuration is **not qualified**.
 
 # Exact GPU conditioned matrix, from a clean commit
 & .\scripts\run_conditioned_insertion.ps1 -IncludeChainHandoffs `
-  -OutputRoot artifacts\conditioned-insertion\v1 `
-  -EvidencePath evidence\insertion_conditioned_controller_v1.json
+  -OutputRoot artifacts\conditioned-insertion\reproduction `
+  -EvidencePath evidence\insertion_conditioned_controller_v4.json
 ```
 
-Do not overwrite v1 evidence. Use a new version only after adding comparison
-arms.
+Never overwrite evidence; use a new versioned filename for another run.
 
 ## Branches
 
@@ -147,6 +162,7 @@ arms.
 | `keyed-interface` | Preserved losing keyed-interface exploration; do not delete |
 | `origin/agent/zero-g-blade-swap` | Preserved historical eight-phase line; superseded |
 
-The next gates are the complete conditioned matrix, qualification-count boundary
-arms, paired contact/load-path experiments, a base-compliance path that can
-actually deflect, clean-source reruns for quoted results, and the RGB-D chain.
+The next gates are a handoff-conditioned insertion policy tested across the same
+matrix, qualification-count boundary arms, paired contact/load-path experiments,
+a base-compliance path that can actually deflect, clean-source reruns for older
+quoted results, and the RGB-D chain.

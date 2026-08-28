@@ -15,8 +15,11 @@ in what order, and the few things only a submission needs. They do not conflict 
 `P1` *is* `T0`, `P2` *is* `T3` — the paper section only adds sequencing and the
 claims worth making.
 
-**Pick up from the gates in `NOW.md`.** T13 remains useful history, but
-station-conditioned evaluation now precedes any further insertion training.
+**Current priority:** T13, then T1. The station-conditioned matrix is complete:
+v24 is zero at reset stations 0–3 and at all 96 real chain handoffs, while it is
+strong at stations 5–8. The next insertion run therefore trains on the caller's
+mouth state and is evaluated across the whole matrix; it is not another blind
+epoch extension. Once that closes, move directly to the RGB-D chain.
 
 **Two rules are non-negotiable, and they are why some of these tasks are shaped
 the way they are.** Never widen a tolerance to make a gate pass; if a criterion
@@ -36,7 +39,7 @@ training runs do not.
 | --- | --- | --- | --- |
 | **T13** | **Make the insert skill seat.** Depth is the last condition, and it is attitude through `2c/theta` | ~2 h GPU | a learned seating phase |
 | **T0** | Nine older source-bound reports are unrecoverable; re-run any result a final claim needs | CPU + certification batches | reproducible claims |
-| **T1** | Certify the chain on the vision task | hours, 1 batch | the strongest claim about perception |
+| **T1** | **Next after insertion:** certify the chain on the vision task | hours, 1 batch | the strongest claim about perception |
 | **T2** | Insert: attitude is the interface's, not the reward's — **diagnosed, work moved to T9** | done | — |
 | **T3** | Three training seeds, so numbers carry a spread | 4+ training runs | any claim about a *method* |
 | **T4** | Exercise robustness levels 1–4 | evaluation only | a degradation curve |
@@ -47,7 +50,7 @@ training runs do not.
 | **T9** | **The insert blocker.** Give the skill the chain's *mating compliance*, not just "enable the lock" | half a day + ~2 h GPU | a learned seating phase |
 | **T10** | Test-suite portability | **done 2026-08-25** | — |
 | **T11** | No recording shows the certified chain | ~8 min a clip | the media, and any release |
-| **T12** | Grasp and extract are certified on the rack before the clearance was derived | ~45 min a skill | the two skill numbers |
+| **T12** | Grasp and extract re-certified on the derived rack | **done 2026-08-27** | — |
 | **P1–P7** | [Publication track](#publication-track) — the same work on a submission deadline | see section | Frontiers, 2026-11-09 |
 
 ---
@@ -162,7 +165,7 @@ module when handed the state the chain actually produces is the exact failure
 this repository has paid for most, and `verify_insert_skill.sh` exists to catch
 it. It caught it.
 
-**Two candidate causes, and they are cheap to separate.**
+**The reset-distribution cause is now separated.**
 
 1. **The hand-off station.** The reset bank has nine stations from the mouth
    (x = 0.1468) to nearly seated (x = 0.5829), sampled uniformly, so the skill's
@@ -171,15 +174,18 @@ it. It caught it.
    above says this policy manages about 290 mm. Evaluate the skill *per station*
    before anything else: if success at station 0 is near zero, the pooled number
    was never predictive of the chain and the reset distribution has to be
-   reweighted toward the hand-off.
+   reweighted toward the hand-off. **Measured:** v24 is 0/768 at stations 0–3,
+   then 75/192, 165/192, 174/192, 192/192 and 180/192 at stations 4–8.
 2. **The lock state at hand-over.** The skill's reset writes the module, the arm
    and the fingers together and softens the lock at control step 5. The chain
    arrives having carried the module rigid and softens at the mouth. If the
    policy is being handed a lock state its reset never produces, that is the same
    class of divergence as the load path was, one level finer.
 
-**Do (1) first.** It is one evaluation, it needs no training, and it decides
-whether the skill number means anything for a caller.
+**Do next:** resume v24 in a separately registered task forced to station 0,
+then run that checkpoint across all nine stations and the same three real
+handoff seeds. Keep v24 and guarded as losing/control arms. Do not change a
+tolerance, reward, load path or success predicate in that comparison.
 
 **Cost.** ~2 h GPU for a retrain, ~110 min to verify both halves.
 
@@ -844,9 +850,15 @@ publishing the clip.
 
 ---
 
-## T12 — Grasp and extract are certified on the rack before the clearance was derived
+## T12 — Grasp and extract re-certified on the derived rack
 
-**Where it stands.** `GUIDE_CENTER_OFFSET_Y` moved 86.689 → 85.065 mm on
+**Completed 2026-08-27.** The checkpoints did not change. Extraction is 87.64%
+(7,891/9,004) versus 87.75% before; grasp is 86.90% (7,829/9,009) versus 85.69%
+before. The Wilson intervals overlap in both comparisons and neither reaches
+the 95% gate. The narrower channel therefore did not repair the skills, and the
+predicted extraction benefit from the smaller channel corner is refuted.
+
+**Starting point.** `GUIDE_CENTER_OFFSET_Y` moved 86.689 → 85.065 mm on
 2026-08-25, which narrows the channel by 1.624 mm per side in **both** bays —
 the constant places the source bay's guides as well as the destination's. Grasp
 (85.69% pooled) and extract (87.75% pooled) were certified in the wider one.
@@ -869,7 +881,7 @@ pads cannot follow. If extraction does *not* improve, that is a result: it would
 mean the corner was not the mechanism, and `evidence/extract_attribution.json`
 would need a fifth row.
 
-**Run it.**
+**Reproduce it.**
 
 ```bash
 SKILL=Extract CKPT=logs/rl_games/zero_g_blade_insertion_contact/grapple_extract_l0_seed70_v18pin/nn/last_zero_g_blade_insertion_contact_ep_12600_rew_172.70488.pth \
@@ -879,11 +891,9 @@ SKILL=Grasp CKPT=logs/rl_games/zero_g_blade_insertion_contact/grapple_grasp_l0_s
   TAG=grasp_v7m130_c11065 scripts/certify_grapple_skills.sh
 ```
 
-**Done when.** Both are re-certified on the derived rack with the **unchanged**
-checkpoints — one variable, the rack — and `docs/NOW.md` §2 quotes the new
-numbers beside the old ones rather than replacing them. If either moves by more
-than its Wilson interval, it belongs in `evidence/extract_attribution.json` as a
-row of its own.
+**Acceptance applied.** Both were re-certified with unchanged checkpoint hashes,
+and `docs/NOW.md` quotes the new numbers beside the old ones. Neither comparison
+has separated Wilson intervals, so no causal attribution row was added.
 
 **Cost.** About 45 minutes a skill: nine runs of 128 environments each.
 

@@ -65,8 +65,16 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "Capture skill on the derived rack: 85.69% pooled. Misses the 95% gate.",
     ),
     (
+        "grapple_grasp_v7m130_c11065_certification.json",
+        "Unchanged capture checkpoint re-measured on the derived rack: 86.90% over 9,009 episodes; still below gate.",
+    ),
+    (
         "grapple_extract_v18pin_certification.json",
         "Extraction skill, the checkpoint the chain runs: 87.75% pooled. Misses the gate.",
+    ),
+    (
+        "grapple_extract_v18pin_c11065_certification.json",
+        "Unchanged extraction checkpoint re-measured on the derived rack: 87.64% over 9,004 episodes; no clearance gain.",
     ),
     (
         "grapple_extract_v17m130_on_pin_criterion_certification.json",
@@ -141,6 +149,10 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "Which controller seats the module, decided arithmetically on the same rack and seeds.",
     ),
     (
+        "insertion_conditioned_controller_v3.json",
+        "Paired v24 and guarded insertion at all nine reset stations and real chain handoffs; every losing arm retained.",
+    ),
+    (
         "insert_depth_is_attitude.json",
         "What is left of the insert skill: depth is attitude one layer down, through 2c/theta.",
     ),
@@ -149,7 +161,7 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "One end-to-end run of that chain -- and the first report here whose source bindings all recover from git.",
     ),
     (
-        "serviceability_boundary_validation_v1.json",
+        "serviceability_boundary_validation_v2.json",
         "The current fail-closed boundary result: entry attitude supported; five dimensions unresolved or contradicted.",
     ),
 )
