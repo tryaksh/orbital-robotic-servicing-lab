@@ -425,8 +425,18 @@ def test_the_last_transit_leg_leaves_the_module_at_the_mouth_for_both_controller
 
     source = DRIVER.read_text(encoding="utf-8")
     assert "GUARDED_RECEIVER" not in source
-    assert "self.module_leg_pos[0, ids] = staging if LEG_ZERO_AT_POLICY_RESET else crossed" in source
-    assert 'LEG_ZERO_AT_POLICY_RESET = os.environ.get("LEG_ZERO_AT_POLICY_RESET", "0") == "1"' in source
+    assert "reset_pose = module_local.new_tensor(INSERT_STROKE_BLADE_POSE[0][0])" in source
+    assert "self.module_leg_pos[0, ids] = reset_pose[:3]" in source
+    assert "self.module_leg_rot[0, ids] = reset_pose[3:]" in source
+    assert "target_tool_rot[handoff_alignment] = quat_mul(desired_module_rot, head_on)" in source
+    assert "grip_attitude[ids] <= RELOCATION_CHANNEL_ACCEPTANCE_RAD" in source
     body = source.split("def _guarded_receiver(")[1].split("def _apply_scales(")[0]
     assert 'self.insert_controller == "guarded"' in body
     assert 'MATING_MODE == "compliant"' in body
+
+
+def test_report_labels_the_controller_that_receives_the_handoff() -> None:
+    source = DRIVER.read_text(encoding="utf-8")
+    report = source.split('"insert_handoff_contract": (')[1].split('"transit_planner": (')[0]
+    assert 'if args.insert_controller == "guarded"' in report
+    assert 'if args.latch_on_release and args.mating_mode == "compliant"' not in report
