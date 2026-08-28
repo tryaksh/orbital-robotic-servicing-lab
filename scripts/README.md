@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-84 scripts. Grouped by the verb their filename starts with.
+85 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -142,6 +142,7 @@ Each takes `--check` so CI can prove the artifact is current.
 | Script | What it is |
 | --- | --- |
 | `train.py` | Train the zero-g blade-swap task with RL-Games PPO. |
+| `train_insert_handoff.sh` | Train insertion from the rack-mouth handoff exposed by the conditioned audit. |
 | `train_insert_stroke.sh` | Train the insert skill on the stroke it is actually asked to drive. |
 | `train_pose_head.py` | Train the module-pose head that replaces the simulator's answer. |
 
