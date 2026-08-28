@@ -93,6 +93,12 @@ def test_repository_evidence_stays_unqualified_and_retains_every_boundary_arm() 
     assert report["decision"]["status"] == "not_qualified"
     assert report["dimensions"]["rack_clearance"]["status"] == "mismatch"
     assert report["dimensions"]["module_section"]["status"] == "mismatch"
+    assert report["dimensions"]["base_offset"]["status"] == "mismatch"
+    assert len(report["dimensions"]["base_offset"]["points"]) == 3
+    base_y = report["dimensions"]["base_offset"]["points"][2]
+    assert base_y["analytically_feasible"] is True
+    assert base_y["simulation"]["statistically_separated_loss"] is True
+    assert base_y["comparison"] == "does_not_support_boundary"
     assert len(report["dimensions"]["rack_clearance"]["points"]) == 3
     assert len(report["dimensions"]["module_section"]["points"]) == 3
     assert report["dimensions"]["capture_geometry"]["status"] == "analytical_only"

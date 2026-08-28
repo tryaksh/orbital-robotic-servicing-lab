@@ -27,7 +27,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from zero_g_blade_swap.provenance import git_source_revision  # noqa: E402
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 REQUIRED_INPUTS = (
     "chain_robustness_sweep.json",
     "workcell_geometry_check.json",
@@ -37,11 +37,16 @@ REQUIRED_INPUTS = (
     "workflow_robot_carried_m130pin_guarded_c11065_certification.json",
 )
 PROTOCOL = {
-    "name": "serviceability_boundary_validation_v1",
+    "name": "serviceability_boundary_validation_v2",
     "simulation_loss_rule": (
         "point Wilson-95 upper bound is below nominal Wilson-95 lower bound"
     ),
     "analytical_law_ratio_gate": {"low": 0.85, "high": 1.15},
+    "parked_base_kinematic_gate": {
+        "maximum_position_residual_m": 1.0e-4,
+        "maximum_attitude_residual_rad": 1.0e-4,
+        "minimum_worst_axis_authority": 0.9,
+    },
     "decision_rule": (
         "a feasible point supports the boundary only without a separated loss; "
         "an infeasible point supports it only with a separated loss"
@@ -99,6 +104,7 @@ def recompute_geometry() -> dict[str, Any]:
         raise RuntimeError(f"cannot import {path}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    shipped = tuple(float(value) for value in module._literal("GRAPPLE_ROBOT_ROOT_POS"))
     return {
         "lateral_clearance_window": module.lateral_clearance_window(),
         "module_section_envelope": module.section_envelope(),
@@ -106,6 +112,17 @@ def recompute_geometry() -> dict[str, Any]:
         "boundary_section_envelope": module.section_envelope(
             widths_m=(0.120, 0.130, 0.140), heights_m=(0.016, 0.020, 0.026)
         ),
+        "parked_base_offset_profiles": {
+            "nominal": module.parked_base_offset_profile(
+                base_x_m=shipped[0], stop_error_y_m=0.0, tool_z_m=0.72, base_z_m=shipped[2]
+            ),
+            "base_x_-0.70": module.parked_base_offset_profile(
+                base_x_m=-0.70, stop_error_y_m=0.0, tool_z_m=0.72, base_z_m=shipped[2]
+            ),
+            "base_y_+10mm": module.parked_base_offset_profile(
+                base_x_m=shipped[0], stop_error_y_m=0.010, tool_z_m=0.72, base_z_m=shipped[2]
+            ),
+        },
     }
 
 
@@ -172,6 +189,18 @@ def _section(geometry: dict[str, Any], width: float, height: float) -> dict[str,
     if len(matches) != 1:
         raise ValueError(f"analytical section grid has {len(matches)} rows for {width} x {height}")
     return matches[0]
+
+
+def _parked_base_feasible(profile: dict[str, Any]) -> bool:
+    gate = PROTOCOL["parked_base_kinematic_gate"]
+    return bool(
+        float(profile["maximum_position_residual_m"])
+        <= float(gate["maximum_position_residual_m"])
+        and float(profile["maximum_attitude_residual_rad"])
+        <= float(gate["maximum_attitude_residual_rad"])
+        and float(profile["minimum_worst_axis_authority"])
+        >= float(gate["minimum_worst_axis_authority"])
+    )
 
 
 def _load_path_rows(rigid: dict[str, Any], compliant: dict[str, Any]) -> dict[str, Any]:
@@ -254,24 +283,22 @@ def build_report(
         row["analytical"] = analytical
         section_rows.append(row)
 
-    crossing = geometry["crossing_authority_by_base_x"]["base_x=-0.70,tool_x=-0.2097"]
-    base_x_feasible = all(
-        float(row["position_residual_m"]) <= 1.0e-4
-        and float(row["attitude_residual_rad"]) <= 1.0e-4
-        and float(row["authority_worst_any_axis"]) > 0.0
-        for row in crossing
-    )
-    base_x_row = classify_simulation_point(
-        label="base x = -0.70 m",
-        analytically_feasible=base_x_feasible,
-        point=points["base_x_-0.70"],
-        nominal=nominal,
-    )
-    base_x_row["analytical"] = {
-        "crossing_samples": len(crossing),
-        "maximum_position_residual_m": max(float(row["position_residual_m"]) for row in crossing),
-        "minimum_worst_axis_authority": min(float(row["authority_worst_any_axis"]) for row in crossing),
-    }
+    base_profiles = current_geometry["parked_base_offset_profiles"]
+    base_rows = []
+    for label, profile_name, point_name in (
+        ("nominal parked base", "nominal", "nominal"),
+        ("base x = -0.70 m", "base_x_-0.70", "base_x_-0.70"),
+        ("base y stop error = +10 mm", "base_y_+10mm", "base_y_+10mm"),
+    ):
+        profile = base_profiles[profile_name]
+        row = classify_simulation_point(
+            label=label,
+            analytically_feasible=_parked_base_feasible(profile),
+            point=points[point_name],
+            nominal=nominal,
+        )
+        row["analytical"] = profile
+        base_rows.append(row)
 
     ratio_gate = PROTOCOL["analytical_law_ratio_gate"]
     seating = current_geometry["recorded_seating_sweep_against_the_law"]
@@ -300,17 +327,14 @@ def build_report(
             "reason": "The 120 x 16 mm loss supports the boundary; the 140 x 26 mm arm does not.",
         },
         "base_offset": {
-            "status": "partial",
-            "points": [
-                base_x_row,
-                {
-                    "label": "base y = nominal +10 mm",
-                    "analytically_feasible": None,
-                    "simulation": points["base_y_+10mm"],
-                    "comparison": "missing_analytical_arm",
-                },
-            ],
-            "reason": "The x offset is supported; the strong y-offset loss has no matching analytical boundary.",
+            "status": "mismatch",
+            "kinematic_gate": PROTOCOL["parked_base_kinematic_gate"],
+            "points": base_rows,
+            "reason": (
+                "A +10 mm rail stop error remains kinematically feasible with controller authority, "
+                "but simulation has a Wilson-separated loss; this is controller, rail-stop, or "
+                "handoff sensitivity rather than a kinematic boundary."
+            ),
         },
         "entry_attitude": {
             "status": "supported_in_simulation" if entry_supported else "mismatch",
@@ -360,7 +384,7 @@ def build_report(
         "required_next_arms": [
             "Increase episodes around both rack-clearance bounds; keep the 6 mm, nominal, and 16 mm arms.",
             "Repeat the 120 x 16, nominal, and 140 x 26 mm section arms at qualification episode counts.",
-            "Add an analytical base-y limit and bracket the observed +10 mm loss on identical seeds.",
+            "Bracket the base-y controller/rail-stop failure around +10 mm on identical seeds.",
             "Run a canonical contact-retention/load arm for the capture interface; do not substitute visual overlap.",
             "Pair rigid and compliant form-lock arms on identical initial states and seeds with reaction-load telemetry.",
             "Make base compliance part of the articulation load path before claiming a compliance tolerance.",
