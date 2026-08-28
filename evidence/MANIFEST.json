@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 30,
     "retracted": 9,
-    "historical": 139
+    "historical": 140
   },
   "canonical": {
     "chain_robustness_sweep.json": {
@@ -622,6 +622,10 @@
     "grapple_insert_v16pin_certification.json": {
       "title": "Head-on grapple-pin insert skill, v16pin: stroke-wide reset, pin-resolved grip",
       "generated_utc": "2026-08-25T02:38:01+00:00"
+    },
+    "grapple_insert_v25handoff_probe.json": {
+      "title": "Rack-mouth-only insertion training intervention",
+      "generated_utc": "2026-08-28T04:55:36.672673+00:00"
     },
     "grapple_insert_v3_certification.json": {
       "title": "Head-on grapple-pin insert skill",

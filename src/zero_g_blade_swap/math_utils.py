@@ -164,6 +164,44 @@ def update_curriculum_stage(
     return (stage + 1, 0.0, True) if promoted else (stage, rolling, False)
 
 
+def update_reverse_station_frontier(
+    frontier: int,
+    completed_successes: ArrayLike,
+    *,
+    threshold: float = 0.80,
+    window_size: int = 256,
+    steps_elapsed: int = 0,
+    minimum_steps: int = 1_600,
+    maximum_station: int = 8,
+) -> tuple[int, float, bool]:
+    """Unlock one earlier insertion station after the active frontier is solved.
+
+    Station zero is the rack mouth and station ``maximum_station`` is nearest
+    the seated pose. A reverse curriculum therefore moves the lower sampling
+    bound down, rather than moving a conventional difficulty index up.
+    """
+
+    if window_size <= 0:
+        raise ValueError("window_size must be positive")
+    if steps_elapsed < 0 or minimum_steps < 0:
+        raise ValueError("steps_elapsed and minimum_steps must be non-negative")
+    if not 0.0 <= threshold <= 1.0:
+        raise ValueError("threshold must be in [0, 1]")
+    if not 0 <= frontier <= maximum_station:
+        raise ValueError("frontier must be between zero and maximum_station")
+    outcomes = np.asarray(completed_successes, dtype=np.float64).reshape(-1)[-window_size:]
+    if np.any((outcomes < 0.0) | (outcomes > 1.0)):
+        raise ValueError("completed_successes must contain values in [0, 1]")
+    rolling = float(outcomes.mean()) if outcomes.size else 0.0
+    promoted = (
+        outcomes.size == window_size
+        and rolling >= threshold
+        and steps_elapsed >= minimum_steps
+        and frontier > 0
+    )
+    return (frontier - 1, 0.0, True) if promoted else (frontier, rolling, False)
+
+
 def update_sampling_bound(
     bound: float,
     completed_successes: ArrayLike,

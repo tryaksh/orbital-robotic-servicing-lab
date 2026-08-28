@@ -17,9 +17,11 @@ claims worth making.
 
 **Current priority:** T13, then T1. The station-conditioned matrix is complete:
 v24 is zero at reset stations 0–3 and at all 96 real chain handoffs, while it is
-strong at stations 5–8. The next insertion run therefore trains on the caller's
-mouth state and is evaluated across the whole matrix; it is not another blind
-epoch extension. Once that closes, move directly to the RGB-D chain.
+strong at stations 5–8. A 400-epoch station-0-only resume improved distance and
+alignment but remained 0/64 both on the identical handoff and its own training
+task. The next run is therefore a success-gated reverse curriculum: retain the
+late stations v24 solves and unlock earlier starts one at a time. Once insertion
+meets the same held-out standard as the other skills, move directly to RGB-D.
 
 **Two rules are non-negotiable, and they are why some of these tasks are shaped
 the way they are.** Never widen a tolerance to make a gate pass; if a criterion
@@ -182,10 +184,21 @@ it. It caught it.
    policy is being handed a lock state its reset never produces, that is the same
    class of divergence as the load path was, one level finer.
 
-**Do next:** resume v24 in a separately registered task forced to station 0,
-then run that checkpoint across all nine stations and the same three real
-handoff seeds. Keep v24 and guarded as losing/control arms. Do not change a
-tolerance, reward, load path or success predicate in that comparison.
+**Station-0-only intervention: measured and not promoted.** v25 resumed v24 for
+400 epochs with only the reset station changed. On the identical station-0 seed,
+median axial/lateral/orientation errors improved
+247.6→230.5 mm, 10.6→8.9 mm and 110.8→104.0 mrad, but success remained 0/64.
+It was also 0/64 on its exact noisy training task. Preserve it in
+evidence/grapple_insert_v25handoff_probe.json.
+
+**Do next:** run scripts/train_insert_handoff_curriculum.sh. It resumes the
+unchanged v24 checkpoint, starts at stations 6–8 where v24 already succeeds,
+samples the active frontier in half the environments, and unlocks one earlier
+station only after 80% success over 256 frontier episodes and 1,600 control
+steps. Rewards, tolerances, load path, observations and phase budget are
+unchanged. Then evaluate the final checkpoint across all nine stations and the
+same three real handoff seeds, keeping v24, v25 and guarded as control/losing
+arms.
 
 **Cost.** ~2 h GPU for a retrain, ~110 min to verify both halves.
 

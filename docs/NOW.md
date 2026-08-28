@@ -14,7 +14,7 @@ Everything is simulated. Nothing has run on hardware.
 
 | Item | Verified state |
 | --- | --- |
-| Evidence | 30 canonical, 9 retracted, 139 historical; quote only canonical |
+| Evidence | 30 canonical, 9 retracted, 140 historical; quote only canonical |
 | Source provenance | 10 reports carry runtime source bindings; 1 is recovered and 9 are lost |
 | Recovered chain run | `robot_carried_full_chain_c11065.json` |
 | Boundary decision | `not_qualified`; only entry attitude is supported in simulation |
@@ -60,6 +60,7 @@ recoverable; older pooled source bindings are not.
 | Insert v20chain | **0.00%**, 0/1,536 | preserved negative result |
 | Insert v24rack, isolated | **36.77%**, 1,103/3,000 | not predictive of the chain handoff |
 | Insert v24rack, in chain | **0.00%**, 0/96 | guarded remains selected |
+| Insert v25 handoff-only probe | **0.00%**, 0/64 | targeted reset improved errors but produced no success |
 
 The older insertion diagnosis remains useful: three objective arms terminated
 at 84.26, 84.61 and 84.58 mrad against a **52.4 mrad** tolerance. Changing the
@@ -97,6 +98,15 @@ Across reset stations alone, v24 is 786/1,728 (**45.49%**) and guarded is
 provides. The predeclared every-condition rule therefore keeps guarded insertion.
 The earlier combined v1 report is retracted because its reset arms disabled the
 task's load path; its valid handoff-only rows remain preserved separately.
+
+The first targeted correction is also preserved, not promoted:
+[grapple_insert_v25handoff_probe.json](../evidence/grapple_insert_v25handoff_probe.json).
+Resuming v24 for 400 epochs only at station 0 reduced median axial error on the
+identical seed from 247.6 to 230.5 mm, lateral error from 10.6 to 8.9 mm and
+orientation error from 110.8 to 104.0 mrad, but remained 0/64. It was also 0/64
+on its own noisy training task. The next run therefore starts from v24's
+successful stations 6--8 and moves the frontier toward station 0 only after
+held-out success at the active frontier; it is not a blind epoch extension.
 
 ### Serviceability boundary
 
@@ -162,7 +172,8 @@ Never overwrite evidence; use a new versioned filename for another run.
 | `keyed-interface` | Preserved losing keyed-interface exploration; do not delete |
 | `origin/agent/zero-g-blade-swap` | Preserved historical eight-phase line; superseded |
 
-The next gates are a handoff-conditioned insertion policy tested across the same
-matrix, qualification-count boundary arms, paired contact/load-path experiments,
-a base-compliance path that can actually deflect, clean-source reruns for older
-quoted results, and the RGB-D chain.
+The next gate is the success-gated reverse-curriculum insertion policy, tested
+across the same station and real-handoff matrix. After insertion: the RGB-D
+chain, qualification-count boundary arms, paired contact/load-path experiments,
+a base-compliance path that can actually deflect, and clean-source reruns for
+older quoted results.
