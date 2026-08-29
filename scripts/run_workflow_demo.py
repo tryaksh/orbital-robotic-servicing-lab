@@ -2406,6 +2406,17 @@ class WorkflowDriver:
             # pose is a fixed transform from the tool's, so a desired module
             # pose *is* a desired tool pose, and the whole transit is three
             # module waypoints and one servo. See ``_step_rigid_transit``.
+            # Once the form lock has engaged, it is the transit load path. Keep
+            # only the gentle retaining closure on the pin until the insertion
+            # phase begins. The non-rigid branch already did this; the rigid
+            # branch accidentally kept the 10 N-m holding closure throughout.
+            # While the lock was a weld that thrust was hidden in the joint.
+            # The instant the lock softened at the rack it pushed the module the
+            # full 529 mm seating stroke during a phase still labelled transit.
+            # This is the same measured wedge thrust that the removal path's
+            # retain mode was introduced to eliminate.
+            latched_transit = transiting & grapple_latched(task)
+            self.gripper.retain_latch[latched_transit] = True
             arrived = self._step_rigid_transit(transiting, step, tool, tool_rot)
             if bool(arrived.any()):
                 self._begin_guarded_insert(arrived, step)

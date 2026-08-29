@@ -440,3 +440,13 @@ def test_report_labels_the_controller_that_receives_the_handoff() -> None:
     report = source.split('"insert_handoff_contract": (')[1].split('"transit_planner": (')[0]
     assert 'if args.insert_controller == "guarded"' in report
     assert 'if args.latch_on_release and args.mating_mode == "compliant"' not in report
+
+
+def test_rigid_transit_uses_the_gentle_grip_after_the_form_lock_engages() -> None:
+    source = DRIVER.read_text(encoding="utf-8")
+    body = source.split("if self.rigid_transit and bool(transiting.any()):")[1].split(
+        "elif bool(transiting.any()):"
+    )[0]
+    assert "latched_transit = transiting & grapple_latched(task)" in body
+    assert "self.gripper.retain_latch[latched_transit] = True" in body
+    assert body.index("retain_latch[latched_transit]") < body.index("_step_rigid_transit(")
