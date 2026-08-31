@@ -865,9 +865,6 @@ from zero_g_blade_swap.grapple_geometry import (
     BLADE_LENGTH_M,
     EXTRACTED_BLADE_CENTRE_X,
     FLARE_LEADING_X,
-    GRAPPLE_HEAD_ON_TOOL_ROT,
-    GRAPPLE_PIN_GRIP_OFFSET,
-    GRIP_SEATED_APPROACH_OFFSET_M,
     SLOT_FLOOR_TOP_Z,
     SLOT_LIP_BOTTOM_Z,
     SLOT_MOUTH_X,
@@ -3922,41 +3919,6 @@ class WorkflowDriver:
                 tool_rot[follower_ids],
                 blade.data.root_pos_w[follower_ids],
             )
-            # The insert task starts with the wrist head-on to the module. The
-            # transit used to square only the module while preserving the
-            # capture-time wrist-to-module transform. The resulting handoff was
-            # a valid rack pose but an out-of-distribution skill state: about
-            # 55 mrad of grip attitude and as much as 0.44 rad away in the arm
-            # joints. The unchanged v27 skill scored 64/64 at station zero and
-            # 0/32 after that handoff.
-            #
-            # Leg zero runs after the rigid latch has softened, so the rack can
-            # hold the module square while the wrist removes that residual. Its
-            # target is not tuned: it is exactly the pin grip point and head-on
-            # transform used by ``grapple_grip_pose_error`` and by the generated
-            # insertion reset bank. Both controller arms receive this same
-            # physical state.
-            handoff_alignment = leg[follower] == 0
-            if bool(handoff_alignment.any()):
-                alignment_ids = follower_ids[handoff_alignment]
-                desired_module_rot = target_rot[follower][handoff_alignment]
-                desired_module_pos = (
-                    target_pos_local[follower][handoff_alignment]
-                    + task.scene.env_origins[alignment_ids]
-                )
-                head_on = desired_module_rot.new_tensor(GRAPPLE_HEAD_ON_TOOL_ROT).expand_as(
-                    desired_module_rot
-                )
-                seated_grip_offset = (
-                    GRAPPLE_PIN_GRIP_OFFSET[0] + GRIP_SEATED_APPROACH_OFFSET_M,
-                    GRAPPLE_PIN_GRIP_OFFSET[1],
-                    GRAPPLE_PIN_GRIP_OFFSET[2],
-                )
-                grip_offset = desired_module_pos.new_tensor(seated_grip_offset).expand_as(desired_module_pos)
-                target_tool_rot[handoff_alignment] = quat_mul(desired_module_rot, head_on)
-                target_tool_pos[handoff_alignment] = desired_module_pos + quat_apply(
-                    desired_module_rot, grip_offset
-                )
             self._drive_tool_to(
                 follower_ids, tool, tool_rot, target_tool_pos, target_tool_rot,
                 self.scales[TRANSIT], authority[follower], command_gain[follower],
@@ -4091,7 +4053,7 @@ class WorkflowDriver:
         # nothing downstream needed the missing 0.07 mm.
         velocity = attached_blade_velocity(task)[ids]
         lateral_error = torch.linalg.vector_norm(position_error[:, 1:], dim=-1)
-        if self._guarded_receiver():
+        if MATING_MODE == "compliant":
             # **One-sided on depth, because deeper is progress and not error.**
             #
             # The receiving controller starts from wherever the module is and
@@ -4149,18 +4111,10 @@ class WorkflowDriver:
             forced_handoff, orientation_error, self.transit_handoff_orientation_rad[ids]
         )
         arrived = torch.zeros_like(transiting)
-        _, grip_attitude = grapple_grip_error_metrics(task)
-        receiver_ready = torch.ones_like(orientation_error, dtype=torch.bool)
-        if MATING_MODE == "compliant":
-            # The same derived angular gate already used for a squared transit
-            # leg. A forced handoff remains an observable failure instead of a
-            # hang, exactly as for the module-pose contract below.
-            receiver_ready = grip_attitude[ids] <= RELOCATION_CHANNEL_ACCEPTANCE_RAD
         arrived[ids] = (
             (leg <= 0)
             & pose_ready
             & ((orientation_error <= RELOCATION_HANDOFF_ATTITUDE_RAD) | forced_handoff)
-            & (receiver_ready | forced_handoff)
             & (torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= INSERTION_LINEAR_VELOCITY_LIMIT_MPS)
             & (torch.linalg.vector_norm(velocity[:, 3:], dim=-1) <= INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS)
         )
@@ -4590,15 +4544,15 @@ class WorkflowDriver:
             # measured to give some of it back.
             self.module_leg_pos[1, ids] = crossed
             self.module_leg_rot[1, ids] = square_rot
-            # 0: the shallowest generated insertion reset, for both receivers.
-            #
-            # Calling the nearby mouth pose part of the reset distribution was
-            # wrong: it was 14.4 mm shallower, 5.6 mm lateral and 4.0 mm low.
-            # Those are observations the policy receives, not harmless naming
-            # differences. Read the generated bank instead of restating it.
-            reset_pose = module_local.new_tensor(INSERT_STROKE_BLADE_POSE[0][0])
-            self.module_leg_pos[0, ids] = reset_pose[:3].unsqueeze(0).expand(ids.numel(), -1)
-            self.module_leg_rot[0, ids] = reset_pose[3:].unsqueeze(0).expand(ids.numel(), -1)
+            # 0: the physical mouth state both receivers get. Trying to force
+            # the generated head-on reset after softening was measured and
+            # preserved as a losing arm: the passive compliant latch retains
+            # its captured wrist-to-module rest transform, so the wrist stayed
+            # 55 mrad off while the module either self-seated under the full
+            # grip or held 20 mm high under the gentle grip. The receiver must
+            # therefore cover the state the chain can physically supply.
+            self.module_leg_pos[0, ids] = crossed
+            self.module_leg_rot[0, ids] = square_rot
             # **The first leg enters now, not at step zero.**
             #
             # A leg is timed out when ``step - transit_leg_entered`` passes its

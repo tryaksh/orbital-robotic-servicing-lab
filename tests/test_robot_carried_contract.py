@@ -425,11 +425,9 @@ def test_the_last_transit_leg_leaves_the_module_at_the_mouth_for_both_controller
 
     source = DRIVER.read_text(encoding="utf-8")
     assert "GUARDED_RECEIVER" not in source
-    assert "reset_pose = module_local.new_tensor(INSERT_STROKE_BLADE_POSE[0][0])" in source
-    assert "self.module_leg_pos[0, ids] = reset_pose[:3]" in source
-    assert "self.module_leg_rot[0, ids] = reset_pose[3:]" in source
-    assert "target_tool_rot[handoff_alignment] = quat_mul(desired_module_rot, head_on)" in source
-    assert "grip_attitude[ids] <= RELOCATION_CHANNEL_ACCEPTANCE_RAD" in source
+    assert "self.module_leg_pos[0, ids] = crossed" in source
+    assert "self.module_leg_rot[0, ids] = square_rot" in source
+    assert "handoff_alignment" not in source
     body = source.split("def _guarded_receiver(")[1].split("def _apply_scales(")[0]
     assert 'self.insert_controller == "guarded"' in body
     assert 'MATING_MODE == "compliant"' in body
