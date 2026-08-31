@@ -159,6 +159,17 @@ def test_the_transit_records_the_tool_to_module_transform_throughout() -> None:
     assert '"robot_carried_transit": _transit_retention_report(driver, args)' in source
 
 
+def test_guarded_insertion_trace_separates_target_motion_from_module_motion() -> None:
+    source = DRIVER.read_text(encoding="utf-8")
+    assert "INSERT_TRACE_FIELDS" in source
+    assert '"estimated_blade_x_m"' in source
+    assert '"true_blade_x_m"' in source
+    assert '"clear_to_advance"' in source
+    assert '"following_target"' in source
+    assert '"latch_applied_force_n"' in source
+    assert "def _record_guarded_insert(" in source
+
+
 def test_the_live_preset_does_not_use_the_world_mounted_payload_stage() -> None:
     """The rejected showcase, kept out of the default by a test rather than by memory."""
 

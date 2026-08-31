@@ -1122,6 +1122,41 @@ TRANSIT_TRACE_FIELDS = (
 #: measured loss on the passive interface happens inside the first two seconds --
 #: and cheap enough to leave on for a many-environment batch.
 TRANSIT_TRACE_STRIDE = 2
+#: Guarded insertion is slower than transit and its failures live between the
+#: handoff and terminal rows. Sample at 6 Hz so target lead, envelope gating,
+#: module motion and the compliant load path can be separated without a video.
+INSERT_TRACE_STRIDE = 5
+INSERT_TRACE_FIELDS = (
+    "step",
+    "env",
+    "target_x_m",
+    "estimated_blade_x_m",
+    "estimated_blade_y_m",
+    "estimated_blade_z_m",
+    "true_blade_x_m",
+    "true_blade_y_m",
+    "true_blade_z_m",
+    "lateral_error_m",
+    "orientation_error_rad",
+    "clear_to_advance",
+    "following_target",
+    "target_advanced",
+    "grip_error_m",
+    "grip_attitude_rad",
+    "finger_angle_rad",
+    "drive_torque_nm",
+    "latch_engaged",
+    "latch_relative_position_error_m",
+    "latch_relative_orientation_error_rad",
+    "latch_applied_force_n",
+    "latch_applied_torque_nm",
+    "action_x",
+    "action_y",
+    "action_z",
+    "action_rx",
+    "action_ry",
+    "action_rz",
+)
 #: One row per environment per step of the settling window. A pooled terminal
 #: number cannot distinguish a module that was never settled from one that was
 #: settled and then pushed, and those want opposite fixes.
@@ -1509,6 +1544,7 @@ class WorkflowDriver:
         self.reset_tool_valid = torch.zeros(count, dtype=torch.bool, device=device)
         self.tracing = tracing
         self.handoff_rows: list[np.ndarray] = []
+        self.insert_rows: list[np.ndarray] = []
         self.settle_rows: list[np.ndarray] = []
         self.env_index = torch.arange(count, dtype=torch.float64, device=device)
         # The action term's own joint ids, so the trace records the joints the
@@ -1867,6 +1903,45 @@ class WorkflowDriver:
         )
         self.settle_rows.append(rows[mask].cpu().numpy())
 
+    def _record_guarded_insert(
+        self,
+        ids: torch.Tensor,
+        step: int,
+        estimated_module_pos: torch.Tensor,
+        lateral_error: torch.Tensor,
+        orientation_error: torch.Tensor,
+        clear_to_advance: torch.Tensor,
+        following: torch.Tensor,
+        advancing: torch.Tensor,
+    ) -> None:
+        state = self._trace_state()
+        rows = torch.cat(
+            (
+                self._column(float(step))[ids],
+                self.env_index[ids].unsqueeze(-1),
+                self.guarded_insert_target_x[ids].to(torch.float64).unsqueeze(-1),
+                estimated_module_pos.to(torch.float64),
+                state["blade_local"][ids],
+                lateral_error.to(torch.float64).unsqueeze(-1),
+                orientation_error.to(torch.float64).unsqueeze(-1),
+                clear_to_advance.to(torch.float64).unsqueeze(-1),
+                following.to(torch.float64).unsqueeze(-1),
+                advancing.to(torch.float64).unsqueeze(-1),
+                state["grip_error_m"][ids].unsqueeze(-1),
+                state["grip_attitude_rad"][ids].unsqueeze(-1),
+                state["finger_angle_rad"][ids].unsqueeze(-1),
+                state["drive_torque_nm"][ids].unsqueeze(-1),
+                state["latch_engaged"][ids].unsqueeze(-1),
+                state["latch_relative_position_error_m"][ids].unsqueeze(-1),
+                state["latch_relative_orientation_error_rad"][ids].unsqueeze(-1),
+                state["latch_applied_force_n"][ids].unsqueeze(-1),
+                state["latch_applied_torque_nm"][ids].unsqueeze(-1),
+                self.actions[ids, :6].to(torch.float64),
+            ),
+            dim=-1,
+        )
+        self.insert_rows.append(rows.cpu().numpy())
+
     def trace_npz(self) -> dict[str, np.ndarray]:
         def stack(rows: list[np.ndarray], fields: tuple[str, ...]) -> np.ndarray:
             return np.concatenate(rows) if rows else np.zeros((0, len(fields)), dtype=np.float64)
@@ -1874,6 +1949,8 @@ class WorkflowDriver:
         return {
             "handoff": stack(self.handoff_rows, HANDOFF_TRACE_FIELDS),
             "handoff_fields": np.asarray(HANDOFF_TRACE_FIELDS),
+            "insert": stack(self.insert_rows, INSERT_TRACE_FIELDS),
+            "insert_fields": np.asarray(INSERT_TRACE_FIELDS),
             "settle": stack(self.settle_rows, SETTLE_TRACE_FIELDS),
             "settle_fields": np.asarray(SETTLE_TRACE_FIELDS),
             "transit": stack(self.transit_rows, TRANSIT_TRACE_FIELDS),
@@ -4325,6 +4402,17 @@ class WorkflowDriver:
         # the rack begins to constrain it. Gentle retention keeps the physical
         # pin captured without fighting the remote-centre compliance.
         self.gripper.retain_latch[inserting] = True
+        if self.tracing and step % INSERT_TRACE_STRIDE == 0:
+            self._record_guarded_insert(
+                ids,
+                step,
+                module_pos,
+                lateral_error,
+                orientation_error,
+                clear_to_advance,
+                following,
+                advancing,
+            )
 
         # The backstop. The lock is released at the hand-off above, so this can
         # only fire if some future change holds it longer; it is simulator truth
@@ -5569,7 +5657,7 @@ def main() -> dict[str, object]:
             print(
                 f"[INFO] Wrote {args.handoff_trace}: "
                 f"{trace['handoff'].shape[0]} hand-offs, {trace['transit'].shape[0]} transit samples, "
-                f"{trace['settle'].shape[0]} settling rows",
+                f"{trace['insert'].shape[0]} insertion samples, {trace['settle'].shape[0]} settling rows",
                 flush=True,
             )
 
