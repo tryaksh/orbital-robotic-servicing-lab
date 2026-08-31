@@ -126,6 +126,14 @@ def test_the_hand_opens_only_after_the_settling_recheck() -> None:
     assert "self.actions[finished & self.gripper_released, 6] = -1.0" in source
 
 
+def test_parallel_bounded_runs_summarize_the_fixed_cohort_without_timeout_reset() -> None:
+    source = DRIVER.read_text(encoding="utf-8")
+    assert "if not collecting and task.num_envs > 1:" in source
+    assert "cohort_ids = torch.arange(task.num_envs, device=task.device)" in source
+    assert "bounded_recorder.record(driver.harvest(cohort_ids, step).cpu().numpy())" in source
+    assert "summary_recorder = recorder if collecting else bounded_recorder" in source
+
+
 def test_the_release_disables_the_joint_and_stows_the_visible_jaws() -> None:
     source = GRAPPLE.read_text(encoding="utf-8")
     assert "def release(self, mask: torch.Tensor) -> None:" in source

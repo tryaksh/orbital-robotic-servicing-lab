@@ -5651,6 +5651,19 @@ def main() -> dict[str, object]:
                     note(f"episode ended during {PHASE_NAMES[int(driver.phase[0])]}", step)
                     break
 
+        # Multi-environment diagnostics are already a fixed cohort: each row
+        # starts at the same reset and receives the same bounded control-step
+        # budget. Summarize that cohort directly instead of forcing a simulator
+        # timeout solely to trigger the terminal callback. On this workcell,
+        # enabling timeout collection changes the long-transit physics and has
+        # twice produced a different, non-finite trajectory from the otherwise
+        # identical bounded run. That losing arm is evidence, not a rate.
+        bounded_recorder = None
+        if not collecting and task.num_envs > 1:
+            bounded_recorder = TerminalEpisodeRecorder(WORKFLOW_METRIC_FIELDS)
+            cohort_ids = torch.arange(task.num_envs, device=task.device)
+            bounded_recorder.record(driver.harvest(cohort_ids, step).cpu().numpy())
+
         # Written before anything that formats a report, because it is the
         # expensive half of this run and it must not be hostage to the cheap
         # half. The relocation's first trace cost eleven minutes of simulation
@@ -6197,15 +6210,16 @@ def main() -> dict[str, object]:
                     "scores_are_calibrated_confidence": False,
                     "used_to_gate_execution": True,
                 }
-        if collecting:
-            result["chain"] = _chain_report(recorder, args.workflow)
+        summary_recorder = recorder if collecting else bounded_recorder
+        if summary_recorder is not None:
+            result["chain"] = _chain_report(summary_recorder, args.workflow)
             print(json.dumps(round_floats(result["chain"]), indent=2)[:3000], flush=True)
             if args.episode_metrics is not None:
                 args.episode_metrics.parent.mkdir(parents=True, exist_ok=True)
                 np.savez_compressed(
                     args.episode_metrics,
-                    rows=np.asarray(recorder.rows, dtype=np.float32),
-                    fields=np.asarray(recorder.fields),
+                    rows=np.asarray(summary_recorder.rows, dtype=np.float32),
+                    fields=np.asarray(summary_recorder.fields),
                     metadata=np.asarray(
                         json.dumps(
                             {
