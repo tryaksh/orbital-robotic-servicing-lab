@@ -3359,9 +3359,9 @@ class WorkflowDriver:
             # A zero Cartesian action is not a seated hold for a compliant
             # load path: the remote-centre spring and the rack contacts can
             # move the module while the arm stays put. Continue the same
-            # guarded module-space correction until the hand opens. The final
-            # window is deliberately passive, after both robot-side load paths
-            # have been released.
+            # guarded module-space correction through the first settling
+            # window. The second window is deliberately passive, after both
+            # robot-side load paths have been released.
             stabilizing = finished & self.predicate_fired & ~self.gripper_released & ~plan_blocked
             if self.rigid_transit and self.insert_controller == "guarded" and bool(stabilizing.any()):
                 self._step_guarded_insert(stabilizing, step, tool, tool_rot)
@@ -3385,34 +3385,23 @@ class WorkflowDriver:
                 outcome = outcome & self.predicate_fired
                 everything = everything & self.predicate_fired
                 if self.rigid_transit:
-                    # Unload one physical path at a time. Simultaneously
-                    # disabling the spring and opening the fingers injected a
-                    # measurable lateral transient. First settle with both,
-                    # release the compliant form lock and settle on the hand,
-                    # then open the hand and prove the rack owns the module.
-                    ready_to_release_latch = ripe & ~self.latch_released & outcome & everything
-                    failed_with_latch = ripe & ~self.latch_released & ~ready_to_release_latch
-                    if bool(ready_to_release_latch.any()):
-                        release_grapple_latch(task, ready_to_release_latch)
-                        self.latch_released |= ready_to_release_latch
-                        self.latch_released_at[ready_to_release_latch] = step
-                        self.done_at[ready_to_release_latch] = step
+                    # The robot-carried path has two independently meaningful
+                    # checks. First prove the compliant load path can hold a
+                    # seated module for 0.70 s. Only then release both the form
+                    # lock and the hand, and start a second 0.70 s clock that
+                    # proves the rack owns the load without either aid.
+                    ready_to_release = ripe & ~self.gripper_released & outcome & everything
+                    failed_before_release = ripe & ~self.gripper_released & ~ready_to_release
+                    if bool(ready_to_release.any()):
+                        self.actions[ready_to_release, :6] = 0.0
+                        release_grapple_latch(task, ready_to_release)
+                        self.latch_released |= ready_to_release
+                        self.latch_released_at[ready_to_release & (self.latch_released_at < 0)] = step
+                        self.gripper_released |= ready_to_release
+                        self.gripper_released_at[ready_to_release] = step
+                        self.done_at[ready_to_release] = step
 
-                    ready_to_release_hand = (
-                        ripe & self.latch_released & ~self.gripper_released & ~ready_to_release_latch
-                        & outcome & everything
-                    )
-                    failed_without_latch = (
-                        ripe & self.latch_released & ~self.gripper_released
-                        & ~ready_to_release_latch & ~ready_to_release_hand
-                    )
-                    if bool(ready_to_release_hand.any()):
-                        self.actions[ready_to_release_hand, :6] = 0.0
-                        self.gripper_released |= ready_to_release_hand
-                        self.gripper_released_at[ready_to_release_hand] = step
-                        self.done_at[ready_to_release_hand] = step
-
-                    post_release = ripe & self.gripper_released & ~ready_to_release_hand
+                    post_release = ripe & self.gripper_released & ~ready_to_release
                     latch_clear = ~grapple_latch_diagnostics(task)["engaged"]
                     final_success = post_release & outcome & latch_clear
                     self.outcome[post_release] = final_success[post_release]
@@ -3420,7 +3409,6 @@ class WorkflowDriver:
                     self.judged[post_release] = True
                     self._freeze(post_release, step, grip_error, grip_attitude, blade_x)
 
-                    failed_before_release = failed_with_latch | failed_without_latch
                     self.outcome[failed_before_release] = False
                     self.all_conditions[failed_before_release] = False
                     self.judged[failed_before_release] = True
