@@ -213,8 +213,8 @@ def main() -> int:
             "simulator_pose_used_by_estimator": False,
             "simulator_pose_used_only_for_error_metrics": True,
             "dropout_behavior": (
-                "tool forward-kinematics propagation before physical shuttle handoff; "
-                "hold-last and guarded-motion pause boundary after handoff"
+                "hold-last before verified robot capture; tool forward-kinematics propagation only "
+                "after capture; hold-last and guarded-motion pause after handoff"
             ),
             "critical_bay_definition": (
                 "source occupancy preflight and destination insertion alignment; random free-transfer "

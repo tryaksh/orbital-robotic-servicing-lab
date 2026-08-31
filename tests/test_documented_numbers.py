@@ -36,11 +36,11 @@ def _overall(name: str) -> dict:
     return json.loads((EVIDENCE / name).read_text(encoding="utf-8"))["overall"]
 
 
-def test_the_chain_rate_is_quoted_as_measured() -> None:
-    """97.92% over 94 of 96 episodes, with its Wilson interval."""
-    overall = _overall("workflow_robot_carried_m130pin_guarded_certification.json")
+def test_the_strict_chain_rate_is_quoted_as_measured() -> None:
+    """The current rate includes release of both robot supports and a rack-only recheck."""
+    overall = _overall("workflow_robot_carried_release_recheck_v2_certification.json")
     rate = f"{overall['success_rate'] * 100:.2f}%"
-    assert overall["successes"] == 94 and overall["episodes"] == 96
+    assert overall["successes"] == 17 and overall["episodes"] == 24
     for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
         assert rate in document, f"{label} does not quote the chain rate {rate}"
 
@@ -48,6 +48,14 @@ def test_the_chain_rate_is_quoted_as_measured() -> None:
     interval = f"[{wilson['low'] * 100:.1f}%, {wilson['high'] * 100:.1f}%]"
     assert interval in README or interval.replace("%", "") in README
     assert interval in NOW or interval.replace("%", "") in NOW
+
+
+def test_the_legacy_supported_settle_rate_is_not_presented_as_current() -> None:
+    overall = _overall("workflow_robot_carried_m130pin_guarded_certification.json")
+    assert overall["successes"] == 94 and overall["episodes"] == 96
+    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+        assert "97.92%" in document, f"{label} loses the preserved legacy comparator"
+        assert "legacy" in document.lower(), f"{label} presents the old criterion as current"
 
 
 @pytest.mark.parametrize(

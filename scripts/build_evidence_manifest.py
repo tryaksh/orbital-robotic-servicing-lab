@@ -46,7 +46,15 @@ RETRACTED = EVIDENCE / "RETRACTED.md"
 CANONICAL: tuple[tuple[str, str], ...] = (
     (
         "workflow_robot_carried_m130pin_guarded_certification.json",
-        "The chain's headline rate: 97.92% pooled over 96 episodes, three held-out seeds.",
+        "Legacy supported-settle baseline: 97.92% over 96 episodes; it predates the independent robot-support release recheck.",
+    ),
+    (
+        "workflow_robot_carried_release_recheck_v2_certification.json",
+        "Current strict chain: 17/24 (70.83%) after both robot-side supports release and a 0.70 s rack-only recheck.",
+    ),
+    (
+        "workflow_robot_carried_release_hand_first_v3_certification.json",
+        "Paired losing load-transfer arm: hand-first release scores 12/24 (50.00%) on identical seeds and states.",
     ),
     (
         "workflow_robot_carried_m130_guarded_certification.json",
@@ -109,12 +117,12 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "The form lock's clearances, derived from the measured gripper envelope.",
     ),
     (
-        "fiducial_rgbd_service_plate.json",
-        "The perception path the live service runs, certified on rendered frames.",
+        "fiducial_rgbd_flush_v2_seed283.json",
+        "Current flush-tag negative qualification: 43.27% critical-bay detection against a 99% gate.",
     ),
     (
-        "full_chain_rgbd_service_seed4070.json",
-        "The RGB-D chain end to end, one seed. NOT the pooled rate -- see docs/NEXT_WORK.md T1.",
+        "rgbd_strict_capture_gate_v2_seed5070.json",
+        "One strict RGB-D negative run after capture-gated dropout propagation; it ended during extraction and claims no relocation.",
     ),
     (
         "full_chain_state_16_report.json",
@@ -134,7 +142,7 @@ CANONICAL: tuple[tuple[str, str], ...] = (
     ),
     (
         "workflow_robot_carried_m130pin_guarded_c11065_certification.json",
-        "The chain on the derived rack: 97.92% pooled, seed for seed identical to the 12.689 mm run.",
+        "Legacy supported-settle comparator on the derived rack: 97.92%, seed for seed identical to the 12.689 mm run.",
     ),
     (
         "grapple_insert_v24rack_certification.json",

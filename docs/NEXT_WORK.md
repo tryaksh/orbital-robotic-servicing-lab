@@ -15,13 +15,15 @@ in what order, and the few things only a submission needs. They do not conflict 
 `P1` *is* `T0`, `P2` *is* `T3` — the paper section only adds sequencing and the
 claims worth making.
 
-**Current priority:** T13, then T1. The station-conditioned matrix is complete:
-v24 is zero at reset stations 0–3 and at all 96 real chain handoffs, while it is
-strong at stations 5–8. A 400-epoch station-0-only resume improved distance and
-alignment but remained 0/64 both on the identical handoff and its own training
-task. The next run is therefore a success-gated reverse curriculum: retain the
-late stations v24 solves and unlock earlier starts one at a time. Once insertion
-meets the same held-out standard as the other skills, move directly to RGB-D.
+**Current priority:** T14, then T15, then T1. The guarded controller now reaches
+the destination reliably enough to expose the real completion loss: 17/24 after
+both robot supports are removed. Hand-first release loses at 12/24, so do not
+spend more runs on sequencing. Add a visible rack-side retention/contact path
+and replay the same fixed cohorts. In parallel, the physically flush fiducial
+detects in only 43.27% of critical-bay frames; fix camera/tag visibility before
+another RGB-D chain batch. T13 is paused: learned v24 remains 0/96 on real
+handoffs, and more epochs are not justified until its reset and caller
+distributions are identical by construction.
 
 **Two rules are non-negotiable, and they are why some of these tasks are shaped
 the way they are.** Never widen a tolerance to make a gate pass; if a criterion
@@ -39,9 +41,11 @@ training runs do not.
 
 | # | Task | Cost | Blocks |
 | --- | --- | --- | --- |
-| **T13** | **Make the insert skill seat.** Depth is the last condition, and it is attitude through `2c/theta` | ~2 h GPU | a learned seating phase |
+| **T14** | **Model destination load transfer.** Add visible rack-side retention and replay the strict 17/24 baseline | CPU + short paired simulator batches | strict completion |
+| **T15** | **Restore flush-tag visibility.** Change camera/tag geometry, not estimator tolerances | short rendered corpus + one RGB-D run | credible perception |
+| **T13** | Learned insertion interface transfer; paused until resets equal real handoffs | no GPU yet | a learned seating phase |
 | **T0** | Nine older source-bound reports are unrecoverable; re-run any result a final claim needs | CPU + certification batches | reproducible claims |
-| **T1** | **Next after insertion:** certify the chain on the vision task | hours, 1 batch | the strongest claim about perception |
+| **T1** | Certify the strict chain on the vision task after T14 and T15 pass | hours, 1 batch | the strongest claim about perception |
 | **T2** | Insert: attitude is the interface's, not the reward's — **diagnosed, work moved to T9** | done | — |
 | **T3** | Three training seeds, so numbers carry a spread | 4+ training runs | any claim about a *method* |
 | **T4** | Exercise robustness levels 1–4 | evaluation only | a degradation curve |
@@ -54,6 +58,50 @@ training runs do not.
 | **T11** | No recording shows the certified chain | ~8 min a clip | the media, and any release |
 | **T12** | Grasp and extract re-certified on the derived rack | **done 2026-08-27** | — |
 | **P1–P7** | [Publication track](#publication-track) — the same work on a submission deadline | see section | Frontiers, 2026-11-09 |
+
+---
+
+## T14 -- Destination load transfer after robot release
+
+**Start from:** `workflow_robot_carried_release_recheck_v2_certification.json`
+(17/24) and the paired losing hand-first arm (12/24). Do not alter the controller,
+seeds, initial states or tolerances.
+
+Add the smallest visible rack-side passive capture whose collision/contact
+geometry can be named and measured. If an idealized joint remains necessary, it
+must connect the module to that rack interface rather than the world, engage
+only after measured seating, carry a reported break rating, and be disclosed.
+Record rack reaction/load transfer and the interval after both robot supports
+are absent. Preserve the no-rack-capture arm.
+
+**Done:** the paired arm uses identical fixed cohorts, reaches at least 95%, and
+the report shows 0.70 s of stable rack-only seating with no hidden carrier,
+teleport, pose write or tolerance change. Otherwise narrow the completion claim.
+
+## T15 -- Flush-tag visibility
+
+**Start from:** `fiducial_rgbd_flush_v2_seed283.json`. Detected-frame accuracy
+passes its limits; critical visibility is 43.27% against 99%. Do not widen the
+pose, occupancy or detection gates.
+
+Change one physical variable at a time: first fixed-camera placement/aim, then a
+second flush datum or a larger datum only if it still fits the module geometry.
+Keep the current camera/tag arm as the loser. Collect at least 1,024 held-out
+workflow-envelope frames before promotion:
+
+```powershell
+C:/isaac-sim/python.bat scripts/collect_grapple_vision.py `
+  --task Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Collect-v0 `
+  --output datasets/fiducial_rgbd_flush_v3.npz --samples 1024 --num_envs 16 `
+  --seed 284 --rgb_source raw --pose_distribution workflow_envelope
+C:/isaac-sim/python.bat scripts/certify_fiducial_perception.py `
+  --dataset datasets/fiducial_rgbd_flush_v3.npz `
+  --report <new-versioned-evidence-path>
+```
+
+**Done:** overall detection is at least 90%, critical-bay detection at least
+99%, position p95 below 20 mm, orientation p95 below 0.05 rad and occupancy at
+least 95%, followed by a strict RGB-D chain run.
 
 ---
 

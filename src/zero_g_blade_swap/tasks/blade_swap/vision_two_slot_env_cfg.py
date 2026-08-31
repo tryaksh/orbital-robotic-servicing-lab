@@ -80,7 +80,7 @@ VISION_TWO_SLOT_STAGE_BLADE_POSE = (
 class VisionTwoSlotGrappleSceneCfg(ZeroGTwoSlotGrapplePinSceneCfg):
     """Two bays, with the same servicing camera watching the interface.
 
-    The camera is `make_tiled_camera_cfg()` unchanged, including the 256 px /
+    The camera is `make_tiled_camera_cfg()` unchanged, including the 384 px /
     45 mm scale-preserving overview field of view. It is not re-aimed for the second bay, and that is the
     honest configuration to measure: a fixed servicing camera is what a real
     manipulator carries, and whether this one frames both bays well enough to

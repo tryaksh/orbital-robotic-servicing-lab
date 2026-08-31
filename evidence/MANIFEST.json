@@ -8,8 +8,8 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 30,
-    "retracted": 9,
+    "canonical": 32,
+    "retracted": 11,
     "historical": 140
   },
   "canonical": {
@@ -31,20 +31,10 @@
       "generated_utc": "2026-08-24T22:07:21.639279+00:00",
       "holds_up": "One change a row on one unchanged checkpoint: criterion, rack, reset, then epochs."
     },
-    "fiducial_rgbd_service_plate.json": {
+    "fiducial_rgbd_flush_v2_seed283.json": {
       "title": "Calibrated RGB-D fiducial perception qualification",
       "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
-      "holds_up": "The perception path the live service runs, certified on rendered frames."
-    },
-    "full_chain_rgbd_service_seed4070.json": {
-      "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
-      "policy_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
-      "checkpoints_sha256": {
-        "capture": "D5506848D6C63E00DF2D5A9397109D7913B57542B163E15574C7F0B9D69C4612",
-        "extract": "5391CD416EC900E07872BF758B54F661A2C141ECF3A1E1D920D9A15AF769B300",
-        "insert": "9159DE38F659A2ED47C56D7E873F1C580A98420340B8FB799C080F4D93A173C0"
-      },
-      "holds_up": "The RGB-D chain end to end, one seed. NOT the pooled rate -- see docs/NEXT_WORK.md T1."
+      "holds_up": "Current flush-tag negative qualification: 43.27% critical-bay detection against a 99% gate."
     },
     "full_chain_state_16_report.json": {
       "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
@@ -204,6 +194,16 @@
       "generated_utc": "2026-08-28T01:09:15+00:00",
       "holds_up": "Paired v24 and guarded insertion at all nine reset stations and real chain handoffs; every losing arm retained."
     },
+    "rgbd_strict_capture_gate_v2_seed5070.json": {
+      "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "checkpoints_sha256": {
+        "capture": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+        "extract": "ADC247AB0E9403761A3108228019AE7BE4DC408155B414B6BF0226102E5CCA54",
+        "insert": "CFBB09E2DDC7AF11E180DD772C42F5D86AB20EA56BD0A00F2FEB2EA378B4EC69"
+      },
+      "holds_up": "One strict RGB-D negative run after capture-gated dropout propagation; it ended during extraction and claims no relocation."
+    },
     "robot_carried_full_chain_c11065.json": {
       "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
@@ -306,7 +306,7 @@
       },
       "gate_passed": true,
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
-      "holds_up": "The chain on the derived rack: 97.92% pooled, seed for seed identical to the 12.689 mm run."
+      "holds_up": "Legacy supported-settle comparator on the derived rack: 97.92%, seed for seed identical to the 12.689 mm run."
     },
     "workflow_robot_carried_m130pin_guarded_certification.json": {
       "title": "Robot-carried servicing workflow: relocation, on the pin-resolved criterion and the derived rack",
@@ -323,7 +323,41 @@
       },
       "gate_passed": true,
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
-      "holds_up": "The chain's headline rate: 97.92% pooled over 96 episodes, three held-out seeds."
+      "holds_up": "Legacy supported-settle baseline: 97.92% over 96 episodes; it predates the independent robot-support release recheck."
+    },
+    "workflow_robot_carried_release_hand_first_v3_certification.json": {
+      "title": "Robot-carried servicing workflow: hand-first release ablation",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-31T08:17:01+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 12,
+        "success_rate": 0.5,
+        "wilson_95": [
+          0.314274,
+          0.685726
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "Paired losing load-transfer arm: hand-first release scores 12/24 (50.00%) on identical seeds and states."
+    },
+    "workflow_robot_carried_release_recheck_v2_certification.json": {
+      "title": "Robot-carried servicing workflow: independent release recheck",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-31T08:16:47+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 17,
+        "success_rate": 0.708333,
+        "wilson_95": [
+          0.508323,
+          0.850854
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "Current strict chain: 17/24 (70.83%) after both robot-side supports release and a 0.70 s rack-only recheck."
     },
     "workflow_robot_carried_relocate_certification.json": {
       "title": "Robot-carried servicing workflow: relocation, bay 1 to bay 2",
@@ -344,6 +378,21 @@
     }
   },
   "retracted": {
+    "fiducial_rgbd_service_plate.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification",
+      "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    },
+    "full_chain_rgbd_service_seed4070.json": {
+      "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "policy_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
+      "checkpoints_sha256": {
+        "capture": "D5506848D6C63E00DF2D5A9397109D7913B57542B163E15574C7F0B9D69C4612",
+        "extract": "5391CD416EC900E07872BF758B54F661A2C141ECF3A1E1D920D9A15AF769B300",
+        "insert": "9159DE38F659A2ED47C56D7E873F1C580A98420340B8FB799C080F4D93A173C0"
+      },
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    },
     "grapple_extract_certification.json": {
       "title": "Head-on grapple-pin extract skill",
       "evidence_type": "simulation_only",
