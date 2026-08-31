@@ -20,6 +20,7 @@ from __future__ import annotations
 from isaaclab.utils import configclass
 
 from .assets import GRAPPLE_ROBOT_ROOT_POS
+from .grapple_pin_env_cfg import InsertPolicyObsCfg
 from .two_slot_env_cfg import ZeroGBladeGrapplePinInsertTwoSlotEnvCfg
 
 HANDOFF_RESET_STATION = 0
@@ -74,6 +75,35 @@ class ZeroGBladeGrapplePinInsertHandoffEnvCfg(ZeroGBladeGrapplePinInsertTwoSlotE
             mount.init_state.pos = tuple(anchor)
 
 
+@configclass
+class TaskSpaceInsertPolicyObsCfg(InsertPolicyObsCfg):
+    """Insertion feedback without absolute IK-branch or wrist-pose channels.
+
+    The six-dimensional goal error, physical grip error, velocities and previous
+    Cartesian action already describe the local assembly problem. Raw arm joint
+    position and absolute end-effector pose encode which IK branch and robot-rail
+    endpoint produced that problem. They let an isolated policy memorize the
+    solved reset while failing on a physically equivalent chain handoff.
+    """
+
+    joint_pos: None = None
+    end_effector: None = None
+
+
+@configclass
+class TaskSpaceInsertObservationsCfg:
+    policy: TaskSpaceInsertPolicyObsCfg = TaskSpaceInsertPolicyObsCfg()
+
+
+@configclass
+class ZeroGBladeGrapplePinInsertTaskSpaceHandoffEnvCfg(
+    ZeroGBladeGrapplePinInsertHandoffEnvCfg
+):
+    """Recorded handoff task whose policy input is local to the assembly."""
+
+    observations: TaskSpaceInsertObservationsCfg = TaskSpaceInsertObservationsCfg()
+
+
 __all__ = [
     "HANDOFF_RESET_STATION",
     "RECORDED_HANDOFF_ARM_JOINTS",
@@ -81,5 +111,8 @@ __all__ = [
     "RECORDED_HANDOFF_ROBOT_ROOT_Y_M",
     "RECORDED_HANDOFF_SOURCE_COMMIT",
     "RECORDED_HANDOFF_TRACE_SHA256",
+    "TaskSpaceInsertObservationsCfg",
+    "TaskSpaceInsertPolicyObsCfg",
     "ZeroGBladeGrapplePinInsertHandoffEnvCfg",
+    "ZeroGBladeGrapplePinInsertTaskSpaceHandoffEnvCfg",
 ]

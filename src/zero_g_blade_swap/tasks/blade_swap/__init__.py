@@ -297,6 +297,19 @@ gym.register(
 )
 
 gym.register(
+    id="Isaac-ZeroG-Blade-GrapplePin-InsertTaskSpaceHandoff-v0",
+    entry_point=INSERTION_ENTRY_POINT,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{__name__}.handoff_insert_env_cfg:"
+            "ZeroGBladeGrapplePinInsertTaskSpaceHandoffEnvCfg"
+        ),
+        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+    },
+)
+
+gym.register(
     id="Isaac-ZeroG-Blade-GrapplePin-InsertHandoffCurriculum-v0",
     entry_point=INSERTION_ENTRY_POINT,
     disable_env_checker=True,
