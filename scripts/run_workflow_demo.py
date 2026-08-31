@@ -647,6 +647,17 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--release_sequence",
+        choices=("simultaneous", "hand_first"),
+        default="simultaneous",
+        help=(
+            "How the robot transfers a seated module to the rack. simultaneous preserves the "
+            "baseline that opens the hand and releases the compliant form lock together; hand_first "
+            "opens the hand while the form lock still supports the module, releases the lock after "
+            "0.70 s, then applies the same 0.70 s free-module recheck."
+        ),
+    )
+    parser.add_argument(
         "--start_insert_station",
         type=int,
         default=None,
@@ -1255,6 +1266,7 @@ class WorkflowDriver:
         robot_rail_enabled: bool = False,
         robot_rail_step_m: float = 0.001,
         insert_controller: str = "guarded",
+        release_sequence: str = "simultaneous",
         insert_only: bool = False,
     ) -> None:
         self.task = task
@@ -1269,6 +1281,7 @@ class WorkflowDriver:
         #: Which controller performs the seating. Reported, and the report's
         #: honesty labels are keyed on it rather than on any flag beside it.
         self.insert_controller = insert_controller
+        self.release_sequence = release_sequence
         #: Evaluation-only start condition. It selects the same controller
         #: dispatch used after a real relocation but does not claim the omitted
         #: capture/extract/transit phases ran.
@@ -3385,23 +3398,43 @@ class WorkflowDriver:
                 outcome = outcome & self.predicate_fired
                 everything = everything & self.predicate_fired
                 if self.rigid_transit:
-                    # The robot-carried path has two independently meaningful
-                    # checks. First prove the compliant load path can hold a
-                    # seated module for 0.70 s. Only then release both the form
-                    # lock and the hand, and start a second 0.70 s clock that
-                    # proves the rack owns the load without either aid.
-                    ready_to_release = ripe & ~self.gripper_released & outcome & everything
-                    failed_before_release = ripe & ~self.gripper_released & ~ready_to_release
+                    # First prove the compliant load path can hold a seated
+                    # module for 0.70 s. The baseline releases both robot-side
+                    # supports together. The hand-first ablation opens the hand
+                    # while the compliant form lock still owns the load, waits
+                    # another 0.70 s, then releases that lock. Both sequences
+                    # finish with the same passive 0.70 s rack-only recheck.
+                    awaiting_first_release = ~self.gripper_released
+                    ready_to_release = ripe & awaiting_first_release & outcome & everything
+                    failed_before_release = ripe & awaiting_first_release & ~ready_to_release
+                    just_released_latch = torch.zeros_like(ripe)
                     if bool(ready_to_release.any()):
                         self.actions[ready_to_release, :6] = 0.0
-                        release_grapple_latch(task, ready_to_release)
-                        self.latch_released |= ready_to_release
-                        self.latch_released_at[ready_to_release & (self.latch_released_at < 0)] = step
+                        if self.release_sequence == "simultaneous":
+                            release_grapple_latch(task, ready_to_release)
+                            self.latch_released |= ready_to_release
+                            self.latch_released_at[ready_to_release & (self.latch_released_at < 0)] = step
+                            just_released_latch |= ready_to_release
                         self.gripper_released |= ready_to_release
                         self.gripper_released_at[ready_to_release] = step
                         self.done_at[ready_to_release] = step
 
-                    post_release = ripe & self.gripper_released & ~ready_to_release
+                    waiting_on_latch = (
+                        ripe
+                        & self.gripper_released
+                        & ~self.latch_released
+                        & ~ready_to_release
+                    )
+                    ready_to_release_latch = waiting_on_latch & outcome
+                    failed_after_hand_release = waiting_on_latch & ~ready_to_release_latch
+                    if bool(ready_to_release_latch.any()):
+                        release_grapple_latch(task, ready_to_release_latch)
+                        self.latch_released |= ready_to_release_latch
+                        self.latch_released_at[ready_to_release_latch] = step
+                        self.done_at[ready_to_release_latch] = step
+                        just_released_latch |= ready_to_release_latch
+
+                    post_release = ripe & self.gripper_released & self.latch_released & ~just_released_latch
                     latch_clear = ~grapple_latch_diagnostics(task)["engaged"]
                     final_success = post_release & outcome & latch_clear
                     self.outcome[post_release] = final_success[post_release]
@@ -3413,6 +3446,10 @@ class WorkflowDriver:
                     self.all_conditions[failed_before_release] = False
                     self.judged[failed_before_release] = True
                     self._freeze(failed_before_release, step, grip_error, grip_attitude, blade_x)
+                    self.outcome[failed_after_hand_release] = False
+                    self.all_conditions[failed_after_hand_release] = False
+                    self.judged[failed_after_hand_release] = True
+                    self._freeze(failed_after_hand_release, step, grip_error, grip_attitude, blade_x)
                 else:
                     self.outcome[ripe] = outcome[ripe]
                     self.all_conditions[ripe] = everything[ripe]
@@ -5571,6 +5608,7 @@ def main() -> dict[str, object]:
             robot_rail_enabled=args.robot_rail_on_relocation,
             robot_rail_step_m=args.robot_rail_step_m,
             insert_controller=args.insert_controller,
+            release_sequence=args.release_sequence,
             insert_only=args.start_insert_station is not None,
         )
         if args.start_insert_station is not None:
@@ -5945,7 +5983,8 @@ def main() -> dict[str, object]:
                 "excluded after physical handoff to the payload shuttle"
                 if args.base_rail_on_relocation
                 else "the workflow's own condition re-checked after a "
-                f"{SETTLE_STEPS / 30.0:.2f} s settling window, not the instant a predicate fired"
+                f"{SETTLE_STEPS / 30.0:.2f} s supported settling window and again after a "
+                f"{SETTLE_STEPS / 30.0:.2f} s free-module window, not the instant a predicate fired"
             ),
             "capture_interface": {
                 "type": (
@@ -6002,6 +6041,7 @@ def main() -> dict[str, object]:
                     else None
                 ),
                 "destination_channel_relief_m": args.destination_channel_relief_m,
+                "release_sequence": args.release_sequence if args.latch_on_release else None,
                 "load_measurement": (
                     "break_threshold_only_reaction_magnitude_not_exposed"
                     if args.latch_on_release and args.latch_joint_mode == "fixed"

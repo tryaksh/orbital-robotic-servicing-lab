@@ -117,13 +117,21 @@ def test_the_hand_opens_only_after_the_settling_recheck() -> None:
     assert "stabilizing = finished & self.predicate_fired & ~self.gripper_released & ~plan_blocked" in source
     assert 'self.rigid_transit and self.insert_controller == "guarded"' in source
     assert "self._step_guarded_insert(stabilizing, step, tool, tool_rot)" in source
-    assert "ready_to_release = ripe & ~self.gripper_released & outcome & everything" in source
+    assert "ready_to_release = ripe & awaiting_first_release & outcome & everything" in source
     assert "self.actions[ready_to_release, :6] = 0.0" in source
-    assert "release_grapple_latch(task, ready_to_release)" in source
     assert "self.done_at[ready_to_release] = step" in source
-    assert "post_release = ripe & self.gripper_released & ~ready_to_release" in source
+    assert "post_release = ripe & self.gripper_released & self.latch_released & ~just_released_latch" in source
     assert 'latch_clear = ~grapple_latch_diagnostics(task)["engaged"]' in source
     assert "self.actions[finished & self.gripper_released, 6] = -1.0" in source
+
+
+def test_hand_first_release_preserves_a_rack_only_recheck() -> None:
+    source = DRIVER.read_text(encoding="utf-8")
+    assert 'choices=("simultaneous", "hand_first")' in source
+    assert 'if self.release_sequence == "simultaneous":' in source
+    assert "ready_to_release_latch = waiting_on_latch & outcome" in source
+    assert "self.done_at[ready_to_release_latch] = step" in source
+    assert "post_release = ripe & self.gripper_released & self.latch_released & ~just_released_latch" in source
 
 
 def test_parallel_bounded_runs_summarize_the_fixed_cohort_without_timeout_reset() -> None:
