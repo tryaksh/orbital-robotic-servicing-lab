@@ -265,6 +265,11 @@ class ModuleStateEstimator:
         self._fiducial_detection_valid = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
         self._fiducial_current_detection = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
         self._payload_stage_engaged = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        # Encoder propagation is valid only after the robot has physically
+        # captured the module. Before that event the tool moves and the module
+        # does not; treating their transform as rigid turns one missed camera
+        # frame during approach into a moving fictitious target.
+        self._module_tool_attached = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
         self._module_in_tool_position = torch.zeros((env.num_envs, 3), device=env.device)
         self._module_in_tool_orientation = torch.zeros((env.num_envs, 4), device=env.device)
         self._module_in_tool_orientation[:, 0] = 1.0
@@ -311,6 +316,28 @@ class ModuleStateEstimator:
         """
 
         self._payload_stage_engaged[env_ids] = True
+        self._module_tool_attached[env_ids] = False
+
+    def mark_robot_capture_established(self, env_ids: Sequence[int] | torch.Tensor) -> None:
+        """Permit tool-kinematic propagation after a verified physical capture.
+
+        The relative pose is frozen from the current camera estimate and robot
+        forward kinematics. No simulator module state enters this handoff.
+        """
+
+        self.estimate()
+        tool_position, tool_orientation = end_effector_pose_world(self._env)
+        module_position_world = self._pose[:, :3] + self._env.scene.env_origins
+        module_orientation_world = _orientation_from_module_pose(self._pose)
+        relative_position, relative_orientation = subtract_frame_transforms(
+            tool_position,
+            tool_orientation,
+            module_position_world,
+            module_orientation_world,
+        )
+        self._module_in_tool_position[env_ids] = relative_position[env_ids]
+        self._module_in_tool_orientation[env_ids] = relative_orientation[env_ids]
+        self._module_tool_attached[env_ids] = True
 
     @property
     def confidence(self) -> torch.Tensor:
@@ -356,6 +383,7 @@ class ModuleStateEstimator:
         self._fiducial_detection_valid[ids] = False
         self._fiducial_current_detection[ids] = False
         self._payload_stage_engaged[ids] = False
+        self._module_tool_attached[ids] = False
         self._velocity[ids] = 0.0
         # A partial reset can happen after this step's observations were cached.
         # Invalidate the whole batch; inference remains one pass on the next read.
@@ -506,7 +534,12 @@ class ModuleStateEstimator:
         )
         self._module_in_tool_position[detected_now] = relative_position[detected_now]
         self._module_in_tool_orientation[detected_now] = relative_orientation[detected_now]
-        propagate = ~detected_now & self._fiducial_detection_valid & ~self._payload_stage_engaged
+        propagate = (
+            ~detected_now
+            & self._fiducial_detection_valid
+            & self._module_tool_attached
+            & ~self._payload_stage_engaged
+        )
         if bool(propagate.any()):
             propagated_position, propagated_orientation = combine_frame_transforms(
                 tool_position,

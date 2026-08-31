@@ -2321,6 +2321,11 @@ class WorkflowDriver:
             # released in mid-transit. A real servicer does not relax its grip
             # once the part is taken.
             self.gripper.hold_latch[promote] = True
+            estimator = getattr(task, "_module_state_estimator", None)
+            if estimator is not None:
+                estimator.mark_robot_capture_established(
+                    torch.nonzero(promote, as_tuple=False).squeeze(-1)
+                )
             self.phase[promote] = SEAT
             self.seat_until[promote] = step + SEAT_STEPS
 

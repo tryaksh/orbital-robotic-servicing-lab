@@ -204,6 +204,17 @@ def test_two_bay_occupancy_is_consumed_as_a_fail_closed_planning_gate() -> None:
     assert '"used_to_gate_execution": True' in driver_source
 
 
+def test_camera_dropout_uses_tool_propagation_only_after_physical_capture() -> None:
+    perception = PERCEPTION.read_text(encoding="utf-8")
+    driver = WORKFLOW_DRIVER.read_text(encoding="utf-8")
+    assert "self._module_tool_attached = torch.zeros" in perception
+    assert "def mark_robot_capture_established(" in perception
+    assert "& self._module_tool_attached" in perception
+    assert "self._module_tool_attached[ids] = False" in perception
+    assert "estimator.mark_robot_capture_established(" in driver
+    assert driver.index("estimator.mark_robot_capture_established(") < driver.index("self.phase[promote] = SEAT")
+
+
 def test_exact_truth_is_separated_into_oracle_labels_and_diagnostics() -> None:
     tree = _tree(PERCEPTION)
     estimator = _class(tree, "ModuleStateEstimator")
