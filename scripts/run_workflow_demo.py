@@ -2417,7 +2417,11 @@ class WorkflowDriver:
             arrived = self._step_rigid_transit(transiting, step, tool, tool_rot)
             if bool(arrived.any()):
                 self._begin_guarded_insert(arrived, step)
-            self.gripper.retain_latch[arrived] = False
+            # The softened form lock is the mating load path. Keep only the
+            # gentle pin retention used in rigid transit; restoring the 10 N-m
+            # hold here was measured to advance 158 mm and then rotate every
+            # module outside the guarded entry envelope.
+            self.gripper.retain_latch[arrived] = True
             self.phase[arrived] = INSERT
         elif bool(transiting.any()):
             ids = torch.nonzero(transiting, as_tuple=False).squeeze(-1)
@@ -4316,10 +4320,11 @@ class WorkflowDriver:
             ids, tool, tool_rot, target_tool_pos, target_tool_rot, self.scales[TRANSIT],
             RIGID_TRANSIT_ATTITUDE_AUTHORITY,
         )
-        # Hold the module firmly while it is being driven between rails. The
-        # operating rule this project measured is capture gently, hold hard to
-        # move, retain once free; this phase moves.
-        self.gripper.retain_latch[inserting] = False
+        # The compliant form lock, not the wedge pads, carries the mating load.
+        # Full closure adds a persistent axial thrust and rotates the module as
+        # the rack begins to constrain it. Gentle retention keeps the physical
+        # pin captured without fighting the remote-centre compliance.
+        self.gripper.retain_latch[inserting] = True
 
         # The backstop. The lock is released at the hand-off above, so this can
         # only fire if some future change holds it longer; it is simulator truth

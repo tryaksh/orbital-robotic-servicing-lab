@@ -448,3 +448,14 @@ def test_rigid_transit_uses_the_gentle_grip_after_the_form_lock_engages() -> Non
     assert "latched_transit = transiting & grapple_latched(task)" in body
     assert "self.gripper.retain_latch[latched_transit] = True" in body
     assert body.index("retain_latch[latched_transit]") < body.index("_step_rigid_transit(")
+
+
+def test_guarded_insertion_keeps_gentle_retention_on_the_compliant_load_path() -> None:
+    source = DRIVER.read_text(encoding="utf-8")
+    transition = source.split("if self.rigid_transit and bool(transiting.any()):")[1].split(
+        "elif bool(transiting.any()):"
+    )[0]
+    guarded = source.split("def _step_guarded_insert(")[1].split("def _front_overhang_x(")[0]
+    assert "self.gripper.retain_latch[arrived] = True" in transition
+    assert "self.gripper.retain_latch[inserting] = True" in guarded
+    assert "self.gripper.retain_latch[inserting] = False" not in guarded
