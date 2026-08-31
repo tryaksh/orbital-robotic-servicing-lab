@@ -114,7 +114,11 @@ def test_softening_keeps_the_load_path_and_stores_no_energy() -> None:
 
 def test_the_hand_opens_only_after_the_settling_recheck() -> None:
     source = DRIVER.read_text(encoding="utf-8")
+    assert "stabilizing = finished & self.predicate_fired & ~self.gripper_released & ~plan_blocked" in source
+    assert 'self.rigid_transit and self.insert_controller == "guarded"' in source
+    assert "self._step_guarded_insert(stabilizing, step, tool, tool_rot)" in source
     assert "ready_to_release = ripe & ~self.gripper_released & outcome & everything" in source
+    assert "self.actions[ready_to_release, :6] = 0.0" in source
     assert "release_grapple_latch(task, ready_to_release)" in source
     assert "self.done_at[ready_to_release] = step" in source
     assert "post_release = ripe & self.gripper_released & ~ready_to_release" in source

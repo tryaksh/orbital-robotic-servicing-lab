@@ -3356,6 +3356,15 @@ class WorkflowDriver:
         finished = self.phase == DONE
         if bool(finished.any()):
             self.actions[finished, :6] = 0.0
+            # A zero Cartesian action is not a seated hold for a compliant
+            # load path: the remote-centre spring and the rack contacts can
+            # move the module while the arm stays put. Continue the same
+            # guarded module-space correction through the first settling
+            # window. The second window is deliberately passive, after both
+            # robot-side load paths have been released.
+            stabilizing = finished & self.predicate_fired & ~self.gripper_released & ~plan_blocked
+            if self.rigid_transit and self.insert_controller == "guarded" and bool(stabilizing.any()):
+                self._step_guarded_insert(stabilizing, step, tool, tool_rot)
             # A completed manipulation retains the module through the settling
             # re-check. A planning rejection never began manipulation, so it
             # must keep the gripper open instead of turning DONE into a hidden
@@ -3384,6 +3393,7 @@ class WorkflowDriver:
                     ready_to_release = ripe & ~self.gripper_released & outcome & everything
                     failed_before_release = ripe & ~self.gripper_released & ~ready_to_release
                     if bool(ready_to_release.any()):
+                        self.actions[ready_to_release, :6] = 0.0
                         release_grapple_latch(task, ready_to_release)
                         self.latch_released |= ready_to_release
                         self.latch_released_at[ready_to_release & (self.latch_released_at < 0)] = step
