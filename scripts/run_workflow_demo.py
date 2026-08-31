@@ -1169,8 +1169,14 @@ SETTLE_TRACE_FIELDS = (
     "finger_angle_rad",
     "drive_torque_nm",
     "blade_x_m",
+    "blade_y_m",
+    "blade_z_m",
+    "lateral_error_m",
+    "orientation_error_rad",
     "blade_linear_velocity_mps",
     "blade_angular_velocity_radps",
+    "latch_engaged",
+    "hand_released",
 )
 
 
@@ -1868,6 +1874,7 @@ class WorkflowDriver:
 
     def _record_settle(self, mask: torch.Tensor, step: int) -> None:
         state = self._trace_state()
+        _axial, lateral, orientation = insertion_error_metrics(self.task)
         rows = torch.cat(
             (
                 self._column(float(step)),
@@ -1877,9 +1884,13 @@ class WorkflowDriver:
                 state["grip_attitude_rad"].unsqueeze(-1),
                 state["finger_angle_rad"].unsqueeze(-1),
                 state["drive_torque_nm"].unsqueeze(-1),
-                state["blade_local"][:, :1],
+                state["blade_local"],
+                lateral.to(torch.float64).unsqueeze(-1),
+                orientation.to(torch.float64).unsqueeze(-1),
                 state["blade_linear_velocity_mps"].unsqueeze(-1),
                 state["blade_angular_velocity_radps"].unsqueeze(-1),
+                state["latch_engaged"].unsqueeze(-1),
+                self.gripper_released.to(torch.float64).unsqueeze(-1),
             ),
             dim=-1,
         )
@@ -3364,19 +3375,42 @@ class WorkflowDriver:
                 # success threshold quietly relaxed.
                 outcome = outcome & self.predicate_fired
                 everything = everything & self.predicate_fired
-                self.outcome[ripe] = outcome[ripe]
-                self.all_conditions[ripe] = everything[ripe]
-                self.judged[ripe] = True
-                self._freeze(ripe, step, grip_error, grip_attitude, blade_x)
-                # **This is the release the acceptance rule is about.** Every
-                # condition has now been re-checked after the settling window,
-                # so the hand may open -- and only now. Recorded, because an
-                # operation that ends with the robot still holding the module
-                # has not finished, and one that lets go early has not
-                # succeeded.
-                verified = ripe & self.outcome & self.all_conditions
-                self.gripper_released |= verified
-                self.gripper_released_at[verified] = step
+                if self.rigid_transit:
+                    # The robot-carried path has two independently meaningful
+                    # checks. First prove the compliant load path can hold a
+                    # seated module for 0.70 s. Only then release both the form
+                    # lock and the hand, and start a second 0.70 s clock that
+                    # proves the rack owns the load without either aid.
+                    ready_to_release = ripe & ~self.gripper_released & outcome & everything
+                    failed_before_release = ripe & ~self.gripper_released & ~ready_to_release
+                    if bool(ready_to_release.any()):
+                        release_grapple_latch(task, ready_to_release)
+                        self.latch_released |= ready_to_release
+                        self.latch_released_at[ready_to_release & (self.latch_released_at < 0)] = step
+                        self.gripper_released |= ready_to_release
+                        self.gripper_released_at[ready_to_release] = step
+                        self.done_at[ready_to_release] = step
+
+                    post_release = ripe & self.gripper_released & ~ready_to_release
+                    latch_clear = ~grapple_latch_diagnostics(task)["engaged"]
+                    final_success = post_release & outcome & latch_clear
+                    self.outcome[post_release] = final_success[post_release]
+                    self.all_conditions[post_release] = final_success[post_release]
+                    self.judged[post_release] = True
+                    self._freeze(post_release, step, grip_error, grip_attitude, blade_x)
+
+                    self.outcome[failed_before_release] = False
+                    self.all_conditions[failed_before_release] = False
+                    self.judged[failed_before_release] = True
+                    self._freeze(failed_before_release, step, grip_error, grip_attitude, blade_x)
+                else:
+                    self.outcome[ripe] = outcome[ripe]
+                    self.all_conditions[ripe] = everything[ripe]
+                    self.judged[ripe] = True
+                    self._freeze(ripe, step, grip_error, grip_attitude, blade_x)
+                    verified = ripe & self.outcome & self.all_conditions
+                    self.gripper_released |= verified
+                    self.gripper_released_at[verified] = step
             # Held after the judgement as well, so the open persists for the
             # rest of the recording rather than for one frame.
             self.actions[finished & self.gripper_released, 6] = -1.0
@@ -4275,10 +4309,6 @@ class WorkflowDriver:
         fired = inserting & seated & (
             torch.ones_like(seated) if MATING_MODE == "rigid" else ~grapple_latch_rigid(task)
         )
-        if bool(fired.any()):
-            release_grapple_latch(task, fired)
-            self.latch_released |= fired
-            self.latch_released_at[fired & (self.latch_released_at < 0)] = step
         return fired
 
     def _step_guarded_insert(self, inserting: torch.Tensor, step: int, tool: torch.Tensor, tool_rot: torch.Tensor) -> torch.Tensor:
@@ -4411,18 +4441,13 @@ class WorkflowDriver:
             self.latch_released |= due_to_release
             self.latch_released_at[due_to_release & (self.latch_released_at < 0)] = step
 
-        # Seated. The lock lets go completely now, so the 0.70 s re-check that
-        # decides the outcome is taken on a module held by nothing but the pads
-        # and its own rails -- a spring across that window would make the
-        # settling check a statement about the spring.
+        # Seated. Keep the compliant lock and gentle hand through the first
+        # 0.70 s check. DONE releases both only after that proof, then performs
+        # the same check again with the rack carrying the module by itself.
         seated = grapple_insertion_success_mask(task)
         fired = inserting & seated & (
             torch.ones_like(seated) if MATING_MODE == "rigid" else ~grapple_latch_rigid(task)
         )
-        if bool(fired.any()):
-            release_grapple_latch(task, fired)
-            self.latch_released |= fired
-            self.latch_released_at[fired & (self.latch_released_at < 0)] = step
         return fired
 
     def _front_overhang_x(self, ids: torch.Tensor) -> torch.Tensor:

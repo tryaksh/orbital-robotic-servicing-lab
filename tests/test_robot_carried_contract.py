@@ -6,8 +6,7 @@ defending mechanically. Three of them are structural and can be checked from the
 source without a simulator:
 
 * the transit and the insertion command the *robot*, never the module;
-* the form lock is released before the module is judged, so a settling check
-  cannot be a statement about a joint;
+* seating is checked before release and again after both load paths let go;
 * the world-mounted payload stage is not reachable from the robot-carried path.
 """
 
@@ -75,7 +74,7 @@ def test_the_guarded_insertion_advances_only_on_the_deployed_estimate() -> None:
 
 
 def test_the_form_lock_has_three_states_and_ends_in_none_of_them() -> None:
-    """Rigid to carry, compliant to mate, released before the module is judged."""
+    """Rigid to carry, compliant to mate, then released after seating settles."""
 
     source = DRIVER.read_text(encoding="utf-8")
     transit = source.split("def _step_rigid_transit(")[1].split("def _front_overhang_x(")[0]
@@ -90,8 +89,8 @@ def test_the_form_lock_has_three_states_and_ends_in_none_of_them() -> None:
     assert "FLARE_LEADING_X - MATING_SOFTEN_LEAD_M" in transit
     assert "(leg == 0)" in transit
     assert "soften_grapple_latch(task, mating)" in transit
-    # The seating re-check is taken on a module the lock is no longer holding.
-    assert "release_grapple_latch(task, fired)" in body
+    # Firing the seating predicate does not release the compliant load path.
+    assert "release_grapple_latch(task, fired)" not in body
     # Rigid mating is a measured alternative, so the gate is on the mode
     # rather than on the lock unconditionally.
     assert "~grapple_latch_rigid(task)" in body
@@ -115,8 +114,11 @@ def test_softening_keeps_the_load_path_and_stores_no_energy() -> None:
 
 def test_the_hand_opens_only_after_the_settling_recheck() -> None:
     source = DRIVER.read_text(encoding="utf-8")
-    assert "verified = ripe & self.outcome & self.all_conditions" in source
-    assert "self.gripper_released |= verified" in source
+    assert "ready_to_release = ripe & ~self.gripper_released & outcome & everything" in source
+    assert "release_grapple_latch(task, ready_to_release)" in source
+    assert "self.done_at[ready_to_release] = step" in source
+    assert "post_release = ripe & self.gripper_released & ~ready_to_release" in source
+    assert 'latch_clear = ~grapple_latch_diagnostics(task)["engaged"]' in source
     assert "self.actions[finished & self.gripper_released, 6] = -1.0" in source
 
 
