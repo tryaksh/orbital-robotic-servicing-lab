@@ -5583,9 +5583,7 @@ def main() -> dict[str, object]:
             # Called from _reset_idx while the scene still holds the finished
             # episode's terminal state, which is the only moment it can be read.
             if recorder is not None:
-                remaining = max(0, args.episodes - len(recorder))
-                rows = driver.harvest(env_ids, clock["step"]).cpu().numpy()
-                recorder.record(rows[:remaining])
+                recorder.record(driver.harvest(env_ids, clock["step"]).cpu().numpy())
             driver.reset_envs(env_ids, clock["step"])
 
         task.enable_terminal_metrics(on_reset)
@@ -5633,17 +5631,6 @@ def main() -> dict[str, object]:
                 print(f"[CHAIN] step {step:5d}{driver.transit_progress()}", flush=True)
             _, _, terminated, truncated, _ = env.step(driver.actions)
             step += 1
-            if collecting:
-                # DONE is the workflow's terminal state, even though the task
-                # environment has a longer safety timeout. Reset judged rows
-                # immediately so a 32-episode certificate does not spend most
-                # of its clock idling, and so reset-time physics cannot replace
-                # the frozen terminal row. The registered callback performs
-                # both harvest and driver reset while the terminal state is
-                # still present.
-                judged_ids = torch.nonzero(driver.judged, as_tuple=False).squeeze(-1)
-                if judged_ids.numel() > 0:
-                    task._reset_idx(judged_ids)
             if collecting and step % progress_every == 0:
                 counts = {PHASE_NAMES[index]: int((driver.phase == index).sum()) for index in range(len(PHASE_NAMES))}
                 # A stalled scripted phase looks exactly like a slow one in the
