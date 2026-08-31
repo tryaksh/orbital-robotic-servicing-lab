@@ -403,12 +403,15 @@ def test_the_guarded_envelope_is_the_flare_and_says_why() -> None:
 
 
 def test_the_seating_controller_carries_its_own_action_scale() -> None:
-    """The insert policy's scale belongs to the policy, not to the phase."""
+    """Both insertion controllers use insertion resolution, never extraction's."""
 
     source = DRIVER.read_text(encoding="utf-8")
     body = source.split("def _apply_scales(")[1].split("def _set_stage_arm_servo(")[0]
-    assert "self._guarded_receiver()" in body
-    assert "self.scales[TRANSIT]" in body
+    guarded = source.split("def _step_guarded_insert(")[1].split("def _front_overhang_x(")[0]
+    assert "self.arm._scale[:] = self.scales[self.phase]" in body
+    assert "self.scales[INSERT]" in guarded
+    assert "self.scales[TRANSIT]" not in guarded
+    assert '"cartesian_action_scale": [float(value) for value in INSERT_ACTION_SCALE]' in source
 
 
 def test_the_last_transit_leg_leaves_the_module_at_the_mouth_for_both_controllers() -> None:
@@ -428,10 +431,8 @@ def test_the_last_transit_leg_leaves_the_module_at_the_mouth_for_both_controller
     The old behaviour stays reachable for replaying an archived checkpoint, and
     it is off.
 
-    ``_guarded_receiver`` still has to be read at call time, because it still
-    selects the seating *scale*: ``MATING_MODE`` is overwritten from the command
-    line long after import, so a module constant computed from it is a constant
-    computed from the default.
+    Controller selection changes actions, not the physical handoff or the
+    insertion phase's configured Cartesian resolution.
     """
 
     source = DRIVER.read_text(encoding="utf-8")
@@ -439,9 +440,6 @@ def test_the_last_transit_leg_leaves_the_module_at_the_mouth_for_both_controller
     assert "self.module_leg_pos[0, ids] = crossed" in source
     assert "self.module_leg_rot[0, ids] = square_rot" in source
     assert "handoff_alignment" not in source
-    body = source.split("def _guarded_receiver(")[1].split("def _apply_scales(")[0]
-    assert 'self.insert_controller == "guarded"' in body
-    assert 'MATING_MODE == "compliant"' in body
 
 
 def test_report_labels_the_controller_that_receives_the_handoff() -> None:

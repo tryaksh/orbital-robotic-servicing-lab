@@ -1694,36 +1694,18 @@ class WorkflowDriver:
                 for attribute in self.stage_rotation_drive_target_attributes[index]:
                     attribute.Set(0.0)
 
-    def _guarded_receiver(self) -> bool:
-        """Whether the guarded advance, not the learned policy, receives the module.
-
-        Read at call time rather than at import, because ``MATING_MODE`` is
-        overwritten from the command line long after this module is imported --
-        a constant computed from it at import time is a constant computed from
-        the default.
-        """
-
-        return self.rigid_transit and self.insert_controller == "guarded" and MATING_MODE == "compliant"
-
     def _apply_scales(self) -> None:
-        """Publish each environment's action scale for the phase it is in.
+        """Publish the action scale certified for each physical phase.
 
-        **The seating phase's scale follows its controller.** ``scales[INSERT]``
-        is the insert policy's certified scale and has to stay that whenever the
-        policy is what runs. The guarded advance is not that policy: it is the
-        same Cartesian follower the transit legs use, on the same payload hanging
-        340 mm in front of the tool, and it needs the same 2 mm and 8 mrad per
-        step. Given the policy's 8 mm and 20 mrad it walks the module out of its
-        own envelope faster than its 1 mm axial step walks it in -- measured, 17
-        mm of advance and then 4,557 control steps held outside the envelope.
+        Guarded insertion once overrode its insertion scale with extraction's
+        8/4 mm Cartesian steps. A source-bound trace showed every module reach
+        seated depth, then limit-cycle laterally at about 4 mm against the
+        unchanged 2.5 mm seating requirement. The insertion controller already
+        defines 4/0.75 mm steps for this contact problem; both learned and
+        guarded insertion use that same physical resolution.
         """
 
-        scales = self.scales[self.phase]
-        if self._guarded_receiver():
-            scales = torch.where(
-                (self.phase == INSERT).unsqueeze(-1), self.scales[TRANSIT].unsqueeze(0), scales
-            )
-        self.arm._scale[:] = scales
+        self.arm._scale[:] = self.scales[self.phase]
 
     def _set_stage_arm_servo(self, env_ids: torch.Tensor, *, strengthened: bool) -> None:
         """Switch the arm gains while it transfers the ORU to the shuttle."""
@@ -4394,7 +4376,7 @@ class WorkflowDriver:
             module_pos + task.scene.env_origins[ids],
         )
         self._drive_tool_to(
-            ids, tool, tool_rot, target_tool_pos, target_tool_rot, self.scales[TRANSIT],
+            ids, tool, tool_rot, target_tool_pos, target_tool_rot, self.scales[INSERT],
             RIGID_TRANSIT_ATTITUDE_AUTHORITY,
         )
         # The compliant form lock, not the wedge pads, carries the mating load.
@@ -5798,6 +5780,7 @@ def main() -> dict[str, object]:
                 "executed": guarded_insert,
                 "controller": "scripted, bounded axial advance on the deployed estimate",
                 "axial_step_m": GUARDED_INSERT_AXIAL_STEP_M,
+                "cartesian_action_scale": [float(value) for value in INSERT_ACTION_SCALE],
                 "lateral_tolerance_m": GUARDED_INSERT_LATERAL_TOLERANCE_M,
                 "orientation_tolerance_rad": GUARDED_INSERT_ORIENTATION_TOLERANCE_RAD,
                 "orientation_tolerance_is_what_the_entry_flare_catches": True,
