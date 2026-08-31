@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-88 scripts. Grouped by the verb their filename starts with.
+89 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -164,6 +164,7 @@ Each takes `--check` so CI can prove the artifact is current.
 | `play.py` | Evaluate or record an RL-Games blade-swap policy. |
 | `pretrain_student.py` | Offline behavioural cloning for the multimodal vision actor. |
 | `probe_workcell_policies.sh` | Phase 1: run the UNCHANGED promoted policies on the changed workcell. |
+| `project_insertion_checkpoint.py` | Project the frozen insertion actor onto local assembly observations. |
 | `promote_checkpoints.py` | Move every script's default checkpoint set to a newly promoted one, atomically. |
 | `rebuild_perception.sh` | Phase 8: rebuild perception on the changed geometry. |
 | `record_demo.sh` | Record demonstration clips of a trained insertion policy. |

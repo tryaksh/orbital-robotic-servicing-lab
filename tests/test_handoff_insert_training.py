@@ -52,9 +52,10 @@ def test_task_space_handoff_removes_only_absolute_posture_channels() -> None:
         assert retained not in body  # inherited unchanged from InsertPolicyObsCfg
 
 
-def test_task_space_training_starts_fresh_and_is_timeboxed() -> None:
+def test_task_space_training_resumes_the_projected_actor_and_is_timeboxed() -> None:
     source = TASK_SPACE_TRAIN.read_text(encoding="utf-8")
     assert "Isaac-ZeroG-Blade-GrapplePin-InsertTaskSpaceHandoff-v0" in source
-    assert 'EPOCHS="${EPOCHS:-100}"' in source
-    assert "--checkpoint" not in source
+    assert 'EPOCHS="${EPOCHS:-2500}"' in source
+    assert "v27_task_space_projected.pth" in source
+    assert '--checkpoint "$RESUME_CKPT"' in source
     assert "git status --porcelain=v1 --untracked-files=no" in source
