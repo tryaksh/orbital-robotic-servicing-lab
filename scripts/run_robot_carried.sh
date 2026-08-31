@@ -54,6 +54,7 @@ STATE_TASK="Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0"
 VISION_TASK="Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0"
 ENVS="${ENVS:-32}"
 EPISODES="${EPISODES:-32}"
+CERT_ENVS="${CERT_ENVS:-8}"
 
 chain() {
   "$PYTHON" scripts/run_workflow_demo.py --headless \
@@ -156,7 +157,9 @@ case "$stage" in
   certify)
     # The state batch. Three held-out seeds, pooled the way every other claim in
     # this repository is pooled, so the robot-carried chain gets a Wilson
-    # interval rather than an anecdote.
+    # interval rather than an anecdote. These are bounded fixed cohorts, not
+    # timeout-collected episodes: enabling the timeout reset path changes the
+    # long-transit physics and produced non-finite rows on the same seed.
     # **With the rail.** This stage used to omit --robot_rail_on_relocation,
     # which certified a configuration the project's own measurements say does not
     # work: without a rail the arm has to translate the bay pitch at the retreat
@@ -188,16 +191,17 @@ case "$stage" in
     for seed in ${SEEDS:-4070 5070 6070}; do
       out="$OUT/certify_${CERT_TAG}_seed${seed}"
       echo "[$(date +%H:%M:%S)] CERTIFY robot-carried relocation, seed ${seed}"
-      chain --num_envs "${ENVS:-32}" --episodes "${EPISODES:-32}" --seed "$seed" \
-          --steps "${STEPS:-5000}" \
+      chain --num_envs "$CERT_ENVS" --seed "$seed" \
+          --steps "${STEPS:-1900}" \
           --robot_rail_on_relocation \
           --latch_on_release --latch_joint_mode fixed \
           --latch_rated_force_n "${LATCH_N:-20000}" --latch_rated_torque_nm "${LATCH_NM:-1000}" \
         --latch_position_stiffness_n_per_m "${MATING_K:-40000}" \
         --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-20000}" \
         --destination_channel_relief_m "${RELIEF:-0.0046125}" \
-        --mating_mode "${MATING_MODE:-compliant}" \
-        --mating_force_cap_n "${MATING_CAP:-1000}" \
+          --mating_mode "${MATING_MODE:-compliant}" \
+          --mating_force_cap_n "${MATING_CAP:-1000}" \
+          --release_sequence "${RELEASE_SEQUENCE:-simultaneous}" \
           ${CHAIN_EXTRA:-} \
           --report "${out}_report.json" --episode_metrics "${out}.npz" \
           > "${out}.log" 2>&1
@@ -213,7 +217,7 @@ case "$stage" in
           "No world-mounted payload stage, no direct module pose write, and no teleport is active. The module is carried by the arm throughout." \
           "Capture and extraction are trained policies; the seat, the transit and the insertion are scripted and labelled as such." \
           "The transit legs are commanded from a solved inverse kinematics through actuator targets; the robot rides a lateral rail whose own load path is not modelled." \
-          "Success is the workflow's own condition re-checked after a 0.70 s settling window." \
+          "Success requires 0.70 s supported settling, release of both robot-side supports, then a separate 0.70 s free-module recheck." \
         > "$OUT/aggregate_certify_${CERT_TAG}.log" 2>&1
     echo "[$(date +%H:%M:%S)] aggregate exit=$? -> evidence/workflow_robot_carried_${CERT_TAG}_certification.json"
     tail -6 "$OUT/aggregate_certify_${CERT_TAG}.log"
@@ -280,8 +284,9 @@ case "$stage" in
     # this stage twice -- once with ``STABLE_LIGHTING= VIDEO=`` for the
     # evidence, and once with the defaults for the video.
     echo "[$(date +%H:%M:%S)] RGBD robot-carried relocation with video"
-    chain --num_envs 1 --seed "${SEED:-4070}" --steps "${STEPS:-3600}" \
+    chain --num_envs 1 --seed "${SEED:-4070}" --steps "${STEPS:-1900}" \
         --task "$VISION_TASK" --perception_backend fiducial_pnp \
+        --robot_rail_on_relocation \
         --latch_on_release --latch_joint_mode fixed \
         --latch_rated_force_n "${LATCH_N:-20000}" --latch_rated_torque_nm "${LATCH_NM:-1000}" \
         --latch_position_stiffness_n_per_m "${MATING_K:-40000}" \
@@ -289,8 +294,9 @@ case "$stage" in
         --destination_channel_relief_m "${RELIEF:-0.0046125}" \
         --mating_mode "${MATING_MODE:-compliant}" \
         --mating_force_cap_n "${MATING_CAP:-1000}" \
+        --release_sequence "${RELEASE_SEQUENCE:-simultaneous}" \
         ${STABLE_LIGHTING---stable_lighting} --inspection_view workcell \
-        ${VIDEO---video --video_dir "$OUT/video"} --settle_steps 30 \
+        ${VIDEO---video --video_dir "$OUT/video"} \
         --report "${REPORT:-$OUT/rgbd_report.json}" \
         --handoff_trace "${TRACE:-$OUT/rgbd_trace.npz}" \
         > "${LOG:-$OUT/rgbd.log}" 2>&1
