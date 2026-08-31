@@ -126,6 +126,14 @@ def test_the_hand_opens_only_after_the_settling_recheck() -> None:
     assert "self.actions[finished & self.gripper_released, 6] = -1.0" in source
 
 
+def test_batch_collection_ends_on_the_judged_workflow_not_the_safety_timeout() -> None:
+    source = DRIVER.read_text(encoding="utf-8")
+    assert 'remaining = max(0, args.episodes - len(recorder))' in source
+    assert 'recorder.record(rows[:remaining])' in source
+    assert 'judged_ids = torch.nonzero(driver.judged, as_tuple=False).squeeze(-1)' in source
+    assert 'task._reset_idx(judged_ids)' in source
+
+
 def test_the_release_disables_the_joint_and_stows_the_visible_jaws() -> None:
     source = GRAPPLE.read_text(encoding="utf-8")
     assert "def release(self, mask: torch.Tensor) -> None:" in source
