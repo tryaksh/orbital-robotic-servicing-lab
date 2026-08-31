@@ -458,6 +458,43 @@ def test_pooled_report_records_the_force_limit_without_requiring_it() -> None:
     assert module.build_report([run(1065, None)], "legacy", 0.95)["protocol"]["contact_force_limit_n"] is None
 
 
+def test_pooled_report_preserves_and_validates_clean_source_revision() -> None:
+    np = pytest.importorskip("numpy")
+    from zero_g_blade_swap.evaluation import TERMINAL_METRIC_FIELDS, TERMINATION_REASONS
+
+    spec = importlib.util.spec_from_file_location("aggregate_provenance_for_test", SCRIPTS / "aggregate_evaluation.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    rows = np.zeros((1, len(TERMINAL_METRIC_FIELDS)), dtype=np.float64)
+    rows[:, TERMINAL_METRIC_FIELDS.index("success")] = 1.0
+    rows[:, TERMINAL_METRIC_FIELDS.index("termination_reason")] = float(
+        TERMINATION_REASONS.index("insertion_success")
+    )
+    source = {"available": True, "commit": "a" * 40, "branch": "qualification", "dirty": False}
+
+    def run(seed: int, revision: dict | None) -> dict:
+        metadata = {
+            "checkpoint_sha256": "A" * 64,
+            "seed": seed,
+            "robustness_level": 0,
+            "num_envs": 1,
+        }
+        if revision is not None:
+            metadata["source_revision"] = revision
+        return {"path": None, "fields": TERMINAL_METRIC_FIELDS, "rows": rows, "metadata": metadata}
+
+    report = module.build_report([run(1, source), run(2, source)], "clean", 0.95)
+    assert report["source_revision"] == source
+    with pytest.raises(ValueError, match="mix recorded and missing"):
+        module.build_report([run(1, source), run(2, None)], "mixed", 0.95)
+    with pytest.raises(ValueError, match="available, clean"):
+        module.build_report([run(1, {**source, "dirty": True})], "dirty", 0.95)
+    with pytest.raises(ValueError, match="different source commits"):
+        module.build_report([run(1, source), run(2, {**source, "commit": "b" * 40})], "split", 0.95)
+
+
 def test_grasp_diagnostic_measures_the_gate_it_claims_to_measure() -> None:
     source = (SCRIPTS / "grasp_diagnostics.py").read_text(encoding="utf-8")
 
