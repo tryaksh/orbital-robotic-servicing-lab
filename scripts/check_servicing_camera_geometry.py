@@ -18,6 +18,7 @@ from pathlib import Path
 import numpy as np
 
 from zero_g_blade_swap.grapple_geometry import TRANSIT_CLEAR_BLADE_CENTRE_X
+from zero_g_blade_swap.service_latch import SEATED_FLANGE_BLADE_X
 from zero_g_blade_swap.servicing_camera import (
     CAMERA_CLIPPING_RANGE_M,
     CAMERA_FOCAL_LENGTH_MM,
@@ -25,6 +26,7 @@ from zero_g_blade_swap.servicing_camera import (
     CAMERA_HORIZONTAL_APERTURE_MM,
     CAMERA_POSITION_M,
     CAMERA_QUATERNION_WXYZ_ROS,
+    CAMERA_TARGET_M,
     CAMERA_WIDTH_PX,
 )
 
@@ -33,6 +35,7 @@ SCENE = ROOT / 'src/zero_g_blade_swap/tasks/blade_swap/scene_cfg.py'
 COLLECTOR = ROOT / 'scripts/collect_grapple_vision.py'
 CERTIFIER = ROOT / 'scripts/certify_fiducial_perception.py'
 FIDUCIAL = ROOT / 'src/zero_g_blade_swap/fiducial.py'
+GRIPPER_ENVELOPE = ROOT / 'evidence/gripper_collision_envelope.json'
 
 
 def _fiducial_literal(name: str) -> object:
@@ -79,6 +82,11 @@ def check() -> dict[str, object]:
     )
     camera_position = np.asarray(CAMERA_POSITION_M, dtype=np.float64)
     rotation_world_from_camera = _quaternion_matrix(CAMERA_QUATERNION_WXYZ_ROS)
+    camera_target = np.asarray(CAMERA_TARGET_M, dtype=np.float64)
+    optical_axis = rotation_world_from_camera[:, 2]
+    target_direction = camera_target - camera_position
+    target_direction /= np.linalg.norm(target_direction)
+    optical_axis_alignment = float(np.dot(optical_axis, target_direction))
     focal_px = CAMERA_WIDTH_PX * CAMERA_FOCAL_LENGTH_MM / CAMERA_HORIZONTAL_APERTURE_MM
     principal = np.asarray(((CAMERA_WIDTH_PX - 1) / 2, (CAMERA_HEIGHT_PX - 1) / 2))
 
@@ -94,6 +102,28 @@ def check() -> dict[str, object]:
     depths_m: list[float] = []
     incidence_rad: list[float] = []
     marker_edges_px: list[float] = []
+    rear_gripper_sightline_clearances_m: list[float] = []
+    gripper = json.loads(GRIPPER_ENVELOPE.read_text(encoding='utf-8'))['derived']
+    gripper_min = gripper['gripper_envelope_min_m']
+    gripper_max = gripper['gripper_envelope_max_m']
+    # Wrist axes are closing, third and approach.  In the captured module frame
+    # those map to module z, y and x respectively; the flange x offset was
+    # derived from the same grapple geometry as the latch clearance check.
+    gripper_corners_module = np.asarray(
+        [
+            (
+                SEATED_FLANGE_BLADE_X + approach,
+                third,
+                closing,
+            )
+            for closing, third, approach in itertools.product(
+                (gripper_min[0], gripper_max[0]),
+                (gripper_min[1], gripper_max[1]),
+                (gripper_min[2], gripper_max[2]),
+            )
+        ],
+        dtype=np.float64,
+    )
     for centre, roll, pitch, yaw in itertools.product(
         itertools.product(x_bounds, y_bounds, z_bounds), *rpy_bounds
     ):
@@ -117,6 +147,24 @@ def check() -> dict[str, object]:
             return focal_px * camera[:, :2] / camera[:, 2:3] + principal
 
         quiet_pixels = project(quiet_half)
+        quiet_world = np.asarray(
+            [
+                centre + module_rotation @ np.asarray((x, y, tag_z))
+                for x, y in (
+                    (-quiet_half, quiet_half),
+                    (quiet_half, quiet_half),
+                    (quiet_half, -quiet_half),
+                    (-quiet_half, -quiet_half),
+                )
+            ]
+        )
+        gripper_world = centre + (module_rotation @ gripper_corners_module.T).T
+        nearest_ray_x = min(
+            min(float(camera_position[0]), float(point[0])) for point in quiet_world
+        )
+        rear_gripper_sightline_clearances_m.append(
+            nearest_ray_x - float(gripper_world[:, 0].max())
+        )
         frame_margins_px.extend(
             (
                 float(quiet_pixels[:, 0].min()),
@@ -156,11 +204,14 @@ def check() -> dict[str, object]:
     maximum_depth_m = max(depths_m)
     minimum_marker_edge_px = min(marker_edges_px)
     maximum_incidence_rad = max(incidence_rad)
+    minimum_rear_gripper_sightline_clearance_m = min(rear_gripper_sightline_clearances_m)
     passed = (
         minimum_margin_px > 0.0
         and minimum_depth_m > CAMERA_CLIPPING_RANGE_M[0]
         and maximum_depth_m < CAMERA_CLIPPING_RANGE_M[1]
         and maximum_incidence_rad < 0.5 * math.pi
+        and optical_axis_alignment > 1.0 - 1.0e-9
+        and minimum_rear_gripper_sightline_clearance_m > 0.0
         and all(bindings.values())
     )
     return {
@@ -191,11 +242,14 @@ def check() -> dict[str, object]:
             'maximum_depth_m': maximum_depth_m,
             'maximum_incidence_rad': maximum_incidence_rad,
             'maximum_incidence_deg': math.degrees(maximum_incidence_rad),
+            'optical_axis_target_alignment': optical_axis_alignment,
+            'minimum_rear_gripper_sightline_clearance_m': minimum_rear_gripper_sightline_clearance_m,
         },
         'source_bindings': bindings,
         'scope_and_limitations': [
             'Projection proves coverage and front-face incidence, not rendered detection.',
             'Robot and rack occlusion are exercised by the held-out rendered corpus and strict RGB-D chain.',
+            'Rear-gripper clearance uses its recorded collision envelope co-rotated with the captured module.',
             'Lens, aperture, resolution, flush datum, and estimator gates are unchanged.',
         ],
     }

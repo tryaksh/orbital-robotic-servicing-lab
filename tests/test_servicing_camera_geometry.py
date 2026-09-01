@@ -1,4 +1,4 @@
-'''Defend the fixed overhead camera intervention without Isaac Sim.'''
+'''Defend the fixed front-side camera intervention without Isaac Sim.'''
 
 from __future__ import annotations
 
@@ -19,13 +19,15 @@ from zero_g_blade_swap.servicing_camera import (  # noqa: E402
 )
 
 
-def test_overhead_camera_covers_the_complete_sampled_flush_tag() -> None:
+def test_front_side_camera_covers_the_complete_sampled_flush_tag() -> None:
     result = check()
     assert result['status'] == 'passed'
     projection = result['projection']
     assert projection['minimum_quiet_zone_frame_margin_px'] > 0.0
     assert projection['minimum_marker_edge_px'] > 24.0
     assert projection['maximum_incidence_deg'] < 40.0
+    assert projection['optical_axis_target_alignment'] > 1.0 - 1.0e-9
+    assert projection['minimum_rear_gripper_sightline_clearance_m'] > 0.0
     assert all(result['source_bindings'].values())
 
 
