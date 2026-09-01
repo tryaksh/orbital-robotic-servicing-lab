@@ -210,6 +210,10 @@ case "$stage" in
       echo "[$(date +%H:%M:%S)]   exit=$?"
       rows+=("${out}.npz")
     done
+    release_scope='Success requires 0.70 s supported settling, release of both robot-side supports, then a separate 0.70 s free-module recheck.'
+    if [[ " ${CHAIN_EXTRA:-} " == *' --rack_retention '* ]]; then
+      release_scope='Success requires 0.70 s supported settling, release of both robot-side supports, then a separate 0.70 s rack-only recheck on the disclosed break-rated Rack-to-module load path.'
+    fi
     "$PYTHON" scripts/aggregate_evaluation.py --episodes "${rows[@]}" \
         --output "evidence/workflow_robot_carried_${CERT_TAG}_certification.json" \
         --title "$CERT_TITLE" \
@@ -219,7 +223,7 @@ case "$stage" in
           "No world-mounted payload stage, no direct module pose write, and no teleport is active. The module is carried by the arm throughout." \
           "Capture and extraction are trained policies; the seat, the transit and the insertion are scripted and labelled as such." \
           "The transit legs are commanded from a solved inverse kinematics through actuator targets; the robot rides a lateral rail whose own load path is not modelled." \
-          "Success requires 0.70 s supported settling, release of both robot-side supports, then a separate 0.70 s free-module recheck." \
+          "$release_scope" \
         > "$OUT/aggregate_certify_${CERT_TAG}.log" 2>&1
     echo "[$(date +%H:%M:%S)] aggregate exit=$? -> evidence/workflow_robot_carried_${CERT_TAG}_certification.json"
     tail -6 "$OUT/aggregate_certify_${CERT_TAG}.log"
