@@ -1,0 +1,242 @@
+{
+  "status": "passed",
+  "title": "Fiducial decoder replay on continuous late-approach RGB frames",
+  "evidence_type": "offline_same_frame_detector_comparison",
+  "scope": "Detector availability only; no pose, dynamics, or workflow-success claim.",
+  "frames": 31,
+  "all_frames": {
+    "baseline_detections": 23,
+    "fallback_detections": 31
+  },
+  "late_approach": {
+    "first_step": 1440,
+    "frames": 8,
+    "baseline_detections": 0,
+    "fallback_detections": 8
+  },
+  "unchanged": [
+    "rendered RGB inputs",
+    "flush marker geometry",
+    "camera calibration and resolution",
+    "pose and workflow success limits"
+  ],
+  "inputs": [
+    {
+      "file": "step-0060-seat.png",
+      "step": 60,
+      "sha256": "23dee2b1f2b8e3616eb02a61e56c4ed7d7151c2d4211dd133bdde51de519d2ec",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0120-extract.png",
+      "step": 120,
+      "sha256": "5802b89b8667445954ef719b4775dd6e894a0702a60279a0b358210c34aa3b25",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0180-extract.png",
+      "step": 180,
+      "sha256": "583d1ee673bf6ac6cfe7b6caca42eed9f5ff8f21398e5b8e00f616c3f525bf7a",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0240-extract.png",
+      "step": 240,
+      "sha256": "68d8c8d6b67257774769d99f86706451d43b95c33644b7a9d92704801077a172",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0300-extract.png",
+      "step": 300,
+      "sha256": "5b27f62d06321a74c333845d4c12a63c48c5e662f586138d76329c33f27bbc12",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0360-transit.png",
+      "step": 360,
+      "sha256": "efddb24e2204fc127ba4cb2b6bf78ce4df31670e0b1840a00dd7203ffb283b11",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0420-transit.png",
+      "step": 420,
+      "sha256": "ce4c352eb91c49eedc264b6bff335a001fea157a210f2b23fc3b34419205a68e",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0480-transit.png",
+      "step": 480,
+      "sha256": "cb99555611bf00360176d536365ef9ef54942e683f1ca2d1897ed0b43a67088d",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0540-transit.png",
+      "step": 540,
+      "sha256": "90778eb3a033a8c0ed6234e3d46d6d178e07763a4e5b9e440fc7eb6317a5223a",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0600-transit.png",
+      "step": 600,
+      "sha256": "d589d972795051480e1b92179f2bfe28aefebc679894f5cf298c1a157007c94d",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0660-insert.png",
+      "step": 660,
+      "sha256": "6f13e3a2a12c375470e23eb91161e11e42fc809dfd969937a17815bdeb9a2b13",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0720-insert.png",
+      "step": 720,
+      "sha256": "71e3a12ec0b9e15d92186cbc7c87af583d45fc298583efaf2a6477cf8f61f60d",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0780-insert.png",
+      "step": 780,
+      "sha256": "4057d5d893c1d5a1215110e4b54b8e432a7984be9fa8088bd82f7239c9676f64",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0840-insert.png",
+      "step": 840,
+      "sha256": "72095dd9eacae8d4b6821e265fccf6b0a48ed2c4f044fd5cb5023c4f65446671",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0900-insert.png",
+      "step": 900,
+      "sha256": "3fc241a0b6edeaa169136d685eb39e99f3461e25cf6061406af639d37c66c95c",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-0960-insert.png",
+      "step": 960,
+      "sha256": "9f881a9f0ac4029e9e5cf82f10605ff2697e7720bbe98da29695e16c63f94e6d",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1020-insert.png",
+      "step": 1020,
+      "sha256": "1a6b62305b2b4eddfb657a72fa76483a998905bd937ff8e55a38d8fa412acf76",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1080-insert.png",
+      "step": 1080,
+      "sha256": "b7857b7a90022f64f1d7d43f1669bb1aa61ed33f267faa8b4bedfd8744be1678",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1140-insert.png",
+      "step": 1140,
+      "sha256": "bf2ac91b3f442720774e38a3ab6cb6ea00b5fc84471d3dc2e9557cb0cc96f33f",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1200-insert.png",
+      "step": 1200,
+      "sha256": "6ef4c98cdf1697a0238c309df0d66a0af005d281c2119f02d4bef614de6da8bc",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1260-insert.png",
+      "step": 1260,
+      "sha256": "2e9c657ade08237fac78d89f820f2fc68cd9cde354e059531b7b124a04e90f8a",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1320-insert.png",
+      "step": 1320,
+      "sha256": "5204e7169a9a0e472795eaa751ed0966cdd5f5903f8ce4f78671c6d8aba6c336",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1380-insert.png",
+      "step": 1380,
+      "sha256": "25990a8a4d66efe7da24001424dd39131856ce77ad7a9763ad947c41a23af8af",
+      "baseline_detected": true,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1440-insert.png",
+      "step": 1440,
+      "sha256": "35f549ed08d9964c21c8971591f7f588fae3c90c69f884a8464b0d149232d50d",
+      "baseline_detected": false,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1500-insert.png",
+      "step": 1500,
+      "sha256": "017e39c733107e193d019daecae402e81ed4cae69691f77d1b00099f8d3afa77",
+      "baseline_detected": false,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1560-insert.png",
+      "step": 1560,
+      "sha256": "8248eebc1c734f3ea6d4d015d22978d027b3bf0aaacda8a282e6455b47d8050c",
+      "baseline_detected": false,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1620-insert.png",
+      "step": 1620,
+      "sha256": "c48134193bab27f5ef5bd6a36c00b0851268705504b0ffa3dde179b106c90b35",
+      "baseline_detected": false,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1680-insert.png",
+      "step": 1680,
+      "sha256": "6401c86c1e128bc641aab85da25029a4786760fd9cd5ecffeeabb3039aea4c05",
+      "baseline_detected": false,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1740-insert.png",
+      "step": 1740,
+      "sha256": "6c6e9693d7432eea484dcff973748a3154894a26f7dc3c3c17d6525aa557cac5",
+      "baseline_detected": false,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1800-insert.png",
+      "step": 1800,
+      "sha256": "44f2d050d028c7f0e2c161be8db4413332e9919b0acbe026160a98992be93b2c",
+      "baseline_detected": false,
+      "fallback_detected": true
+    },
+    {
+      "file": "step-1860-insert.png",
+      "step": 1860,
+      "sha256": "6f26b0bd50a6dc8046b19da881d3d75ad2512064ad652665c6bbebb79ef936b1",
+      "baseline_detected": false,
+      "fallback_detected": true
+    }
+  ]
+}
