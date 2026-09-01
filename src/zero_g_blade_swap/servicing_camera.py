@@ -5,8 +5,9 @@ mount passed a static module-pose corpus but placed the camera above the rear
 grapple approach, so the robot could stand in its line of sight during the
 continuous workflow.  This mount shifts the same camera just beyond the
 measured forward extent of that rear-mounted gripper and aims it at the centre
-of the two-bay workflow envelope.  Resolution, lens, aperture, tag geometry,
-and estimator gates remain unchanged.
+of the two-bay workflow envelope.  A subsequent one-change arm increases sensor
+sampling after the 384-pixel detector failed late in the continuous approach.
+Lens, aperture, tag geometry, and estimator gates remain unchanged.
 '''
 
 from __future__ import annotations
@@ -24,8 +25,12 @@ CAMERA_QUATERNION_WXYZ_ROS = (
     -0.029590823511594526,
 )
 
-CAMERA_HEIGHT_PX = 384
-CAMERA_WIDTH_PX = 384
+# The 384-pixel arm resolved the marker at about six pixels per rendered cell
+# and lost it repeatedly in a physically valid late-approach view.  At 640
+# pixels the worst projected cell retains eight pixels: four interior samples
+# after allowing a two-pixel rendered edge transition on each side.
+CAMERA_HEIGHT_PX = 640
+CAMERA_WIDTH_PX = 640
 CAMERA_FOCAL_LENGTH_MM = 45.0
 CAMERA_HORIZONTAL_APERTURE_MM = 30.0
 CAMERA_FOCUS_DISTANCE_M = 1.4

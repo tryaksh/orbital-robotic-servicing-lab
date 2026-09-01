@@ -224,8 +224,8 @@ def main() -> int:
                 "after capture; hold-last and guarded-motion pause after handoff"
             ),
             "critical_bay_definition": (
-                "source occupancy preflight and destination insertion alignment; random free-transfer "
-                "frames include deliberate robot line-of-sight occlusion"
+                "source occupancy preflight and destination insertion alignment; the collector holds "
+                "the robot still, so continuous robot occlusion is exercised only by the strict RGB-D chain"
             ),
         },
         "runtime_source_bindings": [

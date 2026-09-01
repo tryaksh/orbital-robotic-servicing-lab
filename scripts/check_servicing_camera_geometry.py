@@ -36,6 +36,9 @@ COLLECTOR = ROOT / 'scripts/collect_grapple_vision.py'
 CERTIFIER = ROOT / 'scripts/certify_fiducial_perception.py'
 FIDUCIAL = ROOT / 'src/zero_g_blade_swap/fiducial.py'
 GRIPPER_ENVELOPE = ROOT / 'evidence/gripper_collision_envelope.json'
+MIN_CELL_INTERIOR_PX = 4.0
+CELL_EDGE_TRANSITION_ALLOWANCE_PX = 2.0
+MIN_MARKER_CELL_PX = MIN_CELL_INTERIOR_PX + 2.0 * CELL_EDGE_TRANSITION_ALLOWANCE_PX
 
 
 def _fiducial_literal(name: str) -> object:
@@ -203,6 +206,7 @@ def check() -> dict[str, object]:
     minimum_depth_m = min(depths_m)
     maximum_depth_m = max(depths_m)
     minimum_marker_edge_px = min(marker_edges_px)
+    minimum_marker_cell_px = minimum_marker_edge_px / 6.0
     maximum_incidence_rad = max(incidence_rad)
     minimum_rear_gripper_sightline_clearance_m = min(rear_gripper_sightline_clearances_m)
     passed = (
@@ -210,6 +214,7 @@ def check() -> dict[str, object]:
         and minimum_depth_m > CAMERA_CLIPPING_RANGE_M[0]
         and maximum_depth_m < CAMERA_CLIPPING_RANGE_M[1]
         and maximum_incidence_rad < 0.5 * math.pi
+        and minimum_marker_cell_px >= MIN_MARKER_CELL_PX
         and optical_axis_alignment > 1.0 - 1.0e-9
         and minimum_rear_gripper_sightline_clearance_m > 0.0
         and all(bindings.values())
@@ -218,7 +223,7 @@ def check() -> dict[str, object]:
         'status': 'passed' if passed else 'failed',
         'title': 'Fixed servicing-camera coverage of the flush fiducial workflow envelope',
         'evidence_type': 'geometric_derivation_no_simulator',
-        'single_physical_change': 'camera placement and aim',
+        'single_physical_change': 'sensor resolution; placement remains the v2 gripper-clear pose',
         'camera_position_m': list(CAMERA_POSITION_M),
         'camera_quaternion_wxyz_ros': list(CAMERA_QUATERNION_WXYZ_ROS),
         'flush_datum': {
@@ -237,7 +242,11 @@ def check() -> dict[str, object]:
         'projection': {
             'minimum_quiet_zone_frame_margin_px': minimum_margin_px,
             'minimum_marker_edge_px': minimum_marker_edge_px,
-            'minimum_marker_cell_px': minimum_marker_edge_px / 6.0,
+            'minimum_marker_cell_px': minimum_marker_cell_px,
+            'minimum_marker_cell_requirement_px': MIN_MARKER_CELL_PX,
+            'marker_cell_requirement_derivation': (
+                'four interior samples plus a two-pixel rendered edge transition on each side'
+            ),
             'minimum_depth_m': minimum_depth_m,
             'maximum_depth_m': maximum_depth_m,
             'maximum_incidence_rad': maximum_incidence_rad,
@@ -248,9 +257,9 @@ def check() -> dict[str, object]:
         'source_bindings': bindings,
         'scope_and_limitations': [
             'Projection proves coverage and front-face incidence, not rendered detection.',
-            'Robot and rack occlusion are exercised by the held-out rendered corpus and strict RGB-D chain.',
+            'The static rendered corpus holds the robot still; continuous occlusion is exercised only by the strict RGB-D chain.',
             'Rear-gripper clearance uses its recorded collision envelope co-rotated with the captured module.',
-            'Lens, aperture, resolution, flush datum, and estimator gates are unchanged.',
+            'Lens, aperture, flush datum, and estimator gates are unchanged; resolution is the current one-change arm.',
         ],
     }
 
