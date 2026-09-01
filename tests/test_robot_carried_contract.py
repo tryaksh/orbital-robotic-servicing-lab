@@ -205,7 +205,7 @@ def test_rack_retention_is_visible_rack_owned_and_seating_gated() -> None:
     )[0]
     assert 'write_root_pose' not in retention
     assert 'write_root_state' not in retention
-    assert 'self.rack_retention.engage(fired, step)' in driver
+    assert driver.count('self.rack_retention.engage(fired, step)') == 3
     assert 'final_success = post_release & outcome & latch_clear & rack_carrying' in driver
 
 

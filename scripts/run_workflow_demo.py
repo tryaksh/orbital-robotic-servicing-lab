@@ -3426,12 +3426,14 @@ class WorkflowDriver:
             # because a policy trained on a pad-held module cannot be handed a
             # welded one, and the seating predicate is the same predicate.
             fired = self._step_policy_insert(inserting, step)
+            self.rack_retention.engage(fired, step)
             self._finish(fired, step)
             self.predicate_fired[fired] = True
             if SEATED_RETAIN:
                 self.gripper.retain_latch[fired] = True
         elif direct_insert and bool(inserting.any()):
             fired = self._step_guarded_insert(inserting, step, tool, tool_rot)
+            self.rack_retention.engage(fired, step)
             self._finish(fired, step)
             self.predicate_fired[fired] = True
             if SEATED_RETAIN:
