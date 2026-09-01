@@ -5947,12 +5947,11 @@ def main() -> dict[str, object]:
             clock["step"] = step
             previous = int(driver.phase[0]) if single else 0
             driver.step(step)
-            if single and int(driver.phase[0]) != previous:
-                note(f"{PHASE_NAMES[previous]} -> {PHASE_NAMES[int(driver.phase[0])]}", step)
-            if single and int(driver.phase[0]) == TRANSIT and step % 120 == 0:
-                print(f"[CHAIN] step {step:5d}{driver.transit_progress()}", flush=True)
-            _, _, terminated, truncated, _ = env.step(driver.actions)
-            step += 1
+            # Save the exact camera tensor the estimator just consumed.  Tiled
+            # rendering is asynchronous; after env.step the public sensor
+            # buffer may already be the cleared buffer for the next render.
+            # Sampling there produced all-black diagnostics even while the
+            # immediately preceding estimator call had a valid detection.
             if args.perception_frame_dir is not None and step % 60 == 0:
                 sensor_rgb = task.scene.sensors["camera"].data.output["rgb"][0, ..., :3]
                 if sensor_rgb.dtype == torch.uint8:
@@ -5963,6 +5962,12 @@ def main() -> dict[str, object]:
                 Image.fromarray(sensor_u8.cpu().numpy()).save(
                     args.perception_frame_dir / f"step-{step:04d}-{phase_name}.png"
                 )
+            if single and int(driver.phase[0]) != previous:
+                note(f"{PHASE_NAMES[previous]} -> {PHASE_NAMES[int(driver.phase[0])]}", step)
+            if single and int(driver.phase[0]) == TRANSIT and step % 120 == 0:
+                print(f"[CHAIN] step {step:5d}{driver.transit_progress()}", flush=True)
+            _, _, terminated, truncated, _ = env.step(driver.actions)
+            step += 1
             if collecting and step % progress_every == 0:
                 counts = {PHASE_NAMES[index]: int((driver.phase == index).sum()) for index in range(len(PHASE_NAMES))}
                 # A stalled scripted phase looks exactly like a slow one in the
