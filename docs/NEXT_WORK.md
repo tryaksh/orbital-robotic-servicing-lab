@@ -15,12 +15,13 @@ in what order, and the few things only a submission needs. They do not conflict 
 `P1` *is* `T0`, `P2` *is* `T3` — the paper section only adds sequencing and the
 claims worth making.
 
-**Current priority:** T15, then T1. T14 is closed with a narrowed claim: the
+**Current priority:** T1, then T13. T14 is closed with a narrowed claim: the
 current-source no-rack arm reproduces 17/24, visible rack retention raises the
 same fixed cohorts to 22/24, and all 22/22 episodes that reach seating pass the
 rack-only transfer. Two fail upstream, so the unchanged 95% full-chain gate is
-still not met. The physically flush fiducial detects in only 43.27% of
-critical-bay frames; fix camera/tag visibility before another RGB-D chain batch.
+still not met. T15 now passes after changing only fixed-camera placement and aim:
+the unchanged flush datum detects in 99.85% of critical-bay frames over 1,024
+held-out frames. Repeat the strict RGB-D chain and record it next.
 T13 remains separate: learned v24 is 0/96 on real handoffs, and more epochs are
 not justified until its reset and caller distributions are identical by
 construction.
@@ -42,9 +43,9 @@ training runs do not.
 | # | Task | Cost | Blocks |
 | --- | --- | --- | --- |
 | **T14** | Destination load transfer: 22/22 eligible rack-only holds; full chain 22/24 | **done 2026-08-31, claim narrowed** | — |
-| **T15** | **Restore flush-tag visibility.** Change camera/tag geometry, not estimator tolerances | short rendered corpus + one RGB-D run | credible perception |
+| **T15** | Restore flush-tag visibility: held-out gate passed; strict RGB-D run moved to T1 | **camera portion done 2026-09-01** | credible perception |
 | **T13** | Learned insertion interface transfer; paused until resets equal real handoffs | no GPU yet | a learned seating phase |
-| **T0** | Nine older source-bound reports are unrecoverable; re-run any result a final claim needs | CPU + certification batches | reproducible claims |
+| **T0** | Ten older source-bound reports are unrecoverable; re-run any result a final claim needs | CPU + certification batches | reproducible claims |
 | **T1** | Certify the strict chain on the vision task after T14 and T15 pass | hours, 1 batch | the strongest claim about perception |
 | **T2** | Insert: attitude is the interface's, not the reward's — **diagnosed, work moved to T9** | done | — |
 | **T3** | Three training seeds, so numbers carry a spread | 4+ training runs | any claim about a *method* |
@@ -113,6 +114,13 @@ C:/isaac-sim/python.bat scripts/certify_fiducial_perception.py `
 **Done:** overall detection is at least 90%, critical-bay detection at least
 99%, position p95 below 20 mm, orientation p95 below 0.05 rad and occupancy at
 least 95%, followed by a strict RGB-D chain run.
+
+**Camera gate passed 2026-09-01.** The one-change overhead placement preserved
+the flush 90 mm datum, 120 mm quiet zone, lens, resolution and all estimator
+gates. On seed 284 it detected 951/1,024 frames overall (**92.87%**) and
+682/683 critical-bay frames (**99.85%**); position p95 was 1.92 mm, orientation
+p95 18.3 mrad and occupancy 100%. The former-camera v2 arm remains canonical as
+the loser. The required strict RGB-D chain run is now T1.
 
 ---
 

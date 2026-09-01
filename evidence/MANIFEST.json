@@ -8,7 +8,7 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 36,
+    "canonical": 38,
     "retracted": 11,
     "historical": 140
   },
@@ -34,7 +34,12 @@
     "fiducial_rgbd_flush_v2_seed283.json": {
       "title": "Calibrated RGB-D fiducial perception qualification",
       "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
-      "holds_up": "Current flush-tag negative qualification: 43.27% critical-bay detection against a 99% gate."
+      "holds_up": "Preserved flush-tag visibility control: 43.27% critical-bay detection against a 99% gate with the former camera placement."
+    },
+    "fiducial_rgbd_flush_v3_seed284_overhead.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification",
+      "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
+      "holds_up": "Held-out overhead-camera qualification: 92.87% overall and 99.85% critical-bay detection over 1,024 frames with unchanged accuracy gates."
     },
     "full_chain_state_16_report.json": {
       "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
@@ -261,6 +266,11 @@
       "evidence_type": "analytical_boundary_against_simulation",
       "generated_utc": "2026-08-28T01:10:58.110603+00:00",
       "holds_up": "The current fail-closed boundary result: entry attitude supported; five dimensions unresolved or contradicted."
+    },
+    "servicing_camera_geometry_v1.json": {
+      "title": "Fixed servicing-camera coverage of the flush fiducial workflow envelope",
+      "evidence_type": "geometric_derivation_no_simulator",
+      "holds_up": "Simulator-free projection check for the one-change overhead servicing-camera placement and unchanged flush datum."
     },
     "workcell_geometry_check.json": {
       "title": "Where the arm stands, what authority it has there, and what the channel admits",

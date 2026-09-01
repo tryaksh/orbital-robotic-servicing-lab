@@ -134,7 +134,15 @@ CANONICAL: tuple[tuple[str, str], ...] = (
     ),
     (
         "fiducial_rgbd_flush_v2_seed283.json",
-        "Current flush-tag negative qualification: 43.27% critical-bay detection against a 99% gate.",
+        "Preserved flush-tag visibility control: 43.27% critical-bay detection against a 99% gate with the former camera placement.",
+    ),
+    (
+        "servicing_camera_geometry_v1.json",
+        "Simulator-free projection check for the one-change overhead servicing-camera placement and unchanged flush datum.",
+    ),
+    (
+        "fiducial_rgbd_flush_v3_seed284_overhead.json",
+        "Held-out overhead-camera qualification: 92.87% overall and 99.85% critical-bay detection over 1,024 frames with unchanged accuracy gates.",
     ),
     (
         "rgbd_strict_capture_gate_v2_seed5070.json",

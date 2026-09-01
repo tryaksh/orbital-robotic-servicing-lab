@@ -2,7 +2,7 @@
 
 Verified repository state. Evidence status is mechanical in
 [`evidence/MANIFEST.json`](../evidence/MANIFEST.json); bounded tasks are in
-[`NEXT_WORK.md`](NEXT_WORK.md). Last verified: 2026-08-31 on
+[`NEXT_WORK.md`](NEXT_WORK.md). Last verified: 2026-09-01 on
 `paper/serviceability-qualification`, based on `main` at `bccce6d`.
 
 Everything is simulated. Nothing has run on hardware.
@@ -11,16 +11,16 @@ Everything is simulated. Nothing has run on hardware.
 
 | Item | Verified state |
 | --- | --- |
-| Evidence | 36 canonical, 11 retracted, 140 historical; quote only canonical |
-| Source provenance | 12 reports carry runtime source bindings; one is mechanically recovered, two new reports record clean source revisions, and nine older reports remain lost because they used uncommitted code |
+| Evidence | 38 canonical, 11 retracted, 140 historical; quote only canonical |
+| Source provenance | 13 reports carry runtime source bindings; two match the working source, one is mechanically recovered, and ten older reports remain lost because they used uncommitted code |
 | Current completion result | 22/24, **91.67%**, after visible rack retention engages, both robot-side supports release, and the rack alone holds for at least 0.70 s |
 | Boundary decision | **not qualified**; only entry attitude is supported in simulation |
-| Live RGB-D service | fail-closed; current flush-tag evidence fails and the prior floating-tag evidence is retracted |
+| Live RGB-D service | fail-closed; the flush tag now passes its held-out camera gate, but the strict RGB-D chain has not yet been repeated |
 | CI architecture | core modules and CPU tests do not require optional FastAPI imports |
 | Checkpoints | reports contain hashes, but weights under `logs/` and `checkpoints/` are absent from a clone |
 | Hardware claim | none |
 
-T0 remains open for the nine source-bound reports whose exact uncommitted code
+T0 remains open for the ten source-bound reports whose exact uncommitted code
 cannot be recovered. New strict-chain and RGB-D evidence starts from clean
 commits; the bounded audit finds no lost binding in either new RGB-D report.
 
@@ -97,11 +97,12 @@ not simulated; the idealized joint carries the load.
 ### RGB-D perception
 
 The former passing certificate used a tilted tag floating 90 mm above the
-current module and is retracted. The current tag is flush with the module top
-face. On 256 newly rendered frames it detects 137/256 overall (**53.52%**) and
-74/171 in the critical rack region (**43.27%**) against a 99% critical gate.
-When visible, position p95 is 3.92 mm, orientation p95 is 47.6 mrad and occupancy
-is exact; visibility, not detected-frame precision, is the measured blocker.
+current module and is retracted. The current tag remains flush with the module
+top face. Moving and aiming only the fixed camera raised held-out detection from
+**53.52%** to **92.87%** overall and from **43.27%** to **99.85%** in the critical
+rack region over 1,024 new frames. Position p95 is 1.92 mm, orientation p95 is
+18.3 mrad and occupancy is exact, all under unchanged gates. The prior camera
+arm remains as the paired loser.
 
 A logic defect was also fixed: missed detections could propagate the module as
 if attached to the moving tool before capture. The estimator now holds the last
@@ -176,7 +177,7 @@ Never overwrite evidence; use a new versioned filename.
 
 Destination transfer is closed with a narrowed claim: 22/22 eligible episodes
 hold, while the full chain remains 22/24 and below 95% because two fail before
-seating. The next gate is a camera placement/aim change that passes the flush-tag
-visibility gate, followed by the strict RGB-D chain and a recording. Learned
-insertion remains a separate interface-transfer problem; do not spend more GPU
-until its reset and real-handoff distributions are the same by construction.
+seating. The flush-tag camera gate now passes; the next gate is the strict RGB-D
+chain and a recording. Learned insertion remains a separate interface-transfer
+problem; do not spend more GPU until its reset and real-handoff distributions
+are the same by construction.
