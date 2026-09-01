@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-91 scripts. Grouped by the verb their filename starts with.
+92 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -26,6 +26,7 @@ These are the ones to run first and the ones that run in CI. A requirement only 
 | `check_pin_gripper_clearance.py` | Does the grapple pin fit inside the gripper that grips it? |
 | `check_rack_retention.py` | Prove the rack-side retention geometry and its simulator binding without Isaac Sim. |
 | `check_service_latch_clearance.py` | Prove the robot-side service latch fits, from measurements and no simulator. |
+| `check_servicing_camera_geometry.py` | Project the flush datum through the shipped camera over the workflow envelope. |
 | `check_source_provenance.py` | Can the source that produced a report still be recovered from git? |
 | `check_workcell_geometry.py` | Answer the workcell's geometry questions before anything starts a simulator. |
 

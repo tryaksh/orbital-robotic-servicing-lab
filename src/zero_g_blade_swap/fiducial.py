@@ -26,10 +26,10 @@ FIDUCIAL_MARKER_ID = 23
 # which is not a service plate, it is a billboard.
 #
 # It is now flush on the top face, tag frame aligned with the module frame, and
-# sized to fit inside the 130 mm width with its quiet zone. The overview camera
-# at (-0.55, -0.65, 1.15) looks down on the rack, so a top-face plate is inside
-# its view; what changes is the incidence angle, and that is a perception
-# question rather than a geometry one.
+# sized to fit inside the 130 mm width with its quiet zone. The original oblique
+# overview saw this plane at roughly 68 degrees from normal and failed the
+# visibility gate. ``servicing_camera.py`` now places the same lens overhead;
+# the datum remains flush and unchanged.
 #
 # **This invalidates evidence/fiducial_rgbd_service_plate.json**, which was
 # certified against the old plate pose. Perception has to be re-certified on

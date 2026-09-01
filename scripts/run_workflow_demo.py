@@ -55,6 +55,7 @@ TASK = "Isaac-ZeroG-Blade-GrapplePin-Workflow-v0"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_RUNTIME_SOURCES = (
     Path('src/zero_g_blade_swap/rack_retention.py'),
+    Path('src/zero_g_blade_swap/servicing_camera.py'),
     Path("scripts/run_workflow_demo.py"),
     Path("src/zero_g_blade_swap/provenance.py"),
     Path("src/zero_g_blade_swap/fiducial.py"),
