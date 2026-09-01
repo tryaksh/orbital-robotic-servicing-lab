@@ -127,8 +127,9 @@ case "$stage" in
     # difference between a two-minute answer and a ten-minute one.
     echo "[$(date +%H:%M:%S)] SMOKE the latch hardware and its release"
     chain --num_envs 1 --steps "${STEPS:-3000}" --seed "${SEED:-4070}" \
+        --robot_rail_on_relocation \
         --latch_on_release --latch_joint_mode fixed \
-        --latch_rated_force_n "${LATCH_N:-1000000}" --latch_rated_torque_nm "${LATCH_NM:-1000000}" \
+        --latch_rated_force_n "${LATCH_N:-20000}" --latch_rated_torque_nm "${LATCH_NM:-1000}" \
         --latch_position_stiffness_n_per_m "${MATING_K:-40000}" \
         --latch_rotation_stiffness_nm_per_rad "${MATING_KR:-20000}" \
         --destination_channel_relief_m "${RELIEF:-0.0046125}" \

@@ -1997,7 +1997,9 @@ class RackRetentionJointCfg(FixedGraspJointCfg):
     # stores no energy and moves neither body.
     body0_relative_path: str = 'Rack'
     body1_relative_path: str = 'SpareBlade'
-    local_pos0: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    local_pos0: tuple[float, float, float] = tuple(
+        SPARE_BLADE_POS[axis] - RACK_CFG.init_state.pos[axis] for axis in range(3)
+    )
     local_rot0: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
     local_pos1: tuple[float, float, float] = (0.0, 0.0, 0.0)
     local_rot1: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
