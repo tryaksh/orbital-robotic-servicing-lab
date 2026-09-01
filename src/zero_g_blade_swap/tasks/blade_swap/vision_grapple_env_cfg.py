@@ -120,7 +120,12 @@ class ZeroGBladeGrappleVisionCollectEnvCfg(ZeroGBladeGrapplePinWorkflowEnvCfg):
         super().__post_init__()
         # Eight physics steps per render exactly matches the 15 Hz camera.
         self.sim.render_interval = 8
-        self.num_rerenders_on_reset = 1
+        # The 640 px tiled RGB-D render product has two queued buffers behind
+        # the reset render.  With one rerender, some clean process starts expose
+        # the annotator's zero-filled allocation for the whole first episode.
+        # Drain those buffers while the workcell is still at reset; this changes
+        # neither physics nor the 15 Hz measurement cadence.
+        self.num_rerenders_on_reset = 3
 
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)
