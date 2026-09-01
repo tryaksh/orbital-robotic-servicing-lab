@@ -566,6 +566,12 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--video", action="store_true")
     parser.add_argument("--video_dir", type=Path, default=Path("artifacts/demo/workflow"))
+    parser.add_argument(
+        "--perception_frame_dir",
+        type=Path,
+        default=None,
+        help="Diagnostic only: save env-0 servicing-camera RGB every 60 control steps.",
+    )
     parser.add_argument("--report", type=Path, default=Path("artifacts/demo/workflow_report.json"))
     parser.add_argument(
         "--latch_on_release",
@@ -809,6 +815,7 @@ import gymnasium as gym
 import numpy as np
 import omni.usd
 import torch
+from PIL import Image
 
 from isaaclab.utils.math import (
     axis_angle_from_quat,
@@ -5928,6 +5935,8 @@ def main() -> dict[str, object]:
             note("start:capture", 0)
 
         step = 0
+        if args.perception_frame_dir is not None:
+            args.perception_frame_dir.mkdir(parents=True, exist_ok=True)
         # A collecting run has no step budget of its own: it stops on the episode
         # count, and every environment is reset on the task's own timeout.
         budget = args.steps if not collecting else episode_steps * (args.episodes // task.num_envs + 2)
@@ -5944,6 +5953,16 @@ def main() -> dict[str, object]:
                 print(f"[CHAIN] step {step:5d}{driver.transit_progress()}", flush=True)
             _, _, terminated, truncated, _ = env.step(driver.actions)
             step += 1
+            if args.perception_frame_dir is not None and step % 60 == 0:
+                sensor_rgb = task.scene.sensors["camera"].data.output["rgb"][0, ..., :3]
+                if sensor_rgb.dtype == torch.uint8:
+                    sensor_u8 = sensor_rgb
+                else:
+                    sensor_u8 = (sensor_rgb.clamp(0.0, 1.0) * 255.0).to(torch.uint8)
+                phase_name = PHASE_NAMES[int(driver.phase[0])]
+                Image.fromarray(sensor_u8.cpu().numpy()).save(
+                    args.perception_frame_dir / f"step-{step:04d}-{phase_name}.png"
+                )
             if collecting and step % progress_every == 0:
                 counts = {PHASE_NAMES[index]: int((driver.phase == index).sum()) for index in range(len(PHASE_NAMES))}
                 # A stalled scripted phase looks exactly like a slow one in the
