@@ -8,9 +8,9 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 38,
+    "canonical": 42,
     "retracted": 11,
-    "historical": 140
+    "historical": 144
   },
   "canonical": {
     "chain_robustness_sweep.json": {
@@ -39,7 +39,12 @@
     "fiducial_rgbd_flush_v3_seed284_overhead.json": {
       "title": "Calibrated RGB-D fiducial perception qualification",
       "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
-      "holds_up": "Held-out overhead-camera qualification: 92.87% overall and 99.85% critical-bay detection over 1,024 frames with unchanged accuracy gates."
+      "holds_up": "Static module-pose overhead-camera arm: 92.87% overall and 99.85% critical-bay detection over 1,024 frames; it did not reproduce continuous robot occlusion."
+    },
+    "fiducial_rgbd_flush_v4_seed285_gripper_clear.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification",
+      "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
+      "holds_up": "Static gripper-clear camera arm: unchanged gates pass over 1,024 held-out module poses, pending the continuous workflow."
     },
     "full_chain_state_16_report.json": {
       "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
@@ -220,6 +225,16 @@
       },
       "holds_up": "One strict RGB-D negative run after capture-gated dropout propagation; it ended during extraction and claims no relocation."
     },
+    "rgbd_strict_rack_retention_gripper_clear_video2_seed4070.json": {
+      "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "checkpoints_sha256": {
+        "capture": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+        "extract": "ADC247AB0E9403761A3108228019AE7BE4DC408155B414B6BF0226102E5CCA54",
+        "insert": "CFBB09E2DDC7AF11E180DD772C42F5D86AB20EA56BD0A00F2FEB2EA378B4EC69"
+      },
+      "holds_up": "Preserved continuous-workflow failure: learned capture/extraction and carry reach guarded insertion, then the 384-pixel marker detector drops out and the motion fails closed."
+    },
     "robot_carried_full_chain_c11065.json": {
       "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
@@ -271,6 +286,11 @@
       "title": "Fixed servicing-camera coverage of the flush fiducial workflow envelope",
       "evidence_type": "geometric_derivation_no_simulator",
       "holds_up": "Simulator-free projection check for the one-change overhead servicing-camera placement and unchanged flush datum."
+    },
+    "servicing_camera_geometry_v2_gripper_clear.json": {
+      "title": "Fixed servicing-camera coverage of the flush fiducial workflow envelope",
+      "evidence_type": "geometric_derivation_no_simulator",
+      "holds_up": "Simulator-free projection and measured rear-gripper sightline clearance for the shifted 384-pixel camera arm."
     },
     "workcell_geometry_check.json": {
       "title": "Where the arm stands, what authority it has there, and what the channel admits",
@@ -430,6 +450,23 @@
       "gate_passed": false,
       "policy_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
       "holds_up": "The before, two sessions back: 31.25%."
+    },
+    "workflow_robot_carried_vision_rack_retention_overhead_v1_certification.json": {
+      "title": "Strict camera-guided workflow with visible destination retention",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-01T06:41:23+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 0,
+        "success_rate": 0.0,
+        "wilson_95": [
+          0.0,
+          0.137976
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "Preserved full-workflow camera failure: 0/24 on the fixed cohorts after the static overhead-camera corpus passed."
     }
   },
   "retracted": {
@@ -853,6 +890,10 @@
     "relocation_rrt_path.json": {
       "generated_utc": "2026-08-21T01:39:23+00:00"
     },
+    "rgbd_strict_rack_retention_gripper_clear_diagnostic_seed4070.json": {},
+    "rgbd_strict_rack_retention_gripper_clear_video_seed4070.json": {},
+    "rgbd_strict_rack_retention_overhead_seed4070.json": {},
+    "rgbd_strict_rack_retention_overhead_seed6070.json": {},
     "rigid_grasp_l0_ep700_certification.json": {
       "title": "Level-0 secured-grasp blade insertion, PPO epoch 700, three curriculum stages x three held-out seeds",
       "generated_utc": "2026-08-08T06:38:19+00:00"

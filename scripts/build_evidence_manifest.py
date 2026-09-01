@@ -142,7 +142,23 @@ CANONICAL: tuple[tuple[str, str], ...] = (
     ),
     (
         "fiducial_rgbd_flush_v3_seed284_overhead.json",
-        "Held-out overhead-camera qualification: 92.87% overall and 99.85% critical-bay detection over 1,024 frames with unchanged accuracy gates.",
+        "Static module-pose overhead-camera arm: 92.87% overall and 99.85% critical-bay detection over 1,024 frames; it did not reproduce continuous robot occlusion.",
+    ),
+    (
+        "workflow_robot_carried_vision_rack_retention_overhead_v1_certification.json",
+        "Preserved full-workflow camera failure: 0/24 on the fixed cohorts after the static overhead-camera corpus passed.",
+    ),
+    (
+        "servicing_camera_geometry_v2_gripper_clear.json",
+        "Simulator-free projection and measured rear-gripper sightline clearance for the shifted 384-pixel camera arm.",
+    ),
+    (
+        "fiducial_rgbd_flush_v4_seed285_gripper_clear.json",
+        "Static gripper-clear camera arm: unchanged gates pass over 1,024 held-out module poses, pending the continuous workflow.",
+    ),
+    (
+        "rgbd_strict_rack_retention_gripper_clear_video2_seed4070.json",
+        "Preserved continuous-workflow failure: learned capture/extraction and carry reach guarded insertion, then the 384-pixel marker detector drops out and the motion fails closed.",
     ),
     (
         "rgbd_strict_capture_gate_v2_seed5070.json",
