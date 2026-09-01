@@ -104,20 +104,33 @@ def _marker_corners(image_rgb: np.ndarray) -> np.ndarray:
     elif rgb.dtype != np.uint8:
         rgb = rgb.astype(np.uint8)
     gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
-    parameters = cv2.aruco.DetectorParameters()
-    parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
-    parameters.minMarkerPerimeterRate = 0.02
-    detector = cv2.aruco.ArucoDetector(
-        cv2.aruco.getPredefinedDictionary(FIDUCIAL_DICTIONARY),
-        parameters,
-    )
-    corners, identifiers, _ = detector.detectMarkers(gray)
-    if identifiers is None:
-        raise RuntimeError(f"ArUco service datum {FIDUCIAL_MARKER_ID} was not detected")
-    matches = np.flatnonzero(identifiers.reshape(-1) == FIDUCIAL_MARKER_ID)
-    if matches.size != 1:
-        raise RuntimeError(f"expected one ArUco service datum {FIDUCIAL_MARKER_ID}, detected {int(matches.size)}")
-    return np.asarray(corners[int(matches[0])], dtype=np.float64).reshape(4, 2)
+    dictionary = cv2.aruco.getPredefinedDictionary(FIDUCIAL_DICTIONARY)
+    # Keep the fast detector first.  The late guarded approach resolves each
+    # rendered cell, but its oblique edge transitions defeated adaptive
+    # thresholding with sub-pixel refinement: the unchanged decoder found 0/8
+    # preserved frames from steps 1440--1860.  OpenCV's AprilTag corner method
+    # found marker 23 in all 8/8 of those same RGB frames, without changing the
+    # marker, camera, pose gates or success limits.  It is therefore a bounded
+    # fallback only when the original pass does not find the service datum.
+    for refinement in (
+        cv2.aruco.CORNER_REFINE_SUBPIX,
+        cv2.aruco.CORNER_REFINE_APRILTAG,
+    ):
+        parameters = cv2.aruco.DetectorParameters()
+        parameters.cornerRefinementMethod = refinement
+        parameters.minMarkerPerimeterRate = 0.02
+        detector = cv2.aruco.ArucoDetector(dictionary, parameters)
+        corners, identifiers, _ = detector.detectMarkers(gray)
+        if identifiers is None:
+            continue
+        matches = np.flatnonzero(identifiers.reshape(-1) == FIDUCIAL_MARKER_ID)
+        if matches.size == 1:
+            return np.asarray(corners[int(matches[0])], dtype=np.float64).reshape(4, 2)
+        if matches.size > 1:
+            raise RuntimeError(
+                f"expected one ArUco service datum {FIDUCIAL_MARKER_ID}, detected {int(matches.size)}"
+            )
+    raise RuntimeError(f"ArUco service datum {FIDUCIAL_MARKER_ID} was not detected")
 
 
 def _refine_tag_pose_from_depth(

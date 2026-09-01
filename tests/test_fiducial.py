@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -70,6 +72,16 @@ def test_missing_marker_fails_closed() -> None:
     image[:] = 0
     with pytest.raises(RuntimeError, match="ArUco"):
         estimate_fiducial_pose(image, intrinsic)
+
+
+def test_detector_keeps_fast_pass_and_bounded_robust_fallback() -> None:
+    from zero_g_blade_swap import fiducial
+
+    source = Path(fiducial.__file__).read_text(encoding="utf-8")
+    fast = source.index("cv2.aruco.CORNER_REFINE_SUBPIX")
+    fallback = source.index("cv2.aruco.CORNER_REFINE_APRILTAG")
+    assert fast < fallback
+    assert "for refinement in" in source
 
 
 def test_invalid_intrinsics_are_rejected() -> None:

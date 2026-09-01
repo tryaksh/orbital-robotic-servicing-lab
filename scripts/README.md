@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-92 scripts. Grouped by the verb their filename starts with.
+93 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -172,6 +172,7 @@ Each takes `--check` so CI can prove the artifact is current.
 | `rebuild_perception.sh` | Phase 8: rebuild perception on the changed geometry. |
 | `record_demo.sh` | Record demonstration clips of a trained insertion policy. |
 | `relabel_lead_in.py` | Correct the lead-in label that ``play.py`` misread, without re-measuring. |
+| `replay_fiducial_detector.py` | Compare the deployed fiducial fallback on preserved workflow RGB frames. |
 | `retrain_extract_on_pin.sh` | Extract, retrained against the criterion and the rack it actually has. |
 | `retrain_workcell_skills.sh` | Fine-tune the three promoted skills onto the moved workcell. |
 | `setup_windows.ps1` | Install Isaac Lab and RL-Games against Isaac Sim's interpreter, at the pinned commits. |
