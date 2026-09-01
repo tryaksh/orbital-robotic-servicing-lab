@@ -1,0 +1,170 @@
+{
+  "title": "Paired destination rack-side retention and strict robot-support release",
+  "evidence_type": "paired_fixed_cohort_simulation",
+  "generated_utc": "2026-09-01T05:55:01.798377+00:00",
+  "paired_design": {
+    "single_change": "visible rack-side retention enabled in the retention arm",
+    "same_seed_environment_pairs": true,
+    "same_terminal_schema": true,
+    "same_unchanged_seating_predicate_rows": true,
+    "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
+    "controller": "guarded",
+    "policy_set_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+    "checkpoints_sha256": {
+      "capture": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+      "extract": "ADC247AB0E9403761A3108228019AE7BE4DC408155B414B6BF0226102E5CCA54",
+      "insert": "CFBB09E2DDC7AF11E180DD772C42F5D86AB20EA56BD0A00F2FEB2EA378B4EC69"
+    },
+    "source_revision": {
+      "available": true,
+      "commit": "aef70802ac703739d53db4337744bb3d87036795",
+      "branch": "paper/serviceability-qualification",
+      "dirty": false,
+      "tracked_changes": [],
+      "error": null
+    },
+    "seeds": [
+      4070,
+      5070,
+      6070
+    ],
+    "environments_per_seed": 8
+  },
+  "cohorts": [
+    {
+      "seed": 4070,
+      "episodes": 8,
+      "control_successes": 4,
+      "retention_successes": 6,
+      "seating_predicate_fired": 6,
+      "rack_engaged": 6,
+      "full_rack_only_rechecks": 6
+    },
+    {
+      "seed": 5070,
+      "episodes": 8,
+      "control_successes": 8,
+      "retention_successes": 8,
+      "seating_predicate_fired": 8,
+      "rack_engaged": 8,
+      "full_rack_only_rechecks": 8
+    },
+    {
+      "seed": 6070,
+      "episodes": 8,
+      "control_successes": 5,
+      "retention_successes": 8,
+      "seating_predicate_fired": 8,
+      "rack_engaged": 8,
+      "full_rack_only_rechecks": 8
+    }
+  ],
+  "control": {
+    "episodes": 24,
+    "successes": 17,
+    "success_rate": 0.7083333333333334,
+    "success_rate_wilson_95": {
+      "low": 0.5083230633550337,
+      "high": 0.8508535180303913
+    },
+    "unchanged_seating_predicate_fired": 22,
+    "inputs": [
+      {
+        "path": "artifacts/robotcarried/certify_release_rack_retention_control_v1_seed4070.npz",
+        "sha256": "6CE6610F5D69673A67BD90AC2EE4C1373A788206760C11E2ABDAEAF44CC138CB"
+      },
+      {
+        "path": "artifacts/robotcarried/certify_release_rack_retention_control_v1_seed5070.npz",
+        "sha256": "105920F001CA44E50968EC645FB8431B45824E5F6B12A1DFBCB8C218CF6D321A"
+      },
+      {
+        "path": "artifacts/robotcarried/certify_release_rack_retention_control_v1_seed6070.npz",
+        "sha256": "5D87F676BDDC098C449DF33BF83289D95701F5A2015103B40CA862D02F0C7558"
+      }
+    ]
+  },
+  "rack_retention": {
+    "episodes": 24,
+    "successes": 22,
+    "success_rate": 0.9166666666666666,
+    "success_rate_wilson_95": {
+      "low": 0.7415119780678932,
+      "high": 0.9768411847029566
+    },
+    "unchanged_seating_predicate_fired": 22,
+    "inputs": [
+      {
+        "path": "artifacts/robotcarried/certify_release_rack_retention_v1_seed4070.npz",
+        "sha256": "192E4E5A2A524F15DAB721E238F6F8CAE28E1C8669E198AE043EC61B8B70FE81"
+      },
+      {
+        "path": "artifacts/robotcarried/certify_release_rack_retention_v1_seed5070.npz",
+        "sha256": "89C0D19B82A85419761CCCC0FE4B19C85963AAE2E2007AB2BD904099E6795470"
+      },
+      {
+        "path": "artifacts/robotcarried/certify_release_rack_retention_v1_seed6070.npz",
+        "sha256": "E57316CC7B41DC87D78FCAC92D464FFA4057136CEB5F161D5E9D33818F9F284B"
+      }
+    ]
+  },
+  "paired_effect": {
+    "additional_successes": 5,
+    "success_rate_change_percentage_points": 20.833333333333332
+  },
+  "rack_load_transfer": {
+    "eligible_after_measured_seating": 22,
+    "rack_engagements": 22,
+    "successful_rack_only_rechecks": 22,
+    "full_rack_only_rechecks_observed": 22,
+    "conditional_success_rate": 1.0,
+    "conditional_success_rate_wilson_95": {
+      "low": 0.8513451253913791,
+      "high": 1.0
+    },
+    "required_rack_only_interval_s": 0.7,
+    "minimum_observed_rack_only_interval_s": 14.366666666666667,
+    "maximum_rack_to_module_position_drift_m": 0.0,
+    "maximum_rack_to_module_orientation_drift_rad": 0.0,
+    "mechanism": "two visible rack pawls represented by a break-rated Rack-to-SpareBlade fixed joint",
+    "rated_force_n": 600.0,
+    "rated_torque_nm": 30.0,
+    "world_constraint": false,
+    "module_pose_write": false,
+    "retention_reports": [
+      {
+        "path": "artifacts/robotcarried/certify_release_rack_retention_v1_seed4070_report.json",
+        "sha256": "59A9D824E5CDB7A2B78454ADE09F52E9D1854A8B5EC3CF86CC1E0AE9780FCDB7"
+      },
+      {
+        "path": "artifacts/robotcarried/certify_release_rack_retention_v1_seed5070_report.json",
+        "sha256": "7ABA21198C77D21F2F4F49BE373C22F38DE75182DA3F9717D794124A7A697BE3"
+      },
+      {
+        "path": "artifacts/robotcarried/certify_release_rack_retention_v1_seed6070_report.json",
+        "sha256": "3F8C74C86B30563E8F653D29CCA9E80A28C56B9EE765C6104D235C20EAC5BA0F"
+      }
+    ]
+  },
+  "unreached_seating_failures": [
+    {
+      "seed": 4070,
+      "env": 5
+    },
+    {
+      "seed": 4070,
+      "env": 7
+    }
+  ],
+  "gate": {
+    "minimum_full_chain_success_rate": 0.95,
+    "full_chain_passed": false,
+    "rack_transfer_passed_for_every_eligible_episode": true,
+    "claim": "rack-side post-release retention is supported on every eligible episode; the full autonomous chain remains below its 95% gate because two paired episodes fail before measured seating"
+  },
+  "scope_and_limitations": [
+    "Simulation only; no rack retention hardware has been built or loaded.",
+    "The visible pawls have no contact colliders; their disclosed break-rated Rack-to-module joint carries load.",
+    "PhysX external-joint reaction magnitude is not exposed. Load transfer is evidenced by the break rating, rack-only interval, and measured relative drift.",
+    "The 91.67% full-chain result misses the unchanged 95% gate and is not described as full-chain qualification."
+  ]
+}

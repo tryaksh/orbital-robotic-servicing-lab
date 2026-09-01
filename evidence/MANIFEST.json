@@ -8,7 +8,7 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 32,
+    "canonical": 36,
     "retracted": 11,
     "historical": 140
   },
@@ -194,6 +194,17 @@
       "generated_utc": "2026-08-28T01:09:15+00:00",
       "holds_up": "Paired v24 and guarded insertion at all nine reset stations and real chain handoffs; every losing arm retained."
     },
+    "rack_retention_geometry_v1.json": {
+      "title": "Rack-side passive retention geometry and simulator binding",
+      "evidence_type": "geometric_derivation_no_simulator",
+      "holds_up": "Simulator-free rack-pawl geometry, load rating, and source binding check."
+    },
+    "rack_retention_paired_v1.json": {
+      "title": "Paired destination rack-side retention and strict robot-support release",
+      "evidence_type": "paired_fixed_cohort_simulation",
+      "generated_utc": "2026-09-01T05:55:01.798377+00:00",
+      "holds_up": "Paired T14 result: +5/24; rack-only transfer succeeds in all 22/22 episodes that reach measured seating, while two fail upstream."
+    },
     "rgbd_strict_capture_gate_v2_seed5070.json": {
       "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
@@ -342,6 +353,40 @@
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
       "holds_up": "Paired losing load-transfer arm: hand-first release scores 12/24 (50.00%) on identical seeds and states."
     },
+    "workflow_robot_carried_release_rack_retention_control_v1_certification.json": {
+      "title": "Rack-retention paired control: strict robot-carried release without rack capture",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-01T05:36:29+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 17,
+        "success_rate": 0.708333,
+        "wilson_95": [
+          0.508323,
+          0.850854
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "Current-source paired no-rack control: 17/24 (70.83%), exactly reproducing the pre-retention baseline."
+    },
+    "workflow_robot_carried_release_rack_retention_v1_certification.json": {
+      "title": "Rack-side retention: strict robot-carried release and rack-only recheck",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-01T05:48:47+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 22,
+        "success_rate": 0.916667,
+        "wilson_95": [
+          0.741512,
+          0.976841
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "Strict chain with visible destination retention: 22/24 (91.67%); below the unchanged 95% full-chain gate."
+    },
     "workflow_robot_carried_release_recheck_v2_certification.json": {
       "title": "Robot-carried servicing workflow: independent release recheck",
       "evidence_type": "simulation_only",
@@ -357,7 +402,7 @@
       },
       "gate_passed": false,
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
-      "holds_up": "Current strict chain: 17/24 (70.83%) after both robot-side supports release and a 0.70 s rack-only recheck."
+      "holds_up": "Preserved pre-retention strict chain: 17/24 (70.83%) after both robot-side supports release and a 0.70 s free-module recheck."
     },
     "workflow_robot_carried_relocate_certification.json": {
       "title": "Robot-carried servicing workflow: relocation, bay 1 to bay 2",

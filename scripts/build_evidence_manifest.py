@@ -50,7 +50,23 @@ CANONICAL: tuple[tuple[str, str], ...] = (
     ),
     (
         "workflow_robot_carried_release_recheck_v2_certification.json",
-        "Current strict chain: 17/24 (70.83%) after both robot-side supports release and a 0.70 s rack-only recheck.",
+        "Preserved pre-retention strict chain: 17/24 (70.83%) after both robot-side supports release and a 0.70 s free-module recheck.",
+    ),
+    (
+        "workflow_robot_carried_release_rack_retention_control_v1_certification.json",
+        "Current-source paired no-rack control: 17/24 (70.83%), exactly reproducing the pre-retention baseline.",
+    ),
+    (
+        "workflow_robot_carried_release_rack_retention_v1_certification.json",
+        "Strict chain with visible destination retention: 22/24 (91.67%); below the unchanged 95% full-chain gate.",
+    ),
+    (
+        "rack_retention_paired_v1.json",
+        "Paired T14 result: +5/24; rack-only transfer succeeds in all 22/22 episodes that reach measured seating, while two fail upstream.",
+    ),
+    (
+        "rack_retention_geometry_v1.json",
+        "Simulator-free rack-pawl geometry, load rating, and source binding check.",
     ),
     (
         "workflow_robot_carried_release_hand_first_v3_certification.json",

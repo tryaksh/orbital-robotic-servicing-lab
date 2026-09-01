@@ -60,11 +60,7 @@ def check() -> dict[str, object]:
         rear_face_x - forward_face_x,
         'closed tips remain behind the seated module instead of correcting its pose',
     )
-    record(
-        'rack_joint_rating_covers_required_axial_load',
-        (retention.RATED_FORCE_N - retention.REQUIRED_AXIAL_CAPACITY_N) / 1000.0,
-        'the disclosed joint rating is no lower than the derived axial load requirement',
-    )
+    load_margin_n = retention.RATED_FORCE_N - retention.REQUIRED_AXIAL_CAPACITY_N
 
     assets = ASSETS.read_text(encoding='utf-8')
     driver = DRIVER.read_text(encoding='utf-8')
@@ -91,7 +87,11 @@ def check() -> dict[str, object]:
             and 'joint.GetLocalPos0Attr().Set' in driver
         ),
     }
-    passed = all(row['passed'] for row in checks) and all(bindings.values())
+    passed = (
+        all(row['passed'] for row in checks)
+        and load_margin_n >= 0.0
+        and all(bindings.values())
+    )
     return {
         'status': 'passed' if passed else 'failed',
         'title': 'Rack-side passive retention geometry and simulator binding',
@@ -109,6 +109,15 @@ def check() -> dict[str, object]:
         },
         'simulator_configuration_binding': bindings,
         'checks': checks,
+        'load_checks': [
+            {
+                'check': 'rack_joint_rating_covers_required_axial_load',
+                'rated_force_n': retention.RATED_FORCE_N,
+                'required_axial_capacity_n': retention.REQUIRED_AXIAL_CAPACITY_N,
+                'margin_n': load_margin_n,
+                'passed': load_margin_n >= 0.0,
+            }
+        ],
         'scope_and_limitations': [
             'The visible pawls disclose the rack-owned load path; contact on their visual boxes is not simulated.',
             'Load transfer is modelled by the reported break-rated Rack-to-SpareBlade fixed joint.',

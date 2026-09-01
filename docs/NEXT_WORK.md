@@ -15,15 +15,15 @@ in what order, and the few things only a submission needs. They do not conflict 
 `P1` *is* `T0`, `P2` *is* `T3` — the paper section only adds sequencing and the
 claims worth making.
 
-**Current priority:** T14, then T15, then T1. The guarded controller now reaches
-the destination reliably enough to expose the real completion loss: 17/24 after
-both robot supports are removed. Hand-first release loses at 12/24, so do not
-spend more runs on sequencing. Add a visible rack-side retention/contact path
-and replay the same fixed cohorts. In parallel, the physically flush fiducial
-detects in only 43.27% of critical-bay frames; fix camera/tag visibility before
-another RGB-D chain batch. T13 is paused: learned v24 remains 0/96 on real
-handoffs, and more epochs are not justified until its reset and caller
-distributions are identical by construction.
+**Current priority:** T15, then T1. T14 is closed with a narrowed claim: the
+current-source no-rack arm reproduces 17/24, visible rack retention raises the
+same fixed cohorts to 22/24, and all 22/22 episodes that reach seating pass the
+rack-only transfer. Two fail upstream, so the unchanged 95% full-chain gate is
+still not met. The physically flush fiducial detects in only 43.27% of
+critical-bay frames; fix camera/tag visibility before another RGB-D chain batch.
+T13 remains separate: learned v24 is 0/96 on real handoffs, and more epochs are
+not justified until its reset and caller distributions are identical by
+construction.
 
 **Two rules are non-negotiable, and they are why some of these tasks are shaped
 the way they are.** Never widen a tolerance to make a gate pass; if a criterion
@@ -41,7 +41,7 @@ training runs do not.
 
 | # | Task | Cost | Blocks |
 | --- | --- | --- | --- |
-| **T14** | **Model destination load transfer.** Add visible rack-side retention and replay the strict 17/24 baseline | CPU + short paired simulator batches | strict completion |
+| **T14** | Destination load transfer: 22/22 eligible rack-only holds; full chain 22/24 | **done 2026-08-31, claim narrowed** | — |
 | **T15** | **Restore flush-tag visibility.** Change camera/tag geometry, not estimator tolerances | short rendered corpus + one RGB-D run | credible perception |
 | **T13** | Learned insertion interface transfer; paused until resets equal real handoffs | no GPU yet | a learned seating phase |
 | **T0** | Nine older source-bound reports are unrecoverable; re-run any result a final claim needs | CPU + certification batches | reproducible claims |
@@ -77,6 +77,17 @@ are absent. Preserve the no-rack-capture arm.
 **Done:** the paired arm uses identical fixed cohorts, reaches at least 95%, and
 the report shows 0.70 s of stable rack-only seating with no hidden carrier,
 teleport, pose write or tolerance change. Otherwise narrow the completion claim.
+
+**Closed 2026-08-31 with the required narrower claim.** The current-source
+no-rack control is 17/24 and the one-change rack-retention arm is 22/24. The
+unchanged predicate fires in 22 episodes; every one engages the visible rack
+capture, releases both robot supports and passes the rack-only recheck with 0.0
+m / 0.0 rad measured relative drift. The other two are upstream failures that
+never engage. Therefore destination load transfer is supported at 22/22, while
+the autonomous full chain remains below its 95% gate at 91.67%.
+
+Evidence: `rack_retention_paired_v1.json`,
+`rack_retention_geometry_v1.json`, and both versioned aggregate arms.
 
 ## T15 -- Flush-tag visibility
 

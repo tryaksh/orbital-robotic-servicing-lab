@@ -11,9 +11,9 @@ Everything is simulated. Nothing has run on hardware.
 
 | Item | Verified state |
 | --- | --- |
-| Evidence | 32 canonical, 11 retracted, 140 historical; quote only canonical |
+| Evidence | 36 canonical, 11 retracted, 140 historical; quote only canonical |
 | Source provenance | 12 reports carry runtime source bindings; one is mechanically recovered, two new reports record clean source revisions, and nine older reports remain lost because they used uncommitted code |
-| Current completion result | 17/24, **70.83%**, after releasing both robot-side supports and rechecking rack-only seating for 0.70 s |
+| Current completion result | 22/24, **91.67%**, after visible rack retention engages, both robot-side supports release, and the rack alone holds for at least 0.70 s |
 | Boundary decision | **not qualified**; only entry attitude is supported in simulation |
 | Live RGB-D service | fail-closed; current flush-tag evidence fails and the prior floating-tag evidence is retracted |
 | CI architecture | core modules and CPU tests do not require optional FastAPI imports |
@@ -36,7 +36,7 @@ direct module pose write or hidden carrier.
 | Extract | PPO extraction policy |
 | Transit | collision-checked solved IK with a robot-side form lock |
 | Insert | guarded axial advance while the deployed estimate is inside the derived entry envelope |
-| Release | simultaneous hand and compliant-latch release, followed by a 0.70 s rack-only recheck |
+| Release | visible rack pawls engage only after measured seating; simultaneous hand and compliant-latch release is followed by a 0.70 s rack-only recheck |
 
 The robot rail indexes the world-fixed robot base and does not model its own load
 path. A phase is labelled learned only when policy actions actually step it.
@@ -45,9 +45,10 @@ path. A phase is labelled learned only when policy actions actually step it.
 
 ### Chain and skills
 
-The current strict chain scores **70.83%**: 17/24 fixed-cohort episodes over
-three held-out seeds, Wilson 95% **[50.8%, 85.1%]**. It fails the 95% gate. The
-three seed results are 4/8, 8/8 and 5/8. There were no non-finite episodes.
+The current strict chain with destination retention scores **91.67%**: 22/24
+fixed-cohort episodes over three held-out seeds, Wilson 95% **[74.2%, 97.7%]**.
+It still fails the unchanged 95% full-chain gate. The three seed results are
+6/8, 8/8 and 8/8. There were no non-finite episodes.
 
 The prior **97.92%** result (94/96) is retained as a legacy supported-settle
 baseline. It did not independently release both robot-side supports and then
@@ -61,7 +62,7 @@ rate.
 | Learned insert v20chain | **0.00%**, 0/1,536 | preserved negative baseline |
 | Learned insert v24, isolated | **36.77%**, 1,103/3,000 | does not transfer to the chain |
 | Learned insert v24, real chain handoff | **0.00%**, 0/96 | not selected |
-| Guarded insert, real chain handoff | 94/96 under the legacy supported-settle criterion | selected, but strict completion is 17/24 |
+| Guarded insert, real chain handoff | 94/96 under the legacy supported-settle criterion | selected; strict completion with rack retention is 22/24 |
 
 Insertion was not extended blindly. The audit corrected action scaling, matched
 the skill and chain handoff geometry, added handoff-conditioned resets, projected
@@ -77,11 +78,21 @@ the reward did not move the interface-limited attitude.
 
 ### Destination load transfer
 
-The strict simultaneous-release baseline is 17/24. A paired hand-first ablation
-on identical seeds and states is **12/24 (50.00%)**, Wilson 95%
-**[31.4%, 68.6%]**. It loses, so sequencing is not promoted. The failures after
-robot support is removed identify missing rack-side retention/contact physics,
-not an insertion tolerance to relax.
+The current-source no-rack control exactly reproduces the strict baseline at
+**17/24 (70.83%)**. Enabling only the visible rack capture raises the identical
+fixed cohorts to **22/24 (91.67%)**, a gain of five episodes / 20.83 percentage
+points. All **22/22** episodes that reach the unchanged measured-seating
+predicate engage the rack, survive the rack-only recheck and record 0.0 m / 0.0
+rad maximum Rack-to-module drift. The remaining two fail upstream and never
+engage, so the full-chain 95% gate remains failed rather than being attributed
+to load transfer.
+
+The mechanism is two visible 2.5 x 20 x 20 mm rack-owned pawls, with 2.5 mm
+rear-face overlap, 0.5 mm no-snap face clearance and an 81.633 mm open half-gap.
+Their simulated load path is a disclosed 600 N / 30 N-m break-rated fixed joint
+from `Rack` to `SpareBlade`, enabled only after the live seating predicate. It is
+not a world constraint and never writes the module pose. Visual pawl contact is
+not simulated; the idealized joint carries the load.
 
 ### RGB-D perception
 
@@ -112,7 +123,7 @@ is the current fail-closed comparison:
 | Robot base offset | mismatch; +10 mm is kinematically feasible but loses in simulation |
 | Entry attitude | supported in simulation against the derived `2c/L` boundary |
 | Capture geometry | analytical only; no current contact/load certificate |
-| Load path | idealized; strict release exposes missing rack-side retention |
+| Load path | destination transfer supported in 22/22 eligible simulations; both robot- and rack-side joints remain idealized |
 | Base compliance | excluded; the fixed robot root prevents the authored spring from deflecting |
 
 Every losing arm is retained. No tolerance was widened. The envelope is **not
@@ -122,6 +133,9 @@ qualified**.
 
 - The robot-side latch geometry is visual. Its rigid fixed joint and compliant
   spring-damper are idealized simulation load paths.
+- The rack-side pawls are visible geometry without contact colliders. Their
+  600 N / 30 N-m `Rack`-to-module fixed joint is an idealized simulation load
+  path; its reaction magnitude is not exposed.
 - Simulator force probes are diagnostics, not hardware load ratings.
 - The robot root is fixed to the world; spacecraft reaction and compliant-base
   tolerance are not modeled.
@@ -160,9 +174,9 @@ Never overwrite evidence; use a new versioned filename.
 | `keyed-interface` | preserved losing keyed-interface exploration; do not delete |
 | `origin/agent/zero-g-blade-swap` | preserved historical line; superseded |
 
-The next gate is a visible rack-side retention/contact model tested against the
-17/24 baseline on identical states, followed by a camera/tag geometry change
-that passes the flush-tag visibility gate. Only then should strict RGB-D batches
-be repeated. Learned insertion remains a separate interface-transfer problem;
-do not spend more GPU until its reset and real-handoff distributions are the
-same by construction.
+Destination transfer is closed with a narrowed claim: 22/22 eligible episodes
+hold, while the full chain remains 22/24 and below 95% because two fail before
+seating. The next gate is a camera placement/aim change that passes the flush-tag
+visibility gate, followed by the strict RGB-D chain and a recording. Learned
+insertion remains a separate interface-transfer problem; do not spend more GPU
+until its reset and real-handoff distributions are the same by construction.

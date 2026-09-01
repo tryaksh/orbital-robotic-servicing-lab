@@ -38,9 +38,9 @@ def _overall(name: str) -> dict:
 
 def test_the_strict_chain_rate_is_quoted_as_measured() -> None:
     """The current rate includes release of both robot supports and a rack-only recheck."""
-    overall = _overall("workflow_robot_carried_release_recheck_v2_certification.json")
+    overall = _overall("workflow_robot_carried_release_rack_retention_v1_certification.json")
     rate = f"{overall['success_rate'] * 100:.2f}%"
-    assert overall["successes"] == 17 and overall["episodes"] == 24
+    assert overall["successes"] == 22 and overall["episodes"] == 24
     for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
         assert rate in document, f"{label} does not quote the chain rate {rate}"
 
