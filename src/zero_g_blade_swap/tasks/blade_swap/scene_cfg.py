@@ -197,6 +197,8 @@ class ZeroGTwoSlotGrapplePinSceneCfg(ZeroGGrapplePinSceneCfg):
     # on, which is the rule this repository applies to every geometry change.
     blade_slot_two_entry_upper_ramp: RigidObjectCfg | None = None
     blade_slot_two_entry_lower_ramp: RigidObjectCfg | None = None
+    rack_retention_hardware: AssetBaseCfg | None = None
+    rack_retention_joint: AssetBaseCfg | None = None
 
 
 def make_tiled_camera_cfg() -> TiledCameraCfg:

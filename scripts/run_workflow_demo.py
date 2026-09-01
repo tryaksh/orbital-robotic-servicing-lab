@@ -54,6 +54,7 @@ assert hasattr(jinja2, "Environment"), "The Jinja2 installation is incomplete."
 TASK = "Isaac-ZeroG-Blade-GrapplePin-Workflow-v0"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_RUNTIME_SOURCES = (
+    Path('src/zero_g_blade_swap/rack_retention.py'),
     Path("scripts/run_workflow_demo.py"),
     Path("src/zero_g_blade_swap/provenance.py"),
     Path("src/zero_g_blade_swap/fiducial.py"),
@@ -751,6 +752,14 @@ def _parser() -> argparse.ArgumentParser:
         default=0,
         help="Extra steps to hold still after the workflow finishes, so a recording does not cut on the last frame.",
     )
+    parser.add_argument(
+        '--rack_retention',
+        action='store_true',
+        help=(
+            'Fit the destination bay with visible passive pawls and engage a '
+            'break-rated Rack-to-module joint only after measured seating.'
+        ),
+    )
     AppLauncher.add_app_launcher_args(parser)
     return parser
 
@@ -765,6 +774,15 @@ if args.video and args.num_envs > 1:
     parser.error("--video records one workflow; use --num_envs 1")
 if args.insert_controller == "policy" and args.insert_checkpoint is None:
     parser.error("--insert_controller policy needs an --insert_checkpoint to run")
+if args.rack_retention and (
+    not args.latch_on_release
+    or args.workflow != 'relocate'
+    or args.base_rail_on_relocation
+):
+    parser.error(
+        '--rack_retention requires robot-carried --workflow relocate with '
+        '--latch_on_release and forbids the world-mounted payload stage'
+    )
 if args.start_insert_station is not None:
     if args.start_insert_station < 0:
         parser.error("--start_insert_station must be non-negative")
@@ -800,9 +818,10 @@ from isaaclab.utils.math import (
     quat_mul,
 )
 from isaaclab_tasks.utils import parse_env_cfg
-from pxr import Gf, UsdPhysics
+from pxr import Gf, UsdGeom, UsdPhysics
 
 import zero_g_blade_swap.tasks.blade_swap  # noqa: F401
+from zero_g_blade_swap import rack_retention
 from zero_g_blade_swap.evaluation import (
     TERMINAL_METRIC_FIELDS,
     TERMINATION_REASONS,
@@ -897,6 +916,8 @@ LATCH_ENGAGED_FAR_DEPTH_M = _LATCH_ENGAGED_DEPTH_M[1]
 from zero_g_blade_swap.grapple_geometry import SLOT_ENTRY_RAMP_CATCH_M
 from zero_g_blade_swap.tasks.blade_swap.assets import (
     BLADE_SIZE,
+    RACK_RETENTION_PAWLS,
+    RACK_RETENTION_PRIM,
     SECOND_SLOT_CENTER_Y,
     SECOND_SLOT_INSERTED_POS,
 )
@@ -1191,6 +1212,12 @@ SETTLE_TRACE_FIELDS = (
 )
 
 
+SETTLE_TRACE_FIELDS += (
+    'rack_retention_engaged',
+    'robot_supports_absent',
+)
+
+
 def _blade_centre_x(task) -> torch.Tensor:
     return task.scene["spare_blade"].data.root_pos_w[:, 0] - task.scene.env_origins[:, 0]
 
@@ -1243,6 +1270,145 @@ def _workflow_outcome(task, workflow: str) -> tuple[torch.Tensor, torch.Tensor]:
     return seated, everything
 
 
+class RackRetention:
+    def __init__(self, task, enabled: bool) -> None:
+        self.task = task
+        self.enabled = enabled
+        count = task.num_envs
+        device = task.device
+        self.engaged = torch.zeros(count, dtype=torch.bool, device=device)
+        self.ever_engaged = torch.zeros(count, dtype=torch.bool, device=device)
+        self.engaged_at = torch.full((count,), -1, dtype=torch.long, device=device)
+        self.relative_pos = torch.zeros((count, 3), device=device)
+        self.relative_quat = torch.zeros((count, 4), device=device)
+        self.relative_quat[:, 0] = 1.0
+        self.max_position_error_m = torch.zeros(count, device=device)
+        self.max_orientation_error_rad = torch.zeros(count, device=device)
+        self.rack_only_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.max_rack_only_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.joints: list[UsdPhysics.FixedJoint] = []
+        self.pawl_ops: list[tuple[object, object]] = []
+        if not enabled:
+            return
+        stage = omni.usd.get_context().get_stage()
+        for env_path in task.scene.env_prim_paths:
+            joint_prim = stage.GetPrimAtPath(f'{env_path}/RackRetentionJoint/Joint')
+            joint = UsdPhysics.FixedJoint(joint_prim)
+            if not joint or not joint_prim.IsValid():
+                raise RuntimeError(f'Missing rack retention joint at {joint_prim.GetPath()}')
+            self.joints.append(joint)
+            ops = []
+            for pawl_name in RACK_RETENTION_PAWLS:
+                prim = stage.GetPrimAtPath(
+                    f'{env_path}/Rack/{RACK_RETENTION_PRIM}/{pawl_name}'
+                )
+                translate = next(
+                    (
+                        op
+                        for op in UsdGeom.Xformable(prim).GetOrderedXformOps()
+                        if op.GetOpType() == UsdGeom.XformOp.TypeTranslate
+                    ),
+                    None,
+                )
+                if translate is None:
+                    raise RuntimeError(f'Missing translate op on rack pawl {prim.GetPath()}')
+                ops.append(translate)
+            self.pawl_ops.append(tuple(ops))
+
+    def reset(self, env_ids: torch.Tensor) -> None:
+        if not self.enabled:
+            return
+        self.max_rack_only_steps[env_ids] = torch.maximum(
+            self.max_rack_only_steps[env_ids], self.rack_only_steps[env_ids]
+        )
+        for index in env_ids.detach().cpu().tolist():
+            self.joints[index].GetJointEnabledAttr().Set(False)
+        self._set_pawl_pose(env_ids, engaged=False)
+        self.engaged[env_ids] = False
+        self.rack_only_steps[env_ids] = 0
+        self.relative_pos[env_ids] = 0.0
+        self.relative_quat[env_ids] = 0.0
+        self.relative_quat[env_ids, 0] = 1.0
+
+    def _set_pawl_pose(self, env_ids: torch.Tensor, *, engaged: bool) -> None:
+        for index in env_ids.detach().cpu().tolist():
+            for op, sign in zip(self.pawl_ops[index], (1.0, -1.0), strict=True):
+                op.Set(
+                    Gf.Vec3d(
+                        *rack_retention.pawl_translation(engaged=engaged, sign=sign)
+                    )
+                )
+
+    def engage(self, mask: torch.Tensor, step: int) -> None:
+        if not self.enabled:
+            return
+        newly_engaged = mask & ~self.engaged
+        ids = newly_engaged.nonzero(as_tuple=False).flatten()
+        if ids.numel() == 0:
+            return
+        rack = self.task.scene['rack']
+        blade = self.task.scene['spare_blade']
+        inverse_rack = quat_inv(rack.data.root_quat_w)
+        local_position = quat_apply(
+            inverse_rack, blade.data.root_pos_w - rack.data.root_pos_w
+        )
+        local_orientation = quat_mul(inverse_rack, blade.data.root_quat_w)
+        self.relative_pos[ids] = local_position[ids]
+        self.relative_quat[ids] = local_orientation[ids]
+        for index in ids.detach().cpu().tolist():
+            position = local_position[index].detach().cpu().tolist()
+            orientation = local_orientation[index].detach().cpu().tolist()
+            joint = self.joints[index]
+            joint.GetLocalPos0Attr().Set(Gf.Vec3f(*position))
+            joint.GetLocalRot0Attr().Set(
+                Gf.Quatf(orientation[0], Gf.Vec3f(*orientation[1:]))
+            )
+            joint.GetLocalPos1Attr().Set(Gf.Vec3f(0.0, 0.0, 0.0))
+            joint.GetLocalRot1Attr().Set(Gf.Quatf(1.0, Gf.Vec3f(0.0, 0.0, 0.0)))
+            joint.GetJointEnabledAttr().Set(True)
+        self._set_pawl_pose(ids, engaged=True)
+        self.engaged[ids] = True
+        self.ever_engaged[ids] = True
+        first_engagement = newly_engaged & (self.engaged_at < 0)
+        self.engaged_at[first_engagement] = step
+
+    def observe(self, robot_supports_absent: torch.Tensor) -> None:
+        if not self.enabled:
+            return
+        rack = self.task.scene['rack']
+        blade = self.task.scene['spare_blade']
+        desired_position = rack.data.root_pos_w + quat_apply(
+            rack.data.root_quat_w, self.relative_pos
+        )
+        desired_orientation = quat_mul(rack.data.root_quat_w, self.relative_quat)
+        position_error = torch.linalg.vector_norm(
+            blade.data.root_pos_w - desired_position, dim=-1
+        )
+        orientation_error = torch.linalg.vector_norm(
+            axis_angle_from_quat(
+                quat_mul(desired_orientation, quat_inv(blade.data.root_quat_w))
+            ),
+            dim=-1,
+        )
+        position_error = torch.where(
+            self.engaged, position_error, torch.zeros_like(position_error)
+        )
+        orientation_error = torch.where(
+            self.engaged, orientation_error, torch.zeros_like(orientation_error)
+        )
+        self.max_position_error_m = torch.maximum(
+            self.max_position_error_m, position_error
+        )
+        self.max_orientation_error_rad = torch.maximum(
+            self.max_orientation_error_rad, orientation_error
+        )
+        rack_only = self.engaged & robot_supports_absent
+        self.rack_only_steps += rack_only.to(torch.long)
+        self.max_rack_only_steps = torch.maximum(
+            self.max_rack_only_steps, self.rack_only_steps
+        )
+
+
 class WorkflowDriver:
     """The phase machine, per environment.
 
@@ -1268,6 +1434,7 @@ class WorkflowDriver:
         insert_controller: str = "guarded",
         release_sequence: str = "simultaneous",
         insert_only: bool = False,
+        rack_retention_enabled: bool = False,
     ) -> None:
         self.task = task
         self.policies = policies
@@ -1309,6 +1476,7 @@ class WorkflowDriver:
         self.base_rail_joint_hold = base_rail_arm_mode == "joint_hold"
         device = task.device
         count = task.num_envs
+        self.rack_retention = RackRetention(task, rack_retention_enabled)
         self.conditioned_insert_pending = torch.full(
             (count,), insert_only, dtype=torch.bool, device=device
         )
@@ -1591,6 +1759,7 @@ class WorkflowDriver:
         self.payload_stage_joints: list[UsdPhysics.Joint] = []
         self.stage_drive_target_attributes: list[tuple[object, object, object]] = []
         self.stage_rotation_drive_target_attributes: list[tuple[object, object, object]] = []
+
         if self.base_rail_enabled:
             stage = omni.usd.get_context().get_stage()
             for index in range(count):
@@ -1622,6 +1791,7 @@ class WorkflowDriver:
     def reset_envs(self, env_ids: torch.Tensor, step: int = 0) -> None:
         """Return the named environments to the start of the workflow."""
 
+        self.rack_retention.reset(env_ids)
         start_phase = INSERT if self.insert_only else CAPTURE
         self.phase[env_ids] = start_phase
         self.phase_started[env_ids] = step
@@ -1904,6 +2074,10 @@ class WorkflowDriver:
                 state["blade_angular_velocity_radps"].unsqueeze(-1),
                 state["latch_engaged"].unsqueeze(-1),
                 self.gripper_released.to(torch.float64).unsqueeze(-1),
+                self.rack_retention.engaged.to(torch.float64).unsqueeze(-1),
+                (self.gripper_released & self.latch_released)
+                .to(torch.float64)
+                .unsqueeze(-1),
             ),
             dim=-1,
         )
@@ -3358,6 +3532,7 @@ class WorkflowDriver:
             # conditions after physical handoff.
             learned_fired = inserting & ~self.payload_stage_engaged & grapple_insertion_success_mask(task)
             fired = shuttle_fired | learned_fired
+            self.rack_retention.engage(fired, step)
             self._finish(fired, step)
             self.predicate_fired[fired] = True
             # A seated module is a finished job, and the DONE phase below waits
@@ -3441,7 +3616,12 @@ class WorkflowDriver:
 
                     post_release = ripe & self.gripper_released & self.latch_released & ~just_released_latch
                     latch_clear = ~grapple_latch_diagnostics(task)["engaged"]
-                    final_success = post_release & outcome & latch_clear
+                    rack_carrying = (
+                        self.rack_retention.engaged
+                        if self.rack_retention.enabled
+                        else torch.ones_like(post_release)
+                    )
+                    final_success = post_release & outcome & latch_clear & rack_carrying
                     self.outcome[post_release] = final_success[post_release]
                     self.all_conditions[post_release] = final_success[post_release]
                     self.judged[post_release] = True
@@ -3483,6 +3663,7 @@ class WorkflowDriver:
                 ]
                 self.arm.set_joint_target_override(replay_ids, replay_targets)
 
+        self.rack_retention.observe(self.gripper_released & self.latch_released)
         torch.maximum(self.furthest, self.phase, out=self.furthest)
         if self.tracing:
             # After every transition this step has resolved, so the row records
@@ -5230,6 +5411,83 @@ def _chain_report(recorder, workflow: str) -> dict[str, object]:
     }
 
 
+def _rack_retention_report(driver: WorkflowDriver, args) -> dict[str, object]:
+    retention = driver.rack_retention
+    return {
+        'enabled': retention.enabled,
+        'mechanism': (
+            'two visible passive rack pawls with a break-rated fixed-joint abstraction'
+            if retention.enabled
+            else 'none'
+        ),
+        'joint_body0': 'Rack' if retention.enabled else None,
+        'joint_body1': 'SpareBlade' if retention.enabled else None,
+        'world_constraint': False,
+        'engagement': (
+            'after the unchanged insertion success predicate fires'
+            if retention.enabled
+            else None
+        ),
+        'module_pose_write': False,
+        'rated_force_n': rack_retention.RATED_FORCE_N if retention.enabled else None,
+        'rated_torque_nm': rack_retention.RATED_TORQUE_NM if retention.enabled else None,
+        'reaction_load_path_modelled': retention.enabled,
+        'reaction_magnitude_exposed': False,
+        'load_measurement': (
+            'break threshold plus measured rack-to-module drift'
+            if retention.enabled
+            else None
+        ),
+        'hardware_geometry': (
+            {
+                'pawls': 2,
+                'face_clearance_mm': 1000.0 * rack_retention.PAWL_FACE_CLEARANCE_M,
+                'rear_face_overlap_mm': 1000.0 * rack_retention.PAWL_OVERLAP_M,
+                'open_inner_half_gap_mm': (
+                    1000.0 * rack_retention.PAWL_OPEN_INNER_HALF_GAP_M
+                ),
+                'close_stroke_mm': 1000.0 * rack_retention.PAWL_CLOSE_STROKE_M,
+                'pawl_section_mm': [
+                    1000.0 * rack_retention.PAWL_AXIAL_THICKNESS_M,
+                    1000.0 * rack_retention.PAWL_LATERAL_THICKNESS_M,
+                    1000.0 * rack_retention.PAWL_HEIGHT_M,
+                ],
+                'collision_geometry': (
+                    'visual pawl surfaces; the disclosed fixed joint carries load'
+                ),
+            }
+            if retention.enabled
+            else None
+        ),
+        'observed_per_environment': [
+            {
+                'env': index,
+                'engaged_after_measured_seating': bool(retention.ever_engaged[index]),
+                'engaged_at_driver_step': (
+                    int(retention.engaged_at[index])
+                    if bool(retention.ever_engaged[index])
+                    else None
+                ),
+                'rack_only_control_steps': int(retention.max_rack_only_steps[index]),
+                'rack_only_interval_s': (
+                    float(retention.max_rack_only_steps[index])
+                    * float(driver.task.step_dt)
+                ),
+                'full_rack_only_recheck_observed': (
+                    int(retention.max_rack_only_steps[index]) >= SETTLE_STEPS
+                ),
+                'max_rack_to_module_position_drift_m': float(
+                    retention.max_position_error_m[index]
+                ),
+                'max_rack_to_module_orientation_drift_rad': float(
+                    retention.max_orientation_error_rad[index]
+                ),
+            }
+            for index in range(driver.task.num_envs)
+        ],
+    }
+
+
 def main() -> dict[str, object]:
     env = None
     try:
@@ -5407,6 +5665,14 @@ def main() -> dict[str, object]:
                 "[INFO] Destination bay fitted with its vertical lead-in "
                 "(16.6 mm per side, accepting 0.074 rad of delivered attitude error); "
                 f"channel relief {args.destination_channel_relief_m * 1000.0:.2f} mm per side",
+                flush=True,
+            )
+        if args.rack_retention:
+            env_cfg.configure_rack_retention()
+            print(
+                '[INFO] Destination rack fitted with two visible passive pawls; '
+                f'break rating {rack_retention.RATED_FORCE_N} N / '
+                f'{rack_retention.RATED_TORQUE_NM} N-m',
                 flush=True,
             )
         # The full physical stage motion can legitimately outlive the original
@@ -5615,6 +5881,7 @@ def main() -> dict[str, object]:
             insert_controller=args.insert_controller,
             release_sequence=args.release_sequence,
             insert_only=args.start_insert_station is not None,
+            rack_retention_enabled=args.rack_retention,
         )
         if args.start_insert_station is not None:
             driver.reset_envs(torch.arange(task.num_envs, device=task.device), 0)
@@ -5820,6 +6087,7 @@ def main() -> dict[str, object]:
             )
         )
         result: dict[str, object] = {
+            'destination_rack_retention': _rack_retention_report(driver, args),
             "task": args.task,
             "visual_randomization": "off (recording)" if args.stable_lighting else "on",
             "workflow": args.workflow,

@@ -20,7 +20,7 @@ from isaaclab.utils import configclass
 from isaaclab_assets.robots.universal_robots import UR10e_ROBOTIQ_2F_85_CFG
 from pxr import Gf, PhysxSchema, Sdf, Usd, UsdGeom, UsdPhysics
 
-from zero_g_blade_swap import service_latch
+from zero_g_blade_swap import rack_retention, service_latch
 from zero_g_blade_swap.fiducial import (
     FIDUCIAL_QUIET_ZONE_SIZE_M,
     FIDUCIAL_TAG_BASIS_MODULE,
@@ -1986,6 +1986,91 @@ RACK_CFG = RigidObjectCfg(
     init_state=RigidObjectCfg.InitialStateCfg(pos=(1.005, 0.0, 0.76)),
 )
 
+RACK_RETENTION_PRIM = 'RackRetention'
+RACK_RETENTION_PAWLS = ('PawlLeft', 'PawlRight')
+
+
+@configclass
+class RackRetentionJointCfg(FixedGraspJointCfg):
+    # Disabled until the unchanged seating predicate fires. The workflow writes
+    # the measured rack-to-module frames before enabling it, so engagement
+    # stores no energy and moves neither body.
+    body0_relative_path: str = 'Rack'
+    body1_relative_path: str = 'SpareBlade'
+    local_pos0: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    local_rot0: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
+    local_pos1: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    local_rot1: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
+    enabled: bool = False
+    break_force_n: float = rack_retention.RATED_FORCE_N
+    break_torque_nm: float = rack_retention.RATED_TORQUE_NM
+
+
+def spawn_rack_retention(
+    prim_path: str,
+    cfg,
+    translation=None,
+    orientation=None,
+    **_: object,
+) -> Usd.Prim:
+    '''Author visible pawl hardware under each environment's rack body.'''
+
+    if translation not in (None, (0.0, 0.0, 0.0)) or orientation not in (
+        None,
+        (1.0, 0.0, 0.0, 0.0),
+    ):
+        raise ValueError('RackRetentionHardwareCfg must be spawned at identity.')
+    root_path, leaf = str(prim_path).rsplit('/', 1)
+    is_regex = re.match(r'^[a-zA-Z0-9/_]+$', root_path) is None
+    parent_paths = find_matching_prim_paths(root_path) if is_regex else [root_path]
+    if not parent_paths:
+        raise RuntimeError(f'No environment parents matched rack-retention path {prim_path!r}.')
+    stage = get_current_stage()
+    source_prim: Usd.Prim | None = None
+    for parent_path in parent_paths:
+        rack_path = f'{parent_path}/{cfg.rack_relative_path}'
+        if not stage.GetPrimAtPath(rack_path).IsValid():
+            raise RuntimeError(f'Rack retention expected a rack body at {rack_path!r}.')
+        hardware_path = f'{rack_path}/{leaf}'
+        if stage.GetPrimAtPath(hardware_path).IsValid():
+            source_prim = source_prim or stage.GetPrimAtPath(hardware_path)
+            continue
+        container = UsdGeom.Xform.Define(stage, hardware_path)
+        sim_utils.standardize_xform_ops(container.GetPrim())
+        material_path = f'{hardware_path}/PawlMaterial'
+        material_cfg = sim_utils.PreviewSurfaceCfg(
+            diffuse_color=cfg.diffuse_color, metallic=0.80, roughness=0.30
+        )
+        material_cfg.func(material_path, material_cfg)
+        boxes = rack_retention.pawl_tip_boxes(cfg.seated_module_position)
+        for sign, (name, centre, size) in zip((1.0, -1.0), boxes, strict=True):
+            pawl_path = f'{hardware_path}/{name}'
+            pawl = UsdGeom.Xform.Define(stage, pawl_path)
+            sim_utils.standardize_xform_ops(
+                pawl.GetPrim(),
+                translation=rack_retention.pawl_translation(engaged=False, sign=sign),
+            )
+            tip_path = f'{pawl_path}/Tip'
+            tip = UsdGeom.Cube.Define(stage, tip_path)
+            tip.CreateSizeAttr(1.0)
+            local_centre = tuple(centre[i] - cfg.rack_position[i] for i in range(3))
+            sim_utils.standardize_xform_ops(
+                tip.GetPrim(), translation=local_centre, scale=size
+            )
+            sim_utils.bind_visual_material(tip_path, material_path, stage=stage)
+        source_prim = source_prim or container.GetPrim()
+    assert source_prim is not None
+    return source_prim
+
+
+@configclass
+class RackRetentionHardwareCfg(SpawnerCfg):
+    func: Callable[..., Usd.Prim] = spawn_rack_retention
+    rack_relative_path: str = 'Rack'
+    rack_position: tuple[float, float, float] = RACK_CFG.init_state.pos
+    seated_module_position: tuple[float, float, float] = SECOND_SLOT_INSERTED_POS
+    diffuse_color: tuple[float, float, float] = (0.10, 0.65, 0.90)
+
 
 MOUNT_ANCHOR_CFG = RigidObjectCfg(
     prim_path="{ENV_REGEX_NS}/MountAnchor",
@@ -2020,6 +2105,11 @@ GRAPPLE_MOUNT_ANCHOR_CFG.init_state.pos = GRAPPLE_ROBOT_ROOT_POS
 
 
 __all__ = [
+    'RackRetentionHardwareCfg',
+    'RackRetentionJointCfg',
+    'RACK_RETENTION_PAWLS',
+    'RACK_RETENTION_PRIM',
+    'spawn_rack_retention',
     "BLADE_CFG",
     "BLADE_HANDLE_OFFSET",
     "BLADE_INSERTED_POS",

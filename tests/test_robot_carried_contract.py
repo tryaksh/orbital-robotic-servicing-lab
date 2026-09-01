@@ -181,6 +181,34 @@ def test_the_transit_records_the_tool_to_module_transform_throughout() -> None:
     assert '"robot_carried_transit": _transit_retention_report(driver, args)' in source
 
 
+def test_rack_retention_is_visible_rack_owned_and_seating_gated() -> None:
+    driver = DRIVER.read_text(encoding='utf-8')
+    assets = ASSETS.read_text(encoding='utf-8')
+    joint_cfg = assets.split('class RackRetentionJointCfg', 1)[1].split(
+        'def spawn_rack_retention', 1
+    )[0]
+    assert 'body0_relative_path: str' in joint_cfg
+    assert 'Rack' in joint_cfg
+    assert 'body1_relative_path: str' in joint_cfg
+    assert 'SpareBlade' in joint_cfg
+    assert 'def spawn_rack_retention(' in assets
+    scene = SCENE.read_text(encoding='utf-8')
+    assert 'rack_retention_hardware: AssetBaseCfg | None = None' in scene
+    assert 'rack_retention_joint: AssetBaseCfg | None = None' in scene
+    assert 'env_cfg.configure_rack_retention()' in driver
+    spawner = assets.split('def spawn_rack_retention(', 1)[1].split(
+        'class RackRetentionHardwareCfg', 1
+    )[0]
+    assert 'define_collision_properties' not in spawner
+    retention = driver.split('class RackRetention:', 1)[1].split(
+        'class WorkflowDriver:', 1
+    )[0]
+    assert 'write_root_pose' not in retention
+    assert 'write_root_state' not in retention
+    assert 'self.rack_retention.engage(fired, step)' in driver
+    assert 'final_success = post_release & outcome & latch_clear & rack_carrying' in driver
+
+
 def test_guarded_insertion_trace_separates_target_motion_from_module_motion() -> None:
     source = DRIVER.read_text(encoding="utf-8")
     assert "INSERT_TRACE_FIELDS" in source

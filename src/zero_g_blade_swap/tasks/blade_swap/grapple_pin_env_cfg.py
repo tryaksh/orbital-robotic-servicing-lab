@@ -52,6 +52,9 @@ from .assets import (
     SECOND_SLOT_RIGHT_GUIDE_CFG,
     SECOND_SLOT_UPPER_LEFT_LIP_CFG,
     SECOND_SLOT_UPPER_RIGHT_LIP_CFG,
+    RACK_RETENTION_PRIM,
+    RackRetentionHardwareCfg,
+    RackRetentionJointCfg,
     SERVICE_DESTINATION_DYNAMIC_FRICTION,
     SERVICE_DESTINATION_STATIC_FRICTION,
     CompliantD6JointCfg,
@@ -310,6 +313,19 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
             ) ** 0.5
         self.events.grapple_latch.params["mating_torque_cap_nm"] = self.mating_torque_cap_nm
         self.events.grapple_latch.params["require_armed"] = self.latch_engages_on_release
+
+    def configure_rack_retention(self) -> None:
+        self.scene.rack_retention_hardware = AssetBaseCfg(
+            prim_path='{ENV_REGEX_NS}/' + RACK_RETENTION_PRIM,
+            spawn=RackRetentionHardwareCfg(),
+        )
+        self.scene.rack_retention_joint = AssetBaseCfg(
+            prim_path='{ENV_REGEX_NS}/RackRetentionJoint',
+            spawn=RackRetentionJointCfg(),
+        )
+        # Procedural joint relationships must be authored per environment.
+        self.scene.replicate_physics = False
+        self.scene.clone_in_fabric = False
 
     def configure_service_destination(self) -> None:
         """Install the destination bay's vertical lead-in.

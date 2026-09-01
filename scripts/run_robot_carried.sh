@@ -134,6 +134,7 @@ case "$stage" in
         --destination_channel_relief_m "${RELIEF:-0.0046125}" \
         --mating_mode "${MATING_MODE:-compliant}" \
         --mating_force_cap_n "${MATING_CAP:-1000}" \
+        ${CHAIN_EXTRA:-} \
         --report "${REPORT:-$OUT/smoke_latched_report.json}" \
         --handoff_trace "${TRACE:-$OUT/smoke_latched_trace.npz}" \
         > "${LOG:-$OUT/smoke_latched.log}" 2>&1
@@ -295,6 +296,7 @@ case "$stage" in
         --mating_mode "${MATING_MODE:-compliant}" \
         --mating_force_cap_n "${MATING_CAP:-1000}" \
         --release_sequence "${RELEASE_SEQUENCE:-simultaneous}" \
+        ${CHAIN_EXTRA:-} \
         ${STABLE_LIGHTING---stable_lighting} --inspection_view workcell \
         ${VIDEO---video --video_dir "$OUT/video"} \
         --report "${REPORT:-$OUT/rgbd_report.json}" \

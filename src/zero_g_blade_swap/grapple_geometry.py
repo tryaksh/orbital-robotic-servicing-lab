@@ -86,6 +86,12 @@ def drive_torque_for_grip_force_nm(grip_force_n: float) -> float:
 #: So the clearance is taken out of the cross-section instead, where it costs no
 #: axial target and no policy: see ``BLADE_SIZE``.
 BLADE_LENGTH_M = 0.45
+#: The module cross-section belongs beside its length. Keeping these three
+#: dimensions in the simulator-free geometry module lets rack interfaces prove
+#: their clearances without importing Isaac Lab, while ``assets.py`` remains
+#: the only place that turns the dimensions into collision geometry.
+BLADE_WIDTH_M = 0.130
+BLADE_THICKNESS_M = 0.020
 #: Leading edge of the rails. The gripper must stay outside this.
 SLOT_MOUTH_X = 0.45
 #: Blade centre at which the blade's rear face clears the mouth, so the module
