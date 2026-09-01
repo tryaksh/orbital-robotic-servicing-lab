@@ -5952,7 +5952,12 @@ def main() -> dict[str, object]:
             # buffer may already be the cleared buffer for the next render.
             # Sampling there produced all-black diagnostics even while the
             # immediately preceding estimator call had a valid detection.
-            if args.perception_frame_dir is not None and step % 60 == 0:
+            # Keep a three-frame burst at each sample point.  A single frame at
+            # ``step % 60 == 0`` can alias a periodic render fault and make a
+            # live camera look permanently black (or permanently healthy).
+            # Three consecutive control frames distinguish that acquisition
+            # fault without dumping the complete video stream.
+            if args.perception_frame_dir is not None and step % 60 < 3:
                 sensor_rgb = task.scene.sensors["camera"].data.output["rgb"][0, ..., :3]
                 if sensor_rgb.dtype == torch.uint8:
                     sensor_u8 = sensor_rgb
