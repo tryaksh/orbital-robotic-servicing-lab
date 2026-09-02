@@ -34,7 +34,7 @@ from isaaclab.utils import configclass
 
 from . import mdp
 from .assets import BLADE_INSERTED_POS, CONTACT_INSERTION_STAGE_BLADE_POSE, SECOND_SLOT_CENTER_Y
-from .scene_cfg import ZeroGTwoSlotGrapplePinSceneCfg, make_tiled_camera_cfg
+from .scene_cfg import ZeroGTwoSlotGrapplePinSceneCfg, make_insert_tiled_camera_cfg, make_tiled_camera_cfg
 from .two_slot_env_cfg import RelocationCommandsCfg
 from .vision_grapple_env_cfg import (
     PerceivedWorkflowObsCfg,
@@ -89,6 +89,7 @@ class VisionTwoSlotGrappleSceneCfg(ZeroGTwoSlotGrapplePinSceneCfg):
     """
 
     camera: TiledCameraCfg = make_tiled_camera_cfg()
+    camera_insert: TiledCameraCfg = make_insert_tiled_camera_cfg()
 
 
 @configclass

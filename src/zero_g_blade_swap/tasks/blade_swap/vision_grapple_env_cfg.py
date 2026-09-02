@@ -23,7 +23,7 @@ from isaaclab.utils import configclass
 
 from . import mdp
 from .grapple_pin_env_cfg import GrappleSkillObsCfg
-from .scene_cfg import ZeroGGrapplePinSceneCfg, make_tiled_camera_cfg
+from .scene_cfg import ZeroGGrapplePinSceneCfg, make_insert_tiled_camera_cfg, make_tiled_camera_cfg
 from .vision_insertion_env_cfg import VisualRandomizationCfg
 from .workflow_demo_env_cfg import (
     WorkflowCurriculumCfg,
@@ -41,6 +41,7 @@ class VisionGrappleSceneCfg(ZeroGGrapplePinSceneCfg):
     """The head-on capture scene with a servicing camera watching the interface."""
 
     camera: TiledCameraCfg = make_tiled_camera_cfg()
+    camera_insert: TiledCameraCfg = make_insert_tiled_camera_cfg()
 
 
 @configclass

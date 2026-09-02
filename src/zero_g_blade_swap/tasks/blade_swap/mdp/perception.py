@@ -242,6 +242,9 @@ class ModuleStateEstimator:
         )
         self._sensor_cfg = SceneEntityCfg("camera")
         self._filter_time_constant_s = float(getattr(env.cfg, "perception_velocity_filter_time_constant_s", 0.10))
+        self._fiducial_sensor_names = [self._sensor_cfg.name]
+        if "camera_insert" in env.scene.sensors:
+            self._fiducial_sensor_names.append("camera_insert")
         if not math.isfinite(self._filter_time_constant_s) or self._filter_time_constant_s < 0.0:
             raise ValueError("perception_velocity_filter_time_constant_s must be finite and non-negative")
 
@@ -472,19 +475,38 @@ class ModuleStateEstimator:
     def _estimate_fiducial_pnp(self, image: torch.Tensor) -> torch.Tensor:
         """Recover module poses from RGB fiducials and calibrated cameras."""
 
-        camera = self._env.scene.sensors[self._sensor_cfg.name]
-        images = image.detach().cpu().numpy()
-        depth_images = camera.data.output["distance_to_image_plane"].detach().cpu().numpy()
-        intrinsics = camera.data.intrinsic_matrices.detach().cpu().numpy()
-        camera_position = camera.data.pos_w
-        camera_rotation = matrix_from_quat(camera.data.quat_w_ros)
+        camera_candidates = []
+        for sensor_index, sensor_name in enumerate(self._fiducial_sensor_names):
+            camera = self._env.scene.sensors[sensor_name]
+            sensor_image = image if sensor_index == 0 else camera.data.output["rgb"][..., :3]
+            if sensor_image.dtype == torch.uint8:
+                sensor_image = sensor_image.to(dtype=torch.float32).mul_(1.0 / 255.0)
+            else:
+                sensor_image = sensor_image.to(dtype=torch.float32).clamp_(0.0, 1.0)
+            camera_candidates.append(
+                (
+                    sensor_image.detach().cpu().numpy(),
+                    camera.data.output["distance_to_image_plane"].detach().cpu().numpy(),
+                    camera.data.intrinsic_matrices.detach().cpu().numpy(),
+                    camera.data.pos_w,
+                    matrix_from_quat(camera.data.quat_w_ros),
+                )
+            )
         pose = self._pose.new_empty((self._env.num_envs, MODULE_POSE_DIM))
         detected_now = torch.zeros(self._env.num_envs, dtype=torch.bool, device=self._env.device)
 
         for env_index in range(self._env.num_envs):
-            try:
-                estimate = estimate_fiducial_pose(images[env_index], intrinsics[env_index], depth_images[env_index])
-            except (RuntimeError, ValueError):
+            selected = None
+            for images, depth_images, intrinsics, camera_position, camera_rotation in camera_candidates:
+                try:
+                    estimate = estimate_fiducial_pose(
+                        images[env_index], intrinsics[env_index], depth_images[env_index]
+                    )
+                except (RuntimeError, ValueError):
+                    continue
+                selected = (estimate, camera_position[env_index], camera_rotation[env_index])
+                break
+            if selected is None:
                 self._fiducial_failure_count += 1
                 self._fiducial_consecutive_failures[env_index] += 1
                 self._fiducial_max_consecutive_failures[env_index] = torch.maximum(
@@ -506,10 +528,11 @@ class ModuleStateEstimator:
                 self._confidence[env_index] = 0.0
                 self._reprojection_error_px[env_index] = float("inf")
                 continue
+            estimate, selected_camera_position, selected_camera_rotation = selected
             rotation_camera_from_object = self._pose.new_tensor(estimate.rotation_camera_from_object)
             position_camera = self._pose.new_tensor(estimate.position_camera_m)
-            rotation_world_from_object = camera_rotation[env_index] @ rotation_camera_from_object
-            position_world = camera_position[env_index] + camera_rotation[env_index] @ position_camera
+            rotation_world_from_object = selected_camera_rotation @ rotation_camera_from_object
+            position_world = selected_camera_position + selected_camera_rotation @ position_camera
             position_local = position_world - self._env.scene.env_origins[env_index]
             orientation_world = quat_from_matrix(rotation_world_from_object.unsqueeze(0))[0]
             pose[env_index, :3] = position_local

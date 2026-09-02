@@ -5958,15 +5958,20 @@ def main() -> dict[str, object]:
             # Three consecutive control frames distinguish that acquisition
             # fault without dumping the complete video stream.
             if args.perception_frame_dir is not None and step % 60 < 3:
-                sensor_rgb = task.scene.sensors["camera"].data.output["rgb"][0, ..., :3]
-                if sensor_rgb.dtype == torch.uint8:
-                    sensor_u8 = sensor_rgb
-                else:
-                    sensor_u8 = (sensor_rgb.clamp(0.0, 1.0) * 255.0).to(torch.uint8)
                 phase_name = PHASE_NAMES[int(driver.phase[0])]
-                Image.fromarray(sensor_u8.cpu().numpy()).save(
-                    args.perception_frame_dir / f"step-{step:04d}-{phase_name}.png"
-                )
+                camera_names = ["camera"]
+                if "camera_insert" in task.scene.sensors:
+                    camera_names.append("camera_insert")
+                for camera_name in camera_names:
+                    sensor_rgb = task.scene.sensors[camera_name].data.output["rgb"][0, ..., :3]
+                    if sensor_rgb.dtype == torch.uint8:
+                        sensor_u8 = sensor_rgb
+                    else:
+                        sensor_u8 = (sensor_rgb.clamp(0.0, 1.0) * 255.0).to(torch.uint8)
+                    suffix = "" if camera_name == "camera" else f"-{camera_name.replace('_', '-')}"
+                    Image.fromarray(sensor_u8.cpu().numpy()).save(
+                        args.perception_frame_dir / f"step-{step:04d}-{phase_name}{suffix}.png"
+                    )
             if single and int(driver.phase[0]) != previous:
                 note(f"{PHASE_NAMES[previous]} -> {PHASE_NAMES[int(driver.phase[0])]}", step)
             if single and int(driver.phase[0]) == TRANSIT and step % 120 == 0:

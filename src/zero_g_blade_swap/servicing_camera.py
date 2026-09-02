@@ -25,6 +25,20 @@ CAMERA_QUATERNION_WXYZ_ROS = (
     -0.029590823511594526,
 )
 
+# A second fixed view looks forward from the service aisle.  The primary view
+# is beyond the rear-mounted gripper and sees capture cleanly; this view is on
+# the other side of the rack mouth, so the destination's upper guide cannot
+# cover the flush datum during guarded insertion.  The estimator retains the
+# primary as its first choice and uses this calibrated view only when needed.
+INSERT_CAMERA_POSITION_M = (0.15, -0.11, 2.15)
+INSERT_CAMERA_TARGET_M = CAMERA_TARGET_M
+INSERT_CAMERA_QUATERNION_WXYZ_ROS = (
+    0.06111527065889844,
+    -0.7044607325410619,
+    0.7044607325410618,
+    -0.06111527065889844,
+)
+
 # The 384-pixel arm resolved the marker at about six pixels per rendered cell
 # and lost it repeatedly in a physically valid late-approach view.  At 640
 # pixels the worst projected cell retains eight pixels: four interior samples
@@ -49,4 +63,7 @@ __all__ = [
     'CAMERA_TARGET_M',
     'CAMERA_UPDATE_PERIOD_S',
     'CAMERA_WIDTH_PX',
+    'INSERT_CAMERA_POSITION_M',
+    'INSERT_CAMERA_QUATERNION_WXYZ_ROS',
+    'INSERT_CAMERA_TARGET_M',
 ]

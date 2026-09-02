@@ -18,6 +18,8 @@ from zero_g_blade_swap.servicing_camera import (
     CAMERA_QUATERNION_WXYZ_ROS,
     CAMERA_UPDATE_PERIOD_S,
     CAMERA_WIDTH_PX,
+    INSERT_CAMERA_POSITION_M,
+    INSERT_CAMERA_QUATERNION_WXYZ_ROS,
 )
 
 from .assets import (
@@ -251,6 +253,16 @@ def make_tiled_camera_cfg() -> TiledCameraCfg:
             clipping_range=CAMERA_CLIPPING_RANGE_M,
         ),
     )
+
+
+def make_insert_tiled_camera_cfg() -> TiledCameraCfg:
+    '''Create the complementary fixed view used through rack entry.'''
+
+    cfg = make_tiled_camera_cfg()
+    cfg.prim_path = '{ENV_REGEX_NS}/CameraInsert'
+    cfg.offset.pos = INSERT_CAMERA_POSITION_M
+    cfg.offset.rot = INSERT_CAMERA_QUATERNION_WXYZ_ROS
+    return cfg
 
 
 __all__ = [
