@@ -124,12 +124,12 @@ def test_the_insert_diagnosis_is_quoted_against_the_tolerance_it_missed() -> Non
 
 
 def test_the_provenance_caveat_is_stated_where_the_number_is() -> None:
-    """One source-bound chain run recovers while nine older reports remain lost."""
+    """One source-bound chain run recovers while ten older reports remain lost."""
     for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
         assert "uncommitted" in document, f"{label} drops the provenance caveat (NEXT_WORK T0)"
         assert "T0" in document, f"{label} does not point at the task that closes it"
         assert "recovered" in document.lower(), f"{label} drops the recovered current run"
-        assert "nine" in document.lower(), f"{label} drops the nine lost source-bound reports"
+        assert "ten" in document.lower(), f"{label} drops the ten lost source-bound reports"
 
 
 def test_the_boundary_is_not_overstated() -> None:

@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 42,
     "retracted": 11,
-    "historical": 144
+    "historical": 158
   },
   "canonical": {
     "chain_robustness_sweep.json": {
@@ -640,6 +640,15 @@
     "estimate_stability.json": {
       "title": "Pose estimate stability, with the module held still"
     },
+    "fiducial_detector_late_approach_replay_v1.json": {
+      "title": "Fiducial decoder replay on continuous late-approach RGB frames"
+    },
+    "fiducial_rgbd_flush_v5_seed286_640px.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification"
+    },
+    "fiducial_rgbd_flush_v6_seed286_640px_robust_decoder.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification"
+    },
     "force_feedback_certification.json": {
       "title": "Force-feedback insertion policy, contact force in the observation space, PPO epoch 1800, three curriculum stages x three held-out seeds",
       "generated_utc": "2026-08-09T19:38:02+00:00"
@@ -890,6 +899,15 @@
     "relocation_rrt_path.json": {
       "generated_utc": "2026-08-21T01:39:23+00:00"
     },
+    "rgbd_strict_rack_retention_640px_burst_full_seed5070.json": {},
+    "rgbd_strict_rack_retention_640px_burst_full_seed6070.json": {},
+    "rgbd_strict_rack_retention_640px_estimator_frames_seed5070.json": {},
+    "rgbd_strict_rack_retention_640px_no_video_seed5070.json": {},
+    "rgbd_strict_rack_retention_640px_rerender3_full_seed6070.json": {},
+    "rgbd_strict_rack_retention_640px_robust_decoder_frames_seed5070.json": {},
+    "rgbd_strict_rack_retention_640px_robust_decoder_video_seed5070.json": {},
+    "rgbd_strict_rack_retention_640px_video_seed4070.json": {},
+    "rgbd_strict_rack_retention_dual_camera_full_seed6070.json": {},
     "rgbd_strict_rack_retention_gripper_clear_diagnostic_seed4070.json": {},
     "rgbd_strict_rack_retention_gripper_clear_video_seed4070.json": {},
     "rgbd_strict_rack_retention_overhead_seed4070.json": {},
@@ -933,6 +951,9 @@
     "serviceability_boundary_validation_v1.json": {
       "title": "Serviceability boundary validation against simulation",
       "generated_utc": "2026-08-27T01:13:24.458530+00:00"
+    },
+    "servicing_camera_geometry_v3_640px.json": {
+      "title": "Fixed servicing-camera coverage of the flush fiducial workflow envelope"
     },
     "uncertain_force_threshold_aware.json": {
       "title": "Commanded contact-force budget, force-aware",
@@ -1137,6 +1158,10 @@
     "workflow_robot_carried_m130pin_check_certification.json": {
       "title": "Robot-carried relocation, one seed, after the criterion and rack changes",
       "generated_utc": "2026-08-24T20:57:19+00:00"
+    },
+    "workflow_robot_carried_vision_rack_retention_640px_v2_certification.json": {
+      "title": "Strict 640-pixel camera-guided workflow with visible destination retention",
+      "generated_utc": "2026-09-01T19:25:25+00:00"
     }
   }
 }

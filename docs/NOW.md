@@ -11,11 +11,11 @@ Everything is simulated. Nothing has run on hardware.
 
 | Item | Verified state |
 | --- | --- |
-| Evidence | 38 canonical, 11 retracted, 140 historical; quote only canonical |
+| Evidence | 42 canonical, 11 retracted, 158 historical; quote only canonical |
 | Source provenance | 13 reports carry runtime source bindings; two match the working source, one is mechanically recovered, and ten older reports remain lost because they used uncommitted code |
 | Current completion result | 22/24, **91.67%**, after visible rack retention engages, both robot-side supports release, and the rack alone holds for at least 0.70 s |
 | Boundary decision | **not qualified**; only entry attitude is supported in simulation |
-| Live RGB-D service | fail-closed; the flush tag now passes its held-out camera gate, but the strict RGB-D chain has not yet been repeated |
+| Live RGB-D service | fail-closed; the latest strict run grasped, extracted and carried to the destination, then stopped when neither fixed camera could read the flush tag during insertion |
 | CI architecture | core modules and CPU tests do not require optional FastAPI imports |
 | Checkpoints | reports contain hashes, but weights under `logs/` and `checkpoints/` are absent from a clone |
 | Hardware claim | none |
@@ -98,19 +98,26 @@ not simulated; the idealized joint carries the load.
 
 The former passing certificate used a tilted tag floating 90 mm above the
 current module and is retracted. The current tag remains flush with the module
-top face. Moving and aiming only the fixed camera raised held-out detection from
-**53.52%** to **92.87%** overall and from **43.27%** to **99.85%** in the critical
-rack region over 1,024 new frames. Position p95 is 1.92 mm, orientation p95 is
-18.3 mrad and occupancy is exact, all under unchanged gates. The prior camera
-arm remains as the paired loser.
+top face. At the current 640 px resolution it detects in 937/1,024 held-out
+frames (**91.50%**) and 683/683 critical-bay frames, with position p95 1.19 mm,
+orientation p95 10.93 mrad and exact occupancy under unchanged gates. The prior
+camera and decoder arms remain as preserved losers.
 
 A logic defect was also fixed: missed detections could propagate the module as
-if attached to the moving tool before capture. The estimator now holds the last
-observation until physical capture is verified, uses tool forward kinematics
-only while captured, and fails closed after handoff. The current strict RGB-D
-run detected 716/865 frames (**82.77%**) but ended during extraction and claims
-no relocation. The live service remains unavailable rather than consuming the
-retracted certificate.
+if attached to the moving tool before capture. Reset now drains the tiled
+camera's blank startup buffers, and a complementary fixed RGB-D view was added
+for rack entry. The estimator still holds the last observation until physical
+capture and fails closed when no current camera can see the datum.
+
+The clean-source strict run
+`rgbd_strict_rack_retention_dual_camera_full_seed6070.json` detected 1,524/1,909
+frames (**79.83%**). It used the trained capture and extraction policies,
+visibly carried the retained module to the destination, and advanced guarded
+insertion for 202 control steps. Both configured views then stopped returning
+the flush marker for 385 consecutive attempts, so the controller held for 1,090
+steps and correctly refused seating, release and rack-only success. The
+continuous demonstration is therefore still incomplete; the measured blocker
+is late insertion visibility, not rack retention.
 
 ### Serviceability boundary
 
