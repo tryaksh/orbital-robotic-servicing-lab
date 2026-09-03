@@ -141,6 +141,38 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "The boundary decision re-derived from the 64-environment sweep. Still not qualified, and now with per-point classifications: rack_lat_6mm confirms its analytical infeasibility, section_120x16, section_140x26 and rack_lat_16mm do not, base_y_+10mm shows a loss the analytical model did not predict.",
     ),
     (
+        "chain_robustness_sweep_n64_channel_v1.json",
+        (
+            "The same seven points with the two clearance arms re-measured under "
+            "--rack_clearance_scope channel, which moves each bay's upper lips and entry flares with "
+            "its side guides. The published arm moved the guides alone, leaving a rack whose mouth and "
+            "walls disagreed by the clearance change. At 6 mm per side that is the difference between "
+            "0/64 with 62 jams and 36/64 with none; at 16 mm it changes nothing. The guides-only arm is "
+            "preserved in chain_robustness_sweep_n64.json."
+        ),
+    ),
+    (
+        "boundary_failure_modes_v1.json",
+        (
+            "The same episodes counted a second way: each closed-form criterion against the failure it "
+            "predicts rather than against the pooled rate. At nominal, 27 of 29 failures reach the final "
+            "phase and miss the terminal gate, so two episodes in five are lost at the design point to a "
+            "mode no criterion claims to predict, and a pooled comparison makes every boundary point clear "
+            "that floor first. Carries the guides-only clearance arm as the preserved comparison."
+        ),
+    ),
+    (
+        "estimator_surrogate_velocity_channel_v1.json",
+        (
+            "The training-time estimator surrogate measured against the certificate it reproduces, and "
+            "the velocity channel's noise floor against a seated module's own speed. Realized position "
+            "p95 2.00 mm against a certified 1.91. With the arm held still the channel reads 17.02 mm/s "
+            "at the deployed filter while the identical differencing on the simulator's own pose reads "
+            "3.38, so the estimator contributes 13.65 against a seated module's 0.69 -- and no filter "
+            "time constant helps, because a longer one lowers the mean and raises the p95."
+        ),
+    ),
+    (
         "chain_robustness_sweep_n64.json",
         "Four times the sample: seven boundary points at 64 environments each. Disagrees with the August 16-environment sweep both quantitatively (nominal 54.7% vs 93.8%) and qualitatively (section_120x16 reverses from 0% to 50%, rack_lat_6mm from 93.8% to 0%). The two are not directly comparable.",
     ),
