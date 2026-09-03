@@ -143,17 +143,31 @@ is about**, and no search run today returned it.
 
 ## Venue
 
-Unchanged in order, with one correction. The 2026-11-09 Frontiers deadline in
-`PAPER_PLAN.md` could not be confirmed today; the live Frontiers in Robotics and
-AI collection that matches is *Intelligent Manipulation of Space Robots:
-Environmental Perception, Autonomous Decision-Making, and Dexterous Operations*,
-and the Space Robotics section's own scope explicitly invites in-orbit servicing
-under zero-g and changing illumination. **Check the collection's date before
-planning around it.**
+Unchanged in order, and the date is now confirmed rather than assumed.
+
+**The matching collection is open and its manuscript deadline is 28 February
+2027**: *Intelligent Manipulation of Space Robots: Environmental Perception,
+Autonomous Decision-Making, and Dexterous Operations*, hosted by Frontiers in
+Robotics and AI's Space Robotics section with Frontiers in Space Technologies
+participating. Checked 2026-09-03; the page states it is currently accepting
+articles.
+
+Two consequences, and both change how the remaining work should be planned.
+
+**The 2026-11-09 date in the frozen `PAPER_PLAN.md` is not this collection's and
+could not be confirmed anywhere today.** Planning around it would have compressed
+six months into ten weeks for no reason. The work is not deadline-bound; it is
+gate-bound, and the gates are in `NOW.md`.
+
+**The collection's own framing names perception**, which moves claim 4 from
+liability to fit. A reviewer for a topic about "environmental perception,
+autonomous decision-making and dexterous operations" is the right reader for a
+measured 67-point perception cost with its mitigation, rather than one who reads
+4/24 as a broken system.
 
 | Venue | Fit for the claim structure above | Blocker |
 | --- | --- | --- |
-| **Frontiers in Robotics and AI, Space Robotics** | best: the section's scope is the paper's domain, and a simulation-only requirements study is in scope | none beyond finishing the measurements |
+| **Frontiers in Robotics and AI, Space Robotics** | best, and confirmed open to 2027-02-28: the section's scope is the paper's domain, the collection names perception, and a simulation-only requirements study is in scope | none beyond finishing the measurements |
 | **Acta Astronautica** | strong for the journal version; a design/requirements contribution reads naturally there | wants the sim-to-real account written out, which `docs/sim_to_real.md` now is |
 | **IEEE T-ASE** | possible only if claim 3 is presented as the methods contribution and evaluated as a method | would want the protocol applied to a second system, which this project does not have |
 | i-SAIRAS / ASTRA / IEEE Aerospace | good conference route, and the fastest | length caps force choosing between claims 3 and 4 |
