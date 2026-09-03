@@ -33,7 +33,7 @@
     "chain_robustness_sweep_n64_channel_v1.json": {
       "title": "What breaks the robot-carried chain first",
       "evidence_type": "simulation_only",
-      "generated_utc": "2026-09-03T19:34:43.316338+00:00",
+      "generated_utc": "2026-09-03T20:00:17.086455+00:00",
       "holds_up": "The same seven points with the two clearance arms re-measured under --rack_clearance_scope channel, which moves each bay's upper lips and entry flares with its side guides. The published arm moved the guides alone, leaving a rack whose mouth and walls disagreed by the clearance change. At 6 mm per side that is the difference between 0/64 with 62 jams and 36/64 with none; at 16 mm it changes nothing. The guides-only arm is preserved in chain_robustness_sweep_n64.json."
     },
     "destination_channel_geometry.json": {
@@ -1039,7 +1039,7 @@
     },
     "serviceability_boundary_validation_n64_channel_v2.json": {
       "title": "Serviceability boundary validation against simulation",
-      "generated_utc": "2026-09-03T19:36:21.143264+00:00"
+      "generated_utc": "2026-09-03T20:00:45.975029+00:00"
     },
     "serviceability_boundary_validation_v1.json": {
       "title": "Serviceability boundary validation against simulation",
