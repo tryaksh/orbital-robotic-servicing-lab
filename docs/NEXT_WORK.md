@@ -15,7 +15,11 @@ in what order, and the few things only a submission needs. They do not conflict 
 `P1` *is* `T0`, `P2` *is* `T3` — the paper section only adds sequencing and the
 claims worth making.
 
-**Current priority:** T1, then P0, then T13. **T15 is closed 2026-09-02.** T14 is closed with a narrowed claim: the
+**Current priority: P0 (T16 and T17), then T1's retrain arm (T18), then T13.**
+P0 -- the boundary mismatch -- turned out to be two separable problems and one
+instrument defect, all opened 2026-09-03. See [T16](#t16), [T17](#t17) and
+[T18](#t18). The old ordering below is preserved because the tasks under it
+are unchanged. **T15 is closed 2026-09-02.** T14 is closed with a narrowed claim: the
 current-source no-rack arm reproduces 17/24, visible rack retention raises the
 same fixed cohorts to 22/24, and all 22/22 episodes that reach seating pass the
 rack-only transfer. Two fail upstream, so the unchanged 95% full-chain gate is
@@ -47,6 +51,9 @@ training runs do not.
 | # | Task | Cost | Blocks |
 | --- | --- | --- | --- |
 | **T14** | Destination load transfer: 22/22 eligible rack-only holds; full chain 22/24 | **done 2026-08-31, claim narrowed** | — |
+| **T16** | The clearance sweep moved the guides and left the mouth; 6 mm/side is 36/64, not 0/64 | one flag + a re-sweep | the whole rack-clearance axis |
+| **T17** | Score each criterion against the failure it predicts, not the pooled rate | CPU only | the boundary decision |
+| **T18** | Train the skills on the estimator's error; the filter is already ruled out | one fine-tune + one cohort | the RGB chain's 50% gate |
 | **T15** | Restore flush-tag visibility through late guarded insertion; static held-out gate already passes | one bounded camera change + one run | credible perception |
 | **T13** | Learned insertion interface transfer; paused until resets equal real handoffs | no GPU yet | a learned seating phase |
 | **T0** | Ten older source-bound reports are unrecoverable; re-run any result a final claim needs | CPU + certification batches | reproducible claims |
@@ -63,6 +70,98 @@ training runs do not.
 | **T11** | No recording shows the certified chain | ~8 min a clip | the media, and any release |
 | **T12** | Grasp and extract re-certified on the derived rack | **done 2026-08-27** | — |
 | **P1–P7** | [Publication track](#publication-track) — the same work on a submission deadline | see section | Frontiers, 2026-11-09 |
+
+---
+
+<a id="t16"></a>
+## T16 -- The clearance sweep moved the guides and left the mouth: re-measure
+
+**Opened and half-closed 2026-09-03.** `--rack_lateral_clearance_mm` selected
+scene attributes whose name contains "guide". Each bay's upper lips and entry
+flares are placed from `GUIDE_CENTER_OFFSET_Y` when `assets.py` is imported, so
+four bodies per rack moved and eight did not. That is not a narrower channel: it
+is a rack whose mouth and walls disagree by exactly the clearance change.
+
+**Measured.** With `--rack_clearance_scope channel`, which translates the lips
+and the flares by the same delta, 6 mm per side scores **36/64 (56.25%)** with
+**zero** jams and a median terminal lateral error of 2.38 mm. The guides-only arm
+on the identical seed and checkpoints scores **0/64**, with 62 of 64 episodes
+stopping in the insert phase short of the seated plane. Nominal is 35/64.
+
+So `NOW.md`'s "6 mm/side confirmed infeasible (0.0%)" was an artifact of the
+instrument, and both clearance points in
+`serviceability_boundary_validation_n64_v1.json` are unsafe -- in both
+directions, because at 16 mm the same defect protrudes the flare *into* the
+channel instead.
+
+**And it moves the analytical model, not just the evidence.** The closed-form
+lower bound says a channel must admit the attitude the transit hands over at,
+0.5 x 46 mrad x 0.45 m = 10.35 mm per side. Six millimetres is well below that
+and the chain does not care. `2c/theta` at 46 mrad and 6 mm of clearance is
+261 mm of engagement, against a 529 mm stroke -- so a module traversing at the
+hand-over attitude would wedge halfway, and none of the 64 did. The module is
+therefore *not* traversing at the hand-over attitude: the entry flare squares it
+on the way in, and the guarded advance only steps while the estimate is inside
+the envelope. The bound belongs on the **flare's catch**, which is 73.9 mrad and
+comfortably above 46, not on the channel.
+
+**Left to do.** Re-run the remaining boundary points under `channel` scope, then
+rebuild `validate_serviceability_boundary.py`'s decision on the corrected arm
+with the guides-only arm preserved beside it, and correct the clearance window's
+lower bound in `check_workcell_geometry.py` and `servicing_design.py` once the
+16 mm point lands.
+
+<a id="t17"></a>
+## T17 -- Score each criterion against the failure it predicts
+
+**Opened 2026-09-03. `scripts/report_boundary_failure_modes.py`.**
+
+At the nominal design point, 27 of 29 failures reach the final phase with the
+form lock engaged and miss the 2.5 mm terminal gate. Two episodes in five are
+lost at nominal to a mode no serviceability criterion claims to predict, so a
+pooled-rate comparison asks every boundary point to clear that noise floor before
+a Wilson interval can separate it. That is why five of seven axes came back
+"mismatch" while their mechanisms behaved exactly as the geometry said.
+
+Counting the same episodes by mode recovers the signal. The grip criterion
+predicts an episode that never delivers the module; the entry criterion predicts
+one that jams short of the seated plane; neither predicts one that arrives and
+misses the gate. On that reading `rack_lat_16mm` supports the boundary --
+grip-inadmissible by 2.89 mm, losing 0.219 of its episodes before delivery
+against nominal's 0.031, Wilson-separated -- where the pooled protocol called it
+a mismatch.
+
+**Done when** the boundary decision is published on both protocols, with the
+pooled arm preserved, and every remaining mismatch names its cause.
+
+<a id="t18"></a>
+## T18 -- Put the estimator's error in the skills' training distribution
+
+**Opened 2026-09-03. This is the RGB chain's 50% gate.**
+
+The 67-point perception step is the estimator, measured as a substitution. It is
+not the estimator being inaccurate: across the three vision seeds the *winning*
+episodes carry 1.89, 2.00 and 2.11 mm of mean estimator error and the *losing*
+ones carry 2.29, 5.99 and 1.98 mm. The estimator is no worse on the episodes it
+loses. The policies simply never trained on camera-derived observations.
+
+**Two cheap experiments, one answered.** The velocity-channel filter is not the
+fix: with the arm held still the channel reads 17.02 mm/s at the deployed filter
+against 3.38 mm/s for the identical differencing on the simulator's own pose, so
+the estimator contributes 13.65 mm/s against a seated module's 0.69 mm/s, and no
+time constant helps -- the mean falls to 9.01 mm/s at 1 s while the p95 *rises*
+from 29 to 59, because a first-order filter integrates the random walk of held
+estimates. `evidence/estimator_surrogate_velocity_channel_v1.json`. The
+guard-bounds A/B is the other and has not been run.
+
+**The retrain.** `Isaac-ZeroG-Blade-GrapplePin-{Grasp,Extract,Insert}Noised-v0`
+train against a surrogate whose residual, sample-and-hold and miss rate are read
+from the estimator's own certification. `grapple_extract_l0_seed70_v19noised`
+resumes the certified v18pin checkpoint on the noised task at the same seed, so
+it is one change from a published arm.
+
+**Done when** the pooled RGB-D chain rate over three held-out seeds is published
+beside the 4/24 it replaces, whichever way it goes.
 
 ---
 
