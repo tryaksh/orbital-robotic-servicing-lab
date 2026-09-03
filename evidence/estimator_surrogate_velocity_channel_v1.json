@@ -1,0 +1,176 @@
+{
+  "title": "Training-time estimator surrogate, measured against the certificate it reproduces",
+  "what_this_is": "The arm holds still and the module sits in its rails, so the true state barely moves and what the observation channels show is the estimator. The realized error quantiles are compared with the certified ones the sigma was inverted from, and the velocity channel's noise floor is reported against the speed a seated module actually has.",
+  "scope": [
+    "Simulation only. No result here was produced on real hardware.",
+    "The module pose is read for error metrics only; no policy observation carries it.",
+    "The surrogate reproduces the sensor's residual, its sample-and-hold and its miss rate. It does not reproduce occlusion geometry or the heavy tail a losing episode shows once the module leaves the cameras' useful envelope, so it is a lower bound on deployment error."
+  ],
+  "task": "Isaac-ZeroG-Blade-GrapplePin-ExtractNoised-v0",
+  "num_envs": 64,
+  "steps": 600,
+  "seed": 1070,
+  "control_step_s": 0.03333333333333333,
+  "surrogate": {
+    "source_certification": "evidence/fiducial_rgbd_flush_v4_seed285_gripper_clear.json",
+    "certified_position_p95_mm": 1.9098028824951063,
+    "certified_orientation_p95_rad": 0.02005764650042329,
+    "certified_detection_rate": 0.9189453125,
+    "derived_position_sigma_m": 0.0006831744469846894,
+    "derived_orientation_sigma_rad": 0.007175018784053064,
+    "derivation": "per-axis sigma = certified p95 of the error norm / chi3 quantile at 0.95 (2.795483); the certificate takes the norm of a three-component residual, so the inversion is exact for an isotropic residual",
+    "camera_period_control_steps": 2,
+    "velocity_filter_time_constant_s": 0.1,
+    "camera_frames": 301,
+    "missed_frames": 1579
+  },
+  "self_validation": {
+    "certified_position_p95_mm": 1.9098028824951063,
+    "realized_position_p95_mm": 1.9993493139743796,
+    "position_ratio": 1.046887787373262,
+    "certified_orientation_p95_rad": 0.02005764650042329,
+    "realized_orientation_p95_rad": 0.020086954068392504,
+    "orientation_ratio": 1.0014611668407156,
+    "relative_tolerance": 0.25,
+    "agrees": true
+  },
+  "sample_and_hold": {
+    "camera_period_control_steps": 2,
+    "fraction_of_control_steps_where_the_estimate_moves": 0.459646285475793,
+    "expected_fraction": 0.5
+  },
+  "velocity_channel": {
+    "seated_module_speed_mm_s": 0.69,
+    "predicted_noise_floor_mm_s": 28.647043237426594,
+    "prediction": "certified position p95 divided by one camera period: a residual of that size, appearing between two camera frames, is indistinguishable from motion of that speed",
+    "deployed_filter": {
+      "time_constant_s": 0.1,
+      "filter_alpha": 0.25,
+      "settling_95_percent_s": 0.30000000000000004,
+      "speed_mm_s_mean": 17.02144432067871,
+      "speed_mm_s_p95": 29.06876850128174,
+      "speed_mm_s_max": 1065.5771484375
+    },
+    "deployed_noise_floor_over_seated_speed": 24.668759885041613,
+    "filter_sweep": [
+      {
+        "time_constant_s": 0.0,
+        "filter_alpha": 1.0,
+        "settling_95_percent_s": 0.0,
+        "speed_mm_s_mean": 30.811006546020508,
+        "speed_mm_s_p95": 77.81764221191406,
+        "speed_mm_s_max": 4262.30859375
+      },
+      {
+        "time_constant_s": 0.1,
+        "filter_alpha": 0.25,
+        "settling_95_percent_s": 0.30000000000000004,
+        "speed_mm_s_mean": 17.02144432067871,
+        "speed_mm_s_p95": 29.06876850128174,
+        "speed_mm_s_max": 1065.5771484375
+      },
+      {
+        "time_constant_s": 0.2,
+        "filter_alpha": 0.14285714285714285,
+        "settling_95_percent_s": 0.6000000000000001,
+        "speed_mm_s_mean": 13.351511001586914,
+        "speed_mm_s_p95": 31.458239555358887,
+        "speed_mm_s_max": 608.9012451171875
+      },
+      {
+        "time_constant_s": 0.3,
+        "filter_alpha": 0.1,
+        "settling_95_percent_s": 0.8999999999999999,
+        "speed_mm_s_mean": 11.742055892944336,
+        "speed_mm_s_p95": 37.27129936218262,
+        "speed_mm_s_max": 426.2308654785156
+      },
+      {
+        "time_constant_s": 0.5,
+        "filter_alpha": 0.0625,
+        "settling_95_percent_s": 1.5,
+        "speed_mm_s_mean": 10.2645845413208,
+        "speed_mm_s_p95": 47.68387508392334,
+        "speed_mm_s_max": 266.394287109375
+      },
+      {
+        "time_constant_s": 1.0,
+        "filter_alpha": 0.03225806451612903,
+        "settling_95_percent_s": 3.0,
+        "speed_mm_s_mean": 9.005287170410156,
+        "speed_mm_s_p95": 59.135698318481445,
+        "speed_mm_s_max": 137.4938201904297
+      }
+    ],
+    "true_velocity_control": {
+      "what_this_is": "the simulator's own module pose differenced and filtered through the identical path; real motion appears in both arms, the estimator's residual in only one",
+      "deployed_filter": {
+        "time_constant_s": 0.1,
+        "filter_alpha": 0.25,
+        "settling_95_percent_s": 0.30000000000000004,
+        "speed_mm_s_mean": 3.374798536300659,
+        "speed_mm_s_p95": 16.75455665588379,
+        "speed_mm_s_max": 264.1225280761719
+      },
+      "filter_sweep": [
+        {
+          "time_constant_s": 0.0,
+          "filter_alpha": 1.0,
+          "settling_95_percent_s": 0.0,
+          "speed_mm_s_mean": 4.690956115722656,
+          "speed_mm_s_p95": 18.058791637420654,
+          "speed_mm_s_max": 1051.93603515625
+        },
+        {
+          "time_constant_s": 0.1,
+          "filter_alpha": 0.25,
+          "settling_95_percent_s": 0.30000000000000004,
+          "speed_mm_s_mean": 3.374798536300659,
+          "speed_mm_s_p95": 16.75455665588379,
+          "speed_mm_s_max": 264.1225280761719
+        },
+        {
+          "time_constant_s": 0.2,
+          "filter_alpha": 0.14285714285714285,
+          "settling_95_percent_s": 0.6000000000000001,
+          "speed_mm_s_mean": 2.771294116973877,
+          "speed_mm_s_p95": 16.801509380340576,
+          "speed_mm_s_max": 151.3136444091797
+        },
+        {
+          "time_constant_s": 0.3,
+          "filter_alpha": 0.1,
+          "settling_95_percent_s": 0.8999999999999999,
+          "speed_mm_s_mean": 2.4184887409210205,
+          "speed_mm_s_p95": 14.958754301071167,
+          "speed_mm_s_max": 105.96319580078125
+        },
+        {
+          "time_constant_s": 0.5,
+          "filter_alpha": 0.0625,
+          "settling_95_percent_s": 1.5,
+          "speed_mm_s_mean": 2.0268476009368896,
+          "speed_mm_s_p95": 12.312937498092651,
+          "speed_mm_s_max": 65.68769836425781
+        },
+        {
+          "time_constant_s": 1.0,
+          "filter_alpha": 0.03225806451612903,
+          "settling_95_percent_s": 3.0,
+          "speed_mm_s_mean": 1.6220495700836182,
+          "speed_mm_s_p95": 9.115548133850098,
+          "speed_mm_s_max": 32.00570297241211
+        }
+      ]
+    },
+    "estimator_contribution_mm_s_mean": 13.646645784378052
+  },
+  "source_revision": {
+    "available": true,
+    "commit": "71123f3352265e2cccd4f86ffb6ffa41fbf3bd68",
+    "branch": "paper/serviceability-qualification",
+    "dirty": false,
+    "tracked_changes": [],
+    "error": null
+  }
+}

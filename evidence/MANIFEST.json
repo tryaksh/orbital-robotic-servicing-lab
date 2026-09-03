@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 50,
     "retracted": 11,
-    "historical": 158
+    "historical": 159
   },
   "canonical": {
     "chain_robustness_sweep.json": {
@@ -712,6 +712,9 @@
     },
     "estimate_stability.json": {
       "title": "Pose estimate stability, with the module held still"
+    },
+    "estimator_surrogate_velocity_channel_v1.json": {
+      "title": "Training-time estimator surrogate, measured against the certificate it reproduces"
     },
     "fiducial_detector_late_approach_replay_v1.json": {
       "title": "Fiducial decoder replay on continuous late-approach RGB frames"

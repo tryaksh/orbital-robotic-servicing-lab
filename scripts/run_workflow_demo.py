@@ -520,6 +520,18 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--rack_clearance_scope",
+        choices=("guides", "channel"),
+        default="guides",
+        help=(
+            "Which bodies --rack_lateral_clearance_mm moves. 'guides' moves the two side guides per "
+            "bay and leaves the upper lips and the entry flares where the nominal guides put them, "
+            "which is what the published clearance sweep did. 'channel' translates the lips and the "
+            "flares by the same delta, so the mouth still funnels the module to the wall it will run "
+            "against. The default reproduces every published clearance number."
+        ),
+    )
+    parser.add_argument(
         "--rack_lateral_clearance_mm",
         type=float,
         default=None,
@@ -5773,27 +5785,52 @@ def main() -> dict[str, object]:
             # face the module runs against, and reading the centre as the face
             # is the mistake that turns a 0.75 mm channel into a 9.75 mm one.
             half_width = 0.5 * float(tuple(env_cfg.scene.spare_blade.spawn.size)[1])
-            moved = 0
+            # **A bay's lateral wall is not only its guides.** The upper lips
+            # overhang the channel and the entry flares are the funnel that
+            # catches the module at the mouth, and both are placed from
+            # GUIDE_CENTER_OFFSET_Y at import time. Moving the guides alone
+            # therefore does not narrow a channel: it builds a rack whose mouth
+            # and whose walls disagree by exactly the clearance change, which is
+            # a step at the mouth rather than a tighter fit. 'channel'
+            # translates them together. The default is what the published sweep
+            # ran, so both arms stay reproducible and the report says which.
+            lateral_bodies = ("guide",) if args.rack_clearance_scope == "guides" else ("guide", "lip", "flare")
+            delta = None
+            moved: dict[str, int] = {}
             for name in dir(env_cfg.scene):
-                if "guide" not in name.lower():
+                lowered = name.lower()
+                kind = next((word for word in lateral_bodies if word in lowered), None)
+                if kind is None:
                     continue
                 entity = getattr(env_cfg.scene, name, None)
                 position = getattr(getattr(entity, "init_state", None), "pos", None)
                 if position is None:
                     continue
-                # Each guide belongs to a bay, and a bay is not at y = 0. Its
-                # own bay's centre line is the one it is offset from, so find
-                # that first; keying on the sign of y would move the second
-                # bay's pair to the wrong side of the rack.
+                # Each body belongs to a bay, and a bay is not at y = 0. Its own
+                # bay's centre line is the one it is offset from; keying on the
+                # sign of y would move the second bay's pair to the wrong side
+                # of the rack.
                 bay = min((0.0, SECOND_SLOT_CENTER_Y), key=lambda centre_y: abs(position[1] - centre_y))
-                thickness = float(tuple(entity.spawn.size)[1])
-                offset = half_width + 1.0e-3 * args.rack_lateral_clearance_mm + 0.5 * thickness
                 sign = 1.0 if position[1] > bay else -1.0
+                if kind == "guide":
+                    thickness = float(tuple(entity.spawn.size)[1])
+                    offset = half_width + 1.0e-3 * args.rack_lateral_clearance_mm + 0.5 * thickness
+                    # Every guide in the rack is placed at the same offset from
+                    # its own bay, so one of them fixes the translation the rest
+                    # of the channel has to follow.
+                    delta = offset - abs(position[1] - bay) if delta is None else delta
+                else:
+                    if delta is None:
+                        raise RuntimeError(
+                            "a lip or flare was reached before any guide, so the channel translation "
+                            "is not yet known; scene attribute ordering changed"
+                        )
+                    offset = abs(position[1] - bay) + delta
                 entity.init_state.pos = (position[0], bay + sign * offset, position[2])
-                moved += 1
+                moved[kind] = moved.get(kind, 0) + 1
             print(
-                f"[INFO] Rack guides moved to {args.rack_lateral_clearance_mm:.3f} mm clearance "
-                f"per side; {moved} guide bodies"
+                f"[INFO] Rack channel moved to {args.rack_lateral_clearance_mm:.3f} mm clearance "
+                f"per side, scope={args.rack_clearance_scope}: {moved}"
             )
         if args.stable_lighting:
             # Recording only, and the report says so, so a clip can never be
@@ -6668,6 +6705,10 @@ def main() -> dict[str, object]:
                                 "contact_force_limit_n": None,
                                 "workflow": args.workflow,
                                 "stress": {"pose_noise_scale": 1.0, "out_of_distribution": False},
+                                "rack_clearance": {
+                                    "per_side_mm": args.rack_lateral_clearance_mm,
+                                    "scope": args.rack_clearance_scope,
+                                },
                             }
                         )
                     ),
