@@ -8,7 +8,7 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 48,
+    "canonical": 49,
     "retracted": 11,
     "historical": 158
   },
@@ -18,6 +18,12 @@
       "evidence_type": "simulation_only",
       "generated_utc": "2026-08-25T01:23:35.400041+00:00",
       "holds_up": "One variable at a time around the certified point: what breaks the chain first."
+    },
+    "chain_robustness_sweep_n64.json": {
+      "title": "What breaks the robot-carried chain first",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-03T14:37:42.515698+00:00",
+      "holds_up": "Four times the sample: seven boundary points at 64 environments each. Disagrees with the August 16-environment sweep both quantitatively (nominal 54.7% vs 93.8%) and qualitatively (section_120x16 reverses from 0% to 50%, rack_lat_6mm from 93.8% to 0%). The two are not directly comparable."
     },
     "destination_channel_geometry.json": {
       "title": "What channel each entry point actually builds for the destination bay",

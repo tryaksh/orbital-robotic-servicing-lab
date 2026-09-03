@@ -137,6 +137,10 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "The learned insert skill: 0.00% over 1,536 episodes. Published negative result.",
     ),
     (
+        "chain_robustness_sweep_n64.json",
+        "Four times the sample: seven boundary points at 64 environments each. Disagrees with the August 16-environment sweep both quantitatively (nominal 54.7% vs 93.8%) and qualitatively (section_120x16 reverses from 0% to 50%, rack_lat_6mm from 93.8% to 0%). The two are not directly comparable.",
+    ),
+    (
         "chain_robustness_sweep.json",
         "One variable at a time around the certified point: what breaks the chain first.",
     ),
