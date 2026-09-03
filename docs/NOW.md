@@ -284,6 +284,27 @@ against episodes that jam short of the seated plane -- and on that reading the
 16 mm clearance point supports the boundary where the pooled protocol called it
 a mismatch.
 
+**A rate is not the only thing an episode records, and the mechanism separates
+where the rate does not.** The grip criterion bounds how far a pad may slide off
+the pin, so where it is violated the failing episodes should sit further off the
+pin than the successful ones. Across all seven points that difference is:
+
+| point | tool-to-pin offset, failing minus successful | grip criterion |
+| --- | ---: | --- |
+| rack_lat_16mm | **+1.43 mm** | violated by 2.89 mm |
+| section_120x16 | **+1.18 mm** | violated by 3.92 mm |
+| nominal | -0.06 mm | clear |
+| base_x_-0.70 | -0.04 mm | clear |
+| section_140x26 | -0.04 mm | clear (it fails the entry bound instead) |
+| rack_lat_6mm | -0.16 mm | clear |
+| base_y_+10mm | -3.04 mm | clear; the module is lost, so this measures a lost module |
+
+The two points the criterion flags are the only two where the signature is
+positive, and no point it clears shows one. `section_120x16`'s mode rate does not
+separate at 64 episodes -- 0.156 against nominal's 0.031, with intervals
+overlapping by two points -- but its mechanism does, on the same episodes, with
+no extra sample.
+
 The n=16 sweep is not comparable: on current source it produces stub episodes
 at 16 environments, so the August ordering is not reproducible here and cannot
 be quoted alongside these figures. The 32-environment certifications are not
