@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-98 scripts. Grouped by the verb their filename starts with.
+99 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -125,6 +125,7 @@ Coarse on purpose: these rank variables rather than measure them.
 | --- | --- |
 | `sweep_camera_calibration.py` | How well does the camera have to be mounted for the pose head to work? |
 | `sweep_chain_robustness.sh` | What breaks this chain first? |
+| `sweep_rack_requirement.py` | The rack requirement as a function of the manipulator, which is the whole claim. |
 
 ## Builders — regenerate a tracked artifact
 
