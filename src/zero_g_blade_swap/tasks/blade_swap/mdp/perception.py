@@ -506,13 +506,17 @@ class ModuleStateEstimator:
         cached = getattr(self, "_cached_wrist_body_id", None)
         if cached is not None:
             return cached
-        names = list(robot.body_names)
-        if "wrist_3_link" not in names:
+        # `find_bodies` is the resolution every other wrist lookup in this package
+        # uses -- GrappleLatch, the secured-blade constraint and the tool-frame
+        # observation all call it the same way. Reaching for `body_names` instead
+        # would be a second mechanism for one question.
+        body_ids, body_names = robot.find_bodies(["wrist_3_link"], preserve_order=True)
+        if len(body_ids) != 1:
             raise RuntimeError(
                 "module_velocity_source='kinematics' needs the wrist body the tool frame is defined "
-                f"from; the robot exposes {names}"
+                f"from; find_bodies resolved {body_names}"
             )
-        self._cached_wrist_body_id = names.index("wrist_3_link")
+        self._cached_wrist_body_id = int(body_ids[0])
         return self._cached_wrist_body_id
 
     def _estimate_deployment(self) -> torch.Tensor:
