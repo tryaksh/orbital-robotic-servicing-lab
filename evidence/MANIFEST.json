@@ -8,7 +8,7 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 54,
+    "canonical": 55,
     "retracted": 11,
     "historical": 158
   },
@@ -225,6 +225,11 @@
       "evidence_type": "paired_conditioned_insertion_controller_comparison",
       "generated_utc": "2026-08-28T01:09:15+00:00",
       "holds_up": "Paired v24 and guarded insertion at all nine reset stations and real chain handoffs; every losing arm retained."
+    },
+    "rack_requirement_sweep_v1.json": {
+      "title": "The rack requirement as a function of the manipulator's delivered attitude",
+      "evidence_type": "closed_form_design_sweep",
+      "holds_up": "The design derivation swept: one measured number about the arm -- the attitude it hands the insertion over at -- against the rack it implies. Closed form only. The shipped workcell is the 46 mrad row, and between 35 and 40 mrad the correcting lead-in stops being required at all, which is a part deleted by an arm's measured performance."
     },
     "rack_retention_geometry_v1.json": {
       "title": "Rack-side passive retention geometry and simulator binding",

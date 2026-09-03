@@ -152,6 +152,15 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "The boundary decision re-derived from the 64-environment sweep. Still not qualified, and now with per-point classifications: rack_lat_6mm confirms its analytical infeasibility, section_120x16, section_140x26 and rack_lat_16mm do not, base_y_+10mm shows a loss the analytical model did not predict.",
     ),
     (
+        "rack_requirement_sweep_v1.json",
+        (
+            "The design derivation swept: one measured number about the arm -- the attitude it hands the "
+            "insertion over at -- against the rack it implies. Closed form only. The shipped workcell is the "
+            "46 mrad row, and between 35 and 40 mrad the correcting lead-in stops being required at all, "
+            "which is a part deleted by an arm's measured performance."
+        ),
+    ),
+    (
         "chain_robustness_sweep_n64_channel_v1.json",
         (
             "The same seven points with the two clearance arms re-measured under "

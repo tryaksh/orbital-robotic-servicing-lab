@@ -1,0 +1,163 @@
+{
+  "title": "The rack requirement as a function of the manipulator's delivered attitude",
+  "evidence_type": "closed_form_design_sweep",
+  "what_this_is": "One measured number about the arm is swept and the rack it implies is recomputed. No simulator, no checkpoint, no asset file. The shipped workcell is the 46 mrad row.",
+  "held_fixed": {
+    "seating_tolerance_rad": 0.0523599,
+    "pad_half_bearing_offset_m": 0.015,
+    "module_m": {
+      "length": 0.45,
+      "width": 0.13,
+      "height": 0.02
+    },
+    "channel_height_m": 0.036,
+    "seating_stroke_m": 0.529,
+    "destination_relief_per_side_m": 0.0046125
+  },
+  "scope": [
+    "Closed form only. Nothing here was simulated and nothing was measured on hardware.",
+    "Every bound swept here is static. The rail column in particular is a bound on a pad sliding off the pin, and this repository has measured that the rail axis actually fails a settling condition at a threshold about three times looser."
+  ],
+  "rows": [
+    {
+      "delivered_attitude_mrad": 5,
+      "admissible": true,
+      "clearance_lower_mm": 1.1250000000000002,
+      "clearance_upper_mm": 11.7809775,
+      "clearance_window_width_mm": 10.6559775,
+      "design_point_mm": 6.45298875,
+      "rail_indexing_bound_mm": 6.235588790449522,
+      "accepted_sections_of_36": 17,
+      "requires_a_correcting_lead_in": false,
+      "engagement_depth_limit_mm": 2581.1955000000003
+    },
+    {
+      "delivered_attitude_mrad": 10,
+      "admissible": true,
+      "clearance_lower_mm": 2.2500000000000004,
+      "clearance_upper_mm": 11.7809775,
+      "clearance_window_width_mm": 9.5309775,
+      "design_point_mm": 7.015488750000001,
+      "rail_indexing_bound_mm": 5.673088790449515,
+      "accepted_sections_of_36": 16,
+      "requires_a_correcting_lead_in": false,
+      "engagement_depth_limit_mm": 1403.0977500000001
+    },
+    {
+      "delivered_attitude_mrad": 15,
+      "admissible": true,
+      "clearance_lower_mm": 3.375,
+      "clearance_upper_mm": 11.7809775,
+      "clearance_window_width_mm": 8.405977500000002,
+      "design_point_mm": 7.57798875,
+      "rail_indexing_bound_mm": 5.110588790449521,
+      "accepted_sections_of_36": 16,
+      "requires_a_correcting_lead_in": false,
+      "engagement_depth_limit_mm": 1010.3985000000002
+    },
+    {
+      "delivered_attitude_mrad": 20,
+      "admissible": true,
+      "clearance_lower_mm": 4.500000000000001,
+      "clearance_upper_mm": 11.7809775,
+      "clearance_window_width_mm": 7.2809775000000005,
+      "design_point_mm": 8.140488750000001,
+      "rail_indexing_bound_mm": 4.548088790449514,
+      "accepted_sections_of_36": 15,
+      "requires_a_correcting_lead_in": false,
+      "engagement_depth_limit_mm": 814.0488750000001
+    },
+    {
+      "delivered_attitude_mrad": 25,
+      "admissible": true,
+      "clearance_lower_mm": 5.625000000000001,
+      "clearance_upper_mm": 11.7809775,
+      "clearance_window_width_mm": 6.1559775000000005,
+      "design_point_mm": 8.702988750000001,
+      "rail_indexing_bound_mm": 3.98558879044952,
+      "accepted_sections_of_36": 12,
+      "requires_a_correcting_lead_in": false,
+      "engagement_depth_limit_mm": 696.2391000000001
+    },
+    {
+      "delivered_attitude_mrad": 30,
+      "admissible": true,
+      "clearance_lower_mm": 6.75,
+      "clearance_upper_mm": 11.7809775,
+      "clearance_window_width_mm": 5.030977500000001,
+      "design_point_mm": 9.26548875,
+      "rail_indexing_bound_mm": 3.4230887904495266,
+      "accepted_sections_of_36": 11,
+      "requires_a_correcting_lead_in": false,
+      "engagement_depth_limit_mm": 617.69925
+    },
+    {
+      "delivered_attitude_mrad": 35,
+      "admissible": true,
+      "clearance_lower_mm": 7.875000000000002,
+      "clearance_upper_mm": 11.7809775,
+      "clearance_window_width_mm": 3.9059774999999997,
+      "design_point_mm": 9.827988750000001,
+      "rail_indexing_bound_mm": 2.860588790449519,
+      "accepted_sections_of_36": 8,
+      "requires_a_correcting_lead_in": false,
+      "engagement_depth_limit_mm": 561.5993571428571
+    },
+    {
+      "delivered_attitude_mrad": 40,
+      "admissible": true,
+      "clearance_lower_mm": 9.000000000000002,
+      "clearance_upper_mm": 11.7809775,
+      "clearance_window_width_mm": 2.7809775,
+      "design_point_mm": 10.39048875,
+      "rail_indexing_bound_mm": 2.2980887904495253,
+      "accepted_sections_of_36": 7,
+      "requires_a_correcting_lead_in": true,
+      "engagement_depth_limit_mm": 519.5244375
+    },
+    {
+      "delivered_attitude_mrad": 46,
+      "admissible": true,
+      "clearance_lower_mm": 10.35,
+      "clearance_upper_mm": 11.7809775,
+      "clearance_window_width_mm": 1.4309775000000013,
+      "design_point_mm": 11.06548875,
+      "rail_indexing_bound_mm": 1.6230887904495166,
+      "accepted_sections_of_36": 7,
+      "requires_a_correcting_lead_in": true,
+      "engagement_depth_limit_mm": 481.10820652173913
+    },
+    {
+      "delivered_attitude_mrad": 50,
+      "admissible": true,
+      "clearance_lower_mm": 11.250000000000002,
+      "clearance_upper_mm": 11.7809775,
+      "clearance_window_width_mm": 0.5309774999999999,
+      "design_point_mm": 11.515488750000001,
+      "rail_indexing_bound_mm": 1.1730887904495244,
+      "accepted_sections_of_36": 2,
+      "requires_a_correcting_lead_in": true,
+      "engagement_depth_limit_mm": 460.61955
+    },
+    {
+      "delivered_attitude_mrad": 52,
+      "admissible": true,
+      "clearance_lower_mm": 11.700000000000001,
+      "clearance_upper_mm": 11.7809775,
+      "clearance_window_width_mm": 0.08097750000000091,
+      "design_point_mm": 11.74048875,
+      "rail_indexing_bound_mm": 0.9480887904495215,
+      "accepted_sections_of_36": 2,
+      "requires_a_correcting_lead_in": true,
+      "engagement_depth_limit_mm": 451.5572596153847
+    }
+  ],
+  "source_revision": {
+    "available": true,
+    "commit": "a6656bfe12c546aa978ef27fec5987092159f5e3",
+    "branch": "paper/serviceability-qualification",
+    "dirty": false,
+    "tracked_changes": [],
+    "error": null
+  }
+}
