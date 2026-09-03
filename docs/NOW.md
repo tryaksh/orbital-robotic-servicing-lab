@@ -11,7 +11,7 @@ Everything is simulated. Nothing has run on hardware.
 
 | Item | Verified state |
 | --- | --- |
-| Evidence | 48 canonical, 11 retracted, 158 historical; quote only canonical |
+| Evidence | 50 canonical, 11 retracted, 158 historical; quote only canonical |
 | Source provenance | 13 reports carry runtime source bindings; two match the working source, one is mechanically recovered, and ten older reports remain lost because they used uncommitted code |
 | Current completion result | 22/24, **91.67%**, after visible rack retention engages, both robot-side supports release, and the rack alone holds for at least 0.70 s |
 | Boundary decision | **not qualified**; only entry attitude is supported in simulation |
@@ -198,18 +198,24 @@ arXiv 2407.16677). Doing none of it costs 67.
 
 ### Serviceability boundary
 
-[`serviceability_boundary_validation_v2.json`](../evidence/serviceability_boundary_validation_v2.json)
-is the current fail-closed comparison:
+[`serviceability_boundary_validation_n64_v1.json`](../evidence/serviceability_boundary_validation_n64_v1.json)
+is the current fail-closed comparison, derived from the four-times-larger
+[`chain_robustness_sweep_n64.json`](../evidence/chain_robustness_sweep_n64.json)
+whose Wilson intervals are narrow enough to actually classify each point:
 
-| Dimension | State |
+| Dimension | State (n=64) |
 | --- | --- |
-| Rack clearance | mismatch; analytical exclusions do not show separated simulation loss |
-| Module section | mismatch; one exclusion agrees and one contradicts at current sample size |
-| Robot base offset | mismatch; +10 mm is kinematically feasible but loses in simulation |
+| Rack clearance | mismatch; 6 mm/side confirmed infeasible (0.0%, [0.0, 5.7]), 16 mm/side does not show a separated loss (40.6% vs 54.7% nominal) |
+| Module section | mismatch; neither 120x16 (50.0%) nor 140x26 (35.9%) shows a separated loss from 130x20's 54.7% |
+| Robot base offset | mismatch; +10 mm is kinematically feasible but loses at 1.6% |
 | Entry attitude | supported in simulation against the derived `2c/L` boundary |
 | Capture geometry | analytical only; no current contact/load certificate |
 | Load path | destination transfer supported in 22/22 eligible simulations; both robot- and rack-side joints remain idealized |
 | Base compliance | excluded; the fixed robot root prevents the authored spring from deflecting |
+
+The n=16 sweep is not comparable: on current source it produces stub episodes
+at 16 environments, so the August ordering is not reproducible here and cannot
+be quoted alongside these figures.
 
 Every losing arm is retained. No tolerance was widened. The envelope is **not
 qualified**.

@@ -8,7 +8,7 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 49,
+    "canonical": 50,
     "retracted": 11,
     "historical": 158
   },
@@ -303,6 +303,12 @@
       "title": "Robot-side service latch clearance, derived from the measured gripper envelope",
       "evidence_type": "geometric_derivation_no_simulator",
       "holds_up": "The form lock's clearances, derived from the measured gripper envelope."
+    },
+    "serviceability_boundary_validation_n64_v1.json": {
+      "title": "Serviceability boundary validation against simulation",
+      "evidence_type": "analytical_boundary_against_simulation",
+      "generated_utc": "2026-09-03T15:47:23.400981+00:00",
+      "holds_up": "The boundary decision re-derived from the 64-environment sweep. Still not qualified, and now with per-point classifications: rack_lat_6mm confirms its analytical infeasibility, section_120x16, section_140x26 and rack_lat_16mm do not, base_y_+10mm shows a loss the analytical model did not predict."
     },
     "serviceability_boundary_validation_v2.json": {
       "title": "Serviceability boundary validation against simulation",
