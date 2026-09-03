@@ -55,6 +55,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from check_servicing_camera_geometry import MIN_MARKER_CELL_PX
+
 from zero_g_blade_swap import service_latch
 from zero_g_blade_swap.grapple_geometry import (
     BLADE_LENGTH_M,

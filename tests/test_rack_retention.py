@@ -8,9 +8,10 @@ from zero_g_blade_swap.grapple_geometry import (
 )
 from zero_g_blade_swap.service_latch import (
     RATED_FORCE_N as ROBOT_LATCH_RATED_FORCE_N,
+)
+from zero_g_blade_swap.service_latch import (
     RATED_TORQUE_NM as ROBOT_LATCH_RATED_TORQUE_NM,
 )
-
 
 SEATED = (0.67632, -0.22, 0.72)
 

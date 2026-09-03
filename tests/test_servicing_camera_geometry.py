@@ -11,6 +11,7 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from check_servicing_camera_geometry import check  # noqa: E402
+
 from zero_g_blade_swap.servicing_camera import (  # noqa: E402
     CAMERA_FOCAL_LENGTH_MM,
     CAMERA_HEIGHT_PX,

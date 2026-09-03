@@ -45,6 +45,7 @@ from .assets import (
     GRAPPLE_HEAD_ON_ARM_JOINT_POS,
     GRAPPLE_HEAD_ON_TOOL_ROT,
     GRAPPLE_TOOL_OFFSET_POS,
+    RACK_RETENTION_PRIM,
     SECOND_SLOT_CFG,
     SECOND_SLOT_ENTRY_LOWER_RAMP_CFG,
     SECOND_SLOT_ENTRY_UPPER_RAMP_CFG,
@@ -52,12 +53,11 @@ from .assets import (
     SECOND_SLOT_RIGHT_GUIDE_CFG,
     SECOND_SLOT_UPPER_LEFT_LIP_CFG,
     SECOND_SLOT_UPPER_RIGHT_LIP_CFG,
-    RACK_RETENTION_PRIM,
-    RackRetentionHardwareCfg,
-    RackRetentionJointCfg,
     SERVICE_DESTINATION_DYNAMIC_FRICTION,
     SERVICE_DESTINATION_STATIC_FRICTION,
     CompliantD6JointCfg,
+    RackRetentionHardwareCfg,
+    RackRetentionJointCfg,
     make_grapple_pin_robot_cfg,
 )
 from .contact_insertion_env_cfg import (

@@ -49,7 +49,6 @@ from . import mdp
 from .grapple_pin_env_cfg import (
     ExtractPolicyObsCfg,
     GrappleSkillObsCfg,
-    InsertPolicyObsCfg,
     ZeroGBladeGrapplePinExtractEnvCfg,
     ZeroGBladeGrapplePinGraspEnvCfg,
     ZeroGBladeGrapplePinInsertEnvCfg,

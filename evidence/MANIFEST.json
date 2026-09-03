@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 56,
     "retracted": 11,
-    "historical": 162
+    "historical": 164
   },
   "canonical": {
     "boundary_failure_modes_v1.json": {
@@ -764,6 +764,9 @@
     "fiducial_detector_late_approach_replay_v1.json": {
       "title": "Fiducial decoder replay on continuous late-approach RGB frames"
     },
+    "fiducial_rgbd_flush_v4_recertified_v1.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification"
+    },
     "fiducial_rgbd_flush_v5_seed286_640px.json": {
       "title": "Calibrated RGB-D fiducial perception qualification"
     },
@@ -1279,6 +1282,10 @@
     "workflow_robot_carried_m130pin_check_certification.json": {
       "title": "Robot-carried relocation, one seed, after the criterion and rack changes",
       "generated_utc": "2026-08-24T20:57:19+00:00"
+    },
+    "workflow_robot_carried_vision_leadin_guard_v1_certification.json": {
+      "title": "RGB-D chain with the guarded advance admitting on the entry flare's catch",
+      "generated_utc": "2026-09-03T22:41:19+00:00"
     },
     "workflow_robot_carried_vision_rack_retention_640px_v2_certification.json": {
       "title": "Strict 640-pixel camera-guided workflow with visible destination retention",

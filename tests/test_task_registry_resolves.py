@@ -63,9 +63,12 @@ def _registrations() -> list[tuple[str, str]]:
                 if not isinstance(element, ast.Tuple) or len(element.elts) != 2:
                     continue
                 second = element.elts[1]
-                if isinstance(second, ast.Constant) and isinstance(second.value, str):
-                    if second.value.endswith("EnvCfg"):
-                        pairs.append((module, second.value))
+                if (
+                    isinstance(second, ast.Constant)
+                    and isinstance(second.value, str)
+                    and second.value.endswith("EnvCfg")
+                ):
+                    pairs.append((module, second.value))
         elif isinstance(node, ast.Call):
             function = node.func
             name = getattr(function, "attr", None)

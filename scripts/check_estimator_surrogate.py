@@ -292,7 +292,8 @@ def main() -> int:
         f"{deployed['speed_mm_s_mean'] / args.seated_speed_mm_s:.1f}x a seated module's own speed; "
         f"the same path on true pose gives {true_deployed['speed_mm_s_mean']:.2f} mm/s"
     )
-    for row, true_row in zip(sweep, true_sweep):
+    # Both sweeps are built from --filter_sweep_s, so they are the same length.
+    for row, true_row in zip(sweep, true_sweep, strict=True):
         print(
             f"  tau={row['time_constant_s']:.2f}s  estimate mean {row['speed_mm_s_mean']:7.2f} mm/s "
             f"p95 {row['speed_mm_s_p95']:7.2f}   truth mean {true_row['speed_mm_s_mean']:7.2f}"

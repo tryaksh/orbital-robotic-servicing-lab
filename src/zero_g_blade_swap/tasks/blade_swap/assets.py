@@ -1187,7 +1187,11 @@ def spawn_blade_with_grapple_pin(
             normal_offset: float,
         ) -> tuple[float, float, float]:
             return tuple(
-                origin + local_x * tag_x_axis[axis] + local_y * tag_y_axis[axis] + normal_offset * tag_normal[axis]
+                # noqa justified: the three axes are rows of the module-frame
+                # constant FIDUCIAL_TAG_BASIS_MODULE, so they hold the same value
+                # on every iteration and closing over them late cannot differ
+                # from closing over them early.
+                origin + local_x * tag_x_axis[axis] + local_y * tag_y_axis[axis] + normal_offset * tag_normal[axis]  # noqa: B023
                 for axis, origin in enumerate(centre)
             )
 

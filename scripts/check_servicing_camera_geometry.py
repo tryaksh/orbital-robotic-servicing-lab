@@ -160,7 +160,12 @@ def check(datum_offsets_m: tuple[float, ...] | None = None) -> dict[str, object]
             def plate(half_extent: float, _offset: float = offset) -> np.ndarray:
                 return np.asarray(
                     [
-                        centre + module_rotation @ np.asarray((_offset + x, y, tag_z))
+                        # noqa justified: `plate` is called twice immediately
+                        # below, inside this same iteration, so `centre` and
+                        # `module_rotation` cannot be rebound between definition
+                        # and use. `offset` is the one that could be, and it is
+                        # already bound through `_offset`.
+                        centre + module_rotation @ np.asarray((_offset + x, y, tag_z))  # noqa: B023
                         for x, y in (
                             (-half_extent, half_extent),
                             (half_extent, half_extent),

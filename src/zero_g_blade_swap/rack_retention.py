@@ -16,10 +16,18 @@ from zero_g_blade_swap.grapple_geometry import (
 )
 from zero_g_blade_swap.service_latch import (
     LIP_THICKNESS_M,
-    RATED_FORCE_N as ROBOT_LATCH_RATED_FORCE_N,
-    RATED_TORQUE_NM as ROBOT_LATCH_RATED_TORQUE_NM,
-    REQUIRED_AXIAL_CAPACITY_N,
+    # Re-exported on purpose: `tests/test_rack_retention.py` reads it off this
+    # module to assert the rack's rating covers what the form lock hands over.
+    # `ruff --fix` removed it as unused and broke that test; the noqa says why it
+    # stays.
+    REQUIRED_AXIAL_CAPACITY_N,  # noqa: F401
     WEB_INNER_HALF_GAP_M,
+)
+from zero_g_blade_swap.service_latch import (
+    RATED_FORCE_N as ROBOT_LATCH_RATED_FORCE_N,
+)
+from zero_g_blade_swap.service_latch import (
+    RATED_TORQUE_NM as ROBOT_LATCH_RATED_TORQUE_NM,
 )
 
 PAWL_FACE_CLEARANCE_M = WEB_INNER_HALF_GAP_M - GRAPPLE_PIN_HALF_WIDTH_Y

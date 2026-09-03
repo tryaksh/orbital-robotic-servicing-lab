@@ -174,11 +174,11 @@ class ManipulatorPerformance:
     pad_half_bearing_offset_m: float
 
     def __post_init__(self) -> None:
-        if not 0.0 < self.delivered_attitude_rad:
+        if not self.delivered_attitude_rad > 0.0:
             raise ValueError("delivered_attitude_rad must be positive")
-        if not 0.0 < self.seating_tolerance_rad:
+        if not self.seating_tolerance_rad > 0.0:
             raise ValueError("seating_tolerance_rad must be positive")
-        if not 0.0 < self.pad_half_bearing_offset_m:
+        if not self.pad_half_bearing_offset_m > 0.0:
             raise ValueError("pad_half_bearing_offset_m must be positive")
         if self.seating_tolerance_rad < self.delivered_attitude_rad:
             raise ValueError(

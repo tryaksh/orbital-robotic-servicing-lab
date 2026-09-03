@@ -15,8 +15,10 @@ from zero_g_blade_swap.grapple_geometry import EXTRACTED_BLADE_CENTRE_X
 from zero_g_blade_swap.servicing_camera import (
     CAMERA_FOCAL_LENGTH_MM,
     CAMERA_HORIZONTAL_APERTURE_MM,
-    CAMERA_POSITION_M as CAMERA_POSITION_TUPLE_M,
     CAMERA_QUATERNION_WXYZ_ROS,
+)
+from zero_g_blade_swap.servicing_camera import (
+    CAMERA_POSITION_M as CAMERA_POSITION_TUPLE_M,
 )
 
 CAMERA_POSITION_M = np.asarray(CAMERA_POSITION_TUPLE_M, dtype=np.float64)
