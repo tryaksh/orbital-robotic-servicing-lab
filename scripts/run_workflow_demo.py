@@ -6055,6 +6055,18 @@ def main() -> dict[str, object]:
                 and not args.base_rail_on_relocation
             )
         ) and args.insert_controller == "guarded"
+        # Which pair of bounds actually decided every advance. The guard swaps
+        # to the estimator's tighter bounds whenever the deployed backend is the
+        # fiducial one, exactly as ``_step_guarded_insert`` selects them.
+        _report_estimator = getattr(task, "_module_state_estimator", None)
+        if _report_estimator is not None and _report_estimator.backend == "fiducial_pnp":
+            applied_guarded_lateral_tolerance_m = FIDUCIAL_GUARDED_LATERAL_TOLERANCE_M
+            applied_guarded_orientation_tolerance_rad = FIDUCIAL_GUARDED_ORIENTATION_TOLERANCE_RAD
+            applied_guarded_tolerance_source = "deployed_rgbd_estimator_bounds"
+        else:
+            applied_guarded_lateral_tolerance_m = GUARDED_INSERT_LATERAL_TOLERANCE_M
+            applied_guarded_orientation_tolerance_rad = GUARDED_INSERT_ORIENTATION_TOLERANCE_RAD
+            applied_guarded_tolerance_source = "entry_flare_catch"
         insert_only = args.start_insert_station is not None
         evaluation_condition = (
             {
@@ -6177,9 +6189,21 @@ def main() -> dict[str, object]:
                 "controller": "scripted, bounded axial advance on the deployed estimate",
                 "axial_step_m": GUARDED_INSERT_AXIAL_STEP_M,
                 "cartesian_action_scale": [float(value) for value in INSERT_ACTION_SCALE],
-                "lateral_tolerance_m": GUARDED_INSERT_LATERAL_TOLERANCE_M,
-                "orientation_tolerance_rad": GUARDED_INSERT_ORIENTATION_TOLERANCE_RAD,
-                "orientation_tolerance_is_what_the_entry_flare_catches": True,
+                # **The tolerances the run applied, which are not always the
+                # bay's.** With the fiducial backend the guard runs on the
+                # tighter estimator bounds, and this block used to publish the
+                # lead-in's numbers whatever the run used -- so a report of an
+                # RGB-D run named a 16.6 mm gate while a 2 mm one was deciding
+                # every advance. Both are reported now, and which one applied is
+                # explicit.
+                "lateral_tolerance_m": float(applied_guarded_lateral_tolerance_m),
+                "orientation_tolerance_rad": float(applied_guarded_orientation_tolerance_rad),
+                "tolerance_source": applied_guarded_tolerance_source,
+                "entry_flare_lateral_tolerance_m": GUARDED_INSERT_LATERAL_TOLERANCE_M,
+                "entry_flare_orientation_tolerance_rad": GUARDED_INSERT_ORIENTATION_TOLERANCE_RAD,
+                "orientation_tolerance_is_what_the_entry_flare_catches": (
+                    applied_guarded_tolerance_source == "entry_flare_catch"
+                ),
                 "why_not_depth_dependent": (
                     "2c/l is the law but c changes along the stroke -- 8.00 mm at the nominal "
                     "lead-in surfaces and 12.61 mm in the relieved channel behind them -- and a "
