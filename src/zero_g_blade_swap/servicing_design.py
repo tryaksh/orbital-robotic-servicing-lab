@@ -109,6 +109,11 @@ def requires_a_correcting_lead_in(
     that refuses to advance while the module is cocked -- has to reduce the
     attitude *during* the stroke.
 
+    **Sizing a lead-in from an initial misalignment is chamfer-crossing analysis
+    and is classical.** This is that analysis used as a gate on a manipulator
+    whose delivered attitude was *measured* rather than specified, which is the
+    only part of it this project claims. See ``docs/paper_position.md``.
+
     **This repository is the case that motivates the rule.** Its stroke is
     529 mm and its hand-over attitude 46 mrad, so an 11.065 mm channel admits
     481 mm and falls short. The chain seats anyway, and it seats at 6 mm of
