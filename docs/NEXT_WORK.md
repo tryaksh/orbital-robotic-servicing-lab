@@ -52,6 +52,7 @@ training runs do not.
 | --- | --- | --- | --- |
 | **T14** | Destination load transfer: 22/22 eligible rack-only holds; full chain 22/24 | **done 2026-08-31, claim narrowed** | — |
 | **T16** | The clearance sweep moved the guides and left the mouth; 6 mm/side is 36/64, not 0/64 | one flag + a re-sweep | the whole rack-clearance axis |
+| **T19** | The solved-IK agreement check fires spuriously and costs a sweep point | <1 h | one ladder rung |
 | **T17** | Score each criterion against the failure it predicts, not the pooled rate | CPU only | the boundary decision |
 | **T18** | Train the skills on the estimator's error; the filter is already ruled out | one fine-tune + one cohort | the RGB chain's 50% gate |
 | **T15** | Restore flush-tag visibility through late guarded insertion; static held-out gate already passes | one bounded camera change + one run | credible perception |
@@ -121,6 +122,30 @@ rebuild `validate_serviceability_boundary.py`'s decision on the corrected arm
 with the guides-only arm preserved beside it, and correct the clearance window's
 lower bound in `check_workcell_geometry.py` and `servicing_design.py` once the
 16 mm point lands.
+
+<a id="t19"></a>
+## T19 -- The solved-IK agreement check fires spuriously, about one run in fifteen
+
+**Opened 2026-09-03, small, and it costs a sweep point when it happens.**
+
+The `base_y_+1mm` rung of the rail ladder died on
+
+    The closed-form arm kinematics disagree with the simulator's tool frame by
+    108.115 mm and 566.920 mrad, against 0.500 mm and 1.000 mrad.
+
+The check compares `batched_tool_pose(joints)` against the measured tool pose
+**both expressed in the robot root frame**, so a 1 mm base translation cancels
+exactly and cannot produce a 108 mm disagreement. The published `base_y_+10mm`
+point, ten times the offset, did not fire it. What the check does do is take
+`.max()` across every environment at one instant, so a single environment whose
+joints have not yet been written when it runs is enough.
+
+**Do not widen the tolerance.** The tolerance is right and the check has caught
+real defects. Either run it per environment and report which one disagreed, or
+run it after the first reset has been stepped in every environment. Then re-run
+the rung.
+
+**Cost.** Under an hour, plus the one sweep point.
 
 <a id="t17"></a>
 ## T17 -- Score each criterion against the failure it predicts
