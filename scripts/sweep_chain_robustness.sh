@@ -90,6 +90,14 @@ point "relief_0mm" --destination_channel_relief_m 0.0
 # Where the robot stands. Along x this is the trade section 6a of the interface
 # specification measures; across y it is the rail's own stopping error.
 point "base_x_-0.70" --robot_base_x -0.70
-point "base_y_+10mm" --robot_base_y 0.010
+# The rail's stopping error, as a ladder rather than as one point. The
+# published sweep measured +10 mm and lost the chain to 1.6%, with 60 of 63
+# failures timing out inside the *learned* phases and the channel untouched.
+# One point cannot separate a geometric bound from a policy trained at one
+# base position; the shape of the curve between 0 and 10 mm can. The default
+# is the single published point, so nothing already measured moves.
+for mm in ${BASE_Y_MM:-10}; do
+  point "base_y_+${mm}mm" --robot_base_y "$(awk -v m="$mm" 'BEGIN{printf "%.6f", m/1000}')"
+done
 
 echo "[$(date +%H:%M:%S)] DONE"
