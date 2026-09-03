@@ -53,6 +53,7 @@ from zero_g_blade_swap.provenance import git_source_revision  # noqa: E402
 # ordering, repeated here because these rows are read without importing it.
 PHASE_NAMES = ("capture", "seat", "extract", "transit", "insert", "done")
 DELIVERY_PHASES = (0, 1, 2)
+TRANSIT_PHASE = 3
 INSERT_PHASE = 4
 DONE_PHASE = 5
 
@@ -90,14 +91,26 @@ def decompose(rows: np.ndarray, fields: list[str]) -> dict[str, object]:
     timed_out = column["timed_out_in_phase"].astype(int)
     reached = column["reached_phase"].astype(int)
 
+    # Partition on where the episode stopped, not on how far it got, so a
+    # transit timeout cannot be filed as a jam. No point measured so far
+    # produces one, and that is exactly why it would go unnoticed.
     lost_before_delivery = np.isin(timed_out, DELIVERY_PHASES)
-    jammed_in_the_bay = (~success) & (~lost_before_delivery) & (reached <= INSERT_PHASE)
-    missed_the_gate = (~success) & (~lost_before_delivery) & (reached >= DONE_PHASE)
+    lost_in_transit = timed_out == TRANSIT_PHASE
+    jammed_in_the_bay = (~success) & ~(lost_before_delivery | lost_in_transit) & (reached <= INSERT_PHASE)
+    missed_the_gate = (
+        (~success) & ~(lost_before_delivery | lost_in_transit | jammed_in_the_bay) & (reached >= DONE_PHASE)
+    )
 
     episodes = int(len(success))
-    counted = int(success.sum() + lost_before_delivery.sum() + jammed_in_the_bay.sum() + missed_the_gate.sum())
+    counted = int(
+        success.sum()
+        + lost_before_delivery.sum()
+        + lost_in_transit.sum()
+        + jammed_in_the_bay.sum()
+        + missed_the_gate.sum()
+    )
     if counted != episodes:
-        raise RuntimeError(f"the three modes and the successes do not partition the cohort: {counted} of {episodes}")
+        raise RuntimeError(f"the modes and the successes do not partition the cohort: {counted} of {episodes}")
 
     grip_error = column["grip_error_m"]
     return {
@@ -114,6 +127,13 @@ def decompose(rows: np.ndarray, fields: list[str]) -> dict[str, object]:
                 "timed_out_phase_counts": {
                     PHASE_NAMES[phase]: int((timed_out == phase).sum()) for phase in DELIVERY_PHASES
                 },
+            },
+            "lost_in_transit": {
+                "what_it_is": "timed out carrying the module between bays; predicted by neither criterion",
+                "predicted_by": None,
+                "count": int(lost_in_transit.sum()),
+                "rate": round(float(lost_in_transit.mean()), 6),
+                "wilson_95": wilson_95(int(lost_in_transit.sum()), episodes),
             },
             "jammed_in_the_bay": {
                 "what_it_is": "reached the insert phase and stopped there, short of the seated plane",
@@ -333,6 +353,7 @@ def main() -> int:
         "mode_definitions": {
             "lost_before_delivery": "timed out in capture, seat or extract; predicted by the grip criterion",
             "jammed_in_the_bay": "reached insert and stopped short of the seated plane; predicted by the entry criterion",
+            "lost_in_transit": "timed out carrying the module between bays; predicted by neither",
             "missed_the_terminal_gate": "arrived and seated, then missed the terminal gate; predicted by neither",
         },
         "nominal_point": arguments.nominal,
