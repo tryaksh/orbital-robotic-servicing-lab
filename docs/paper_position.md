@@ -135,8 +135,29 @@ system, and a methods venue will ask for two.
 1. **The flare-removal run.** It decides whether the corrector in claim 3's fifth
    row is the geometry or the controller, and the rule is much stronger if it is
    the geometry, because then the closed form sizes a *part*.
-2. **The seed spreads**, because claim 1 is currently three objectives at one
-   training seed and a reviewer will call that three samples of one seed.
+2. **The seed spreads for the published *skill rates*** -- grasp and extract,
+   both running. Not for claim 1, and that is a decision rather than an omission.
+
+   Claim 1's obvious weakness is that three objectives at one training seed is
+   three samples of one seed, and the obvious fix is to retrain each objective at
+   three seeds. That fix is not available: the three arms are resume lineages
+   whose exact provenance cannot be reproduced -- `v20chain` ends at epoch 1,400
+   on a lineage that is not the one `run_insert_chain.sh` documents -- so nine
+   new runs would measure the seed spread of a *different* procedure and answer
+   nothing.
+
+   **The claim has better evidence anyway, and it is one number rather than a
+   coincidence of three.** The stalled population holds 96.8 mrad and stops
+   174.5 mm short of a 436 mm stroke, so it travels 261.5 mm; `2c/theta` at that
+   attitude in that channel is 260.6 mm. **The law predicts the achieved depth to
+   within a millimetre.** That is a mechanistic agreement between a closed-form
+   bound and a measured population, and it does not depend on how many seeds
+   produced the population.
+
+   So the paper leads claim 1 with the mechanism, uses the three objectives as
+   corroboration that the angle does not respond to reward shaping, and states
+   the single-seed limitation in the same paragraph rather than hoping nobody
+   asks. The GPU that nine runs would have cost goes to claim 4 instead.
 3. **The RGB cohort**, because claim 4 is the one a space-robotics reviewer will
    press hardest and 4/24 with no mitigation reads as a broken system rather than
    as a measured cost.
