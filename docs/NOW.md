@@ -225,6 +225,21 @@ arXiv 2407.16677). Doing none of it costs 67.
 
 ### Serviceability boundary
 
+**Where the closed form stands, in one paragraph.** It is confirmed on four
+things and contradicted on one, and the contradiction has an identified cause
+rather than a shrug. Confirmed: `2c/L` as a bound on the attitude a *seated*
+module holds; the grip criterion's *mechanism*, since the two points it flags are
+the only two whose failing episodes sit further off the pin than their successful
+ones; the *upper* clearance bound, since 16 mm per side loses episodes before
+delivery at a Wilson-separated rate; and the gate that says this bay needs a
+correcting lead-in, which fires before any simulation and which the bay satisfies
+with a 12-degree flare. Contradicted: the *lower* clearance bound, because a
+module does not carry its hand-over attitude to the seated plane. Diagnosed
+rather than contradicted: the base-offset axis, whose loss is entirely inside the
+learned phases with the channel untouched, so it bounds this policy and not this
+geometry. Two axes remain scope limits with no simulated arm at all -- the capture
+interface's load capacity, and both idealized load paths.
+
 **The instrument had a defect and it changed one axis completely.**
 `--rack_lateral_clearance_mm` selected scene attributes whose name contains
 "guide". Each bay's two upper lips and two entry flares are placed from
