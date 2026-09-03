@@ -40,6 +40,25 @@ def _load(path: Path) -> tuple[float, int, dict[str, float]]:
     return float(success.mean()), int(len(rows)), detail
 
 
+from zero_g_blade_swap.provenance import git_source_revision  # noqa: E402
+
+
+def _refuse_a_dirty_worktree(revision: dict) -> None:
+    """Fail before writing evidence that cannot be reproduced.
+
+    Ten older reports in this repository record source hashes that match no
+    commit, because they were produced from uncommitted code. The rule that
+    replaced them is that an evidence generator refuses a dirty tracked
+    worktree, and a generator without that rule is how the next ten happen.
+    """
+
+    if revision.get("available") and revision.get("dirty"):
+        changed = ", ".join(str(line) for line in revision.get("tracked_changes", [])[:5])
+        raise SystemExit(
+            "refusing to write evidence from a dirty tracked worktree; commit first. " + changed
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sweep_dir", type=Path, default=PROJECT_ROOT / "artifacts" / "robustness")
@@ -58,6 +77,8 @@ def main() -> int:
     )
     arguments = parser.parse_args()
 
+    _revision = git_source_revision(PROJECT_ROOT)
+    _refuse_a_dirty_worktree(_revision)
     points: dict[str, dict[str, object]] = {}
     for path in sorted(arguments.sweep_dir.glob("*.npz")):
         rate, episodes, detail = _load(path)
@@ -106,6 +127,7 @@ def main() -> int:
                         "scripts/sweep_chain_robustness.sh: one variable moved at a time around the "
                         "certified configuration, same seed, same checkpoints, same everything else."
                     ),
+                    "source_revision": _revision,
                     "notes": list(arguments.note or []),
                     "nominal_point": arguments.nominal,
                     "nominal_success_rate": baseline,

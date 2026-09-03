@@ -66,6 +66,22 @@ INSERT_PHASE = 4
 DONE_PHASE = 5
 
 
+def _refuse_a_dirty_worktree(revision: dict) -> None:
+    """Fail before writing evidence that cannot be reproduced.
+
+    Ten older reports in this repository record source hashes that match no
+    commit, because they were produced from uncommitted code. The rule that
+    replaced them is that an evidence generator refuses a dirty tracked
+    worktree, and a generator without that rule is how the next ten happen.
+    """
+
+    if revision.get("available") and revision.get("dirty"):
+        changed = ", ".join(str(line) for line in revision.get("tracked_changes", [])[:5])
+        raise SystemExit(
+            "refusing to write evidence from a dirty tracked worktree; commit first. " + changed
+        )
+
+
 def wilson_95(successes: int, trials: int) -> dict[str, float]:
     """The interval this repository quotes everywhere else, at the same z."""
 
@@ -231,6 +247,8 @@ def main() -> int:
     parser.add_argument("--compare_label", default="compared_arm")
     parser.add_argument("--report", type=Path, default=ROOT / "evidence" / "boundary_failure_modes_v1.json")
     arguments = parser.parse_args()
+    revision = git_source_revision(ROOT)
+    _refuse_a_dirty_worktree(revision)
 
     module = load_geometry(ROOT / "scripts" / "check_workcell_geometry.py")
     guide_inner_face = float(module.section_envelope()["guide_inner_face_half_width_m"])
@@ -385,7 +403,7 @@ def main() -> int:
             "directory": str(arguments.compare_dir) if arguments.compare_dir else None,
             "points": compared,
         },
-        "source_revision": git_source_revision(ROOT),
+        "source_revision": revision,
     }
     arguments.report.parent.mkdir(parents=True, exist_ok=True)
     arguments.report.write_text(json.dumps(report, indent=2), encoding="utf-8")
