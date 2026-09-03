@@ -321,6 +321,30 @@ for _two_slot_id, _two_slot_cls in (
         },
     )
 
+# The seating task with the wedge law as a terminal condition. One change from
+# the task v24rack trained on, and it is not a reward: three objectives already
+# left the attitude 0.4 mrad apart, so the angle is not the reward's to give.
+# What the scripted guarded advance does and the skill does not is refuse to push
+# a cocked module, and mdp.wedged ends the episode where 2c/theta says the module
+# can go no further. The observation width is unchanged, which is what lets this
+# resume the frozen v24rack weights.
+for _wedge_id, _wedge_cls in (
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertWedgeGated-v0", "ZeroGBladeGrapplePinInsertWedgeGatedEnvCfg"),
+    (
+        "Isaac-ZeroG-Blade-GrapplePin-InsertWedgeGated-Play-v0",
+        "ZeroGBladeGrapplePinInsertWedgeGatedPlayEnvCfg",
+    ),
+):
+    gym.register(
+        id=_wedge_id,
+        entry_point=INSERTION_ENTRY_POINT,
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{__name__}.wedge_insert_env_cfg:{_wedge_cls}",
+            "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+        },
+    )
+
 gym.register(
     id="Isaac-ZeroG-Blade-GrapplePin-InsertHandoff-v0",
     entry_point=INSERTION_ENTRY_POINT,
