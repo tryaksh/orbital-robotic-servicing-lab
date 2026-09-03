@@ -99,11 +99,22 @@ lower bound says a channel must admit the attitude the transit hands over at,
 0.5 x 46 mrad x 0.45 m = 10.35 mm per side. Six millimetres is well below that
 and the chain does not care. `2c/theta` at 46 mrad and 6 mm of clearance is
 261 mm of engagement, against a 529 mm stroke -- so a module traversing at the
-hand-over attitude would wedge halfway, and none of the 64 did. The module is
-therefore *not* traversing at the hand-over attitude: the entry flare squares it
-on the way in, and the guarded advance only steps while the estimate is inside
-the envelope. The bound belongs on the **flare's catch**, which is 73.9 mrad and
-comfortably above 46, not on the channel.
+hand-over attitude would wedge halfway, and none of the 64 did -- terminal axial
+error is 0.5 mm. **So the module is not traversing at the hand-over attitude**,
+and that much is airtight without knowing what squares it.
+
+Two candidates, and they are separable. The entry flare is a 12-degree funnel
+that catches 73.9 mrad and could square the module mechanically on the way in;
+the guarded advance only steps while the estimate is inside the entry envelope
+and could be squaring it by refusing to push. Running the 6 mm channel point
+with the flares removed decides it: if it still seats, the guard is doing the
+work; if it jams, the flare is.
+
+Either way the closed form's error is the same in kind. It charges the *channel*
+with admitting the hand-over attitude, when the hand-over attitude is corrected
+before the channel ever sees it. The bound belongs on whatever does the
+correcting, and the channel's own lower bound is then something else entirely --
+manufacturing and thermal fit, which this model does not carry.
 
 **Left to do.** Re-run the remaining boundary points under `channel` scope, then
 rebuild `validate_serviceability_boundary.py`'s decision on the corrected arm
