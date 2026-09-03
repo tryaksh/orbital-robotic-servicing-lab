@@ -132,10 +132,32 @@ is about**, and no search run today returned it.
    rule is whether the process corrects the bounded quantity.** The table above.
    Includes the two the simulator contradicts and why.
 4. **The cost of perception, measured as a substitution rather than a
-   comparison.** 20/24 with the module pose from the simulator, 4/24 from the
+   comparison, then attributed, then removed.** Three measurements, and the
+   middle one is the contribution.
+
+   *Substituted:* 20/24 with the module pose from the simulator, 4/24 from the
    cameras, one term changed in one code path -- and the estimator is no worse on
    the episodes it loses (1.89/2.00/2.11 mm on winners against 2.29/5.99/1.98 on
-   losers), which is what makes it a training-distribution result.
+   losers), which is what makes it a training-distribution result rather than a
+   sensor one.
+
+   *Attributed:* on an unchanged checkpoint, noising the pose channels alone
+   costs 8.33 points and the velocity channel alone 10.21, while both together
+   cost 41.15. **The interaction is 22.61 points, larger than the sum of the
+   parts.** Neither channel is the problem. A policy absorbs a noisy pose while
+   its velocity is true and a noisy velocity while its pose is true; with both it
+   has no reliable channel and nothing local repairs that. This is the result
+   that makes the mitigation non-obvious -- it says why a filter, a longer
+   differencing window or a better camera would each have failed -- and it is the
+   part of claim 4 that is ours rather than the literature's.
+
+   *Removed:* the fine-tune on both channels at once takes seed 4070 from 2/8 to
+   5/8 at eight hundred of two thousand epochs, with the module-loss failure mode
+   gone. Pooled over three seeds, queued.
+
+   Cite *Residual RL for Precise Assembly* (arXiv 2407.16677) as the properly
+   distilled baseline -- 98% teacher to 73% student -- and do not compete with it.
+   The claim here is the attribution, not the rate.
 5. **Method notes, honestly small:** score each criterion against the failure it
    predicts rather than against the pooled rate, because at the design point 27
    of 29 failures are the controller's own terminal precision; and keep the
