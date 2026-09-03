@@ -5795,9 +5795,15 @@ def main() -> dict[str, object]:
             # translates them together. The default is what the published sweep
             # ran, so both arms stay reproducible and the report says which.
             lateral_bodies = ("guide",) if args.rack_clearance_scope == "guides" else ("guide", "lip", "flare")
-            delta = None
-            moved: dict[str, int] = {}
-            for name in dir(env_cfg.scene):
+
+            def _bay_of(position) -> float:
+                # A bay is not at y = 0, and each body is offset from its own
+                # bay's centre line. Keying on the sign of y would move the
+                # second bay's pair to the wrong side of the rack.
+                return min((0.0, SECOND_SLOT_CENTER_Y), key=lambda centre_y: abs(position[1] - centre_y))
+
+            candidates = []
+            for name in sorted(dir(env_cfg.scene)):
                 lowered = name.lower()
                 kind = next((word for word in lateral_bodies if word in lowered), None)
                 if kind is None:
@@ -5806,26 +5812,28 @@ def main() -> dict[str, object]:
                 position = getattr(getattr(entity, "init_state", None), "pos", None)
                 if position is None:
                     continue
-                # Each body belongs to a bay, and a bay is not at y = 0. Its own
-                # bay's centre line is the one it is offset from; keying on the
-                # sign of y would move the second bay's pair to the wrong side
-                # of the rack.
-                bay = min((0.0, SECOND_SLOT_CENTER_Y), key=lambda centre_y: abs(position[1] - centre_y))
+                candidates.append((kind, entity, position))
+
+            # **Two passes, because `dir()` is alphabetical and a flare sorts
+            # before a guide.** The guides define where the wall goes; every
+            # other lateral body follows by the same translation, so the
+            # translation has to be known before anything moves.
+            delta = None
+            for kind, entity, position in candidates:
+                if kind != "guide":
+                    continue
+                thickness = float(tuple(entity.spawn.size)[1])
+                offset = half_width + 1.0e-3 * args.rack_lateral_clearance_mm + 0.5 * thickness
+                delta = offset - abs(position[1] - _bay_of(position))
+                break
+            if delta is None:
+                raise RuntimeError("no side guide found in the scene; --rack_lateral_clearance_mm has nothing to move")
+
+            moved: dict[str, int] = {}
+            for kind, entity, position in candidates:
+                bay = _bay_of(position)
                 sign = 1.0 if position[1] > bay else -1.0
-                if kind == "guide":
-                    thickness = float(tuple(entity.spawn.size)[1])
-                    offset = half_width + 1.0e-3 * args.rack_lateral_clearance_mm + 0.5 * thickness
-                    # Every guide in the rack is placed at the same offset from
-                    # its own bay, so one of them fixes the translation the rest
-                    # of the channel has to follow.
-                    delta = offset - abs(position[1] - bay) if delta is None else delta
-                else:
-                    if delta is None:
-                        raise RuntimeError(
-                            "a lip or flare was reached before any guide, so the channel translation "
-                            "is not yet known; scene attribute ordering changed"
-                        )
-                    offset = abs(position[1] - bay) + delta
+                offset = abs(position[1] - bay) + delta
                 entity.init_state.pos = (position[0], bay + sign * offset, position[2])
                 moved[kind] = moved.get(kind, 0) + 1
             print(
