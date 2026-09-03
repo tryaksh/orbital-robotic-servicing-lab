@@ -65,6 +65,10 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "Paired T14 result: +5/24; rack-only transfer succeeds in all 22/22 episodes that reach measured seating, while two fail upstream.",
     ),
     (
+        "rgbd_strict_rack_retention_datum_pair_seed6070.json",
+        "The first complete continuous RGB-D episode: trained capture and extraction, visible robot carry, guarded insertion to the derived seated plane, both robot supports released, and the rack alone holding for 0.733 s, with 1,772/1,772 detections.",
+    ),
+    (
         "rack_sightline_datum_pair_v1.json",
         "The datum pair closes the blind band: no depth of the seating stroke leaves both plates unreadable, on the primary camera alone.",
     ),

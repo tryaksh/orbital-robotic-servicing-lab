@@ -15,15 +15,17 @@ in what order, and the few things only a submission needs. They do not conflict 
 `P1` *is* `T0`, `P2` *is* `T3` — the paper section only adds sequencing and the
 claims worth making.
 
-**Current priority:** T15, then T1, then T13. T14 is closed with a narrowed claim: the
+**Current priority:** T1, then P0, then T13. **T15 is closed 2026-09-02.** T14 is closed with a narrowed claim: the
 current-source no-rack arm reproduces 17/24, visible rack retention raises the
 same fixed cohorts to 22/24, and all 22/22 episodes that reach seating pass the
 rack-only transfer. Two fail upstream, so the unchanged 95% full-chain gate is
-still not met. T15 passes its static held-out gate, but the latest strict run
-lost both fixed views late in guarded insertion after a successful trained
-grasp, extraction and visible carry. Restore continuous visibility without
-moving the flush datum or weakening any gate, then repeat that single run before
-spending a full T1 batch.
+still not met. T15 is closed: the destination bay's own vertical
+lead-in was derived to be a roof over a centred flush datum for 154 mm of the
+529 mm seating stroke, no camera placement can clear it at the unchanged
+resolution, and a derived flush datum *pair* closes the band. One complete
+continuous RGB-D episode now exists with 1,772/1,772 detections, ending in a
+0.733 s rack-only hold. T1 -- the pooled rate over held-out seeds -- is the
+measurement that was blocked behind it.
 T13 remains separate: learned v24 is 0/96 on real handoffs, and more epochs are
 not justified until its reset and caller distributions are identical by
 construction.
@@ -125,14 +127,40 @@ p95 18.3 mrad and occupancy 100%. The former-camera v2 arm remains canonical as
 the loser. A later 640 px certificate records 937/1,024 overall and 683/683 in
 the critical-bay subset with tighter pose error.
 
-**Continuous gate remains open.** The clean-source dual-camera strict run
-`rgbd_strict_rack_retention_dual_camera_full_seed6070.json` reached guarded
-insertion after trained capture/extraction and visible robot carry. Detection
-was 1,524/1,909, but both views missed the flush datum for the final 385
-attempts. The controller advanced 202 steps and then held 1,090 steps; it did
-not seat or release. Preserve this arm. The next change must address the
-measured late-insertion occlusion and then replay this same seed before T1 is
-batched.
+**Continuous gate passed 2026-09-02, by changing the datum rather than the
+camera.** The dual-camera strict run
+`rgbd_strict_rack_retention_dual_camera_full_seed6070.json` is preserved as the
+losing arm: 1,524/1,909 detections, both views lost for the final 385 attempts,
+202 advances then a 1,090-step hold, no completion claim.
+
+`scripts/check_rack_sightlines.py` derived why, on the CPU, and validated the
+derivation against that run's own stopping depth before reporting: the
+destination bay's upper entry ramp is an 80 x 60 x 18 mm plate at 12 degrees
+over the bay centre line, 25 mm above the module's top face, and it covers a
+centred datum for 154 mm of the 529 mm stroke from both cameras. Clearing it
+means looking under an 82 mm span through 25 mm of headroom, which puts the
+marker cell below the estimator's unchanged 8 px requirement, so **no camera
+placement is a fix**. Moving the second camera 370 mm along x had moved the loss
+depth 6.5 mm, which is what a roof does to two cameras both within ten degrees
+of vertical.
+
+The one change: **two flush plates instead of one**, ArUco 23 aft and ArUco 15
+forward at module-frame x = -+0.115 m, separation derived as "more than the
+203 mm shadow, and each plate still in frame", which leaves -+[0.1025, 0.1275] m.
+Marker, quiet zone, plane, camera, lens, resolution and every estimator gate are
+unchanged, and both checks keep `--datum_offsets_m` so the single centred datum
+stays replayable.
+
+Result, seed 6070, commit `7a82db2`, clean worktree
+(`rgbd_strict_rack_retention_datum_pair_seed6070.json`): trained capture,
+trained extraction, robot-carried transit at 1.05 mm and 3.27 mrad maximum
+drift, 563 guarded advances to the derived seated plane at 0.676 m, all seven
+insertion conditions true and still true after settling, both robot supports
+released, and the rack alone holding for 0.733 s at 0.0 m / 0.0 rad drift --
+with **1,772/1,772 detections and no consecutive failures**. Both plates
+carried the episode: 1,232 forward and 540 aft.
+
+**It is one episode.** T1 is the rate.
 
 ---
 
@@ -1228,22 +1256,63 @@ Carry the level-4 caveat explicitly: the base compliance is authored and not in
 the load path, so a level-4 number would imply a mount compliance that is not
 being simulated.
 
-## P6 — Say what sim-to-real would take
+## P6 — What sim-to-real would take, written out
 
-Required for a space-robotics venue and currently absent. Not experiments — an
-honest, specific analysis:
+**This section is required for a space-robotics venue, and until now it was a
+task rather than a text. It is written here so the paper can quote it.** It is
+analysis, not experiments: every item is a known property of this simulation,
+and the last subsection says which single hardware experiment would falsify the
+specification most cheaply.
 
-- what the contact model does and does not represent (contact forces are a
-  relative damage proxy, not an absolute budget);
-- the jaws carry no collider, so pad-on-pin contact is not simulated;
-- the base is fixed, so reaction into the servicing spacecraft is not in the load
-  path — a real free-flyer or a compliant mount changes the problem;
-- no connector mating, cabling, thermal or vacuum effects;
-- which hardware experiment would falsify the interface specification most
-  cheaply.
+### What is modelled, and to what standard
 
-Reviewers reward a paper that bounds its own claims. This project already has the
-discipline; it has never written it as a section.
+| Element | Modelled as | What that does and does not license |
+| --- | --- | --- |
+| Gravity | `gravity=(0, 0, 0)` throughout | The load-bearing assumption. A free-floating mass does not settle, and closing pads on a taper ejects it before they grip; that is why capture and extraction are learned and the free-space motion is not. It does not model orbital rate, gravity gradient, or a tumbling client. |
+| Robot base | Fixed to the world | No spacecraft reaction, no attitude control coupling, no compliant mount. A free-flying servicer changes the problem qualitatively: momentum is conserved through the arm, and the arm's own motion moves the base. |
+| Robot rail | Indexes a base already fixed to the world | The carriage's own stiffness, backlash and stopping error are not in the load path. The sweep's `base_y_+10mm` point is the closest thing to a stopping-error measurement and it loses. |
+| Robot-side form lock | Break-rated PhysX fixed joint (rigid) and bounded spring-damper (compliant) between `wrist_3_link` and the module | Disclosed in every report. Geometry is authored and its clearances are checked; the *load path* is idealised. No pad-on-pin contact is simulated: the jaws carry no collider. |
+| Rack-side retention | Two visible 2.5 x 20 x 20 mm pawls with a 600 N / 30 N-m `Rack`-to-module fixed joint, enabled only after the measured seating predicate | Visible geometry without contact colliders. The reaction magnitude is not exposed, so no pawl load can be quoted. |
+| Contact | PhysX rigid contact with authored friction pairs | Forces are a relative damage proxy, not an absolute budget. Friction values are chosen per surface and are not measured from any material pair. |
+| Perception | Rendered RGB-D, 640 px, 45 mm lens, 15 Hz, with a radiation-noise model on RGB | No lens distortion, no motion blur, no exposure control, no specular behaviour of real anodised aluminium, no sun-angle sweep, no eclipse transition. The flush ArUco datum is authored as code-native geometry, not printed and photographed. |
+| Not modelled at all | connector mating, cabling, thermal expansion, vacuum cold-welding, outgassing, plume, dust, radiation-induced sensor upsets | Any of these can dominate a real changeout. |
+
+### The three claims that would move first on hardware
+
+1. **The 2c/L admissibility bound would survive, and the numbers feeding it would
+   not.** The bound is Whitney's classical wedging geometry and does not depend on
+   the simulator. What depends on the simulator is the *delivered* attitude that
+   goes into it -- 20.5 mrad measured here -- and a real UR10e with a real
+   gripper on a real rail will not deliver that. The specification's shape is
+   robust; its constants are not.
+2. **The form lock is the biggest single idealisation.** Everything downstream of
+   capture assumes the module is rigidly attached to the wrist to within 2.5 mm
+   and 52 mrad, and that assumption is enforced by a joint rather than earned by
+   contact. On hardware the lock is a mechanism with backlash, and the transit
+   retention numbers (1.8 mm maximum drift here) are the first thing that would
+   degrade.
+3. **Perception would degrade differently, not uniformly.** The rendered marker
+   has perfect contrast and no blur. The failure the derivation found -- the bay's
+   own lead-in covering the datum -- is *geometric* and would reproduce exactly on
+   hardware; the detection rate on the frames where the datum is visible would not.
+
+### The cheapest falsifying experiment
+
+**Do not start with the arm.** Start with a bench mock-up of one bay and one
+module, on a linear stage, in 1 g, with the flush datum pair and the shipped
+camera calibration:
+
+- push the module in on the stage at a commanded tilt swept through the derived
+  `2c/L` bound and record where it wedges. That falsifies or confirms the
+  admissibility law and the lead-in geometry for the price of a fixture.
+- with the same fixture, record the datum through the full stroke and compare the
+  measured occlusion band against `evidence/rack_sightline_datum_pair_v1.json`.
+  The sight-line derivation makes a specific, falsifiable prediction about where
+  each plate is readable, and it needs no robot at all.
+
+Both are single-afternoon experiments on a stage that costs less than an arm, and
+between them they test the two claims the paper actually rests on. The
+manipulation result is the third experiment, not the first.
 
 ## P7 — Make the artifact citable
 

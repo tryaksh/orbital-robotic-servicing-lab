@@ -2,7 +2,7 @@
 
 Verified repository state. Evidence status is mechanical in
 [`evidence/MANIFEST.json`](../evidence/MANIFEST.json); bounded tasks are in
-[`NEXT_WORK.md`](NEXT_WORK.md). Last verified: 2026-09-01 on
+[`NEXT_WORK.md`](NEXT_WORK.md). Last verified: 2026-09-02 on
 `paper/serviceability-qualification`, based on `main` at `bccce6d`.
 
 Everything is simulated. Nothing has run on hardware.
@@ -11,11 +11,11 @@ Everything is simulated. Nothing has run on hardware.
 
 | Item | Verified state |
 | --- | --- |
-| Evidence | 42 canonical, 11 retracted, 158 historical; quote only canonical |
+| Evidence | 46 canonical, 11 retracted, 158 historical; quote only canonical |
 | Source provenance | 13 reports carry runtime source bindings; two match the working source, one is mechanically recovered, and ten older reports remain lost because they used uncommitted code |
 | Current completion result | 22/24, **91.67%**, after visible rack retention engages, both robot-side supports release, and the rack alone holds for at least 0.70 s |
 | Boundary decision | **not qualified**; only entry attitude is supported in simulation |
-| Live RGB-D service | fail-closed; the latest strict run grasped, extracted and carried to the destination, then stopped when neither fixed camera could read the flush tag during insertion |
+| Live RGB-D service | fail-closed, and now complete: one continuous episode grasps, extracts, carries, seats, releases both robot supports and is held by the rack alone for 0.733 s, with 1,772/1,772 detections |
 | CI architecture | core modules and CPU tests do not require optional FastAPI imports |
 | Checkpoints | reports contain hashes, but weights under `logs/` and `checkpoints/` are absent from a clone |
 | Hardware claim | none |
@@ -97,27 +97,67 @@ not simulated; the idealized joint carries the load.
 ### RGB-D perception
 
 The former passing certificate used a tilted tag floating 90 mm above the
-current module and is retracted. The current tag remains flush with the module
-top face. At the current 640 px resolution it detects in 937/1,024 held-out
-frames (**91.50%**) and 683/683 critical-bay frames, with position p95 1.19 mm,
-orientation p95 10.93 mrad and exact occupancy under unchanged gates. The prior
-camera and decoder arms remain as preserved losers.
+current module and is retracted. The datum remains flush with the module top
+face. At the current 640 px resolution the single centred datum detected in
+937/1,024 held-out frames (**91.50%**) and 683/683 critical-bay frames, with
+position p95 1.19 mm, orientation p95 10.93 mrad and exact occupancy under
+unchanged gates. The prior camera and decoder arms remain as preserved losers.
 
-A logic defect was also fixed: missed detections could propagate the module as
-if attached to the moving tool before capture. Reset now drains the tiled
+**The continuous blocker was geometric, and it is closed.**
+[`rack_sightline_occlusion_v1.json`](../evidence/rack_sightline_occlusion_v1.json)
+derives, without a simulator, that the destination bay's own vertical lead-in --
+an 80 x 60 x 18 mm plate at 12 degrees over the bay centre line, hanging 25 mm
+above the module's top face -- covers a centred flush datum for **154 mm of the
+529 mm seating stroke** from both fixed cameras. It is a roof: clearing it means
+looking under an 82 mm span through 25 mm of headroom, which foreshortens the
+marker cell below the resolution the estimator needs, so no camera placement
+fixes it. The derivation validates itself against the recorded loss depth of the
+dual-camera run before it reports.
+
+The one change is the datum, not the camera: **two flush plates on the same
+plane**, ArUco 23 aft and ArUco 15 forward at module-frame x = ∓0.115 m. The
+separation is derived -- it must exceed the lead-in's 203 mm shadow, and each
+plate must stay in frame, which leaves ∓[0.1025, 0.1275] m; this is that
+interval's centre. Marker size, quiet zone, plate plane, camera placement, lens,
+resolution and every estimator gate are unchanged.
+[`rack_sightline_datum_pair_v1.json`](../evidence/rack_sightline_datum_pair_v1.json)
+reports no depth of the stroke where both plates are unreadable, and that holds
+on the primary camera alone.
+[`servicing_camera_geometry_v4_datum_pair.json`](../evidence/servicing_camera_geometry_v4_datum_pair.json)
+keeps 64/64 workflow-envelope poses covered with 8.62 px minimum marker cell
+against the unchanged 8.0 px requirement; neither plate covers the envelope alone
+(36/64 and 32/64), which is the measurement that says why there are two.
+
+A logic defect was also fixed earlier: missed detections could propagate the
+module as if attached to the moving tool before capture. Reset drains the tiled
 camera's blank startup buffers, and a complementary fixed RGB-D view was added
 for rack entry. The estimator still holds the last observation until physical
-capture and fails closed when no current camera can see the datum.
+capture and fails closed when no current camera can see a datum.
 
-The clean-source strict run
-`rgbd_strict_rack_retention_dual_camera_full_seed6070.json` detected 1,524/1,909
-frames (**79.83%**). It used the trained capture and extraction policies,
-visibly carried the retained module to the destination, and advanced guarded
-insertion for 202 control steps. Both configured views then stopped returning
-the flush marker for 385 consecutive attempts, so the controller held for 1,090
-steps and correctly refused seating, release and rack-only success. The
-continuous demonstration is therefore still incomplete; the measured blocker
-is late insertion visibility, not rack retention.
+### The continuous demonstration
+
+**One complete continuous episode now exists, on clean source.**
+[`rgbd_strict_rack_retention_datum_pair_seed6070.json`](../evidence/rgbd_strict_rack_retention_datum_pair_seed6070.json),
+commit `7a82db2`, tracked worktree clean:
+
+| Stage | What the run recorded |
+| --- | --- |
+| Capture | PPO capture policy |
+| Extraction | PPO extraction policy |
+| Transit | robot-carried on the form lock; 1.05 mm and 3.27 mrad maximum tool-to-module drift |
+| Insertion | guarded advance, 563 advancing control steps, terminal axial target 0.676 m -- the derived seated plane -- reached at module centre 0.6763 |
+| Seating | all seven insertion conditions true, including axial depth; still true after the 0.70 s supported settle |
+| Release | both robot-side supports released; `all_conditions_including_released_gripper` true |
+| Rack only | pawls engaged after the unchanged measured-seating predicate at step 1720; 0.733 s rack-only recheck observed with 0.0 m and 0.0 rad drift |
+| Perception | **1,772/1,772 detections, zero failures, zero consecutive failures**; forward plate carried 1,232 and aft plate 540 |
+
+No hidden movement, no simulator-known module position, no teleport, and no
+tolerance was changed: the guarded advance ran on the deployed estimator's own
+2 mm / 15 mrad bounds throughout, which is eight times tighter than the entry
+flare's catch and is now reported as the tolerance that applied.
+
+**This is n = 1.** It is a demonstration, not a rate. The pooled RGB-D chain
+certification is T1 and is the next measurement.
 
 ### Serviceability boundary
 
@@ -149,7 +189,8 @@ qualified**.
   tolerance are not modeled.
 - The robustness sweep ranks sensitivities but is not a qualified tolerance band.
 - Every learned policy comes from one training seed.
-- No current video demonstrates the strict passing configuration.
+- The continuous RGB-D demonstration is one episode at one seed. The pooled
+  perception-in-the-loop rate is not measured.
 
 ## Reproduce and continue
 
@@ -160,6 +201,10 @@ qualified**.
 .\\.venv\\Scripts\\python.exe scripts/build_evidence_manifest.py --check
 .\\.venv\\Scripts\\python.exe scripts/build_script_index.py --check
 .\\.venv\\Scripts\\python.exe -m pytest -m "not isaac and not camera and not benchmark"
+
+# Geometry that needs no simulator, including the sight lines
+.\\.venv\\Scripts\\python.exe scripts/check_rack_sightlines.py
+.\\.venv\\Scripts\\python.exe scripts/check_servicing_camera_geometry.py
 
 # Current boundary decision; non-zero means not qualified
 .\\.venv\\Scripts\\python.exe scripts/validate_serviceability_boundary.py `

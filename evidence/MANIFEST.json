@@ -8,7 +8,7 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 45,
+    "canonical": 46,
     "retracted": 11,
     "historical": 158
   },
@@ -236,6 +236,16 @@
         "insert": "CFBB09E2DDC7AF11E180DD772C42F5D86AB20EA56BD0A00F2FEB2EA378B4EC69"
       },
       "holds_up": "One strict RGB-D negative run after capture-gated dropout propagation; it ended during extraction and claims no relocation."
+    },
+    "rgbd_strict_rack_retention_datum_pair_seed6070.json": {
+      "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "checkpoints_sha256": {
+        "capture": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+        "extract": "ADC247AB0E9403761A3108228019AE7BE4DC408155B414B6BF0226102E5CCA54",
+        "insert": "CFBB09E2DDC7AF11E180DD772C42F5D86AB20EA56BD0A00F2FEB2EA378B4EC69"
+      },
+      "holds_up": "The first complete continuous RGB-D episode: trained capture and extraction, visible robot carry, guarded insertion to the derived seated plane, both robot supports released, and the rack alone holding for 0.733 s, with 1,772/1,772 detections."
     },
     "rgbd_strict_rack_retention_gripper_clear_video2_seed4070.json": {
       "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
