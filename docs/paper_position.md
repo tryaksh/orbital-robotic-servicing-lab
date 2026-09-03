@@ -64,17 +64,27 @@ worst-case versus statistical anything:
 | pad half-bearing offset | how far a pad has slid off the pin | no -- the pull happens where the module sits | **confirmed by mechanism**: the only two points the criterion flags are the only two whose failing episodes sit further off the pin |
 | upper clearance bound | attitude a *resting* module may reach | no | **confirmed**: 16 mm/side loses 0.203 before delivery against nominal's 0.031, Wilson-separated |
 | lower clearance bound | attitude an *entering* module carries | **yes** -- the flare and the guarded advance square it during the stroke | **contradicted**: 6 mm/side scores 56.25% against nominal's 54.69% |
-| rail stop error, via the pad bearing bound | how far a pad has slid off the pin at the parked base | not corrected -- so the bound *should* transfer | **predicts the wrong failure**: the bound is 1.624 mm and the cliff is between 4 and 6 mm, and the episodes that are lost carry a 12.5 mm tool-to-pin offset against successful episodes' 13.0, so the pads are not the mechanism |
+| rail stop error, via the pad bearing bound | how far a pad has *slid off* the pin -- a static quantity | not corrected | **right axis, wrong criterion.** The bound is 1.624 mm, the cliff is between 4 and 6 mm, and the failing episodes are extracted and still gripped: they finish 2 mm from the extracted plane at a normal 12.5 mm tool-to-pin offset and fail the *settling* condition, carrying 16 to 30 mm/s against a 14.29 mm/s limit. The failure is dynamic; the bound is static |
 
-**The last row is the one worth writing the paper for.** Every other row is a
-bound that transfers or does not; that one is a bound that *fires in the wrong
-place for the wrong reason*. It is a grip bound, the quantity it constrains is
-not corrected by the process, and by the rule above it should transfer -- and the
-mechanism check says it does not, because the modules that are lost are being
-held correctly and the phase is timing out anyway. What actually fails is a
-policy trained at one base position meeting one it has never seen, and no
-geometric tool predicts that. **A design tool has to say where it stops
-applying**, and this is the measurement that says it.
+**The last row is the one worth writing the paper for**, and it took three
+passes to state correctly, which is itself the argument for the mechanism check.
+
+Pass one, from the ladder alone: *the bound is conservative by a factor of three*
+-- the textbook framing this document opens by forbidding. Pass two, from the
+grip signature: *the bound predicts a failure that does not occur*, because the
+lost modules are held at a normal offset. Pass three, from the phase counts and
+the settling limits: **the bound is static and the failure is dynamic.** An
+off-centre pull applies a moment to two flat pads on a pin -- the one thing this
+interface cannot resist, which is the project's founding measurement -- so the
+module leaves the bay carrying transverse motion that zero gravity never removes,
+and the extraction predicate, which requires it to be *settled*, never fires.
+
+That is the paper's most useful negative result, because the correction is
+nameable: an axis whose failure is a settling condition needs a bound on the
+residual velocity an off-axis pull imparts, and that is a dynamic quantity a
+static geometric tool does not compute. **A design tool has to say where it stops
+applying, and what would have to be added.** This is the measurement that says
+both.
 
 Recording the near miss, because it is the reason the mechanism check exists: the
 ladder alone reads as "the bound is conservative by a factor of three", which is
