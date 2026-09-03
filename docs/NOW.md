@@ -364,12 +364,28 @@ way: the tool-to-pin offset on the lost episodes is normal at every rung. What
 fails is getting the module out of the channel once the arm is parked off the
 bay's centre line.
 
-So the closed form has the right axis and the wrong criterion. The number a
-designer should take from this repository is "index to better than 4 mm and the
-binding constraint is extraction", and the 1.624 mm pad bound is safe but is
-answering a different question. That is the edge of what a geometric design tool
-predicts here, and on this axis the useful output is a criterion correction
-rather than a tolerance.
+**And the failing episodes are extracted.** They finish at a module centre of
+0.2214 to 0.2227 m against an extracted plane at 0.225 m, still gripped, with a
+normal tool-to-pin offset. The extraction predicate is not "past the line": it
+also requires the module to be **settled**, at 14.29 mm/s and 142.86 mrad/s, both
+derived from the capture tolerances over the 0.70 s settling window. The failing
+episodes carry 16.4 to 29.7 mm/s at the median -- one to two times the linear
+limit -- while their angular rates stay inside theirs.
+
+So the mechanism is dynamic and the bound is static. An off-centre pull applies a
+moment to a module held by two flat pads on a pin, which is the one thing this
+interface cannot resist; the module comes out with residual transverse motion,
+and in zero gravity nothing removes it. The pads never slide off, which is what
+the 1.624 mm bound is about; the module simply never stops moving.
+
+The closed form therefore has the right axis and the wrong *criterion*, and the
+correction is nameable: an axis whose failure is a settling condition needs a
+bound on the residual velocity an off-axis pull imparts, which is a dynamic
+quantity the present static tool does not compute. What a designer should take
+from this repository today is **"index to better than 4 mm, and the binding
+constraint is extraction settling, not the grasp"**. Whether a policy trained
+across base positions could null that residual is untested and is the obvious
+next arm.
 
 **A rate is not the only thing an episode records, and the mechanism separates
 where the rate does not.** The grip criterion bounds how far a pad may slide off
