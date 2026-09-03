@@ -28,6 +28,14 @@ So this scores each point on the rate of the mode its own criterion predicts,
 beside the pooled rate the previous protocol used, and reports both. Nothing is
 re-run and no tolerance moves: the same episodes are counted a second way.
 
+**And a rate is not the only thing an episode records.** The grip criterion is a
+bound on how far a pad may slide off the pin, so where it is violated the
+episodes that fail should carry a *larger tool-to-pin offset* than the ones that
+succeed -- a statement about a measured quantity, not about a count. That
+signature is reported per point, and at 64 episodes it separates where the rate
+does not: the two points the criterion flags are the only two where it is
+positive.
+
 The criteria themselves are recomputed from current source through
 `check_workcell_geometry.py`, so this cannot drift away from the geometry it
 claims to be testing.
@@ -154,6 +162,13 @@ def decompose(rows: np.ndarray, fields: list[str]) -> dict[str, object]:
             "successful": round(float(np.median(grip_error[success])), 6) if success.any() else None,
             "failing": round(float(np.median(grip_error[~success])), 6) if (~success).any() else None,
         },
+        # The grip criterion's own mechanism, as a measured quantity rather than
+        # a count: how much further off the pin a failing episode's pads sat.
+        "grip_signature_mm": (
+            round(1000.0 * float(np.median(grip_error[~success]) - np.median(grip_error[success])), 4)
+            if success.any() and (~success).any()
+            else None
+        ),
     }
 
 
@@ -299,6 +314,12 @@ def main() -> int:
                     "nominal_mode_rate": nominal_mode["rate"],
                     "nominal_mode_wilson_95": nominal_mode["wilson_95"],
                     "mode_separated_from_nominal": raised,
+                    "grip_signature_mm": record["grip_signature_mm"],
+                    "signature_present": (
+                        None
+                        if criterion != "grip" or record["grip_signature_mm"] is None
+                        else bool(float(record["grip_signature_mm"]) > 0.0)
+                    ),
                     # An inadmissible point supports the criterion by showing the
                     # mode; an admissible one supports it by not showing it.
                     "supports_the_criterion": (admissible and not raised) or (not admissible and raised),
@@ -385,6 +406,12 @@ def main() -> int:
             f"{modes['missed_the_terminal_gate']['rate']:6.3f}   "
             f"{'; '.join(marks) if marks else 'admissible'}"
         )
+    print()
+    print(f"{'point':<16} {'grip signature mm':>18}   (failing minus successful tool-to-pin offset)")
+    for name, record in points.items():
+        signature = record["grip_signature_mm"]
+        flagged = "" if record["analytical"]["grip_admissible"] else "   <- grip criterion violated"
+        print(f"{name:<16} {float(signature):>18.2f}{flagged}" if signature is not None else f"{name:<16}{'n/a':>19}")
     print()
     for name, verdict in verdicts.items():
         for row in verdict["criteria"]:

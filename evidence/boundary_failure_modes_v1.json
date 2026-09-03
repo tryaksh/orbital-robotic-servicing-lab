@@ -72,6 +72,7 @@
         "successful": 0.012848,
         "failing": 0.012808
       },
+      "grip_signature_mm": -0.0398,
       "dimension": "base_offset",
       "analytical": {
         "lateral_half_gap_m": 0.011065,
@@ -141,6 +142,7 @@
         "successful": 0.015527,
         "failing": 0.012488
       },
+      "grip_signature_mm": -3.0392,
       "dimension": "base_offset",
       "analytical": {
         "lateral_half_gap_m": 0.011065,
@@ -210,6 +212,7 @@
         "successful": 0.013101,
         "failing": 0.01304
       },
+      "grip_signature_mm": -0.0605,
       "dimension": "reference",
       "analytical": {
         "lateral_half_gap_m": 0.011065,
@@ -279,6 +282,7 @@
         "successful": 0.01296,
         "failing": 0.014385
       },
+      "grip_signature_mm": 1.4254,
       "dimension": "rack_clearance",
       "analytical": {
         "lateral_half_gap_m": 0.016,
@@ -348,6 +352,7 @@
         "successful": 0.013076,
         "failing": 0.012919
       },
+      "grip_signature_mm": -0.1574,
       "dimension": "rack_clearance",
       "analytical": {
         "lateral_half_gap_m": 0.006,
@@ -417,6 +422,7 @@
         "successful": 0.013033,
         "failing": 0.014213
       },
+      "grip_signature_mm": 1.1799,
       "dimension": "module_section",
       "analytical": {
         "lateral_half_gap_m": 0.016065,
@@ -486,6 +492,7 @@
         "successful": 0.013083,
         "failing": 0.013041
       },
+      "grip_signature_mm": -0.0415,
       "dimension": "module_section",
       "analytical": {
         "lateral_half_gap_m": 0.006065,
@@ -522,6 +529,8 @@
             "high": 0.056624
           },
           "mode_separated_from_nominal": false,
+          "grip_signature_mm": -0.0398,
+          "signature_present": null,
           "supports_the_criterion": true
         },
         {
@@ -540,6 +549,8 @@
             "high": 0.106973
           },
           "mode_separated_from_nominal": false,
+          "grip_signature_mm": -0.0398,
+          "signature_present": false,
           "supports_the_criterion": true
         }
       ]
@@ -564,6 +575,8 @@
             "high": 0.056624
           },
           "mode_separated_from_nominal": false,
+          "grip_signature_mm": -3.0392,
+          "signature_present": null,
           "supports_the_criterion": true
         },
         {
@@ -582,6 +595,8 @@
             "high": 0.106973
           },
           "mode_separated_from_nominal": true,
+          "grip_signature_mm": -3.0392,
+          "signature_present": false,
           "supports_the_criterion": false
         }
       ]
@@ -606,6 +621,8 @@
             "high": 0.056624
           },
           "mode_separated_from_nominal": false,
+          "grip_signature_mm": 1.4254,
+          "signature_present": null,
           "supports_the_criterion": true
         },
         {
@@ -624,6 +641,8 @@
             "high": 0.106973
           },
           "mode_separated_from_nominal": true,
+          "grip_signature_mm": 1.4254,
+          "signature_present": true,
           "supports_the_criterion": true
         }
       ]
@@ -648,6 +667,8 @@
             "high": 0.056624
           },
           "mode_separated_from_nominal": false,
+          "grip_signature_mm": -0.1574,
+          "signature_present": null,
           "supports_the_criterion": true
         },
         {
@@ -666,6 +687,8 @@
             "high": 0.106973
           },
           "mode_separated_from_nominal": false,
+          "grip_signature_mm": -0.1574,
+          "signature_present": false,
           "supports_the_criterion": true
         }
       ]
@@ -690,6 +713,8 @@
             "high": 0.056624
           },
           "mode_separated_from_nominal": false,
+          "grip_signature_mm": 1.1799,
+          "signature_present": null,
           "supports_the_criterion": true
         },
         {
@@ -708,6 +733,8 @@
             "high": 0.106973
           },
           "mode_separated_from_nominal": false,
+          "grip_signature_mm": 1.1799,
+          "signature_present": true,
           "supports_the_criterion": false
         }
       ]
@@ -732,6 +759,8 @@
             "high": 0.056624
           },
           "mode_separated_from_nominal": false,
+          "grip_signature_mm": -0.0415,
+          "signature_present": null,
           "supports_the_criterion": false
         },
         {
@@ -750,6 +779,8 @@
             "high": 0.106973
           },
           "mode_separated_from_nominal": false,
+          "grip_signature_mm": -0.0415,
+          "signature_present": false,
           "supports_the_criterion": true
         }
       ]
@@ -814,6 +845,7 @@
           "successful": 0.012848,
           "failing": 0.012808
         },
+        "grip_signature_mm": -0.0398,
         "dimension": "base_offset",
         "analytical": {
           "lateral_half_gap_m": 0.011065,
@@ -890,6 +922,7 @@
           "successful": 0.015527,
           "failing": 0.012488
         },
+        "grip_signature_mm": -3.0392,
         "dimension": "base_offset",
         "analytical": {
           "lateral_half_gap_m": 0.011065,
@@ -966,6 +999,7 @@
           "successful": 0.013101,
           "failing": 0.01304
         },
+        "grip_signature_mm": -0.0605,
         "dimension": "reference",
         "analytical": {
           "lateral_half_gap_m": 0.011065,
@@ -1042,6 +1076,7 @@
           "successful": 0.013066,
           "failing": 0.013424
         },
+        "grip_signature_mm": 0.3578,
         "dimension": "rack_clearance",
         "analytical": {
           "lateral_half_gap_m": 0.016,
@@ -1118,6 +1153,7 @@
           "successful": null,
           "failing": 0.011819
         },
+        "grip_signature_mm": null,
         "dimension": "rack_clearance",
         "analytical": {
           "lateral_half_gap_m": 0.006,
@@ -1194,6 +1230,7 @@
           "successful": 0.013033,
           "failing": 0.014213
         },
+        "grip_signature_mm": 1.1799,
         "dimension": "module_section",
         "analytical": {
           "lateral_half_gap_m": 0.016065,
@@ -1270,6 +1307,7 @@
           "successful": 0.013083,
           "failing": 0.013041
         },
+        "grip_signature_mm": -0.0415,
         "dimension": "module_section",
         "analytical": {
           "lateral_half_gap_m": 0.006065,
@@ -1295,12 +1333,11 @@
   },
   "source_revision": {
     "available": true,
-    "commit": "2a46aa8d78f7d2dbea044a4631c85f3ab1352006",
+    "commit": "aa40f9f0b7f08e4bd0784d1205a36c533c12253f",
     "branch": "paper/serviceability-qualification",
     "dirty": true,
     "tracked_changes": [
-      " M src/zero_g_blade_swap/tasks/blade_swap/__init__.py",
-      " M src/zero_g_blade_swap/tasks/blade_swap/estimator_noise_env_cfg.py"
+      " M scripts/report_boundary_failure_modes.py"
     ],
     "error": null
   }
