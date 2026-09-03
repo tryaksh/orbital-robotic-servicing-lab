@@ -1333,12 +1333,10 @@
   },
   "source_revision": {
     "available": true,
-    "commit": "aa40f9f0b7f08e4bd0784d1205a36c533c12253f",
+    "commit": "9a1c504c6a0f5d1ebbac3dca9224f948e5025e99",
     "branch": "paper/serviceability-qualification",
-    "dirty": true,
-    "tracked_changes": [
-      " M scripts/report_boundary_failure_modes.py"
-    ],
+    "dirty": false,
+    "tracked_changes": [],
     "error": null
   }
 }
