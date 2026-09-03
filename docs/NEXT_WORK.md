@@ -117,11 +117,27 @@ before the channel ever sees it. The bound belongs on whatever does the
 correcting, and the channel's own lower bound is then something else entirely --
 manufacturing and thermal fit, which this model does not carry.
 
-**Left to do.** Re-run the remaining boundary points under `channel` scope, then
-rebuild `validate_serviceability_boundary.py`'s decision on the corrected arm
-with the guides-only arm preserved beside it, and correct the clearance window's
-lower bound in `check_workcell_geometry.py` and `servicing_design.py` once the
-16 mm point lands.
+**Both clearance points have landed and the axis is re-derived.** 16 mm scores
+27/64 against the guides-only arm's 26/64, so that point was never the confound;
+6 mm is the whole of it. `evidence/chain_robustness_sweep_n64_channel_v1.json`
+is the corrected sweep, `evidence/serviceability_boundary_validation_n64_channel_v2.json`
+the decision on it, and both guides-only arms are preserved.
+
+**And the correction landed in the library rather than in the bound.** Replacing
+`check_workcell_geometry.py`'s lower bound outright would be wrong: the bound is
+a correct statement about a module that carries its hand-over attitude to the
+seated plane, and no module in this rack does. What the closed form was missing
+is the *gate that says so*, and
+`servicing_design.requires_a_correcting_lead_in` is it: at 46 mrad an 11.065 mm
+channel admits 481 mm of a 529 mm stroke, so this bay needs a funnel, and it has
+one. The same law that is contradicted as a clearance floor is confirmed as a
+lead-in requirement, which is the version a designer can act on.
+
+**Left to do.** Run the 6 mm point with `--remove_entry_flares` to say whether
+the flare or the guard does the squaring; it is queued. Then decide whether
+`check_workcell_geometry.py`'s `lateral_clearance_window` should report its lower
+bound as conditional on the absence of a correcting lead-in, which is a criterion
+change and needs its own before-and-after.
 
 <a id="t19"></a>
 ## T19 -- The solved-IK agreement check fires spuriously, about one run in fifteen
