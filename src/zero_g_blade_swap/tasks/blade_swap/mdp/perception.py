@@ -59,6 +59,29 @@ PERCEPTION_DEPLOYMENT = "deployment"
 PERCEPTION_ORACLE = "oracle"
 PERCEPTION_BLIND = "blind"
 PERCEPTION_MODES = frozenset((PERCEPTION_DEPLOYMENT, PERCEPTION_ORACLE, PERCEPTION_BLIND))
+#: Where the module-velocity channel comes from.
+#:
+#: **The camera is never the best available estimate of this quantity, at any
+#: point in the task, and that is measured rather than argued.** Before capture
+#: the module is held by its rails and is not moving, so a finite difference of
+#: consecutive camera poses reports the estimator's own residual -- 17 mm/s at
+#: the deployed filter against a seated module's 0.69 -- as motion. After capture
+#: the module is on the form lock and moves with the wrist, whose velocity the
+#: robot knows from its own encoders to a precision no camera approaches.
+#:
+#: The measurement that makes this worth an option: on an unchanged checkpoint,
+#: noising the pose channels and leaving the velocity exact costs 8.33 points,
+#: noising the velocity and leaving the pose exact costs 10.21, and noising both
+#: costs 41.15. The interaction is larger than the sum of the parts, so restoring
+#: *either* channel recovers most of the loss, and this is the one that can be
+#: restored without a camera.
+#:
+#: ``camera`` is the shipped path and stays the default; every published RGB-D
+#: number was measured on it.
+MODULE_VELOCITY_FROM_CAMERA = "camera"
+MODULE_VELOCITY_FROM_KINEMATICS = "kinematics"
+MODULE_VELOCITY_SOURCES = frozenset((MODULE_VELOCITY_FROM_CAMERA, MODULE_VELOCITY_FROM_KINEMATICS))
+
 PERCEPTION_BACKEND_POSE_HEAD = "pose_head"
 PERCEPTION_BACKEND_FIDUCIAL_PNP = "fiducial_pnp"
 PERCEPTION_BACKENDS = frozenset((PERCEPTION_BACKEND_POSE_HEAD, PERCEPTION_BACKEND_FIDUCIAL_PNP))
@@ -241,6 +264,10 @@ class ModuleStateEstimator:
             else None
         )
         self._sensor_cfg = SceneEntityCfg("camera")
+        self._velocity_source = str(getattr(env.cfg, "module_velocity_source", MODULE_VELOCITY_FROM_CAMERA)).lower()
+        if self._velocity_source not in MODULE_VELOCITY_SOURCES:
+            choices = ", ".join(sorted(MODULE_VELOCITY_SOURCES))
+            raise ValueError(f"module_velocity_source must be one of {choices}; got {self._velocity_source!r}")
         self._filter_time_constant_s = float(getattr(env.cfg, "perception_velocity_filter_time_constant_s", 0.10))
         self._fiducial_sensor_names = [self._sensor_cfg.name]
         if "camera_insert" in env.scene.sensors:
@@ -440,7 +467,53 @@ class ModuleStateEstimator:
         self._history_valid.fill_(True)
         self._last_update_step = step
         self._cached_step = step
+        if self._velocity_source == MODULE_VELOCITY_FROM_KINEMATICS:
+            self._velocity.copy_(self._kinematic_velocity())
         return self._pose, self._velocity
+
+    def _kinematic_velocity(self) -> torch.Tensor:
+        """Report the module's velocity from the robot instead of from the camera.
+
+        Two regimes, and neither reads the module's own state:
+
+        * **before capture** the module is held by its rails and is not moving,
+          so its velocity is zero. That is an assumption about the scene rather
+          than a measurement of it, and it is the same assumption the whole
+          workflow already makes when it plans a capture against a bay it
+          believes is holding a module still;
+        * **after capture** the module is on the form lock and moves with the
+          wrist, so the wrist's velocity is the module's. The transit already
+          rests on exactly that assumption and reports what it costs -- 1.05 mm
+          and 3.27 mrad of maximum tool-to-module drift in the continuous
+          episode.
+
+        The wrist's velocity is encoder and forward-kinematics information, which
+        a real servicer has. ``audit_vision_deployment_observations`` forbids a
+        deployed group from reading the *module's* live state and this does not:
+        it reads the robot's.
+        """
+
+        robot = self._env.scene["robot"]
+        body_id = self._wrist_body_id(robot)
+        velocity = torch.cat(
+            (robot.data.body_lin_vel_w[:, body_id], robot.data.body_ang_vel_w[:, body_id]), dim=-1
+        )
+        return torch.where(self._module_tool_attached.unsqueeze(-1), velocity, torch.zeros_like(velocity))
+
+    def _wrist_body_id(self, robot) -> int:
+        """Resolve and cache the wrist body index the tool frame hangs off."""
+
+        cached = getattr(self, "_cached_wrist_body_id", None)
+        if cached is not None:
+            return cached
+        names = list(robot.body_names)
+        if "wrist_3_link" not in names:
+            raise RuntimeError(
+                "module_velocity_source='kinematics' needs the wrist body the tool frame is defined "
+                f"from; the robot exposes {names}"
+            )
+        self._cached_wrist_body_id = names.index("wrist_3_link")
+        return self._cached_wrist_body_id
 
     def _estimate_deployment(self) -> torch.Tensor:
         """Infer pose from one camera frame, without touching live module state."""
@@ -793,6 +866,9 @@ __all__ = [
     "ModulePoseHead",
     "ModuleStateEstimator",
     "PERCEPTION_BLIND",
+    "MODULE_VELOCITY_FROM_CAMERA",
+    "MODULE_VELOCITY_FROM_KINEMATICS",
+    "MODULE_VELOCITY_SOURCES",
     "PERCEPTION_BACKENDS",
     "PERCEPTION_BACKEND_FIDUCIAL_PNP",
     "PERCEPTION_BACKEND_POSE_HEAD",

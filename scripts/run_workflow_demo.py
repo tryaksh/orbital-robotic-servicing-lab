@@ -785,6 +785,20 @@ def _parser() -> argparse.ArgumentParser:
         help="Extra steps to hold still after the workflow finishes, so a recording does not cut on the last frame.",
     )
     parser.add_argument(
+        '--module_velocity_source',
+        choices=('camera', 'kinematics'),
+        default='camera',
+        help=(
+            "Where the module-velocity channel comes from. 'camera' differences consecutive pose "
+            "estimates and is the shipped path, on which every published RGB-D number was measured. "
+            "'kinematics' reports zero before capture -- the module is held by its rails and is not "
+            "moving -- and the wrist's own velocity after it, which is encoder information a real "
+            "servicer has. Measured on an unchanged checkpoint, noising the pose channels alone costs "
+            "8.33 points and noising both pose and velocity costs 41.15, so restoring this one channel "
+            "recovers most of the loss without a retrain and without a better camera."
+        ),
+    )
+    parser.add_argument(
         '--fiducial_guard_bounds',
         choices=('estimator', 'lead_in'),
         default='estimator',
@@ -5876,6 +5890,13 @@ def main() -> dict[str, object]:
                 if obs is not None and getattr(obs, "rgb", None) is not None:
                     obs.rgb.params["noise_std_range"] = (0.0, 0.002)
             print("[INFO] Visual randomization off for recording; this run is not evidence")
+        if args.module_velocity_source != 'camera':
+            env_cfg.module_velocity_source = args.module_velocity_source
+            print(
+                f"[INFO] Module velocity channel from {args.module_velocity_source}: zero before "
+                "capture, the wrist's own velocity after it. This is not the shipped path.",
+                flush=True,
+            )
         if args.blind:
             env_cfg.pose_head_blind = True
         if args.oracle:
@@ -6738,6 +6759,7 @@ def main() -> dict[str, object]:
                                 "contact_force_limit_n": None,
                                 "workflow": args.workflow,
                                 "stress": {"pose_noise_scale": 1.0, "out_of_distribution": False},
+                                "module_velocity_source": args.module_velocity_source,
                                 "rack_clearance": {
                                     "per_side_mm": args.rack_lateral_clearance_mm,
                                     "scope": args.rack_clearance_scope,

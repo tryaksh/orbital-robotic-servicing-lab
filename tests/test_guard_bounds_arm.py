@@ -75,3 +75,30 @@ def test_the_oracle_and_the_fiducial_backend_refuse_to_run_together() -> None:
     guard = source.split('if args.oracle and args.perception_backend == "fiducial_pnp":', 1)[1]
     assert "parser.error(" in guard.split("if args.rack_retention", 1)[0]
     assert "--perception_backend pose_head --oracle" in guard.split("if args.rack_retention", 1)[0]
+
+
+def test_the_module_velocity_source_defaults_to_the_shipped_camera_path() -> None:
+    """Every published RGB-D number was measured differencing camera poses."""
+
+    source = _driver()
+    declaration = source.split("'--module_velocity_source'", 1)[1].split("parser.add_argument", 1)[0]
+    assert "choices=('camera', 'kinematics')" in declaration
+    assert "default='camera'" in declaration
+
+
+def test_the_kinematic_velocity_never_reads_the_module() -> None:
+    """It reads the robot, which is encoder information a real servicer has.
+
+    Reading the module's own body velocity here would be a privileged channel
+    wearing a deployment label, which is the failure the vision-deployment audit
+    exists to stop.
+    """
+
+    estimator = (ROOT / "src/zero_g_blade_swap/tasks/blade_swap/mdp/perception.py").read_text(encoding="utf-8")
+    body = estimator.split("def _kinematic_velocity", 1)[1].split("def _wrist_body_id", 1)[0]
+    assert 'self._env.scene["robot"]' in body
+    for forbidden in ("spare_blade", "attached_blade", "module_pose_label"):
+        assert forbidden not in body, f"the kinematic velocity reads {forbidden}"
+    # Zero before capture, the wrist's velocity after it, and nothing in between.
+    assert "self._module_tool_attached" in body
+    assert "torch.zeros_like" in body
