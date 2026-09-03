@@ -137,6 +137,17 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "The learned insert skill: 0.00% over 1,536 episodes. Published negative result.",
     ),
     (
+        "serviceability_boundary_validation_n64_channel_v2.json",
+        (
+            "The current boundary decision, on the sweep whose clearance points were re-measured with "
+            "each bay's mouth moving with its walls. Still not qualified. The rack-clearance axis now "
+            "fails on its *lower* bound rather than confirming it: 6 mm per side is analytically "
+            "infeasible and scores 56.25% against nominal's 54.69%, while the upper bound holds at "
+            "16 mm. Dimension statuses are derived from their own rows here; in v1 three of them were "
+            "literals."
+        ),
+    ),
+    (
         "serviceability_boundary_validation_n64_v1.json",
         "The boundary decision re-derived from the 64-environment sweep. Still not qualified, and now with per-point classifications: rack_lat_6mm confirms its analytical infeasibility, section_120x16, section_140x26 and rack_lat_16mm do not, base_y_+10mm shows a loss the analytical model did not predict.",
     ),

@@ -8,9 +8,9 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 53,
+    "canonical": 54,
     "retracted": 11,
-    "historical": 159
+    "historical": 158
   },
   "canonical": {
     "boundary_failure_modes_v1.json": {
@@ -319,6 +319,12 @@
       "title": "Robot-side service latch clearance, derived from the measured gripper envelope",
       "evidence_type": "geometric_derivation_no_simulator",
       "holds_up": "The form lock's clearances, derived from the measured gripper envelope."
+    },
+    "serviceability_boundary_validation_n64_channel_v2.json": {
+      "title": "Serviceability boundary validation against simulation",
+      "evidence_type": "analytical_boundary_against_simulation",
+      "generated_utc": "2026-09-03T20:00:45.975029+00:00",
+      "holds_up": "The current boundary decision, on the sweep whose clearance points were re-measured with each bay's mouth moving with its walls. Still not qualified. The rack-clearance axis now fails on its *lower* bound rather than confirming it: 6 mm per side is analytically infeasible and scores 56.25% against nominal's 54.69%, while the upper bound holds at 16 mm. Dimension statuses are derived from their own rows here; in v1 three of them were literals."
     },
     "serviceability_boundary_validation_n64_v1.json": {
       "title": "Serviceability boundary validation against simulation",
@@ -1036,10 +1042,6 @@
     "robot_carried_seating_sweep.json": {
       "title": "Destination-bay clearance sweep: why the robot-carried seating does not close",
       "generated_utc": "2026-08-23T11:25:39.027766+00:00"
-    },
-    "serviceability_boundary_validation_n64_channel_v2.json": {
-      "title": "Serviceability boundary validation against simulation",
-      "generated_utc": "2026-09-03T20:00:45.975029+00:00"
     },
     "serviceability_boundary_validation_v1.json": {
       "title": "Serviceability boundary validation against simulation",
