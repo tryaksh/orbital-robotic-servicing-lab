@@ -697,6 +697,27 @@ there is no way to say which of those exceed run-to-run noise.
 with everything else identical, then certify each with
 `scripts/certify_grapple_skills.sh` and report mean and range per stage.
 
+**The two skills need different designs, and the reason has to be published
+with the numbers.** Neither promoted checkpoint is a from-scratch run: grasp
+`v7m130` resumed `v6w65` which resumed `v5`, and extract `v18pin` resumed
+`v17m130` at epoch 10,600 for 2,000 epochs on a corrected criterion and rack.
+Reproducing either lineage three times over is not affordable for extract --
+12,600 epochs is about twelve hours a seed.
+
+So, running 2026-09-03:
+
+* **grasp: three from-scratch runs at 3,100 epochs, seeds 70, 71 and 72.**
+  Affordable, and the seed-70 run is also the control that says how much of
+  `v7m130`'s 86.90% came from its lineage rather than from its final stage.
+* **extract: three runs of the *final stage*, seeds 70, 71 and 72**, each
+  resuming `v17m130` at epoch 10,600 for the same 2,000 epochs. Seed 70 of that
+  set *is* `v18pin`. Earlier stages are shared, so this is a spread over the last
+  stage and not over the procedure, and it must be labelled as one.
+
+A spread over one stage is a weaker claim than a spread over the procedure. It is
+the affordable one, and saying which was measured is the difference between a
+qualification and an overstatement.
+
 **Done when.** Each skill's headline number carries a spread across three
 training seeds, and `NOW.md` §2 quotes it that way. If the spread turns out to be
 wider than the differences the attribution ladder credits to task changes, say so
