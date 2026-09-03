@@ -19,6 +19,10 @@ NUM_ENVS="${NUM_ENVS:-512}"
 EPOCHS="${EPOCHS:-700}"
 EVAL_ENVS="${EVAL_ENVS:-128}"
 EVAL_EPISODES="${EVAL_EPISODES:-1000}"
+# The training seed, which every published skill number in this repository
+# shares. T3 exists because one seed is not a spread, and it could not be
+# answered while the seed was a literal in two places in this file.
+SEED="${SEED:-70}"
 LOGROOT="logs/rl_games"
 mkdir -p artifacts/grapple evidence
 
@@ -41,7 +45,7 @@ for skill in "${skills[@]}"; do
   # RUN_SUFFIX keeps a re-run's checkpoints, raw rows, and report separate from
   # an earlier one, so a task correction never gets certified against a policy
   # trained before it.
-  run="grapple_$(echo "$skill" | tr '[:upper:]' '[:lower:]')_l0_seed70${RUN_SUFFIX:-}"
+  run="grapple_$(echo "$skill" | tr '[:upper:]' '[:lower:]')_l0_seed${SEED}${RUN_SUFFIX:-}"
 
   # Smoke first. A task that cannot take a step is not worth hours of GPU, and
   # every one of these three has failed a smoke at least once already.
@@ -64,7 +68,7 @@ for skill in "${skills[@]}"; do
   "$PYTHON" scripts/train.py --headless \
       --task "$task" \
       --num_envs "$NUM_ENVS" \
-      --seed 70 \
+      --seed "$SEED" \
       --robustness_level 0 \
       --max_iterations "$EPOCHS" \
       --run_name "$run" \
