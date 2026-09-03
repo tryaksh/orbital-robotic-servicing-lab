@@ -376,13 +376,32 @@ claim in one sentence.
 .\\.venv\\Scripts\\python.exe scripts/check_rack_sightlines.py
 .\\.venv\\Scripts\\python.exe scripts/check_servicing_camera_geometry.py
 
-# Current boundary decision; non-zero means not qualified
+# The rack requirement from measured manipulator performance; no simulator
+.\\.venv\\Scripts\\python.exe scripts/derive_rack_requirement.py
+
+# Current boundary decision, on the corrected clearance arm; non-zero means not qualified
 .\\.venv\\Scripts\\python.exe scripts/validate_serviceability_boundary.py `
+  --robustness-sweep evidence/chain_robustness_sweep_n64_channel_v1.json `
   --output <new-versioned-evidence-path>
+
+# The same episodes scored against the failure each criterion predicts
+.\\.venv\\Scripts\\python.exe scripts/report_boundary_failure_modes.py `
+  --sweep_dir artifacts/robustness64_corrected `
+  --compare_dir artifacts/robustness64 `
+  --report <new-versioned-evidence-path>
 
 # GPU: strict fixed-cohort chain and one RGB-D chain
 bash scripts/run_robot_carried.sh certify
 bash scripts/run_robot_carried.sh rgbd
+
+# GPU: does the training-time estimator surrogate reproduce its certificate
+C:/isaac-sim/python.bat scripts/check_estimator_surrogate.py `
+  --report <new-versioned-evidence-path>
+
+# GPU: the clearance sweep with each bay's mouth moving with its walls
+POINTS="rack_lat_6mm rack_lat_16mm" ENVS=64 EPISODES=64 STEPS=6000 `
+  SWEEP_EXTRA="--rack_clearance_scope channel" OUT=artifacts/robustness64_channel `
+  bash scripts/sweep_chain_robustness.sh
 ```
 
 Never overwrite evidence; use a new versioned filename.
