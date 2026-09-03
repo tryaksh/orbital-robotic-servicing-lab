@@ -345,11 +345,31 @@ offset, the way `section_120x16` and `rack_lat_16mm` do. They do not. At 4, 6 an
 episodes' 13.0 -- the same grip, or a slightly better one. **The module is being
 held correctly and the phase is timing out anyway.**
 
-So the closed form predicts a failure that does not happen, at a threshold three
-times tighter than the one that does, and the failure that does happen is a
-policy trained at a single base position meeting one it has never seen. That
-marks the edge of what a geometric design tool can predict, and it is the one
-axis where the answer is not a number but a boundary of applicability.
+**And the phase it happens in is one phase, which makes the correction
+specific.** Counting where each failing episode timed out, over the same five
+points:
+
+| rail stop error | capture | extract | every other phase |
+| ---: | ---: | ---: | ---: |
+| 0 mm | 2 | 0 | 0 |
+| 2 mm | 1 | 1 | 0 |
+| 4 mm | 0 | 7 | 0 |
+| 6 mm | 0 | 40 | 0 |
+| 10 mm | 1 | 60 | 0 |
+
+Capture is untouched at every offset. **The rail's indexing requirement is set by
+the pull, not by the grasp** -- and not by the pad-bearing bound the closed form
+uses for it, which is a bound on the grasp. The pads hold the module the whole
+way: the tool-to-pin offset on the lost episodes is normal at every rung. What
+fails is getting the module out of the channel once the arm is parked off the
+bay's centre line.
+
+So the closed form has the right axis and the wrong criterion. The number a
+designer should take from this repository is "index to better than 4 mm and the
+binding constraint is extraction", and the 1.624 mm pad bound is safe but is
+answering a different question. That is the edge of what a geometric design tool
+predicts here, and on this axis the useful output is a criterion correction
+rather than a tolerance.
 
 **A rate is not the only thing an episode records, and the mechanism separates
 where the rate does not.** The grip criterion bounds how far a pad may slide off
