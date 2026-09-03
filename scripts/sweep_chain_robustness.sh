@@ -16,6 +16,12 @@
 # robot rides a rail to the destination bay, so a bay that is not where the rail
 # stops and a rail that does not stop where the bay is are the same error, and
 # only one of them is a scene rebuild.
+#
+# SWEEP_EXTRA passes one driver flag to every point, so a sweep can be re-run
+# with one thing changed and compared against itself. It exists for
+# --rack_clearance_scope: the published clearance points moved the side guides
+# and left the entry flares, and re-measuring that needs the same points with
+# the same seed under one changed flag, not a different script.
 
 set -u
 PYTHON="C:/isaac-sim/python.bat"
@@ -57,6 +63,7 @@ point() {
       --latch_rotation_stiffness_nm_per_rad 20000 \
       --destination_channel_relief_m "${RELIEF:-0.0046125}" \
       --mating_mode compliant --mating_force_cap_n 1000 \
+      ${SWEEP_EXTRA:-} \
       "$@" \
       --report "$OUT/${tag}_report.json" --episode_metrics "$OUT/${tag}.npz" \
       > "$OUT/${tag}.log" 2>&1
