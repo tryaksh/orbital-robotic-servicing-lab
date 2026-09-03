@@ -372,11 +372,18 @@ derived from the capture tolerances over the 0.70 s settling window. The failing
 episodes carry 16.4 to 29.7 mm/s at the median -- one to two times the linear
 limit -- while their angular rates stay inside theirs.
 
-So the mechanism is dynamic and the bound is static. An off-centre pull applies a
-moment to a module held by two flat pads on a pin, which is the one thing this
-interface cannot resist; the module comes out with residual transverse motion,
-and in zero gravity nothing removes it. The pads never slide off, which is what
-the 1.624 mm bound is about; the module simply never stops moving.
+So the mechanism is dynamic and the bound is static. The module comes out
+carrying residual motion that zero gravity never removes, and the pads never
+slide off -- which is what the 1.624 mm bound is about. The module simply never
+stops moving.
+
+**The direction of that motion is not recorded and the reading below is
+therefore a hypothesis, not a measurement.** A pull whose line is off the bay's
+centre applies a moment to a module held by two flat pads on a pin, which is the
+one thing this interface cannot resist and is this project's founding
+measurement. That would produce exactly this signature. Confirming it needs the
+velocity vector rather than its magnitude, which the episode rows do not carry;
+`--handoff_trace` does, and one traced rung would settle it.
 
 The closed form therefore has the right axis and the wrong *criterion*, and the
 correction is nameable: an axis whose failure is a settling condition needs a

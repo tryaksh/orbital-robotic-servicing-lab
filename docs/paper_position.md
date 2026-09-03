@@ -73,11 +73,14 @@ Pass one, from the ladder alone: *the bound is conservative by a factor of three
 -- the textbook framing this document opens by forbidding. Pass two, from the
 grip signature: *the bound predicts a failure that does not occur*, because the
 lost modules are held at a normal offset. Pass three, from the phase counts and
-the settling limits: **the bound is static and the failure is dynamic.** An
-off-centre pull applies a moment to two flat pads on a pin -- the one thing this
-interface cannot resist, which is the project's founding measurement -- so the
-module leaves the bay carrying transverse motion that zero gravity never removes,
+the settling limits: **the bound is static and the failure is dynamic.** The
+module leaves the bay carrying residual motion that zero gravity never removes,
 and the extraction predicate, which requires it to be *settled*, never fires.
+Why it carries that motion is a hypothesis and must be written as one -- a pull
+off the bay's centre line applies a moment to two flat pads on a pin, the one
+thing this interface cannot resist -- because the episode rows record a speed and
+not a direction. `--handoff_trace` records the vector and one traced rung settles
+it.
 
 That is the paper's most useful negative result, because the correction is
 nameable: an axis whose failure is a settling condition needs a bound on the

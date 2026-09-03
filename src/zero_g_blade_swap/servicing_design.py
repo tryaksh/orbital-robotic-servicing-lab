@@ -59,6 +59,21 @@ trained at one base position tolerates, and this repository's own sweep shows
 those are different numbers -- see `docs/sim_to_real.md`.
 
 Every quantity is a length in metres or an angle in radians. Nothing is tuned.
+
+## What this library does not bound, and it matters
+
+**Every criterion here is static.** Each asks whether a module *placed* somewhere
+is admissible; none asks what the manipulator's motion leaves behind. That is a
+real gap and this repository has measured it: the rail stop-error axis fails at a
+threshold three times looser than the pad bound predicts, and the failing
+episodes are extracted and still gripped at a normal offset. What they fail is a
+*settling* condition -- they carry 16 to 30 mm/s against a 14.29 mm/s limit that
+is itself derived, from the capture tolerance over the settling window.
+
+So a designer taking `rail_indexing_bound_m` gets a safe number for the wrong
+reason. Bounding that axis properly needs the residual velocity an off-axis pull
+imparts, which is a dynamic quantity and is not computed here. `docs/NOW.md`
+carries the measurement and `docs/paper_position.md` carries what it means.
 """
 
 from __future__ import annotations
