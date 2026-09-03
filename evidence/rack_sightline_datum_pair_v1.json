@@ -2,7 +2,7 @@
   "status": "passed",
   "title": "What stands in the servicing cameras line to the flush datum along the seating stroke",
   "evidence_type": "geometric_derivation_no_simulator",
-  "generated_utc": "2026-09-03T05:08:47.947885+00:00",
+  "generated_utc": "2026-09-03T05:22:06.528315+00:00",
   "question": "check_servicing_camera_geometry.py proves the datum is in frame and resolvable over the transit envelope. It never asked what is in front of it during insertion. This does.",
   "stroke": {
     "from_module_centre_x_m": 0.1467528907,
@@ -266,6 +266,6 @@
     "Occluders are the parts own cuboids; fillets, fasteners and cable runs are not modelled.",
     "Visibility is line of sight only. It does not predict decoding, exposure or motion blur.",
     "The module is swept at the seated lateral and vertical pose; the guarded envelope moves the datum by less than the plate clearances that decide the answer.",
-    "The robot is not an occluder here: check_servicing_camera_geometry.py owns the rear-gripper sight line, and the gripper trails the module rear face by 83 mm along the whole stroke."
+    "Robot-side occluders are the gripper collision envelope and the latch jaw boxes, both stowed and engaged, riding with the captured module. Arm links beyond the wrist are not modelled."
   ]
 }

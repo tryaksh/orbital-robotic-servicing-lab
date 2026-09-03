@@ -85,6 +85,7 @@ ASSETS = ROOT / 'src/zero_g_blade_swap/tasks/blade_swap/assets.py'
 FIDUCIAL = ROOT / 'src/zero_g_blade_swap/fiducial.py'
 ENV_CFG = ROOT / 'src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py'
 CHANNEL = ROOT / 'evidence/destination_channel_geometry.json'
+GRIPPER_ENVELOPE = ROOT / 'evidence/gripper_collision_envelope.json'
 STRICT_RUN = ROOT / 'evidence/rgbd_strict_rack_retention_dual_camera_full_seed6070.json'
 #: The datum layout that recorded run carried: one flush plate on the module
 #: centre.  The self-validation is against what happened, so this is a fact
@@ -249,6 +250,49 @@ def _bay_boxes(bay_y: float, prefix: str, *, relieved: dict | None, lead_ins: bo
     return boxes
 
 
+def _robot_boxes() -> list[Box]:
+    """Robot-side geometry that rides with the captured module, in its frame.
+
+    The gripper's recorded collision envelope and the service latch's own jaw
+    boxes, mapped through the one axis convention this repository uses for a
+    captured module: the wrist's closing, third and approach axes are the
+    module's z, y and x.  Placing them here rather than asserting they are
+    behind the datum is the difference between a derivation and a claim, and
+    the latch is still engaged at the seated plane -- release_before_blade_
+    centre_x_m is 17 mm deeper than the bay's seated depth.
+    """
+
+    gripper = json.loads(GRIPPER_ENVELOPE.read_text(encoding='utf-8'))['derived']
+    low = gripper['gripper_envelope_min_m']
+    high = gripper['gripper_envelope_max_m']
+    flange = service_latch.SEATED_FLANGE_BLADE_X
+    boxes = [
+        Box(
+            'gripper_envelope',
+            (
+                flange + 0.5 * (low[2] + high[2]),
+                0.5 * (low[1] + high[1]),
+                0.5 * (low[0] + high[0]),
+            ),
+            (high[2] - low[2], high[1] - low[1], high[0] - low[0]),
+        )
+    ]
+    # The stowed carriage is what follows the module to the mouth; the engaged
+    # jaw sits further forward still, so both are swept.
+    for engaged in (False, True):
+        state = 'engaged' if engaged else 'stowed'
+        for name, centre, size in service_latch.jaw_boxes(engaged=engaged):
+            for sign in (1.0, -1.0):
+                boxes.append(
+                    Box(
+                        f'latch_{state}_{name}_{"left" if sign > 0 else "right"}',
+                        (flange + centre[2], sign * centre[1], centre[0]),
+                        (size[2], size[1], size[0]),
+                    )
+                )
+    return boxes
+
+
 def _datum_edge_points(offset_x: float, half: float, tag_z: float) -> np.ndarray:
     """Points along the four edges of a square datum, in the module frame."""
 
@@ -267,12 +311,13 @@ def _readability(
     occluders: list[Box],
     focal_px: float,
     principal: np.ndarray,
+    module_frame_occluders: list[Box] | None = None,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, float]]:
-    """Per-depth occlusion, frame containment and pixel depth for one outline.
+    """Per-depth occlusion and frame containment for one datum outline.
 
-    Returns ``(blocked, in_frame, first_occluder_depth_by_part)`` plus, through
-    ``pixel_depths``, the camera-frame range each sample sits at, which is what
-    the cell-resolution gate is computed from.
+    ``occluders`` are fixed in the world; ``module_frame_occluders`` ride with
+    the captured module, and are tested in the module frame by moving the
+    camera into it, which is the same segment against the same box.
     """
 
     offsets = np.zeros((depths.size, 1, 3))
@@ -281,31 +326,40 @@ def _readability(
     offsets[:, 0, 2] = lateral[1]
     world = points_module[None, :, :] + offsets
     flat = world.reshape(-1, 3)
+    if module_frame_occluders:
+        riding_points = np.broadcast_to(points_module[None, :, :], world.shape).reshape(-1, 3)
+        riding_cameras = np.repeat(
+            camera_position[None, :] - offsets[:, 0, :], points_module.shape[0], axis=0
+        )
 
     blocked_flat = np.zeros(flat.shape[0], dtype=bool)
     culprits: dict[str, float] = {}
-    for box in occluders:
-        origin = (flat - box.centre) @ box.rotation
-        direction = (camera_position - flat) @ box.rotation
-        near = np.zeros(flat.shape[0])
-        far = np.ones(flat.shape[0])
-        alive = np.ones(flat.shape[0], dtype=bool)
-        for axis in range(3):
-            component = direction[:, axis]
-            parallel = np.abs(component) < 1.0e-12
-            alive &= ~(parallel & (np.abs(origin[:, axis]) > box.half[axis]))
-            safe = np.where(parallel, 1.0, component)
-            first = (-box.half[axis] - origin[:, axis]) / safe
-            second = (box.half[axis] - origin[:, axis]) / safe
-            low = np.where(parallel, 0.0, np.minimum(first, second))
-            high = np.where(parallel, 1.0, np.maximum(first, second))
-            near = np.maximum(near, low)
-            far = np.minimum(far, high)
-            alive &= near <= far
-        hit = alive.reshape(depths.size, -1).any(axis=1)
-        if hit.any():
-            culprits.setdefault(box.name, float(depths[hit][0]))
-        blocked_flat |= alive
+    cases = [(occluders, flat, camera_position)]
+    if module_frame_occluders:
+        cases.append((module_frame_occluders, riding_points, riding_cameras))
+    for boxes, points, eye in cases:
+        for box in boxes:
+            origin = (points - box.centre) @ box.rotation
+            direction = (eye - points) @ box.rotation
+            near = np.zeros(points.shape[0])
+            far = np.ones(points.shape[0])
+            alive = np.ones(points.shape[0], dtype=bool)
+            for axis in range(3):
+                component = direction[:, axis]
+                parallel = np.abs(component) < 1.0e-12
+                alive &= ~(parallel & (np.abs(origin[:, axis]) > box.half[axis]))
+                safe = np.where(parallel, 1.0, component)
+                first = (-box.half[axis] - origin[:, axis]) / safe
+                second = (box.half[axis] - origin[:, axis]) / safe
+                low = np.where(parallel, 0.0, np.minimum(first, second))
+                high = np.where(parallel, 1.0, np.maximum(first, second))
+                near = np.maximum(near, low)
+                far = np.minimum(far, high)
+                alive &= near <= far
+            hit = alive.reshape(depths.size, -1).any(axis=1)
+            if hit.any():
+                culprits.setdefault(box.name, float(depths[hit][0]))
+            blocked_flat |= alive
     blocked = blocked_flat.reshape(depths.size, -1).any(axis=1)
 
     local = (world - camera_position) @ camera_rotation
@@ -367,6 +421,7 @@ def check(datum_offsets_m: tuple[float, ...] | None = None) -> dict[str, object]
     occluders = _bay_boxes(second_bay_y, 'destination', relieved=chain_arm, lead_ins=True)
     occluders += _bay_boxes(0.0, 'source', relieved=None, lead_ins=False)
     occluders.append(Box('rack_backplane', RACK_POSITION_M, RACK_SIZE_M))
+    riding = _robot_boxes()
 
     cameras = {
         'primary': (
@@ -416,7 +471,15 @@ def check(datum_offsets_m: tuple[float, ...] | None = None) -> dict[str, object]
             for outline_name, half in outlines.items():
                 points = _datum_edge_points(offset, half, tag_centre[2])
                 blocked, in_frame, culprits = _readability(
-                    points, depths, lateral, camera_position, camera_rotation, occluders, focal_px, principal
+                    points,
+                    depths,
+                    lateral,
+                    camera_position,
+                    camera_rotation,
+                    occluders,
+                    focal_px,
+                    principal,
+                    riding,
                 )
                 spans[outline_name] = {
                     'occluded': _span(depths, blocked),
@@ -459,6 +522,7 @@ def check(datum_offsets_m: tuple[float, ...] | None = None) -> dict[str, object]
     recorded_detections = strict['perception']['detector_availability']
     recorded = _recorded_bounds(
         occluders,
+        riding,
         cameras,
         depths,
         lateral,
@@ -548,8 +612,8 @@ def check(datum_offsets_m: tuple[float, ...] | None = None) -> dict[str, object]
             'Visibility is line of sight only. It does not predict decoding, exposure or motion blur.',
             'The module is swept at the seated lateral and vertical pose; the guarded envelope moves the '
             'datum by less than the plate clearances that decide the answer.',
-            'The robot is not an occluder here: check_servicing_camera_geometry.py owns the rear-gripper '
-            'sight line, and the gripper trails the module rear face by 83 mm along the whole stroke.',
+            'Robot-side occluders are the gripper collision envelope and the latch jaw boxes, both stowed '
+            'and engaged, riding with the captured module. Arm links beyond the wrist are not modelled.',
         ],
     }
 
@@ -582,6 +646,7 @@ def _frame_margin_px(
 
 def _recorded_bounds(
     occluders: list[Box],
+    riding: list[Box],
     cameras: dict[str, tuple[np.ndarray, np.ndarray]],
     depths: np.ndarray,
     lateral: tuple[float, float],
@@ -606,7 +671,15 @@ def _recorded_bounds(
             for offset in offsets:
                 points = _datum_edge_points(offset, half, tag_z)
                 blocked, _in_frame, _culprits = _readability(
-                    points, depths, lateral, camera_position, camera_rotation, occluders, focal_px, principal
+                    points,
+                    depths,
+                    lateral,
+                    camera_position,
+                    camera_rotation,
+                    occluders,
+                    focal_px,
+                    principal,
+                    riding,
                 )
                 selected = depths[blocked]
                 per_view.append(float(selected[0]) if selected.size else None)

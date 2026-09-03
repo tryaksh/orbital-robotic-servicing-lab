@@ -1045,6 +1045,116 @@ Claims 2 and 3 are the paper. Claim 1 motivates it. Claim 4 is the deliverable
 that makes it matter to a spacecraft designer. The 97.92% is *evidence for* the
 architecture, reported with its limits — not the headline.
 
+## Reality check against the published literature (2026-09-02)
+
+**The plan above was written from the inside. This section is what a literature
+search says about it, and it moves two of the four claims.** Sources are named so
+the next reader can disagree with the reading rather than with the summary.
+
+### Claim 1 is not a discovery, and has to be reframed
+
+"The binding constraint is the mechanical interface, not the controller" is the
+premise the space-servicing community already builds on. SIROM (EU H2020),
+HOTDOCK and iSSI are standard androgynous interfaces whose stated purpose is that
+geometric guiding structures "autonomously accommodate residual position and
+attitude misalignments", which *by design* relaxes the precision required of the
+arm. A reviewer in this field will read claim 1 as a restatement of their own
+motivation.
+
+**What survives, and it is worth more:** the *direction of derivation*. This
+project computes the interface requirement **from measured manipulation
+performance**, in closed form, on a CPU, **before** any policy is trained — and
+then checks that closed form against what the simulator does. The community
+publishes interfaces; it does not usually publish the requirement-derivation that
+sizes one. Reframe claim 1 from "the interface binds" to "here is how much
+interface a measured manipulator needs, computed rather than chosen".
+
+### Claim 3 has named prior art and cannot be presented as new
+
+Skill-chain hand-off failure is a studied problem with its own vocabulary:
+a preceding skill terminates outside the *initiation set* of the next. Lee et al.,
+*Adversarial Skill Chaining for Long-Horizon Robot Manipulation via Terminal State
+Regularization* (CoRL 2021) and *Value-Informed Skill Chaining* (2023) both attack
+exactly this, and the second states the cascade this project measured: a widened
+initiation set produces an even wider termination set.
+
+**What survives:** the instance is unusually stark and fully instrumented -- a
+skill certifying 36.77% on its own reset distribution and **0.00% on 96 recorded
+predecessor hand-offs**, with eight named interface dimensions differing -- and
+the mitigation is a *simulator-free, source-level agreement test that runs in CI*,
+which is an engineering contribution rather than an algorithmic one. Cite the
+prior art, claim the measurement and the practice, and do not claim the
+phenomenon. If a stronger algorithmic claim is wanted, the hand-off-conditioned
+reset work in T13 has to be measured **against** terminal-state regularization,
+not merely against nothing.
+
+### Claim 2 survives and is the paper
+
+An attitude that does not move when the objective is changed three ways is the
+novel, transferable result. Two conditions on it:
+
+- **Ground it in the classical analysis rather than presenting `2c/L` as new.**
+  Whitney's quasi-static peg-in-hole model and its jamming/wedging diagrams
+  already bound admissible tilt from the clearance ratio. `2c/L` is that bound
+  applied to a long flat module in a rectangular channel. Cite it; the novelty is
+  using it as a *pre-training design gate* in an RL pipeline, not as a
+  post-hoc explanation.
+- **Three objectives at one training seed is three samples of one seed.** P2 is
+  what turns this claim from an anecdote into a result, and it is now the single
+  highest-value GPU spend in the project.
+
+### The comparison a robotics reviewer will demand
+
+NVIDIA SRL's contact-rich assembly line -- Factory, IndustReal, AutoMate, FORGE,
+MatchMaker -- reports **83-99% real-world success over hundreds of trials with
+zero-shot sim-to-real transfer, on the Franka Panda and the UR10e**: the same arm
+this project simulates. Any framing that competes on insertion success rate loses
+to that, in simulation, immediately.
+
+**So do not compete there.** They answer *can a policy insert this part*. This
+project answers *what must the part and the bay be, for any policy to insert it*.
+That is a design-space question sitting underneath theirs, and it is defensible
+next to them if -- and only if -- the paper says so explicitly and cites them as
+the assembly-policy baseline rather than ignoring them.
+
+### Simulation-only is publishable, but not everywhere
+
+Sim-only space-robot learning is an active, published area: the *Space Robotics
+Bench* (arXiv 2509.23328, 2025) is a simulation-only framework with RL baselines,
+and i-SAIRAS, ASTRA and IEEE Aerospace routinely carry simulation studies.
+ICRA/RSS/CoRL/RA-L with no hardware and no algorithmic novelty is not realistic.
+
+**Venue, in order of realism:**
+
+| Venue | Fit | What it needs beyond today |
+| --- | --- | --- |
+| i-SAIRAS / ASTRA / IEEE Aerospace | strong: design-for-serviceability with a simulated demonstrator is exactly their scope | P1, P2, P6 |
+| *Acta Astronautica* or *Frontiers in Robotics and AI* (space robotics) | strong for the journal version | P1-P6, plus the boundary mismatches resolved |
+| *Journal of Field Robotics* / *IEEE T-ASE* | possible as a methods paper | a real baseline comparison, and the CI agreement test evaluated as a method |
+| ICRA / IROS / CoRL / RA-L | not realistic as it stands | hardware, or an algorithmic contribution measured against terminal-state regularization |
+
+### The gap that most threatens the paper, and it is not on the list above
+
+The strongest claim available -- *a closed-form CPU check predicts what the
+simulator does across a swept design space* -- is **currently contradicted by this
+project's own evidence**. `serviceability_boundary_validation_v2.json` reports
+mismatch on three of seven dimensions: rack clearance, module section and robot
+base offset. Only entry attitude is supported.
+
+A paper cannot claim a predictive design tool while its own fail-closed validator
+disagrees with it on three axes. Two honest routes, and they are not equivalent:
+
+1. **Narrow the claim** to the dimension that agrees, and report the other three
+   as measured disagreements with their sample sizes. Cheap, honest, weaker.
+2. **Raise the sample size and find out.** The report already says one module
+   section exclusion "agrees and one contradicts at current sample size". If the
+   disagreement is sampling noise it will close; if it is real, the closed form is
+   wrong somewhere and that is a *better* paper than a quiet narrowing.
+
+**This is now P0.** It outranks P3-P7, and it is cheap next to P2: it is
+evaluation, not training. Sequence it beside the P2 seed batch, which occupies the
+GPU differently.
+
 ## P1 — Close the provenance gap before writing a word
 
 **This is T0, and for a paper it is not optional.** A reproducibility statement

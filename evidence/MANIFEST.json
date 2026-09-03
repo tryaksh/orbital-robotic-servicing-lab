@@ -218,13 +218,13 @@
     "rack_sightline_datum_pair_v1.json": {
       "title": "What stands in the servicing cameras line to the flush datum along the seating stroke",
       "evidence_type": "geometric_derivation_no_simulator",
-      "generated_utc": "2026-09-03T05:08:47.947885+00:00",
+      "generated_utc": "2026-09-03T05:22:06.528315+00:00",
       "holds_up": "The datum pair closes the blind band: no depth of the seating stroke leaves both plates unreadable, on the primary camera alone."
     },
     "rack_sightline_occlusion_v1.json": {
       "title": "What stands in the servicing cameras line to the flush datum along the seating stroke",
       "evidence_type": "geometric_derivation_no_simulator",
-      "generated_utc": "2026-09-03T05:00:06.014201+00:00",
+      "generated_utc": "2026-09-03T05:22:08.400933+00:00",
       "holds_up": "Simulator-free sight lines: the destination bay's own vertical lead-in blinds both fixed views over 154 mm of the seating stroke, and the derivation reproduces the recorded loss depth."
     },
     "rgbd_strict_capture_gate_v2_seed5070.json": {

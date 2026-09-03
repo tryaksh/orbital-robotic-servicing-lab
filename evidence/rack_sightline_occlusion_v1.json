@@ -2,7 +2,7 @@
   "status": "failed",
   "title": "What stands in the servicing cameras line to the flush datum along the seating stroke",
   "evidence_type": "geometric_derivation_no_simulator",
-  "generated_utc": "2026-09-03T05:00:06.014201+00:00",
+  "generated_utc": "2026-09-03T05:22:08.400933+00:00",
   "question": "check_servicing_camera_geometry.py proves the datum is in frame and resolvable over the transit envelope. It never asked what is in front of it during insertion. This does.",
   "stroke": {
     "from_module_centre_x_m": 0.1467528907,
@@ -20,9 +20,10 @@
       0.0
     ],
     "shipped_offsets_x_m": [
-      0.0
+      -0.115,
+      0.115
     ],
-    "evaluates_the_shipped_layout": true
+    "evaluates_the_shipped_layout": false
   },
   "per_datum": [
     {
@@ -144,13 +145,16 @@
   },
   "self_validation": {
     "recorded_run": "rgbd_strict_rack_retention_dual_camera_full_seed6070.json",
+    "recorded_run_datum_offsets_x_m": [
+      0.0
+    ],
     "recorded_terminal_axial_target_m": 0.336171,
     "recorded_detector_failures": 385,
     "recorded_max_consecutive_failures": 385,
     "derived_marker_first_touched_m": 0.33075289070000014,
     "derived_marker_border_row_consumed_m": 0.34575289070000015,
     "agrees": true,
-    "reads": "the recorded advance had to stop between the depth at which the lead-in first covers any of the shipped marker outline in every view and the depth at which it has covered a whole border cell in every view"
+    "reads": "the recorded advance had to stop between the depth at which the lead-in first covers any of that run marker outline in every view and the depth at which it has covered a whole border cell in every view"
   },
   "source_bindings": {
     "guide_size_literal": true,
@@ -167,6 +171,6 @@
     "Occluders are the parts own cuboids; fillets, fasteners and cable runs are not modelled.",
     "Visibility is line of sight only. It does not predict decoding, exposure or motion blur.",
     "The module is swept at the seated lateral and vertical pose; the guarded envelope moves the datum by less than the plate clearances that decide the answer.",
-    "The robot is not an occluder here: check_servicing_camera_geometry.py owns the rear-gripper sight line, and the gripper trails the module rear face by 83 mm along the whole stroke."
+    "Robot-side occluders are the gripper collision envelope and the latch jaw boxes, both stowed and engaged, riding with the captured module. Arm links beyond the wrist are not modelled."
   ]
 }
