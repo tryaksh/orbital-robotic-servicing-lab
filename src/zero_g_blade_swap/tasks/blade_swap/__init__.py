@@ -234,6 +234,36 @@ for _grapple_id, _grapple_cls in (
         },
     )
 
+# The same three skills, with the module state they see coming from the deployed
+# estimator's measured error distribution instead of from the simulator.
+#
+# The chain scores 20/24 on the vision task when the module pose comes from the
+# simulator and 4/24 when the same code path reads it from the cameras, so the
+# 67-point step is the estimator and nothing else. It is not a perception
+# defect -- the estimator's own error on healthy episodes is about 2 mm -- it is
+# three policies deployed against an error distribution that was never in their
+# training data. These registrations put it there.
+#
+# Separate ids, because the published skill certificates were measured on exact
+# state and both arms have to stay runnable for the difference to mean anything.
+for _noised_id, _noised_cls in (
+    ("Isaac-ZeroG-Blade-GrapplePin-GraspNoised-v0", "ZeroGBladeGrapplePinGraspNoisedEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-GraspNoised-Play-v0", "ZeroGBladeGrapplePinGraspNoisedPlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractNoised-v0", "ZeroGBladeGrapplePinExtractNoisedEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractNoised-Play-v0", "ZeroGBladeGrapplePinExtractNoisedPlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertNoised-v0", "ZeroGBladeGrapplePinInsertNoisedEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertNoised-Play-v0", "ZeroGBladeGrapplePinInsertNoisedPlayEnvCfg"),
+):
+    gym.register(
+        id=_noised_id,
+        entry_point=INSERTION_ENTRY_POINT,
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{__name__}.estimator_noise_env_cfg:{_noised_cls}",
+            "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+        },
+    )
+
 # Insert, trained inside the chain. Its own entry point, because the capture
 # phase runs inside the environment: the episode resets the capture scene, steps
 # the frozen capture policy until the chain's hand-off predicate fires, latches
