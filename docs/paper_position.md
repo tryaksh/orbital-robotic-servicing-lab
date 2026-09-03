@@ -90,8 +90,12 @@ is about**, and no search run today returned it.
 
 ## Claim structure, in the order the paper should make them
 
-1. **A learned manipulator's delivered pose is not a design variable.** Three
-   objectives, 0.4 mrad apart, with every losing arm kept. Motivates everything.
+1. **A learned manipulator's delivered pose is not a design variable.** Led by
+   the mechanism: the stalled population holds 96.8 mrad and travels 261.5 mm,
+   against `2c/theta` = 260.6 mm -- the closed-form bound predicts the achieved
+   depth to within a millimetre. Corroborated by three objectives landing
+   0.4 mrad apart, with every losing arm kept and the single-seed limitation
+   stated. Motivates everything.
 2. **Therefore the interface must be derived from measured performance, before
    training.** `servicing_design.py` is that derivation, asserted against the
    certified geometry check over a 36-cell grid, and the direction of derivation

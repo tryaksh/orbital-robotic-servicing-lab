@@ -64,9 +64,14 @@ seated   ( 93)   46.9 mrad attitude   2.46 mm lateral     0.8 mm short
 grip is 11.5 mm along the pin on both, to a tenth of a millimetre
 ```
 
-`2c/theta` at 96.8 mrad in this bay's relieved channel is **261 mm**, which is
-the travel the stalled episodes achieve. They are not stopping short of a depth
-they could reach. **They are as deep as their own attitude permits.**
+`2c/theta` at 96.8 mrad in this bay's relieved channel is **260.6 mm**. The
+stalled episodes stop 174.5 mm short of a 436 mm stroke, so they travel
+**261.5 mm**. **The closed-form bound predicts the achieved depth to within a
+millimetre**, and that is the single strongest number in this note: it is a
+mechanistic agreement between a bound and a measured population, and unlike the
+three-objective comparison it does not depend on how many training seeds produced
+that population. They are not stopping short of a depth they could reach. They
+are as deep as their own attitude permits.
 
 So the requirement on the seating phase is a bound on attitude *maintained
 through the stroke*: to travel the chain's 529 mm the module must be held inside
