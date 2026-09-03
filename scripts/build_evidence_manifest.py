@@ -65,6 +65,10 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "Paired T14 result: +5/24; rack-only transfer succeeds in all 22/22 episodes that reach measured seating, while two fail upstream.",
     ),
     (
+        "rack_sightline_occlusion_v1.json",
+        "Simulator-free sight lines: the destination bay's own vertical lead-in blinds both fixed views over 154 mm of the seating stroke, and the derivation reproduces the recorded loss depth.",
+    ),
+    (
         "rack_retention_geometry_v1.json",
         "Simulator-free rack-pawl geometry, load rating, and source binding check.",
     ),
