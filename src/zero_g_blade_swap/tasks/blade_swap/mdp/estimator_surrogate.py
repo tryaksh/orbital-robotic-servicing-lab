@@ -40,11 +40,21 @@ the same kind of error:
    about 0.69 mm/s. Modelling that as a Gaussian on the velocity would have
    hidden the structure that makes it hard.
 
-What is **not** modelled: occlusion geometry, the hold-until-capture interlock,
-and the heavy tail a losing episode shows once the module leaves the cameras'
-useful envelope. Those are properties of the scene, not of the sensor, and a
+What is **not** modelled: occlusion geometry and the hold-until-capture
+interlock. Those are properties of the scene rather than of the sensor, and a
 surrogate that invented them would be tuning. So this is a *lower bound* on
 deployment error and the reports that use it say so.
+
+**The in-loop tail is separate, and it is switchable.** The certified residual is
+measured on held-out still frames, where the position error tops out at 3.3 mm.
+In the loop the same estimator records a per-episode maximum around 30 mm --
+*including on the episodes that succeed*, whose mean error is the same 1.9 to
+2.1 mm as the ones that fail. So the tail is a property of the poses a closed
+loop actually visits, not a symptom of an episode already going wrong, and a
+surrogate without it is missing a cause rather than a consequence. It is off by
+default, because switching it on is a second change and would make the first
+arm's result unattributable; `estimator_noise_outlier_rate` and
+`estimator_noise_outlier_scale` turn it on as its own arm.
 """
 
 from __future__ import annotations
@@ -104,6 +114,17 @@ class SurrogateModuleStateEstimator:
         if self._filter_time_constant_s < 0.0:
             raise ValueError("perception_velocity_filter_time_constant_s must be non-negative")
 
+        # The in-loop tail, off by default. See the module docstring: the
+        # certified still-frame residual tops out at 3.3 mm while the same
+        # estimator in the loop records about 30 mm per episode, on winning
+        # episodes as much as on losing ones.
+        self._outlier_rate = float(getattr(cfg, "estimator_noise_outlier_rate", 0.0))
+        self._outlier_scale = float(getattr(cfg, "estimator_noise_outlier_scale", 1.0))
+        if not 0.0 <= self._outlier_rate <= 1.0:
+            raise ValueError("estimator_noise_outlier_rate must be a probability")
+        if self._outlier_scale < 1.0:
+            raise ValueError("estimator_noise_outlier_scale below 1 would make the tail lighter than the bulk")
+
         device = env.device
         self._pose = torch.zeros((env.num_envs, MODULE_POSE_DIM), device=device)
         self._velocity = torch.zeros((env.num_envs, 6), device=device)
@@ -134,6 +155,8 @@ class SurrogateModuleStateEstimator:
         described["velocity_filter_time_constant_s"] = self._filter_time_constant_s
         described["camera_frames"] = self._camera_frames
         described["missed_frames"] = int(self._missed_frames.sum().item())
+        described["outlier_rate"] = self._outlier_rate
+        described["outlier_scale"] = self._outlier_scale
         return described
 
     def reset(self, env_ids: Sequence[int] | torch.Tensor | None = None) -> None:
@@ -169,8 +192,18 @@ class SurrogateModuleStateEstimator:
         device = truth.device
         count = truth.shape[0]
 
-        position = truth[:, :3] + torch.randn((count, 3), device=device) * self._model.position_sigma_m
-        perturbation = torch.randn((count, 3), device=device) * self._model.orientation_sigma_rad
+        # One scale per environment per frame: the bulk sigma, or the tail's
+        # multiple of it. Drawing the scale rather than a separate outlier keeps
+        # the residual isotropic and keeps the bulk exactly as certified.
+        scale = torch.ones((count, 1), device=device)
+        if self._outlier_rate > 0.0:
+            scale = torch.where(
+                torch.rand((count, 1), device=device) < self._outlier_rate,
+                torch.full_like(scale, self._outlier_scale),
+                scale,
+            )
+        position = truth[:, :3] + torch.randn((count, 3), device=device) * self._model.position_sigma_m * scale
+        perturbation = torch.randn((count, 3), device=device) * self._model.orientation_sigma_rad * scale
         angle = torch.linalg.vector_norm(perturbation, dim=-1)
         axis = torch.zeros_like(perturbation)
         axis[:, 0] = 1.0
