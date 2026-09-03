@@ -458,6 +458,28 @@ channel that maximises the smaller margin, the cross-sections it accepts, and ho
 accurately the rail has to index. `scripts/derive_rack_requirement.py` is its
 CLI and needs no simulator.
 
+[`rack_requirement_sweep_v1.json`](../evidence/rack_requirement_sweep_v1.json)
+sweeps that derivation and is the figure the claim is made of. One measured
+number about the arm moves; the rack follows:
+
+| hand-over attitude | clearance window per side | window width | rail bound | sections of 36 | correcting lead-in |
+| ---: | --- | ---: | ---: | ---: | --- |
+| 5 mrad | 1.125 to 11.781 mm | 10.656 mm | 6.236 mm | 17 | no |
+| 20 mrad | 4.500 to 11.781 mm | 7.281 mm | 4.548 mm | 15 | no |
+| 35 mrad | 7.875 to 11.781 mm | 3.906 mm | 2.861 mm | 8 | no |
+| 40 mrad | 9.000 to 11.781 mm | 2.781 mm | 2.298 mm | 7 | **yes** |
+| **46 mrad, as built** | 10.350 to 11.781 mm | 1.431 mm | 1.623 mm | 7 | yes |
+| 52 mrad | 11.700 to 11.781 mm | 0.081 mm | 0.948 mm | 2 | yes |
+
+The four quantities do not move together, and that is what makes it a
+derivation rather than a scaling. Only the window's *lower* bound moves, so the
+window widens; the rail bound loosens because a tighter channel leaves the pads
+more of their reach; and **between 35 and 40 mrad the correcting lead-in stops
+being required at all** -- a part deleted from the rack by an improvement in the
+arm. At 52 mrad the window closes to 0.081 mm, which is the manipulator handing
+over at the interface's own acceptance limit and the rack having nothing left to
+give.
+
 For this workcell it derives 10.350 to 11.781 mm of clearance per side, a design
 point at 11.065 mm, seven admissible cross-sections of thirty-six, and a **rail
 indexing bound of 1.623 mm**. `tests/test_servicing_design.py` asserts all of it
