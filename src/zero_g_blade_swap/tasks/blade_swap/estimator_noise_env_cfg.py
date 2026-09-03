@@ -109,6 +109,44 @@ class _EstimatorNoiseSettings:
 
 
 @configclass
+class PoseOnlyNoisedExtractObsCfg(NoisedExtractPolicyObsCfg):
+    """The pose channels carry the estimator's error; the velocity is exact.
+
+    **This is one half of the experiment that says which channel does the
+    damage**, and it needs no training and no cameras. Thirteen of twenty-four
+    camera-driven episodes time out in extraction, and the two candidate causes
+    are the pose residual itself and the velocity the estimator manufactures by
+    differencing a staircase. Held apart, each is measurable on an unchanged
+    checkpoint.
+    """
+
+    blade_velocity = ObsTerm(func=mdp.attached_blade_velocity, scale=0.10)
+
+
+@configclass
+class PoseOnlyNoisedExtractObservationsCfg:
+    policy: PoseOnlyNoisedExtractObsCfg = PoseOnlyNoisedExtractObsCfg()
+
+
+@configclass
+class VelocityOnlyNoisedExtractObsCfg(ExtractPolicyObsCfg):
+    """The velocity is the estimator's; every pose channel is exact.
+
+    The other half. The surrogate still runs, so the velocity is differenced and
+    filtered over the same sample-and-hold staircase the deployed estimator
+    produces -- which is the property that makes this channel's noise floor
+    twenty times a seated module's own speed.
+    """
+
+    blade_velocity = ObsTerm(func=mdp.NoisedModuleVelocity, scale=0.10)
+
+
+@configclass
+class VelocityOnlyNoisedExtractObservationsCfg:
+    policy: VelocityOnlyNoisedExtractObsCfg = VelocityOnlyNoisedExtractObsCfg()
+
+
+@configclass
 class ZeroGBladeGrapplePinGraspNoisedEnvCfg(ZeroGBladeGrapplePinGraspEnvCfg, _EstimatorNoiseSettings):
     observations: NoisedGraspObservationsCfg = NoisedGraspObservationsCfg()
 
@@ -121,6 +159,32 @@ class ZeroGBladeGrapplePinExtractNoisedEnvCfg(ZeroGBladeGrapplePinExtractEnvCfg,
 @configclass
 class ZeroGBladeGrapplePinInsertNoisedEnvCfg(ZeroGBladeGrapplePinInsertEnvCfg, _EstimatorNoiseSettings):
     observations: NoisedInsertObservationsCfg = NoisedInsertObservationsCfg()
+
+
+@configclass
+class ZeroGBladeGrapplePinExtractPoseNoisedEnvCfg(ZeroGBladeGrapplePinExtractEnvCfg, _EstimatorNoiseSettings):
+    observations: PoseOnlyNoisedExtractObservationsCfg = PoseOnlyNoisedExtractObservationsCfg()
+
+
+@configclass
+class ZeroGBladeGrapplePinExtractVelocityNoisedEnvCfg(ZeroGBladeGrapplePinExtractEnvCfg, _EstimatorNoiseSettings):
+    observations: VelocityOnlyNoisedExtractObservationsCfg = VelocityOnlyNoisedExtractObservationsCfg()
+
+
+@configclass
+class ZeroGBladeGrapplePinExtractPoseNoisedPlayEnvCfg(ZeroGBladeGrapplePinExtractPoseNoisedEnvCfg):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.scene.num_envs = 1
+        configure_insertion_play_presentation(self)
+
+
+@configclass
+class ZeroGBladeGrapplePinExtractVelocityNoisedPlayEnvCfg(ZeroGBladeGrapplePinExtractVelocityNoisedEnvCfg):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.scene.num_envs = 1
+        configure_insertion_play_presentation(self)
 
 
 @configclass
@@ -149,6 +213,14 @@ class ZeroGBladeGrapplePinInsertNoisedPlayEnvCfg(ZeroGBladeGrapplePinInsertNoise
 
 __all__ = [
     "DEPLOYED_VELOCITY_FILTER_TIME_CONSTANT_S",
+    "PoseOnlyNoisedExtractObsCfg",
+    "PoseOnlyNoisedExtractObservationsCfg",
+    "VelocityOnlyNoisedExtractObsCfg",
+    "VelocityOnlyNoisedExtractObservationsCfg",
+    "ZeroGBladeGrapplePinExtractPoseNoisedEnvCfg",
+    "ZeroGBladeGrapplePinExtractPoseNoisedPlayEnvCfg",
+    "ZeroGBladeGrapplePinExtractVelocityNoisedEnvCfg",
+    "ZeroGBladeGrapplePinExtractVelocityNoisedPlayEnvCfg",
     "NoisedExtractObservationsCfg",
     "NoisedExtractPolicyObsCfg",
     "NoisedGraspObservationsCfg",

@@ -253,6 +253,13 @@ for _noised_id, _noised_cls in (
     ("Isaac-ZeroG-Blade-GrapplePin-ExtractNoised-Play-v0", "ZeroGBladeGrapplePinExtractNoisedPlayEnvCfg"),
     ("Isaac-ZeroG-Blade-GrapplePin-InsertNoised-v0", "ZeroGBladeGrapplePinInsertNoisedEnvCfg"),
     ("Isaac-ZeroG-Blade-GrapplePin-InsertNoised-Play-v0", "ZeroGBladeGrapplePinInsertNoisedPlayEnvCfg"),
+    # The two halves of the channel-isolation experiment. Extraction is where
+    # the camera-driven chain loses thirteen of twenty-four episodes, and the
+    # pose residual and the manufactured velocity are separable causes.
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractPoseNoised-v0", "ZeroGBladeGrapplePinExtractPoseNoisedEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractPoseNoised-Play-v0", "ZeroGBladeGrapplePinExtractPoseNoisedPlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractVelocityNoised-v0", "ZeroGBladeGrapplePinExtractVelocityNoisedEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractVelocityNoised-Play-v0", "ZeroGBladeGrapplePinExtractVelocityNoisedPlayEnvCfg"),
 ):
     gym.register(
         id=_noised_id,

@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 50,
     "retracted": 11,
-    "historical": 159
+    "historical": 161
   },
   "canonical": {
     "chain_robustness_sweep.json": {
@@ -704,11 +704,18 @@
     "attitude_wall_lateral_profile.json": {
       "title": "Grasp-pose kinematic calibration"
     },
+    "boundary_failure_modes_v1.json": {
+      "title": "Serviceability criteria scored against the failure each one predicts"
+    },
     "camera_scale.json": {
       "title": "Servicing camera scale and framing, measured by rendering"
     },
     "camera_scale_grapple_w65.json": {
       "title": "Servicing camera scale and framing, measured by rendering"
+    },
+    "chain_robustness_sweep_n64_channel_v1.json": {
+      "title": "What breaks the robot-carried chain first",
+      "generated_utc": "2026-09-03T19:34:43.316338+00:00"
     },
     "estimate_stability.json": {
       "title": "Pose estimate stability, with the module held still"
