@@ -8,7 +8,7 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 46,
+    "canonical": 48,
     "retracted": 11,
     "historical": 158
   },
@@ -392,6 +392,40 @@
       "gate_passed": true,
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
       "holds_up": "Legacy supported-settle baseline: 97.92% over 96 episodes; it predates the independent robot-support release recheck."
+    },
+    "workflow_robot_carried_m130pin_vision_datum_pair_certification.json": {
+      "title": "Robot-carried relocation driven by RGB-D fiducial perception on the flush datum pair",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-03T07:39:34+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 4,
+        "success_rate": 0.166667,
+        "wilson_95": [
+          0.066787,
+          0.358531
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "The chain driven by camera-derived module state: 4/24, 16.67%, Wilson [6.7%, 35.9%]. Thirteen of twenty-four lose the module in extraction."
+    },
+    "workflow_robot_carried_m130pin_vision_oracle_control_v2_certification.json": {
+      "title": "Vision-task control: the same cohort with the module pose read from the simulator",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-03T07:13:02+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 20,
+        "success_rate": 0.833333,
+        "wilson_95": [
+          0.641469,
+          0.933213
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "The paired control: the same vision task, seeds, environments and code path with the module pose read from the simulator. 20/24, 83.33%, Wilson [64.1%, 93.3%]. The difference between the two is the estimator."
     },
     "workflow_robot_carried_release_hand_first_v3_certification.json": {
       "title": "Robot-carried servicing workflow: hand-first release ablation",

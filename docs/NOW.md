@@ -11,11 +11,11 @@ Everything is simulated. Nothing has run on hardware.
 
 | Item | Verified state |
 | --- | --- |
-| Evidence | 46 canonical, 11 retracted, 158 historical; quote only canonical |
+| Evidence | 48 canonical, 11 retracted, 158 historical; quote only canonical |
 | Source provenance | 13 reports carry runtime source bindings; two match the working source, one is mechanically recovered, and ten older reports remain lost because they used uncommitted code |
 | Current completion result | 22/24, **91.67%**, after visible rack retention engages, both robot-side supports release, and the rack alone holds for at least 0.70 s |
 | Boundary decision | **not qualified**; only entry attitude is supported in simulation |
-| Live RGB-D service | fail-closed, and now complete: one continuous episode grasps, extracts, carries, seats, releases both robot supports and is held by the rack alone for 0.733 s, with 1,772/1,772 detections |
+| Live RGB-D service | complete but fragile: one continuous episode does the whole changeout with 1,772/1,772 detections, and the pooled cohort scores **4/24** against a paired oracle-pose control at **20/24** on the same code path |
 | CI architecture | core modules and CPU tests do not require optional FastAPI imports |
 | Checkpoints | reports contain hashes, but weights under `logs/` and `checkpoints/` are absent from a clone |
 | Hardware claim | none |
@@ -159,6 +159,43 @@ flare's catch and is now reported as the tolerance that applied.
 **This is n = 1.** It is a demonstration, not a rate. The pooled RGB-D chain
 certification is T1 and is the next measurement.
 
+### What perception costs, measured as a substitution
+
+**The chain has never been certified on camera-derived state before, because it
+could not finish an episode.** With the flush datum pair it can, and the first
+pooled cohort is a controlled ablation rather than a single number: the same
+task, the same three held-out seeds, the same eight environments, the same
+checkpoints, the same guard and the same observation terms, with only the
+module-pose source changed.
+
+| Arm | Result | What differs |
+| --- | ---: | --- |
+| State task, strict chain with rack retention | **22/24, 91.67%** | the published chain |
+| Vision task, module pose from the simulator | **20/24, 83.33%**, Wilson [64.1%, 93.3%] | the vision profile's observation terms and camera cadence |
+| Vision task, module pose from the cameras | **4/24, 16.67%** | the estimator, and nothing else |
+
+The 8-point step is the vision profile itself and is inside the interval at
+n = 24. The **67-point step is the estimator**, and because the two vision arms
+differ by one substituted term it is an ablation rather than an inference.
+
+The oracle arm's successful episodes seat at 0.8 mm lateral, 2.2 mm axial and
+4.3 mrad, so the pipeline the datum pair unblocked -- two cameras, the guarded
+advance, the rack pawls and the release interlock -- works at eight environments
+when the pose is good.
+
+**Where it loses: extraction, not insertion.** Thirteen of the twenty-four
+camera-driven episodes time out in the extract phase and never engage the form
+lock; the module is frequently lost outright. Only three are held by the guard's
+attitude bound. The estimator's own error on healthy episodes is about 2 mm.
+
+**This is the expected cost of an untrained transfer, and it is not a perception
+defect.** Capture, extraction and the guard were trained on simulator state and
+are deployed against an estimator with no student training, no distillation and
+no estimator error in their training distribution. Published pipelines that do
+that transfer properly still lose 20 to 25 points (a state-privileged teacher at
+98% distils to a vision student at 73% in *Residual RL for Precise Assembly*,
+arXiv 2407.16677). Doing none of it costs 67.
+
 ### Serviceability boundary
 
 [`serviceability_boundary_validation_v2.json`](../evidence/serviceability_boundary_validation_v2.json)
@@ -189,8 +226,9 @@ qualified**.
   tolerance are not modeled.
 - The robustness sweep ranks sensitivities but is not a qualified tolerance band.
 - Every learned policy comes from one training seed.
-- The continuous RGB-D demonstration is one episode at one seed. The pooled
-  perception-in-the-loop rate is not measured.
+- The continuous RGB-D demonstration is one episode at one seed, and the pooled
+  camera-driven rate is 16.67%. The demonstration is a favourable sample and is
+  labelled as one everywhere it appears.
 
 ## Reproduce and continue
 

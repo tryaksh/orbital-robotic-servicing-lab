@@ -65,6 +65,14 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "Paired T14 result: +5/24; rack-only transfer succeeds in all 22/22 episodes that reach measured seating, while two fail upstream.",
     ),
     (
+        "workflow_robot_carried_m130pin_vision_datum_pair_certification.json",
+        "The chain driven by camera-derived module state: 4/24, 16.67%, Wilson [6.7%, 35.9%]. Thirteen of twenty-four lose the module in extraction.",
+    ),
+    (
+        "workflow_robot_carried_m130pin_vision_oracle_control_v2_certification.json",
+        "The paired control: the same vision task, seeds, environments and code path with the module pose read from the simulator. 20/24, 83.33%, Wilson [64.1%, 93.3%]. The difference between the two is the estimator.",
+    ),
+    (
         "rgbd_strict_rack_retention_datum_pair_seed6070.json",
         "The first complete continuous RGB-D episode: trained capture and extraction, visible robot carry, guarded insertion to the derived seated plane, both robot supports released, and the rack alone holding for 0.733 s, with 1,772/1,772 detections.",
     ),
