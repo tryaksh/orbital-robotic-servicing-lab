@@ -64,7 +64,22 @@ worst-case versus statistical anything:
 | pad half-bearing offset | how far a pad has slid off the pin | no -- the pull happens where the module sits | **confirmed by mechanism**: the only two points the criterion flags are the only two whose failing episodes sit further off the pin |
 | upper clearance bound | attitude a *resting* module may reach | no | **confirmed**: 16 mm/side loses 0.203 before delivery against nominal's 0.031, Wilson-separated |
 | lower clearance bound | attitude an *entering* module carries | **yes** -- the flare and the guarded advance square it during the stroke | **contradicted**: 6 mm/side scores 56.25% against nominal's 54.69% |
-| parked-base kinematic gate | reachability | not applicable -- the loss is in the learned phases | **not a geometric result at all** |
+| rail stop error, via the pad bearing bound | how far a pad has slid off the pin at the parked base | not corrected -- so the bound *should* transfer | **predicts the wrong failure**: the bound is 1.624 mm and the cliff is between 4 and 6 mm, and the episodes that are lost carry a 12.5 mm tool-to-pin offset against successful episodes' 13.0, so the pads are not the mechanism |
+
+**The last row is the one worth writing the paper for.** Every other row is a
+bound that transfers or does not; that one is a bound that *fires in the wrong
+place for the wrong reason*. It is a grip bound, the quantity it constrains is
+not corrected by the process, and by the rule above it should transfer -- and the
+mechanism check says it does not, because the modules that are lost are being
+held correctly and the phase is timing out anyway. What actually fails is a
+policy trained at one base position meeting one it has never seen, and no
+geometric tool predicts that. **A design tool has to say where it stops
+applying**, and this is the measurement that says it.
+
+Recording the near miss, because it is the reason the mechanism check exists: the
+ladder alone reads as "the bound is conservative by a factor of three", which is
+the textbook framing this document opens by forbidding. Only the grip signature
+distinguishes a conservative bound from an inapplicable one.
 
 The lower clearance bound was not wrong arithmetic. It was the right law applied
 to the wrong state. That is a usable rule for a designer -- *check whether the
