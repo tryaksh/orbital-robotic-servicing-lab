@@ -246,10 +246,10 @@ ones; the *upper* clearance bound, since 16 mm per side loses episodes before
 delivery at a Wilson-separated rate; and the gate that says this bay needs a
 correcting lead-in, which fires before any simulation and which the bay satisfies
 with a 12-degree flare. Contradicted: the *lower* clearance bound, because a
-module does not carry its hand-over attitude to the seated plane. Diagnosed
-rather than contradicted: the base-offset axis, whose loss is entirely inside the
-learned phases with the channel untouched, so it bounds this policy and not this
-geometry. Two axes remain scope limits with no simulated arm at all -- the capture
+module does not carry its hand-over attitude to the seated plane. Right axis, wrong
+criterion: the base offset, where the bound is static -- a pad sliding off a pin
+-- and the failure is dynamic. The modules are extracted and still gripped and
+fail a *settling* condition instead. Two axes remain scope limits with no simulated arm at all -- the capture
 interface's load capacity, and both idealized load paths.
 
 **The instrument had a defect and it changed one axis completely.**
@@ -280,7 +280,7 @@ at [`serviceability_boundary_validation_n64_v1.json`](../evidence/serviceability
 | --- | --- |
 | Rack clearance | mismatch, and now on the *lower* bound: 6 mm/side is analytically infeasible and scores 56.25% against nominal's 54.69%. The upper bound holds -- 16 mm/side loses 0.203 of its episodes before delivery against nominal's 0.031, Wilson-separated, which is the grip criterion's own prediction |
 | Module section | mismatch; 120x16 loses 0.156 before delivery against nominal's 0.031 -- the direction the grip criterion predicts, not separated at 64 episodes -- and 140x26 shows no jam at all |
-| Robot base offset | mismatch, and it is not a geometric one: +10 mm clears the kinematic gate, the channel is untouched, and 60 of 63 failures time out inside the *learned* phases. This is a policy trained at one base position |
+| Robot base offset | mismatch, and the criterion is the wrong one rather than the number. The pad bound is 1.624 mm and the cliff is between 4 and 6 mm; every failing episode is extracted, still gripped at a normal offset, and fails the settling condition instead, carrying 16 to 30 mm/s against a derived 14.29 mm/s limit. The loss is entirely in extraction and capture is untouched at every rung |
 | Entry attitude | supported in simulation against the derived `2c/L` boundary |
 | Capture geometry | analytical only; no current contact/load certificate |
 | Load path | destination transfer supported in 22/22 eligible simulations; both robot- and rack-side joints remain idealized |
