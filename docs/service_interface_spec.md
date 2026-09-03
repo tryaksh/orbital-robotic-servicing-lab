@@ -457,6 +457,16 @@ attitude of a module that merely rests in it, and if that attitude is outside th
 one a seated module is accepted at, the rack is specifying a part it will then
 reject.
 
+**This bound is not new here, and it should not be presented as if it were.** It
+is the geometric half of the classical quasi-static peg-in-hole analysis — the
+wedging condition Whitney's jamming/wedging diagrams are drawn from, applied to a
+long flat module in a rectangular channel rather than to a round peg in a round
+hole. What is this project's own is the *use*: `2c/L` is evaluated on the CPU as
+an admissibility gate **before** any policy is trained, against the attitude the
+manipulator was measured to deliver, and the rack requirement falls out of that
+comparison rather than out of a tuning loop. Any write-up of this section must
+cite the classical result and claim the design gate.
+
 > **Requirement.** Channel lateral clearance per side ≤
 > `L × seated_orientation_tolerance / 2`. On this rack, with a 450 mm module and
 > `INSERTION_ORIENTATION_TOLERANCE_RAD` = 52.36 mrad, that is **11.781 mm**.
