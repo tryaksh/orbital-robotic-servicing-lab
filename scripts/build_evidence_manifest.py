@@ -65,6 +65,14 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "Paired T14 result: +5/24; rack-only transfer succeeds in all 22/22 episodes that reach measured seating, while two fail upstream.",
     ),
     (
+        "rack_sightline_datum_pair_v1.json",
+        "The datum pair closes the blind band: no depth of the seating stroke leaves both plates unreadable, on the primary camera alone.",
+    ),
+    (
+        "servicing_camera_geometry_v4_datum_pair.json",
+        "Unchanged camera, lens and resolution over the workflow envelope with the flush datum pair: 64/64 sampled poses keep one usable plate.",
+    ),
+    (
         "rack_sightline_occlusion_v1.json",
         "Simulator-free sight lines: the destination bay's own vertical lead-in blinds both fixed views over 154 mm of the seating stroke, and the derivation reproduces the recorded loss depth.",
     ),

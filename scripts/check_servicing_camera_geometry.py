@@ -35,6 +35,7 @@ SCENE = ROOT / 'src/zero_g_blade_swap/tasks/blade_swap/scene_cfg.py'
 COLLECTOR = ROOT / 'scripts/collect_grapple_vision.py'
 CERTIFIER = ROOT / 'scripts/certify_fiducial_perception.py'
 FIDUCIAL = ROOT / 'src/zero_g_blade_swap/fiducial.py'
+ASSETS = ROOT / 'src/zero_g_blade_swap/tasks/blade_swap/assets.py'
 GRIPPER_ENVELOPE = ROOT / 'evidence/gripper_collision_envelope.json'
 MIN_CELL_INTERIOR_PX = 4.0
 CELL_EDGE_TRANSITION_ALLOWANCE_PX = 2.0
@@ -75,7 +76,7 @@ def _rpy_matrix(roll: float, pitch: float, yaw: float) -> np.ndarray:
     )
 
 
-def check() -> dict[str, object]:
+def check(datum_offsets_m: tuple[float, ...] | None = None) -> dict[str, object]:
     fiducial_tag_size_m = float(_fiducial_literal('FIDUCIAL_TAG_SIZE_M'))
     fiducial_quiet_zone_size_m = float(
         _fiducial_literal('FIDUCIAL_QUIET_ZONE_SIZE_M')
@@ -83,6 +84,21 @@ def check() -> dict[str, object]:
     fiducial_tag_center_m = tuple(
         float(value) for value in _fiducial_literal('FIDUCIAL_TAG_CENTER_M')
     )
+    shipped_offsets = tuple(
+        float(value) for value in _fiducial_literal('FIDUCIAL_DATUM_OFFSETS_X_M')
+    )
+    # **The gate is on the datum *set*, not on one plate, and that is the one
+    # criterion change here.**  ``scripts/check_rack_sightlines.py`` derives why
+    # the module now carries two flush plates: the destination bay's vertical
+    # lead-in covers a centred datum for 154 mm of the seating stroke from every
+    # camera that meets the resolution requirement.  The estimator reads
+    # whichever plate it can decode, so what this check has to prove is that at
+    # every sampled pose *at least one* plate is in frame, resolvable, seen from
+    # the front and clear of the rear gripper -- not that both are.  Pass
+    # ``--datum_offsets_m 0.0`` to replay the single centred datum this
+    # superseded.
+    if datum_offsets_m is None:
+        datum_offsets_m = shipped_offsets
     camera_position = np.asarray(CAMERA_POSITION_M, dtype=np.float64)
     rotation_world_from_camera = _quaternion_matrix(CAMERA_QUATERNION_WXYZ_ROS)
     camera_target = np.asarray(CAMERA_TARGET_M, dtype=np.float64)
@@ -106,6 +122,9 @@ def check() -> dict[str, object]:
     incidence_rad: list[float] = []
     marker_edges_px: list[float] = []
     rear_gripper_sightline_clearances_m: list[float] = []
+    covered_poses = 0
+    sampled_poses = 0
+    per_datum_cover = {offset: 0 for offset in datum_offsets_m}
     gripper = json.loads(GRIPPER_ENVELOPE.read_text(encoding='utf-8'))['derived']
     gripper_min = gripper['gripper_envelope_min_m']
     gripper_max = gripper['gripper_envelope_max_m']
@@ -132,61 +151,87 @@ def check() -> dict[str, object]:
     ):
         module_rotation = _rpy_matrix(roll, pitch, yaw)
         centre = np.asarray(centre, dtype=np.float64)
-
-        def project(half_extent: float) -> np.ndarray:
-            world = np.asarray(
-                [
-                    centre + module_rotation @ np.asarray((x, y, tag_z))
-                    for x, y in (
-                        (-half_extent, half_extent),
-                        (half_extent, half_extent),
-                        (half_extent, -half_extent),
-                        (-half_extent, -half_extent),
-                    )
-                ]
-            )
-            camera = (rotation_world_from_camera.T @ (world - camera_position).T).T
-            depths_m.extend(camera[:, 2].tolist())
-            return focal_px * camera[:, :2] / camera[:, 2:3] + principal
-
-        quiet_pixels = project(quiet_half)
-        quiet_world = np.asarray(
-            [
-                centre + module_rotation @ np.asarray((x, y, tag_z))
-                for x, y in (
-                    (-quiet_half, quiet_half),
-                    (quiet_half, quiet_half),
-                    (quiet_half, -quiet_half),
-                    (-quiet_half, -quiet_half),
-                )
-            ]
-        )
         gripper_world = centre + (module_rotation @ gripper_corners_module.T).T
-        nearest_ray_x = min(
-            min(float(camera_position[0]), float(point[0])) for point in quiet_world
-        )
-        rear_gripper_sightline_clearances_m.append(
-            nearest_ray_x - float(gripper_world[:, 0].max())
-        )
-        frame_margins_px.extend(
-            (
+        sampled_poses += 1
+        covering: list[dict[str, float]] = []
+
+        for offset in datum_offsets_m:
+
+            def plate(half_extent: float, _offset: float = offset) -> np.ndarray:
+                return np.asarray(
+                    [
+                        centre + module_rotation @ np.asarray((_offset + x, y, tag_z))
+                        for x, y in (
+                            (-half_extent, half_extent),
+                            (half_extent, half_extent),
+                            (half_extent, -half_extent),
+                            (-half_extent, -half_extent),
+                        )
+                    ]
+                )
+
+            quiet_world = plate(quiet_half)
+            marker_world = plate(marker_half)
+            quiet_camera = (rotation_world_from_camera.T @ (quiet_world - camera_position).T).T
+            marker_camera = (rotation_world_from_camera.T @ (marker_world - camera_position).T).T
+            quiet_pixels = focal_px * quiet_camera[:, :2] / quiet_camera[:, 2:3] + principal
+            marker_pixels = focal_px * marker_camera[:, :2] / marker_camera[:, 2:3] + principal
+
+            margin_px = min(
                 float(quiet_pixels[:, 0].min()),
                 float(CAMERA_WIDTH_PX - 1 - quiet_pixels[:, 0].max()),
                 float(quiet_pixels[:, 1].min()),
                 float(CAMERA_HEIGHT_PX - 1 - quiet_pixels[:, 1].max()),
             )
-        )
-        marker_pixels = project(marker_half)
-        marker_edges_px.extend(
-            float(np.linalg.norm(marker_pixels[(index + 1) % 4] - marker_pixels[index]))
-            for index in range(4)
-        )
-        tag_centre = centre + module_rotation @ np.asarray(fiducial_tag_center_m)
-        view_to_camera = camera_position - tag_centre
-        cosine = float(
-            np.dot(module_rotation[:, 2], view_to_camera) / np.linalg.norm(view_to_camera)
-        )
-        incidence_rad.append(math.acos(float(np.clip(cosine, -1.0, 1.0))))
+            edge_px = min(
+                float(np.linalg.norm(marker_pixels[(index + 1) % 4] - marker_pixels[index]))
+                for index in range(4)
+            )
+            depth_m = float(quiet_camera[:, 2].min()), float(quiet_camera[:, 2].max())
+            tag_centre_world = centre + module_rotation @ np.asarray(
+                (offset, fiducial_tag_center_m[1], tag_z)
+            )
+            view_to_camera = camera_position - tag_centre_world
+            cosine = float(
+                np.dot(module_rotation[:, 2], view_to_camera) / np.linalg.norm(view_to_camera)
+            )
+            incidence = math.acos(float(np.clip(cosine, -1.0, 1.0)))
+            nearest_ray_x = min(
+                min(float(camera_position[0]), float(point[0])) for point in quiet_world
+            )
+            gripper_clearance = nearest_ray_x - float(gripper_world[:, 0].max())
+
+            usable = (
+                margin_px > 0.0
+                and edge_px / 6.0 >= MIN_MARKER_CELL_PX
+                and depth_m[0] > CAMERA_CLIPPING_RANGE_M[0]
+                and depth_m[1] < CAMERA_CLIPPING_RANGE_M[1]
+                and incidence < 0.5 * math.pi
+                and gripper_clearance > 0.0
+            )
+            if usable:
+                per_datum_cover[offset] += 1
+                covering.append(
+                    {
+                        'margin_px': margin_px,
+                        'edge_px': edge_px,
+                        'near_m': depth_m[0],
+                        'far_m': depth_m[1],
+                        'incidence_rad': incidence,
+                        'gripper_clearance_m': gripper_clearance,
+                    }
+                )
+
+        if covering:
+            covered_poses += 1
+            # Report the plate the estimator would actually have: the one with
+            # the most frame margin at this pose.
+            best = max(covering, key=lambda item: item['margin_px'])
+            frame_margins_px.append(best['margin_px'])
+            marker_edges_px.append(best['edge_px'])
+            depths_m.extend((best['near_m'], best['far_m']))
+            incidence_rad.append(best['incidence_rad'])
+            rear_gripper_sightline_clearances_m.append(best['gripper_clearance_m'])
 
     scene = SCENE.read_text(encoding='utf-8')
     collector = COLLECTOR.read_text(encoding='utf-8')
@@ -201,16 +246,23 @@ def check() -> dict[str, object]:
             and 'roll[transfer] = 0.25' in collector
             and 'yaw[transfer] = 0.40' in collector
         ),
+        'scene_authors_every_declared_datum': 'FIDUCIAL_DATUM_CENTRES_M.items()' in ASSETS.read_text(
+            encoding='utf-8'
+        ),
     }
-    minimum_margin_px = min(frame_margins_px)
-    minimum_depth_m = min(depths_m)
-    maximum_depth_m = max(depths_m)
-    minimum_marker_edge_px = min(marker_edges_px)
+    covered = covered_poses == sampled_poses
+    minimum_margin_px = min(frame_margins_px) if frame_margins_px else float('-inf')
+    minimum_depth_m = min(depths_m) if depths_m else 0.0
+    maximum_depth_m = max(depths_m) if depths_m else float('inf')
+    minimum_marker_edge_px = min(marker_edges_px) if marker_edges_px else 0.0
     minimum_marker_cell_px = minimum_marker_edge_px / 6.0
-    maximum_incidence_rad = max(incidence_rad)
-    minimum_rear_gripper_sightline_clearance_m = min(rear_gripper_sightline_clearances_m)
+    maximum_incidence_rad = max(incidence_rad) if incidence_rad else math.pi
+    minimum_rear_gripper_sightline_clearance_m = (
+        min(rear_gripper_sightline_clearances_m) if rear_gripper_sightline_clearances_m else -1.0
+    )
     passed = (
-        minimum_margin_px > 0.0
+        covered
+        and minimum_margin_px > 0.0
         and minimum_depth_m > CAMERA_CLIPPING_RANGE_M[0]
         and maximum_depth_m < CAMERA_CLIPPING_RANGE_M[1]
         and maximum_incidence_rad < 0.5 * math.pi
@@ -223,13 +275,19 @@ def check() -> dict[str, object]:
         'status': 'passed' if passed else 'failed',
         'title': 'Fixed servicing-camera coverage of the flush fiducial workflow envelope',
         'evidence_type': 'geometric_derivation_no_simulator',
-        'single_physical_change': 'sensor resolution; placement remains the v2 gripper-clear pose',
+        'single_physical_change': (
+            'the flush datum becomes a pair, separated by more than the destination lead-in shadow; '
+            'placement, lens, resolution, marker size, quiet zone and estimator gates are unchanged'
+        ),
         'camera_position_m': list(CAMERA_POSITION_M),
         'camera_quaternion_wxyz_ros': list(CAMERA_QUATERNION_WXYZ_ROS),
         'flush_datum': {
             'tag_size_m': fiducial_tag_size_m,
             'quiet_zone_size_m': fiducial_quiet_zone_size_m,
             'centre_in_module_m': list(fiducial_tag_center_m),
+            'offsets_x_m': list(datum_offsets_m),
+            'shipped_offsets_x_m': list(shipped_offsets),
+            'evaluates_the_shipped_layout': tuple(datum_offsets_m) == shipped_offsets,
         },
         'workflow_envelope': {
             'centre_x_m': list(x_bounds),
@@ -238,6 +296,12 @@ def check() -> dict[str, object]:
             'roll_rad': list(rpy_bounds[0]),
             'pitch_rad': list(rpy_bounds[1]),
             'yaw_rad': list(rpy_bounds[2]),
+        },
+        'coverage': {
+            'sampled_poses': sampled_poses,
+            'poses_with_at_least_one_usable_datum': covered_poses,
+            'poses_covered_per_datum': {str(offset): count for offset, count in per_datum_cover.items()},
+            'criterion': 'the estimator reads whichever plate it can decode, so one usable plate covers a pose',
         },
         'projection': {
             'minimum_quiet_zone_frame_margin_px': minimum_margin_px,
@@ -253,13 +317,15 @@ def check() -> dict[str, object]:
             'maximum_incidence_deg': math.degrees(maximum_incidence_rad),
             'optical_axis_target_alignment': optical_axis_alignment,
             'minimum_rear_gripper_sightline_clearance_m': minimum_rear_gripper_sightline_clearance_m,
+            'measured_over': 'the usable plate at each sampled pose',
         },
         'source_bindings': bindings,
         'scope_and_limitations': [
             'Projection proves coverage and front-face incidence, not rendered detection.',
             'The static rendered corpus holds the robot still; continuous occlusion is exercised only by the strict RGB-D chain.',
+            'Rack parts are not occluders here; scripts/check_rack_sightlines.py owns that question.',
             'Rear-gripper clearance uses its recorded collision envelope co-rotated with the captured module.',
-            'Lens, aperture, flush datum, and estimator gates are unchanged; resolution is the current one-change arm.',
+            'Lens, aperture, resolution and estimator gates are unchanged; the datum layout is the current one-change arm.',
         ],
     }
 
@@ -267,8 +333,15 @@ def check() -> dict[str, object]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--report', type=Path)
+    parser.add_argument(
+        '--datum_offsets_m',
+        type=float,
+        nargs='+',
+        default=None,
+        help='Module-frame x offsets of the datum set. Defaults to the shipped pair.',
+    )
     args = parser.parse_args()
-    result = check()
+    result = check(tuple(args.datum_offsets_m) if args.datum_offsets_m is not None else None)
     if args.report is not None:
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')

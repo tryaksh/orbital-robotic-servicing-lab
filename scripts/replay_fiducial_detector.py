@@ -18,7 +18,7 @@ import numpy as np
 
 from zero_g_blade_swap.fiducial import (
     FIDUCIAL_DICTIONARY,
-    FIDUCIAL_MARKER_ID,
+    FIDUCIAL_MARKER_IDS,
     _marker_corners,
 )
 
@@ -32,7 +32,11 @@ def _baseline_detects(image_rgb: np.ndarray) -> bool:
     )
     gray = cv2.cvtColor(image_rgb[..., :3], cv2.COLOR_RGB2GRAY)
     _, identifiers, _ = detector.detectMarkers(gray)
-    return identifiers is not None and int(FIDUCIAL_MARKER_ID) in identifiers.reshape(-1)
+    if identifiers is None:
+        return False
+    # The module carries a datum pair; either plate answers the question, so
+    # the baseline detects when the unchanged fast pass finds either one.
+    return any(int(marker_id) in identifiers.reshape(-1) for marker_id in FIDUCIAL_MARKER_IDS)
 
 
 def _step(path: Path) -> int:

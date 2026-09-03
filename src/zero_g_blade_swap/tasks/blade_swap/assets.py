@@ -22,10 +22,10 @@ from pxr import Gf, PhysxSchema, Sdf, Usd, UsdGeom, UsdPhysics
 
 from zero_g_blade_swap import rack_retention, service_latch
 from zero_g_blade_swap.fiducial import (
+    FIDUCIAL_DATUM_BITS,
+    FIDUCIAL_DATUM_CENTRES_M,
     FIDUCIAL_QUIET_ZONE_SIZE_M,
     FIDUCIAL_TAG_BASIS_MODULE,
-    FIDUCIAL_TAG_BITS,
-    FIDUCIAL_TAG_CENTER_M,
     FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
     FIDUCIAL_TAG_SIZE_M,
 )
@@ -1176,69 +1176,76 @@ def spawn_blade_with_grapple_pin(
             roughness=1.0,
         )
         white_material_cfg.func(white_material_path, white_material_cfg)
-        centre_x, centre_y, centre_z = FIDUCIAL_TAG_CENTER_M
         tag_x_axis = tuple(row[0] for row in FIDUCIAL_TAG_BASIS_MODULE)
         tag_y_axis = tuple(row[1] for row in FIDUCIAL_TAG_BASIS_MODULE)
         tag_normal = tuple(row[2] for row in FIDUCIAL_TAG_BASIS_MODULE)
 
         def tag_point(
+            centre: tuple[float, float, float],
             local_x: float,
             local_y: float,
             normal_offset: float,
-            _centre: tuple[float, float, float] = (centre_x, centre_y, centre_z),
-            _x_axis: tuple[float, ...] = tag_x_axis,
-            _y_axis: tuple[float, ...] = tag_y_axis,
-            _normal: tuple[float, ...] = tag_normal,
         ) -> tuple[float, float, float]:
             return tuple(
-                centre + local_x * _x_axis[axis] + local_y * _y_axis[axis] + normal_offset * _normal[axis]
-                for axis, centre in enumerate(_centre)
+                origin + local_x * tag_x_axis[axis] + local_y * tag_y_axis[axis] + normal_offset * tag_normal[axis]
+                for axis, origin in enumerate(centre)
             )
 
-        quiet_path = f"{fiducial_root}/QuietZone"
-        quiet = UsdGeom.Cube.Define(stage, quiet_path)
-        quiet.CreateSizeAttr(1.0)
-        sim_utils.standardize_xform_ops(
-            quiet.GetPrim(),
-            translation=tag_point(0.0, 0.0, -0.0004),
-            orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
-            scale=(FIDUCIAL_QUIET_ZONE_SIZE_M, FIDUCIAL_QUIET_ZONE_SIZE_M, 0.0002),
-        )
-        sim_utils.bind_visual_material(quiet_path, white_material_path, stage=stage)
+        # **Two datums, not one, and the pair is a rack requirement rather than
+        # a redundancy.** ``scripts/check_rack_sightlines.py`` derives the
+        # destination bay's vertical lead-in as a roof over the bay centre line
+        # that covers a centred datum for 154 mm of the seating stroke from
+        # every camera that meets the resolution gate. Two plates separated by
+        # more than that shadow leave no depth at which neither is readable.
+        for marker_id, centre in FIDUCIAL_DATUM_CENTRES_M.items():
+            datum_root = f"{fiducial_root}/ArUco{marker_id}"
+            UsdGeom.Xform.Define(stage, datum_root)
+            quiet_path = f"{datum_root}/QuietZone"
+            quiet = UsdGeom.Cube.Define(stage, quiet_path)
+            quiet.CreateSizeAttr(1.0)
+            sim_utils.standardize_xform_ops(
+                quiet.GetPrim(),
+                translation=tag_point(centre, 0.0, 0.0, -0.0004),
+                orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
+                scale=(FIDUCIAL_QUIET_ZONE_SIZE_M, FIDUCIAL_QUIET_ZONE_SIZE_M, 0.0002),
+            )
+            sim_utils.bind_visual_material(quiet_path, white_material_path, stage=stage)
 
-        tag_path = f"{fiducial_root}/ArUco23"
-        tag = UsdGeom.Cube.Define(stage, tag_path)
-        tag.CreateSizeAttr(1.0)
-        sim_utils.standardize_xform_ops(
-            tag.GetPrim(),
-            translation=tag_point(0.0, 0.0, 0.0),
-            orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
-            scale=(FIDUCIAL_TAG_SIZE_M, FIDUCIAL_TAG_SIZE_M, 0.0002),
-        )
-        sim_utils.bind_visual_material(tag_path, black_material_path, stage=stage)
+            tag_path = f"{datum_root}/Marker"
+            tag = UsdGeom.Cube.Define(stage, tag_path)
+            tag.CreateSizeAttr(1.0)
+            sim_utils.standardize_xform_ops(
+                tag.GetPrim(),
+                translation=tag_point(centre, 0.0, 0.0, 0.0),
+                orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
+                scale=(FIDUCIAL_TAG_SIZE_M, FIDUCIAL_TAG_SIZE_M, 0.0002),
+            )
+            sim_utils.bind_visual_material(tag_path, black_material_path, stage=stage)
 
-        cell_size = FIDUCIAL_TAG_SIZE_M / len(FIDUCIAL_TAG_BITS)
-        half_cells = 0.5 * len(FIDUCIAL_TAG_BITS)
-        for row, bits in enumerate(FIDUCIAL_TAG_BITS):
-            for column, bit in enumerate(bits):
-                if not bit:
-                    continue
-                cell_path = f"{fiducial_root}/White_{row}_{column}"
-                cell = UsdGeom.Cube.Define(stage, cell_path)
-                cell.CreateSizeAttr(1.0)
-                cell_x = (column + 0.5 - half_cells) * cell_size
-                # Raster rows grow downward while the right-handed tag frame
-                # uses +y upward.  Negating the row coordinate is required;
-                # omitting it mirrors the ArUco payload and makes the otherwise
-                # crisp square impossible for a standards-compliant decoder.
-                cell_y = -(row + 0.5 - half_cells) * cell_size
-                sim_utils.standardize_xform_ops(
-                    cell.GetPrim(),
-                    translation=tag_point(cell_x, cell_y, 0.0004),
-                    orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
-                    scale=(cell_size, cell_size, 0.0002),
-                )
-                sim_utils.bind_visual_material(cell_path, white_material_path, stage=stage)
+            bits_rows = FIDUCIAL_DATUM_BITS[marker_id]
+            cell_size = FIDUCIAL_TAG_SIZE_M / len(bits_rows)
+            half_cells = 0.5 * len(bits_rows)
+            for row, bits in enumerate(bits_rows):
+                for column, bit in enumerate(bits):
+                    if not bit:
+                        continue
+                    cell_path = f"{datum_root}/White_{row}_{column}"
+                    cell = UsdGeom.Cube.Define(stage, cell_path)
+                    cell.CreateSizeAttr(1.0)
+                    cell_x = (column + 0.5 - half_cells) * cell_size
+                    # Raster rows grow downward while the right-handed tag frame
+                    # uses +y upward.  Negating the row coordinate is required;
+                    # omitting it mirrors the ArUco payload and makes the
+                    # otherwise crisp square impossible for a standards-
+                    # compliant decoder.
+                    cell_y = -(row + 0.5 - half_cells) * cell_size
+                    sim_utils.standardize_xform_ops(
+                        cell.GetPrim(),
+                        translation=tag_point(centre, cell_x, cell_y, 0.0004),
+                        orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
+                        scale=(cell_size, cell_size, 0.0002),
+                    )
+                    sim_utils.bind_visual_material(cell_path, white_material_path, stage=stage)
     return root
 
 

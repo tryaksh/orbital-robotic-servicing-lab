@@ -86,6 +86,10 @@ FIDUCIAL = ROOT / 'src/zero_g_blade_swap/fiducial.py'
 ENV_CFG = ROOT / 'src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py'
 CHANNEL = ROOT / 'evidence/destination_channel_geometry.json'
 STRICT_RUN = ROOT / 'evidence/rgbd_strict_rack_retention_dual_camera_full_seed6070.json'
+#: The datum layout that recorded run carried: one flush plate on the module
+#: centre.  The self-validation is against what happened, so this is a fact
+#: about that run and does not move when the shipped layout does.
+RECORDED_RUN_DATUM_OFFSETS_X_M = (0.0,)
 
 #: Cuboid sizes written inline in the asset factories rather than as
 #: module-level constants.  ``source_bindings`` asserts each one is still the
@@ -453,11 +457,19 @@ def check(datum_offsets_m: tuple[float, ...] | None = None) -> dict[str, object]
     strict = json.loads(STRICT_RUN.read_text(encoding='utf-8'))
     recorded_stop_x = float(strict['guarded_insertion']['terminal_axial_target_m'][0])
     recorded_detections = strict['perception']['detector_availability']
-    shipped = _shipped_bounds(
-        occluders, cameras, depths, lateral, shipped_offsets, tag_centre[2], outlines, focal_px, principal
+    recorded = _recorded_bounds(
+        occluders,
+        cameras,
+        depths,
+        lateral,
+        RECORDED_RUN_DATUM_OFFSETS_X_M,
+        tag_centre[2],
+        outlines,
+        focal_px,
+        principal,
     )
-    touch = shipped['marker']
-    consumed = shipped['marker_border_row_consumed']
+    touch = recorded['marker']
+    consumed = recorded['marker_border_row_consumed']
     validated = touch is not None and consumed is not None and touch <= recorded_stop_x <= consumed
 
     source = ASSETS.read_text(encoding='utf-8')
@@ -517,6 +529,7 @@ def check(datum_offsets_m: tuple[float, ...] | None = None) -> dict[str, object]
         },
         'self_validation': {
             'recorded_run': STRICT_RUN.name,
+            'recorded_run_datum_offsets_x_m': list(RECORDED_RUN_DATUM_OFFSETS_X_M),
             'recorded_terminal_axial_target_m': recorded_stop_x,
             'recorded_detector_failures': recorded_detections['failures'],
             'recorded_max_consecutive_failures': recorded_detections['max_consecutive_failures'],
@@ -525,7 +538,7 @@ def check(datum_offsets_m: tuple[float, ...] | None = None) -> dict[str, object]
             'agrees': validated,
             'reads': (
                 'the recorded advance had to stop between the depth at which the lead-in first covers any '
-                'of the shipped marker outline in every view and the depth at which it has covered a whole '
+                'of that run marker outline in every view and the depth at which it has covered a whole '
                 'border cell in every view'
             ),
         },
@@ -567,7 +580,7 @@ def _frame_margin_px(
     )
 
 
-def _shipped_bounds(
+def _recorded_bounds(
     occluders: list[Box],
     cameras: dict[str, tuple[np.ndarray, np.ndarray]],
     depths: np.ndarray,
@@ -578,7 +591,7 @@ def _shipped_bounds(
     focal_px: float,
     principal: np.ndarray,
 ) -> dict[str, float | None]:
-    """Depth at which the shipped datum set is first blocked in *every* view.
+    """Depth at which the recorded run's datum set is first blocked in *every* view.
 
     The estimator takes the first camera that decodes, so a detection survives
     until the last view loses it, and with more than one datum until the last

@@ -267,6 +267,7 @@ class ModuleStateEstimator:
         self._reprojection_error_px = torch.full((env.num_envs,), float("inf"), device=env.device)
         self._fiducial_detection_valid = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
         self._fiducial_current_detection = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        self._fiducial_detections_by_marker: dict[int, int] = {}
         self._payload_stage_engaged = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
         # Encoder propagation is valid only after the robot has physically
         # captured the module. Before that event the tool moves and the module
@@ -300,6 +301,10 @@ class ModuleStateEstimator:
             "failures": self._fiducial_failure_count,
             "detection_rate": self._fiducial_detection_count / attempts if attempts else 0.0,
             "max_consecutive_failures": int(self._fiducial_max_consecutive_failures.max().item()),
+            # Which flush plate carried each detection. The module now has two,
+            # and a run that only ever reads one of them has not exercised the
+            # reason there are two.
+            "detections_by_datum": dict(sorted(self._fiducial_detections_by_marker.items())),
         }
 
     @property
@@ -541,6 +546,9 @@ class ModuleStateEstimator:
             self._reprojection_error_px[env_index] = estimate.reprojection_error_px
             self._fiducial_detection_valid[env_index] = True
             self._fiducial_detection_count += 1
+            self._fiducial_detections_by_marker[int(estimate.marker_id)] = (
+                self._fiducial_detections_by_marker.get(int(estimate.marker_id), 0) + 1
+            )
             self._fiducial_consecutive_failures[env_index] = 0
             detected_now[env_index] = True
 

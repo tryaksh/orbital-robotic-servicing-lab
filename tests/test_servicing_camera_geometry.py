@@ -38,4 +38,28 @@ def test_resolution_change_preserves_optics_and_flush_datum() -> None:
     datum = check()['flush_datum']
     assert datum['tag_size_m'] == 0.090
     assert datum['quiet_zone_size_m'] == 0.120
-    assert datum['centre_in_module_m'] == [0.0, 0.0, 0.011]
+    # Flush on the top face, both plates on the same plane. Where along the
+    # module they sit is the datum-layout arm, not the optics.
+    assert datum['centre_in_module_m'][2] == 0.011
+    assert datum['offsets_x_m'] == datum['shipped_offsets_x_m']
+    assert datum['evaluates_the_shipped_layout']
+
+
+def test_one_usable_plate_covers_every_sampled_pose() -> None:
+    """The gate is on the datum set, because the estimator reads either plate."""
+
+    coverage = check()['coverage']
+    assert coverage['poses_with_at_least_one_usable_datum'] == coverage['sampled_poses']
+    per_datum = coverage['poses_covered_per_datum']
+    assert len(per_datum) == 2
+    # Neither plate covers the envelope on its own; that is why there are two.
+    assert all(0 < count < coverage['sampled_poses'] for count in per_datum.values())
+
+
+def test_the_superseded_single_centred_datum_is_still_replayable() -> None:
+    """The losing arm stays evaluable, so the change can be attributed."""
+
+    result = check(datum_offsets_m=(0.0,))
+    assert result['flush_datum']['offsets_x_m'] == [0.0]
+    assert not result['flush_datum']['evaluates_the_shipped_layout']
+    assert result['coverage']['poses_with_at_least_one_usable_datum'] == 64
