@@ -760,6 +760,17 @@ def _parser() -> argparse.ArgumentParser:
         help="Extra steps to hold still after the workflow finishes, so a recording does not cut on the last frame.",
     )
     parser.add_argument(
+        '--fiducial_guard_bounds',
+        choices=('estimator', 'lead_in'),
+        default='estimator',
+        help=(
+            'Which bounds the guarded advance admits on with the fiducial backend. '
+            '"estimator" is the shipped pair, sized above the certified RGB-D p95 errors; '
+            '"lead_in" is the entry flare catch the state path already uses. The default '
+            'reproduces every published number.'
+        ),
+    )
+    parser.add_argument(
         '--rack_retention',
         action='store_true',
         help=(
@@ -781,6 +792,21 @@ if args.video and args.num_envs > 1:
     parser.error("--video records one workflow; use --num_envs 1")
 if args.insert_controller == "policy" and args.insert_checkpoint is None:
     parser.error("--insert_controller policy needs an --insert_checkpoint to run")
+if args.oracle and args.perception_backend == "fiducial_pnp":
+    # **This used to be a silent deadlock and it cost a control run.** --oracle
+    # puts the estimator in PERCEPTION_ORACLE mode, where _estimate_oracle never
+    # publishes a confidence or a current detection. The relocation preflight
+    # requires confidence > 0 whenever the backend is fiducial_pnp, and the
+    # capture gate requires a current detection, so both wait forever on a
+    # detector that is not running: every environment times out in capture with
+    # the module still in its source bay, which reads as a chain failure rather
+    # than as a configuration error. The control arm belongs on the pose-head
+    # backend, where those interlocks are not in the path.
+    parser.error(
+        "--oracle cannot run on --perception_backend fiducial_pnp: the fiducial "
+        "detection interlocks would wait forever on a detector the oracle does not "
+        "run. Use --perception_backend pose_head --oracle for the control arm."
+    )
 if args.rack_retention and (
     not args.latch_on_release
     or args.workflow != 'relocate'
@@ -4608,8 +4634,23 @@ class WorkflowDriver:
         sensor_ready = torch.ones_like(ids, dtype=torch.bool)
         estimator = getattr(task, "_module_state_estimator", None)
         if estimator is not None and estimator.backend == "fiducial_pnp":
-            lateral_tolerance = FIDUCIAL_GUARDED_LATERAL_TOLERANCE_M
-            orientation_tolerance = FIDUCIAL_GUARDED_ORIENTATION_TOLERANCE_RAD
+            # **Whether the estimate is trustworthy and whether the module can
+            # enter the bay are different questions.** The shipped bounds answer
+            # the first -- their own derivation is "above the certified RGB-D p95
+            # errors" -- and are then used to decide the second. Measured on the
+            # first pooled RGB-D cohort, three of eight environments arrived with
+            # millimetre lateral error and 18 to 34 mrad of attitude, held for one
+            # to two and a half thousand steps, and never advanced; the entry
+            # flare catches 73.9 mrad and would have taken them.
+            #
+            # This is an option rather than a change because it moves a published
+            # path. The default is the shipped pair; --fiducial_guard_bounds
+            # lead_in runs the same guard on the bay's own catch, and the report
+            # says which applied. The detection interlock is unchanged in both:
+            # a missing datum still fails closed.
+            if args.fiducial_guard_bounds == 'estimator':
+                lateral_tolerance = FIDUCIAL_GUARDED_LATERAL_TOLERANCE_M
+                orientation_tolerance = FIDUCIAL_GUARDED_ORIENTATION_TOLERANCE_RAD
             sensor_ready = estimator.fiducial_current_detection[ids]
         clear_to_advance = sensor_ready & (lateral_error <= lateral_tolerance) & (orientation_error <= orientation_tolerance)
         self.guarded_insert_steps[ids] += clear_to_advance.to(torch.long)
@@ -6059,14 +6100,22 @@ def main() -> dict[str, object]:
         # to the estimator's tighter bounds whenever the deployed backend is the
         # fiducial one, exactly as ``_step_guarded_insert`` selects them.
         _report_estimator = getattr(task, "_module_state_estimator", None)
-        if _report_estimator is not None and _report_estimator.backend == "fiducial_pnp":
+        if (
+            _report_estimator is not None
+            and _report_estimator.backend == "fiducial_pnp"
+            and args.fiducial_guard_bounds == "estimator"
+        ):
             applied_guarded_lateral_tolerance_m = FIDUCIAL_GUARDED_LATERAL_TOLERANCE_M
             applied_guarded_orientation_tolerance_rad = FIDUCIAL_GUARDED_ORIENTATION_TOLERANCE_RAD
             applied_guarded_tolerance_source = "deployed_rgbd_estimator_bounds"
         else:
             applied_guarded_lateral_tolerance_m = GUARDED_INSERT_LATERAL_TOLERANCE_M
             applied_guarded_orientation_tolerance_rad = GUARDED_INSERT_ORIENTATION_TOLERANCE_RAD
-            applied_guarded_tolerance_source = "entry_flare_catch"
+            applied_guarded_tolerance_source = (
+                "entry_flare_catch_on_the_deployed_estimate"
+                if _report_estimator is not None and _report_estimator.backend == "fiducial_pnp"
+                else "entry_flare_catch"
+            )
         insert_only = args.start_insert_station is not None
         evaluation_condition = (
             {
