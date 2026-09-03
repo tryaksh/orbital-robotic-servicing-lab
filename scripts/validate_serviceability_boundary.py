@@ -64,6 +64,18 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--evidence-dir", type=Path, default=ROOT / "evidence")
     parser.add_argument("--manifest", type=Path, default=ROOT / "evidence" / "MANIFEST.json")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--robustness-sweep",
+        type=Path,
+        default=None,
+        help=(
+            "Use this sweep report in place of evidence/chain_robustness_sweep.json. "
+            "The 16-episode sweep is a ranking instrument whose Wilson intervals are "
+            "about twenty points wide; a re-measured point at a larger sample answers "
+            "the same question with a narrower one. The protocol and every tolerance "
+            "are unchanged, and the substitution is recorded in the report."
+        ),
+    )
     return parser
 
 
@@ -407,7 +419,40 @@ def main() -> int:
     if source.get("dirty") is not False:
         raise SystemExit("refusing to generate boundary evidence from a dirty tracked worktree")
     reports, bindings = load_inputs(args.evidence_dir, args.manifest)
+    substitution: dict[str, Any] | None = None
+    if args.robustness_sweep is not None:
+        # The substituted sweep is required to be canonical too, and its own
+        # per-point episode counts travel into the report, so a narrower
+        # interval cannot be quoted without saying what produced it.
+        name = args.robustness_sweep.name
+        manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+        if name not in manifest.get("canonical", {}):
+            raise SystemExit(f"substituted sweep is not canonical: {name}")
+        replacement = json.loads(args.robustness_sweep.read_text(encoding="utf-8"))
+        reports["chain_robustness_sweep.json"] = replacement
+        bindings.append(
+            {
+                "file": name,
+                "sha256": _sha256(args.robustness_sweep),
+                "manifest_status": "canonical",
+                "substituted_for": "chain_robustness_sweep.json",
+            }
+        )
+        substitution = {
+            "substituted_for": "chain_robustness_sweep.json",
+            "with": name,
+            "why": (
+                "the shipped sweep is a 16-episode ranking instrument whose Wilson interval is "
+                "about twenty points wide, which cannot separate a loss from the nominal point"
+            ),
+            "episodes_per_point": {
+                tag: int(point.get("episodes", 0)) for tag, point in replacement["points"].items()
+            },
+            "protocol_or_tolerances_changed": False,
+        }
     report = build_report(reports, bindings, source, recompute_geometry())
+    if substitution is not None:
+        report["input_substitution"] = substitution
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report["decision"], indent=2))

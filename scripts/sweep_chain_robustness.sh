@@ -31,8 +31,15 @@ ENVS="${ENVS:-16}"
 EPISODES="${EPISODES:-16}"
 SEED="${SEED:-4070}"
 
+# POINTS selects a subset by tag, for the follow-up this script's own header
+# promises: "whatever it ranks first gets the 96-episode treatment". The
+# boundary validator reads five of these points and the nominal, so re-measuring
+# a mismatch does not need the other four.
 point() {
   tag="$1"; shift
+  if [ -n "${POINTS:-}" ] && [[ " ${POINTS} " != *" ${tag} "* ]]; then
+    return
+  fi
   if [ -f "$OUT/${tag}.npz" ] && [ "${RESUME:-1}" = "1" ]; then
     echo "[$(date +%H:%M:%S)] $tag already done, skipping"
     return
