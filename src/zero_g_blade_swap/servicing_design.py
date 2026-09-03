@@ -68,6 +68,8 @@ from dataclasses import dataclass, field
 
 __all__ = [
     "ManipulatorPerformance",
+    "engagement_depth_limit_m",
+    "requires_a_correcting_lead_in",
     "RackRequirement",
     "SectionVerdict",
     "lateral_clearance_window",
@@ -75,6 +77,57 @@ __all__ = [
     "rail_indexing_bound_m",
     "section_verdict",
 ]
+
+
+def engagement_depth_limit_m(attitude_rad: float, clearance_per_side_m: float) -> float:
+    """Return ``2c/theta``: how deep a module held at this attitude may go.
+
+    Whitney's quasi-static wedging geometry, applied to a long flat module in a
+    rectangular channel. It is prior art and this library cites it rather than
+    claiming it; what is being published is its use as a *design gate* on the
+    bay, before either the bay or the controller exists.
+    """
+
+    if attitude_rad <= 0.0:
+        return math.inf
+    if clearance_per_side_m <= 0.0:
+        return 0.0
+    return 2.0 * clearance_per_side_m / attitude_rad
+
+
+def requires_a_correcting_lead_in(
+    performance: ManipulatorPerformance,
+    *,
+    seating_stroke_m: float,
+    clearance_per_side_m: float,
+) -> dict[str, float | bool]:
+    """Decide whether the bay has to square the module on its way in.
+
+    A module pushed straight home at the attitude the manipulator hands over
+    reaches ``2c/theta`` and wedges. If that is shorter than the seating stroke,
+    the bay cannot be a plain channel: something -- a funnel, or a controller
+    that refuses to advance while the module is cocked -- has to reduce the
+    attitude *during* the stroke.
+
+    **This repository is the case that motivates the rule.** Its stroke is
+    529 mm and its hand-over attitude 46 mrad, so an 11.065 mm channel admits
+    481 mm and falls short. The chain seats anyway, and it seats at 6 mm of
+    clearance too, where the shortfall is far larger -- which is the measurement
+    that says the correction is real and that a designer may not size the channel
+    as though the module carried its hand-over attitude to the seated plane.
+    """
+
+    limit = engagement_depth_limit_m(performance.delivered_attitude_rad, clearance_per_side_m)
+    return {
+        "seating_stroke_m": seating_stroke_m,
+        "clearance_per_side_m": clearance_per_side_m,
+        "engagement_depth_limit_m": limit,
+        "shortfall_m": max(0.0, seating_stroke_m - limit),
+        "required": bool(limit < seating_stroke_m),
+        "attitude_that_would_not_need_one_rad": (
+            2.0 * clearance_per_side_m / seating_stroke_m if seating_stroke_m > 0.0 else math.inf
+        ),
+    }
 
 
 @dataclass(frozen=True)

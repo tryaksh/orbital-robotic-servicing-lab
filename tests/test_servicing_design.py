@@ -165,3 +165,47 @@ def test_a_better_manipulator_earns_a_tighter_channel() -> None:
     assert len(rack_requirement(precise, **common).accepted_sections) >= len(
         rack_requirement(coarse, **common).accepted_sections
     )
+
+
+def test_the_wedge_law_is_the_prior_art_form() -> None:
+    from zero_g_blade_swap.servicing_design import engagement_depth_limit_m
+
+    assert engagement_depth_limit_m(0.046, 0.011065) == pytest.approx(2 * 0.011065 / 0.046, rel=1e-12)
+    # A square module is not bounded, and a zero-clearance channel admits nothing.
+    assert engagement_depth_limit_m(0.0, 0.011) == math.inf
+    assert engagement_depth_limit_m(0.046, 0.0) == 0.0
+
+
+def test_this_bay_is_predicted_to_need_a_correcting_lead_in_and_has_one() -> None:
+    """The rule fires on the shipped workcell, before any simulation.
+
+    At the hand-over attitude an 11.065 mm channel admits 481 mm of a 529 mm
+    stroke, so a module pushed straight home would wedge 48 mm short. The bay
+    carries a 12-degree entry flare, and the corrected clearance sweep seats
+    36 of 64 at 6 mm per side where the shortfall is 268 mm -- so the correction
+    is real and a designer may not size the channel as though the module carried
+    its hand-over attitude to the seated plane.
+    """
+
+    from zero_g_blade_swap.servicing_design import requires_a_correcting_lead_in
+
+    performance = ManipulatorPerformance(
+        delivered_attitude_rad=0.046,
+        seating_tolerance_rad=0.0523599,
+        pad_half_bearing_offset_m=0.015,
+    )
+    verdict = requires_a_correcting_lead_in(
+        performance, seating_stroke_m=0.529, clearance_per_side_m=0.011065
+    )
+    assert verdict["required"] is True
+    assert verdict["engagement_depth_limit_m"] == pytest.approx(0.4811, abs=5.0e-4)
+    assert verdict["shortfall_m"] == pytest.approx(0.0479, abs=5.0e-4)
+    # And the attitude at which no lead-in would be needed, which is the number a
+    # designer trades against the arm.
+    assert verdict["attitude_that_would_not_need_one_rad"] == pytest.approx(0.0418, abs=5.0e-4)
+
+    # Tighter clearance makes the requirement stronger, not weaker: the sweep's
+    # 6 mm point falls 268 mm short and still seats, in the bay that has a flare.
+    tight = requires_a_correcting_lead_in(performance, seating_stroke_m=0.529, clearance_per_side_m=0.006)
+    assert tight["required"] is True
+    assert tight["shortfall_m"] > verdict["shortfall_m"]
