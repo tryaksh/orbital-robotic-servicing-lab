@@ -2,10 +2,10 @@
   "schema_version": 2,
   "title": "Serviceability boundary validation against simulation",
   "evidence_type": "analytical_boundary_against_simulation",
-  "generated_utc": "2026-09-03T19:36:21.143264+00:00",
+  "generated_utc": "2026-09-03T20:00:45.975029+00:00",
   "source_revision": {
     "available": true,
-    "commit": "b0f9965e18dabbac14db29426f4fb26b64e13858",
+    "commit": "8a16bc6ac3bd139a416b8a18bec443e9f64fff6a",
     "branch": "paper/serviceability-qualification",
     "dirty": false,
     "tracked_changes": [],
@@ -60,7 +60,7 @@
     },
     {
       "file": "chain_robustness_sweep_n64_channel_v1.json",
-      "sha256": "C1510B631F9FD1E73315C7073E3D7F2010DE702435A27FB49811497D2919177D",
+      "sha256": "16374A1018E6E015963DF8E9DA63A5F8B3643C5FDD8C418F255600FA519A8957",
       "manifest_status": "canonical",
       "substituted_for": "chain_robustness_sweep.json"
     }
