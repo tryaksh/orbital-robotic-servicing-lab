@@ -45,6 +45,17 @@ def main() -> int:
     parser.add_argument("--sweep_dir", type=Path, default=PROJECT_ROOT / "artifacts" / "robustness")
     parser.add_argument("--nominal", default="nominal")
     parser.add_argument("--report", type=Path, default=None)
+    parser.add_argument(
+        "--note",
+        action="append",
+        default=None,
+        help=(
+            "A line recorded in the report beside the points. It exists because a sweep "
+            "directory can legitimately hold points measured under different arms -- the "
+            "clearance re-measurement replaces two of seven -- and a reader cannot tell that "
+            "from the numbers. Repeatable."
+        ),
+    )
     arguments = parser.parse_args()
 
     points: dict[str, dict[str, object]] = {}
@@ -95,6 +106,7 @@ def main() -> int:
                         "scripts/sweep_chain_robustness.sh: one variable moved at a time around the "
                         "certified configuration, same seed, same checkpoints, same everything else."
                     ),
+                    "notes": list(arguments.note or []),
                     "nominal_point": arguments.nominal,
                     "nominal_success_rate": baseline,
                     "ranked_by_points_below_nominal": ranked,
