@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 53,
     "retracted": 11,
-    "historical": 158
+    "historical": 159
   },
   "canonical": {
     "boundary_failure_modes_v1.json": {
@@ -1036,6 +1036,10 @@
     "robot_carried_seating_sweep.json": {
       "title": "Destination-bay clearance sweep: why the robot-carried seating does not close",
       "generated_utc": "2026-08-23T11:25:39.027766+00:00"
+    },
+    "serviceability_boundary_validation_n64_channel_v2.json": {
+      "title": "Serviceability boundary validation against simulation",
+      "generated_utc": "2026-09-03T19:36:21.143264+00:00"
     },
     "serviceability_boundary_validation_v1.json": {
       "title": "Serviceability boundary validation against simulation",

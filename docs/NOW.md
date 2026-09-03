@@ -2,7 +2,7 @@
 
 Verified repository state. Evidence status is mechanical in
 [`evidence/MANIFEST.json`](../evidence/MANIFEST.json); bounded tasks are in
-[`NEXT_WORK.md`](NEXT_WORK.md). Last verified: 2026-09-02 on
+[`NEXT_WORK.md`](NEXT_WORK.md). Last verified: 2026-09-03 on
 `paper/serviceability-qualification`, based on `main` at `bccce6d`.
 
 Everything is simulated. Nothing has run on hardware.
@@ -11,10 +11,10 @@ Everything is simulated. Nothing has run on hardware.
 
 | Item | Verified state |
 | --- | --- |
-| Evidence | 50 canonical, 11 retracted, 158 historical; quote only canonical |
+| Evidence | 53 canonical, 11 retracted, 159 historical; quote only canonical |
 | Source provenance | 13 reports carry runtime source bindings; two match the working source, one is mechanically recovered, and ten older reports remain lost because they used uncommitted code |
 | Current completion result | 22/24, **91.67%**, after visible rack retention engages, both robot-side supports release, and the rack alone holds for at least 0.70 s |
-| Boundary decision | **not qualified**; only entry attitude is supported in simulation |
+| Boundary decision | **not qualified**; only entry attitude is supported. The rack-clearance axis was re-measured after a sweep defect: `--rack_lateral_clearance_mm` moved each bay's guides and left its lips and entry flares behind, and 6 mm per side goes from 0/64 to 36/64 once the mouth moves with the walls |
 | Live RGB-D service | complete but fragile: one continuous episode does the whole changeout with 1,772/1,772 detections, and the pooled cohort scores **4/24** against a paired oracle-pose control at **20/24** on the same code path |
 | CI architecture | core modules and CPU tests do not require optional FastAPI imports |
 | Checkpoints | reports contain hashes, but weights under `logs/` and `checkpoints/` are absent from a clone |
@@ -188,6 +188,33 @@ camera-driven episodes time out in the extract phase and never engage the form
 lock; the module is frequently lost outright. Only three are held by the guard's
 attitude bound. The estimator's own error on healthy episodes is about 2 mm.
 
+**The cheap fix is ruled out, by measurement.** The camera runs at half the
+control rate, so the pose the policies read is a staircase and a differenced
+estimate is zero on one control step and a full jump on the next. With the arm
+held still, the velocity channel reads **17.02 mm/s** at the deployed 0.10 s
+filter while the *identical* differencing and filtering applied to the
+simulator's own pose reads **3.38 mm/s** -- so the estimator contributes
+13.65 mm/s, against the 0.69 mm/s a seated module actually moves at. Sweeping
+the filter's time constant does not help: at 1 s the mean falls to 9.01 mm/s and
+the p95 *rises* from 29 to 59, because a first-order filter integrates the random
+walk of held estimates. The shipped 0.10 s is already the best of the sweep.
+[`estimator_surrogate_velocity_channel_v1.json`](../evidence/estimator_surrogate_velocity_channel_v1.json)
+
+**And the estimator is no worse on the episodes it loses.** Across the three
+vision seeds the winning episodes carry 1.89, 2.00 and 2.11 mm of mean estimator
+error and the losing ones carry 2.29, 5.99 and 1.98 mm. The long detection
+dropouts a losing run records -- up to 2,865 consecutive misses -- are what
+happens after the module has left the cameras' useful envelope, not what put it
+there.
+
+So the fix is the training distribution, and
+`Isaac-ZeroG-Blade-GrapplePin-{Grasp,Extract,Insert}Noised-v0` are it: the four
+module-derived observation terms read a surrogate whose residual, sample-and-hold
+and miss rate are inverted from the estimator's own certification rather than
+chosen, and whose velocity is the same finite difference the deployed estimator
+manufactures. `grapple_extract_l0_seed70_v19noised` resumes the certified v18pin
+checkpoint on that task at the same seed, one change from a published arm.
+
 **This is the expected cost of an untrained transfer, and it is not a perception
 defect.** Capture, extraction and the guard were trained on simulator state and
 are deployed against an estimator with no student training, no distillation and
@@ -198,27 +225,96 @@ arXiv 2407.16677). Doing none of it costs 67.
 
 ### Serviceability boundary
 
-[`serviceability_boundary_validation_n64_v1.json`](../evidence/serviceability_boundary_validation_n64_v1.json)
-is the current fail-closed comparison, derived from the four-times-larger
-[`chain_robustness_sweep_n64.json`](../evidence/chain_robustness_sweep_n64.json)
-whose Wilson intervals are narrow enough to actually classify each point:
+**The instrument had a defect and it changed one axis completely.**
+`--rack_lateral_clearance_mm` selected scene attributes whose name contains
+"guide". Each bay's two upper lips and two entry flares are placed from
+`GUIDE_CENTER_OFFSET_Y` when `assets.py` is imported, so the flag moved four
+bodies per rack and left eight where they were -- a rack whose mouth and walls
+disagree by exactly the clearance change rather than a narrower channel.
 
-| Dimension | State (n=64) |
+`--rack_clearance_scope channel` translates the lips and the flares with the
+guides. Same seed, same checkpoints, one flag:
+
+| clearance | guides only (published) | channel (corrected) |
+| --- | ---: | ---: |
+| 6 mm per side | **0/64**, 62 of 64 jam at the mouth | **36/64 = 56.25%**, zero jams |
+| 16 mm per side | 26/64 = 40.6% | 27/64 = 42.2% |
+
+So the 6 mm point flips entirely and the 16 mm point does not move. Both arms
+are kept: [`chain_robustness_sweep_n64.json`](../evidence/chain_robustness_sweep_n64.json)
+is the guides-only sweep and
+[`chain_robustness_sweep_n64_channel_v1.json`](../evidence/chain_robustness_sweep_n64_channel_v1.json)
+is the corrected one.
+[`serviceability_boundary_validation_n64_channel_v2.json`](../evidence/serviceability_boundary_validation_n64_channel_v2.json)
+is the decision on the corrected sweep, and the pre-correction decision remains
+at [`serviceability_boundary_validation_n64_v1.json`](../evidence/serviceability_boundary_validation_n64_v1.json).
+
+| Dimension | Corrected state (n=64) |
 | --- | --- |
-| Rack clearance | mismatch; 6 mm/side confirmed infeasible (0.0%, [0.0, 5.7]), 16 mm/side does not show a separated loss (40.6% vs 54.7% nominal) |
-| Module section | mismatch; neither 120x16 (50.0%) nor 140x26 (35.9%) shows a separated loss from 130x20's 54.7% |
-| Robot base offset | mismatch; +10 mm is kinematically feasible but loses at 1.6% |
+| Rack clearance | mismatch, and now on the *lower* bound: 6 mm/side is analytically infeasible and scores 56.25% against nominal's 54.69%. The upper bound holds -- 16 mm/side loses 0.203 of its episodes before delivery against nominal's 0.031, Wilson-separated, which is the grip criterion's own prediction |
+| Module section | mismatch; 120x16 loses 0.156 before delivery against nominal's 0.031 -- the direction the grip criterion predicts, not separated at 64 episodes -- and 140x26 shows no jam at all |
+| Robot base offset | mismatch, and it is not a geometric one: +10 mm clears the kinematic gate, the channel is untouched, and 60 of 63 failures time out inside the *learned* phases. This is a policy trained at one base position |
 | Entry attitude | supported in simulation against the derived `2c/L` boundary |
 | Capture geometry | analytical only; no current contact/load certificate |
 | Load path | destination transfer supported in 22/22 eligible simulations; both robot- and rack-side joints remain idealized |
 | Base compliance | excluded; the fixed robot root prevents the authored spring from deflecting |
 
+**Where the closed form is wrong, and why.** The lateral clearance bound is
+two-sided and it is right on one side. The upper bound -- a resting module may
+not exceed the seating tolerance, 11.781 mm per side -- governs the grip and is
+confirmed. The lower bound -- the channel must admit the attitude the transit
+hands over at, 10.35 mm per side -- is contradicted. `2c/theta` at 46 mrad and
+6 mm of clearance says a module should wedge at 261 mm of a 529 mm stroke, and
+all 64 finished at 0.5 mm of axial error. **The hand-over attitude is corrected
+during the stroke rather than carried through it**, so the bound belongs on
+whatever does the correcting -- the 12-degree entry flare, or the guarded advance
+refusing to push -- and not on the channel. `--remove_entry_flares` is the run
+that separates those two, and it is queued.
+
+**And the comparison itself was asking the wrong question.** At the nominal
+design point, 27 of 29 failures reach the final phase with the form lock engaged
+and miss the 2.5 mm terminal gate. Two episodes in five are lost at the design
+point to a mode no serviceability criterion claims to predict, so a pooled-rate
+comparison makes every boundary point clear that noise floor before a Wilson
+interval can separate it.
+[`boundary_failure_modes_v1.json`](../evidence/boundary_failure_modes_v1.json)
+counts the same episodes by the failure each criterion predicts -- the grip
+criterion against episodes that never deliver the module, the entry criterion
+against episodes that jam short of the seated plane -- and on that reading the
+16 mm clearance point supports the boundary where the pooled protocol called it
+a mismatch.
+
 The n=16 sweep is not comparable: on current source it produces stub episodes
 at 16 environments, so the August ordering is not reproducible here and cannot
-be quoted alongside these figures.
+be quoted alongside these figures. The 32-environment certifications are not
+directly comparable either: among their survivors the terminal lateral error is
+1.69 to 1.85 mm with a standard deviation of 0.054 mm, while the same point at
+64 environments runs 0.05 to 2.5 mm. The 2.5 mm gate sits between them, and
+whether that is the environment count or the four-times-longer episode is
+queued as its own two-run probe.
 
 Every losing arm is retained. No tolerance was widened. The envelope is **not
 qualified**.
+
+### The design derivation, as a callable tool
+
+[`servicing_design.py`](../src/zero_g_blade_swap/servicing_design.py) is the
+requirement derivation with this workcell's numbers taken out of it. Three
+measured quantities go in -- the attitude the manipulator hands over at, the
+attitude the interface accepts, and the offset at which a pad still bears on the
+capture feature -- and the rack comes out: the two-sided clearance bound, the
+channel that maximises the smaller margin, the cross-sections it accepts, and how
+accurately the rail has to index. `scripts/derive_rack_requirement.py` is its
+CLI and needs no simulator.
+
+For this workcell it derives 10.350 to 11.781 mm of clearance per side, a design
+point at 11.065 mm, seven admissible cross-sections of thirty-six, and a **rail
+indexing bound of 1.623 mm**. `tests/test_servicing_design.py` asserts all of it
+against `check_workcell_geometry.py` over the whole 36-cell grid, so the library
+and the certified check cannot drift apart. An arm that hands over at 20 mrad
+instead of 46 earns a clearance window 7.3 mm wide instead of 1.4 mm and a rail
+it can index to 4.5 mm instead of 1.6 mm; that line is the direction-of-derivation
+claim in one sentence.
 
 ## Claim limits
 
