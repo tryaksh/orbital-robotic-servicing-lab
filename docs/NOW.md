@@ -320,6 +320,37 @@ against episodes that jam short of the seated plane -- and on that reading the
 16 mm clearance point supports the boundary where the pooled protocol called it
 a mismatch.
 
+**The rail's stopping error, as a ladder, and the closed form is about the wrong
+failure.** The published sweep measured one point at +10 mm. Five points now
+exist, all at 64 environments on seed 4070:
+
+| rail stop error | success | Wilson 95% | lost before delivery | grip error of the lost episodes |
+| ---: | ---: | --- | ---: | ---: |
+| 0 mm | 54.69% | [42.6, 66.3] | 3.1% | -- (2 episodes) |
+| 2 mm | 67.19% | [55.0, 77.4] | 3.1% | -- (2 episodes) |
+| 4 mm | 51.56% | [39.6, 63.4] | 10.9% | 12.47 mm |
+| 6 mm | 23.44% | [14.7, 35.1] | 62.5% | 12.74 mm |
+| 10 mm | 1.56% | [0.3, 8.3] | 95.3% | 12.47 mm |
+
+Flat within noise to 4 mm, then a cliff between 4 and 6 mm. The derived
+*geometric* bound is 1.624 mm, so a designer taking it would be safe by a factor
+of about three -- but **that is not the interesting part, and reading it as
+conservatism would be wrong.**
+
+The bound is a *grip* bound: it says a stop error pushes a module in the channel
+corner past the offset at which a pad still bears on the pin. If that were the
+mechanism, the episodes lost before delivery would show an elevated tool-to-pin
+offset, the way `section_120x16` and `rack_lat_16mm` do. They do not. At 4, 6 and
+10 mm the lost episodes sit at 12.47, 12.74 and 12.47 mm against successful
+episodes' 13.0 -- the same grip, or a slightly better one. **The module is being
+held correctly and the phase is timing out anyway.**
+
+So the closed form predicts a failure that does not happen, at a threshold three
+times tighter than the one that does, and the failure that does happen is a
+policy trained at a single base position meeting one it has never seen. That
+marks the edge of what a geometric design tool can predict, and it is the one
+axis where the answer is not a number but a boundary of applicability.
+
 **A rate is not the only thing an episode records, and the mechanism separates
 where the rate does not.** The grip criterion bounds how far a pad may slide off
 the pin, so where it is violated the failing episodes should sit further off the
