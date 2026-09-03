@@ -20,6 +20,18 @@ Everything is simulated. Nothing has run on hardware.
 | Checkpoints | reports contain hashes, but weights under `logs/` and `checkpoints/` are absent from a clone |
 | Hardware claim | none |
 
+**`check_criterion_currency.py --all` now flags all 121 reports, and that is the
+tool working rather than 121 invalidated numbers.** It flags any report generated
+before a change to a file that *can* define its criterion, and
+`scripts/run_workflow_demo.py` changed four times on 2026-09-03. Every one of
+those changes is additive with a behaviour-preserving default:
+`--fiducial_guard_bounds` defaults to the shipped estimator bounds,
+`--rack_clearance_scope` defaults to `guides` which is what the published sweep
+ran, `--remove_entry_flares` defaults off, and the fourth turns a silent deadlock
+into an argument error for a combination no published report used successfully.
+`tests/test_guard_bounds_arm.py` holds the first three defaults in CI. No
+published number moves.
+
 T0 remains open for the ten source-bound reports whose exact uncommitted code
 cannot be recovered. New strict-chain and RGB-D evidence starts from clean
 commits; the bounded audit finds no lost binding in either new RGB-D report.
