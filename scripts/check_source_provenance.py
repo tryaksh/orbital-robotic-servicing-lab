@@ -64,9 +64,32 @@ def _find(node: object, key: str):
     return None
 
 
-def _as_checked_out(blob: bytes) -> bytes:
-    """Git stores LF; a Windows checkout hashes CRLF. Normalise then expand."""
-    return blob.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+def _as_checked_out(blob: bytes) -> tuple[bytes, ...]:
+    """Every rendering of one blob a working tree here can legitimately hold.
+
+    **This used to assume one, and that assumption is what made most of T0 look
+    unrecoverable.** Git stores LF; with ``core.autocrlf=true`` a Windows
+    checkout holds CRLF, and the runtime hashes the bytes it read from disk. So
+    the old single CRLF expansion matched every file that had been checked out
+    and missed every file a tool had written with LF and left there --
+    ``rack_retention.py``, ``servicing_camera.py`` and ``provenance.py`` in the
+    most recent RGB-D report, all three of which are byte-identical to the
+    committed blob and were reported lost anyway.
+
+    Git treats the two renderings as the same content under ``autocrlf``, so a
+    recorded hash matching either one identifies the same source. Returning both
+    is the fix; comparing normalised text on both sides is not, because the
+    recorded hash is of raw bytes and cannot be re-normalised after the fact.
+    """
+
+    normalised = blob.replace(b"\r\n", b"\n")
+    return (normalised, normalised.replace(b"\n", b"\r\n"))
+
+
+def _matches(blob: bytes, recorded: str) -> bool:
+    return any(
+        hashlib.sha256(rendering).hexdigest() == recorded for rendering in _as_checked_out(blob)
+    )
 
 
 def _commits(depth: int) -> list[tuple[str, str]]:
@@ -96,14 +119,14 @@ def classify(path: str, recorded: str, commits: list[tuple[str, str]]) -> dict:
     on_disk = ROOT / path
     if on_disk.is_file() and hashlib.sha256(on_disk.read_bytes()).hexdigest() == recorded:
         head = _blob("HEAD", path)
-        if head is not None and hashlib.sha256(_as_checked_out(head)).hexdigest() == recorded:
+        if head is not None and _matches(head, recorded):
             return {"path": path, "state": "recovered", "commit": "HEAD"}
         return {"path": path, "state": "working"}
     for short, subject in commits:
         blob = _blob(short, path)
         if blob is None:
             continue
-        if hashlib.sha256(_as_checked_out(blob)).hexdigest() == recorded:
+        if _matches(blob, recorded):
             return {"path": path, "state": "recovered", "commit": short, "subject": subject}
     return {"path": path, "state": "lost"}
 
