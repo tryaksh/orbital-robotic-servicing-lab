@@ -183,6 +183,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sweep_dir", type=Path, default=ROOT / "artifacts" / "robustness64")
     parser.add_argument("--nominal", default="nominal")
+    parser.add_argument(
+        "--compare_dir",
+        type=Path,
+        default=None,
+        help=(
+            "A second sweep directory holding the same point names under one changed flag. Points "
+            "found there are decomposed the same way and reported beside the primary arm, which is "
+            "how the clearance re-measurement keeps its losing arm."
+        ),
+    )
+    parser.add_argument("--compare_label", default="compared_arm")
     parser.add_argument("--report", type=Path, default=ROOT / "evidence" / "boundary_failure_modes_v1.json")
     arguments = parser.parse_args()
 
@@ -215,18 +226,35 @@ def main() -> int:
         "base_y_+10mm": {"gaps": (nominal_lateral, nominal_vertical), "dimension": "base_offset"},
     }
 
-    points: dict[str, dict[str, object]] = {}
-    for name, entry in layout.items():
-        archive = arguments.sweep_dir / f"{name}.npz"
-        if not archive.is_file():
-            raise FileNotFoundError(archive)
-        loaded = np.load(archive, allow_pickle=True)
-        fields = [str(value) for value in loaded["fields"]]
-        record = decompose(loaded["rows"], fields)
-        lateral, vertical = entry["gaps"]  # type: ignore[misc]
-        record["dimension"] = entry["dimension"]
-        record["analytical"] = criteria_for(module, float(lateral), float(vertical))
-        points[name] = record
+    def read_points(directory: Path) -> dict[str, dict[str, object]]:
+        """Decompose every point present, whether or not the layout names it.
+
+        The base_y ladder adds rungs that did not exist when this was written,
+        and a rung is still a measurement. An unnamed point inherits the nominal
+        channel, because a point that does not change the channel is exactly
+        what those are.
+        """
+
+        found: dict[str, dict[str, object]] = {}
+        for archive in sorted(directory.glob("*.npz")):
+            name = archive.stem
+            entry = layout.get(name)
+            if entry is None:
+                if not name.startswith("base_"):
+                    continue
+                entry = {"gaps": (nominal_lateral, nominal_vertical), "dimension": "base_offset"}
+            loaded = np.load(archive, allow_pickle=True)
+            fields = [str(value) for value in loaded["fields"]]
+            record = decompose(loaded["rows"], fields)
+            lateral, vertical = entry["gaps"]  # type: ignore[misc]
+            record["dimension"] = entry["dimension"]
+            record["analytical"] = criteria_for(module, float(lateral), float(vertical))
+            found[name] = record
+        return found
+
+    points = read_points(arguments.sweep_dir)
+    if arguments.nominal not in points:
+        raise FileNotFoundError(f"{arguments.nominal}.npz is not in {arguments.sweep_dir}")
 
     nominal = points[arguments.nominal]
     verdicts: dict[str, dict[str, object]] = {}
@@ -262,6 +290,20 @@ def main() -> int:
             "criteria": rows,
         }
 
+    compared: dict[str, dict[str, object]] = {}
+    if arguments.compare_dir is not None:
+        for name, record in read_points(arguments.compare_dir).items():
+            primary = points.get(name)
+            record["primary_arm_success_rate"] = primary["success_rate"] if primary else None
+            if primary is not None:
+                record["mode_deltas"] = {
+                    mode: round(
+                        float(record["modes"][mode]["rate"]) - float(primary["modes"][mode]["rate"]), 6
+                    )
+                    for mode in record["modes"]
+                }
+            compared[name] = record
+
     report = {
         "title": "Serviceability criteria scored against the failure each one predicts",
         "evidence_type": "analytical_criteria_against_simulated_failure_modes",
@@ -296,6 +338,11 @@ def main() -> int:
         "nominal_point": arguments.nominal,
         "points": points,
         "verdicts": verdicts,
+        "compared_arm": {
+            "label": arguments.compare_label,
+            "directory": str(arguments.compare_dir) if arguments.compare_dir else None,
+            "points": compared,
+        },
         "source_revision": git_source_revision(ROOT),
     }
     arguments.report.parent.mkdir(parents=True, exist_ok=True)
@@ -325,6 +372,20 @@ def main() -> int:
                 f"{name:<16} {row['criterion']:<6} admissible={str(row['analytically_admissible']):<5} "
                 f"mode {row['mode_rate']:.3f} vs nominal {row['nominal_mode_rate']:.3f} "
                 f"separated={str(row['mode_separated_from_nominal']):<5} -> {state}"
+            )
+    if compared:
+        print()
+        print(f"{arguments.compare_label}:")
+        print(f"{'point':<16} {'rate':>6} {'lost':>6} {'jam':>6} {'gate':>6}   (delta on the primary arm)")
+        for name, record in compared.items():
+            modes = record["modes"]
+            deltas = record.get("mode_deltas", {})
+            print(
+                f"{name:<16} {record['success_rate']:6.3f} "
+                f"{modes['lost_before_delivery']['rate']:6.3f} "
+                f"{modes['jammed_in_the_bay']['rate']:6.3f} "
+                f"{modes['missed_the_terminal_gate']['rate']:6.3f}   "
+                f"jam {deltas.get('jammed_in_the_bay', 0.0):+.3f}  lost {deltas.get('lost_before_delivery', 0.0):+.3f}"
             )
     print(f"\nwrote {arguments.report}")
     return 0
