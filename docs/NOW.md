@@ -343,12 +343,32 @@ no extra sample.
 
 The n=16 sweep is not comparable: on current source it produces stub episodes
 at 16 environments, so the August ordering is not reproducible here and cannot
-be quoted alongside these figures. The 32-environment certifications are not
-directly comparable either: among their survivors the terminal lateral error is
-1.69 to 1.85 mm with a standard deviation of 0.054 mm, while the same point at
-64 environments runs 0.05 to 2.5 mm. The 2.5 mm gate sits between them, and
-whether that is the environment count or the four-times-longer episode is
-queued as its own two-run probe.
+be quoted alongside these figures.
+
+**The sweep's 54.69% nominal is not a second, disagreeing measurement of the
+91.67% chain, and reading it as one was an error made and corrected on
+2026-09-03.** The sweep does not enable rack retention -- its reports record
+`destination_rack_retention.enabled: false` -- so the arm it should be compared
+against is the paired no-rack control, not the headline:
+
+| cohort | rack retention | rate | Wilson 95% | survivor terminal lateral |
+| --- | --- | ---: | --- | ---: |
+| strict chain, 8 envs x 3 seeds | yes | 91.67% | [74.2, 97.7] | 0.706 mm, sd 0.53 |
+| paired no-rack control, 8 envs x 3 seeds | no | 70.83% | [50.8, 85.1] | 1.728 mm, sd 0.98 |
+| sweep nominal, 64 envs, 1 seed | no | 54.69% | [42.6, 66.3] | 2.093 mm, sd 1.25 |
+| legacy supported-settle, 32 envs x 3 seeds | n/a | 97.92% | [92.7, 99.4] | 1.832 mm, sd 0.06 |
+
+The sweep's interval and the no-rack control's overlap over more than fourteen
+points, so they are consistent, and the terminal precision runs monotonically in
+the same order as the rates. The legacy cohort's standard deviation of 0.06 mm is
+not an environment-count artefact either: that criterion measures the module
+**while it is still supported**, which is why it is twenty times tighter than any
+arm that lets go first.
+
+What remains untested is the residual between 70.83% and 54.69% -- one seed
+against three, and the sweep's four-times-longer episode -- and the two-run probe
+for that is queued. It is now a small question rather than a threat to every
+figure in the repository.
 
 Every losing arm is retained. No tolerance was widened. The envelope is **not
 qualified**.
