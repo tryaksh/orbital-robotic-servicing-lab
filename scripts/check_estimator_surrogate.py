@@ -204,6 +204,15 @@ def main() -> int:
     sweep = [_filtered_speed_statistics(raw_velocity, step_dt, tau) for tau in args.filter_sweep_s]
     deployed = min(sweep, key=lambda row: abs(row["time_constant_s"] - 0.10))
 
+    # **The control that makes the number above mean "noise".** Difference the
+    # simulator's own module pose through the identical path. Whatever motion
+    # the module really has appears in both arms; only the estimator's residual
+    # appears in one. Without this the velocity channel's magnitude could just
+    # be the module moving, and the claim would be unfounded.
+    true_raw_velocity = np.diff(truths[..., :3], axis=0) / step_dt
+    true_sweep = [_filtered_speed_statistics(true_raw_velocity, step_dt, tau) for tau in args.filter_sweep_s]
+    true_deployed = min(true_sweep, key=lambda row: abs(row["time_constant_s"] - 0.10))
+
     # The prediction this whole line of work started from: a residual of the
     # certified size, appearing over one camera period, is this much velocity.
     predicted_noise_floor_mm_s = certified_position_p95_mm / (camera_period_steps * step_dt)
@@ -256,6 +265,15 @@ def main() -> int:
             "deployed_filter": deployed,
             "deployed_noise_floor_over_seated_speed": deployed["speed_mm_s_mean"] / args.seated_speed_mm_s,
             "filter_sweep": sweep,
+            "true_velocity_control": {
+                "what_this_is": (
+                    "the simulator's own module pose differenced and filtered through the identical "
+                    "path; real motion appears in both arms, the estimator's residual in only one"
+                ),
+                "deployed_filter": true_deployed,
+                "filter_sweep": true_sweep,
+            },
+            "estimator_contribution_mm_s_mean": deployed["speed_mm_s_mean"] - true_deployed["speed_mm_s_mean"],
         },
         "source_revision": git_source_revision(PROJECT_ROOT),
     }
@@ -271,10 +289,14 @@ def main() -> int:
     print(f"estimate moves on {changed_fraction:.3f} of control steps (expected {1.0 / camera_period_steps:.3f})")
     print(
         f"velocity channel at the deployed filter: {deployed['speed_mm_s_mean']:.2f} mm/s mean, "
-        f"{deployed['speed_mm_s_mean'] / args.seated_speed_mm_s:.1f}x a seated module's own speed"
+        f"{deployed['speed_mm_s_mean'] / args.seated_speed_mm_s:.1f}x a seated module's own speed; "
+        f"the same path on true pose gives {true_deployed['speed_mm_s_mean']:.2f} mm/s"
     )
-    for row in sweep:
-        print(f"  tau={row['time_constant_s']:.2f}s  mean {row['speed_mm_s_mean']:7.2f} mm/s  p95 {row['speed_mm_s_p95']:7.2f}")
+    for row, true_row in zip(sweep, true_sweep):
+        print(
+            f"  tau={row['time_constant_s']:.2f}s  estimate mean {row['speed_mm_s_mean']:7.2f} mm/s "
+            f"p95 {row['speed_mm_s_p95']:7.2f}   truth mean {true_row['speed_mm_s_mean']:7.2f}"
+        )
     print(f"wrote {args.report}")
     if not agrees:
         print("SURROGATE DOES NOT REPRODUCE ITS CERTIFICATE; do not train against it")
