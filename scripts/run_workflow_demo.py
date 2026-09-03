@@ -520,6 +520,19 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--remove_entry_flares",
+        action="store_true",
+        help=(
+            "Diagnostic arm: delete each bay's two lateral entry flares from the scene. It exists "
+            "for one question. At 6 mm of lateral clearance per side the chain seats 36 of 64 "
+            "modules, while 2c/theta at the 46 mrad hand-over attitude says a module should wedge at "
+            "261 mm of a 529 mm stroke -- so something squares the module during the stroke, and "
+            "the two candidates are the 12-degree flare doing it mechanically and the guarded "
+            "advance doing it by refusing to push. Removing the flares separates them. Off by "
+            "default; no published number was measured without them."
+        ),
+    )
+    parser.add_argument(
         "--rack_clearance_scope",
         choices=("guides", "channel"),
         default="guides",
@@ -5840,6 +5853,18 @@ def main() -> dict[str, object]:
                 f"[INFO] Rack channel moved to {args.rack_lateral_clearance_mm:.3f} mm clearance "
                 f"per side, scope={args.rack_clearance_scope}: {moved}"
             )
+        if args.remove_entry_flares:
+            # After the clearance block, so this removes whatever that left --
+            # the flares it moved, or the flares it did not.
+            removed = []
+            for name in sorted(dir(env_cfg.scene)):
+                if "flare" not in name.lower():
+                    continue
+                if getattr(env_cfg.scene, name, None) is None:
+                    continue
+                setattr(env_cfg.scene, name, None)
+                removed.append(name)
+            print(f"[INFO] Entry flares removed: {removed}; this run is a diagnostic arm", flush=True)
         if args.stable_lighting:
             # Recording only, and the report says so, so a clip can never be
             # mistaken for a measurement made under easier conditions.
@@ -6716,6 +6741,7 @@ def main() -> dict[str, object]:
                                 "rack_clearance": {
                                     "per_side_mm": args.rack_lateral_clearance_mm,
                                     "scope": args.rack_clearance_scope,
+                                    "entry_flares_removed": bool(args.remove_entry_flares),
                                 },
                             }
                         )
