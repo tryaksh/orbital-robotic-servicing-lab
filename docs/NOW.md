@@ -271,6 +271,15 @@ whatever does the correcting -- the 12-degree entry flare, or the guarded advanc
 refusing to push -- and not on the channel. `--remove_entry_flares` is the run
 that separates those two, and it is queued.
 
+**This does not contradict the entry-attitude axis, and the distinction is the
+useful part.** `2c/L` is confirmed as a bound on the attitude a *seated* module
+holds -- the recorded seating sweep measures 0.87 to 1.02 of it across eight
+points -- and it is contradicted as a bound on the clearance an *entering* module
+needs. Those are different claims about the same law. A module that has arrived
+is limited by the channel it is sitting in; a module on its way in is not
+carrying its hand-over attitude, because something squares it during the stroke.
+The law holds; what was wrong was applying it to the wrong state.
+
 **And the comparison itself was asking the wrong question.** At the nominal
 design point, 27 of 29 failures reach the final phase with the form lock engaged
 and miss the 2.5 mm terminal gate. Two episodes in five are lost at the design
