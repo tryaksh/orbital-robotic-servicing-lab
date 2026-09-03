@@ -8,9 +8,9 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 55,
+    "canonical": 56,
     "retracted": 11,
-    "historical": 158
+    "historical": 162
   },
   "canonical": {
     "boundary_failure_modes_v1.json": {
@@ -52,6 +52,11 @@
       "evidence_type": "simulation_only",
       "generated_utc": "2026-08-24T22:07:21.639279+00:00",
       "holds_up": "One change a row on one unchanged checkpoint: criterion, rack, reset, then epochs."
+    },
+    "extract_channel_attribution_v1.json": {
+      "title": "Which observation channel costs extraction its transfer",
+      "evidence_type": "channel_attribution_on_an_unchanged_checkpoint",
+      "holds_up": "Which observation channel costs extraction its transfer, on the unchanged v18pin checkpoint: exact state 90.62%, pose channels noised 82.29%, velocity channel noised 80.42%, both 49.48%. The two channels cost 8.33 and 10.21 points apart and 41.15 together, so the interaction is 22.61 points -- larger than the sum of the parts. Neither channel is the problem; having no reliable channel is."
     },
     "fiducial_rgbd_flush_v2_seed283.json": {
       "title": "Calibrated RGB-D fiducial perception qualification",
@@ -739,6 +744,22 @@
     },
     "estimate_stability.json": {
       "title": "Pose estimate stability, with the module held still"
+    },
+    "extract_channel_isolation_Extract.json": {
+      "title": "Extraction on an unchanged checkpoint: Extract",
+      "generated_utc": "2026-09-03T21:04:56+00:00"
+    },
+    "extract_channel_isolation_ExtractNoised.json": {
+      "title": "Extraction on an unchanged checkpoint: ExtractNoised",
+      "generated_utc": "2026-09-03T21:18:21+00:00"
+    },
+    "extract_channel_isolation_ExtractPoseNoised.json": {
+      "title": "Extraction on an unchanged checkpoint: ExtractPoseNoised",
+      "generated_utc": "2026-09-03T21:31:38+00:00"
+    },
+    "extract_channel_isolation_ExtractVelocityNoised.json": {
+      "title": "Extraction on an unchanged checkpoint: ExtractVelocityNoised",
+      "generated_utc": "2026-09-03T21:42:14+00:00"
     },
     "fiducial_detector_late_approach_replay_v1.json": {
       "title": "Fiducial decoder replay on continuous late-approach RGB frames"

@@ -227,6 +227,39 @@ chosen, and whose velocity is the same finite difference the deployed estimator
 manufactures. `grapple_extract_l0_seed70_v19noised` resumes the certified v18pin
 checkpoint on that task at the same seed, one change from a published arm.
 
+**Which channel does it, measured on an unchanged checkpoint -- and the answer is
+neither.** The certified `v18pin` weights, one curriculum stage, three held-out
+evaluation seeds, four arms differing only in which observation channels read the
+training-time surrogate:
+[`extract_channel_attribution_v1.json`](../evidence/extract_channel_attribution_v1.json)
+
+| what the policy sees | episodes | success | Wilson 95% | points below the control |
+| --- | ---: | ---: | --- | ---: |
+| exact state, the control | 1,536 | **90.62%** | [89.1, 92.0] | 0 |
+| pose channels noised, velocity exact | 1,536 | **82.29%** | [80.3, 84.1] | 8.33 |
+| velocity noised, pose channels exact | 1,537 | **80.42%** | [78.4, 82.3] | 10.21 |
+| both | 1,536 | **49.48%** | [47.0, 52.0] | 41.15 |
+
+**The interaction is 22.61 points, larger than the sum of the two parts.** That
+refutes the standing hypothesis, which was that the velocity channel is the
+culprit because the camera runs at half the control rate and a differenced
+staircase manufactures a noise floor twenty times the seated signal. It does
+manufacture it, and on its own it costs ten points.
+
+What costs forty is having **no reliable channel left**. A policy can absorb a
+noisy pose while its velocity is true, because the velocity still tells it
+whether the module is actually moving; it can absorb a noisy velocity while its
+pose is true, because the pose still tells it where the module actually is. With
+both corrupted it has neither, and that is not a channel defect that a filter or
+a longer differencing window could repair. It is why the fix had to be the
+training distribution, and why training on *both* channels at once is the fix
+rather than an approximation to it.
+
+It also settles a worry about the surrogate. Forty-one points on an unchanged
+checkpoint is not a mild stand-in: the surrogate reproduces a large part of what
+the cameras actually cost, using only the residual, the sample-and-hold and the
+miss rate inverted from a published certificate.
+
 **First evidence that putting the estimator's error into training works, and it
 is a probe rather than a rate.** One seed, eight environments, and a *mid-training*
 checkpoint -- `grapple_extract_l0_seed70_v19noised` at epoch 13,400, eight hundred

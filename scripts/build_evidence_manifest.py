@@ -152,6 +152,16 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "The boundary decision re-derived from the 64-environment sweep. Still not qualified, and now with per-point classifications: rack_lat_6mm confirms its analytical infeasibility, section_120x16, section_140x26 and rack_lat_16mm do not, base_y_+10mm shows a loss the analytical model did not predict.",
     ),
     (
+        "extract_channel_attribution_v1.json",
+        (
+            "Which observation channel costs extraction its transfer, on the unchanged v18pin checkpoint: "
+            "exact state 90.62%, pose channels noised 82.29%, velocity channel noised 80.42%, both 49.48%. "
+            "The two channels cost 8.33 and 10.21 points apart and 41.15 together, so the interaction is "
+            "22.61 points -- larger than the sum of the parts. Neither channel is the problem; having no "
+            "reliable channel is."
+        ),
+    ),
+    (
         "rack_requirement_sweep_v1.json",
         (
             "The design derivation swept: one measured number about the arm -- the attitude it hands the "
