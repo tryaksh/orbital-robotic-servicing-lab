@@ -227,6 +227,28 @@ chosen, and whose velocity is the same finite difference the deployed estimator
 manufactures. `grapple_extract_l0_seed70_v19noised` resumes the certified v18pin
 checkpoint on that task at the same seed, one change from a published arm.
 
+**First evidence that putting the estimator's error into training works, and it
+is a probe rather than a rate.** One seed, eight environments, and a *mid-training*
+checkpoint -- `grapple_extract_l0_seed70_v19noised` at epoch 13,400, eight hundred
+epochs into a two-thousand-epoch fine-tune -- substituted for the extraction
+policy and nothing else:
+
+| arm, seed 4070, 8 environments | successes | what the failures did |
+| --- | ---: | --- |
+| published extraction (`v18pin`) | **2/8** | three never captured, three held at insertion, module frequently lost outright |
+| noised fine-tune at epoch 13,400 | **5/8** | all eight reach the final phase; three time out in extraction; none loses the module |
+
+Every environment's estimator error sits between 2.04 and 2.31 mm -- the tight,
+uniform band a working estimator produces -- against the published cohort's
+excursions to 154 mm on failing environments. **The module-loss failure mode is
+gone**, which is the one that made the camera-driven chain look broken rather
+than costly.
+
+Treat it as direction, not as a number: n = 8, one seed, an unfinished
+checkpoint, and no Wilson interval worth quoting. The pooled cohort over three
+held-out seeds with the finished checkpoint is queued, and it is published beside
+the 4/24 whichever way it lands.
+
 **This is the expected cost of an untrained transfer, and it is not a perception
 defect.** Capture, extraction and the guard were trained on simulator state and
 are deployed against an estimator with no student training, no distillation and
