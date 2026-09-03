@@ -490,14 +490,32 @@ class ModuleStateEstimator:
         The wrist's velocity is encoder and forward-kinematics information, which
         a real servicer has. ``audit_vision_deployment_observations`` forbids a
         deployed group from reading the *module's* live state and this does not:
-        it reads the robot's.
+        it reads the robot's, and transports it to where the module is using the
+        estimator's own camera-derived position as the lever arm.
         """
 
         robot = self._env.scene["robot"]
         body_id = self._wrist_body_id(robot)
-        velocity = torch.cat(
-            (robot.data.body_lin_vel_w[:, body_id], robot.data.body_ang_vel_w[:, body_id]), dim=-1
-        )
+        angular = robot.data.body_ang_vel_w[:, body_id]
+
+        # **Transport the velocity to the module, or this introduces an error the
+        # size of the one it removes.** `body_lin_vel_w` is the wrist body's
+        # *centre of mass* velocity, and a rigidly held module sits on a lever
+        # arm from it -- of order 0.3 m here. At the 0.1 rad/s the transit turns
+        # at, omega x r is about 30 mm/s, which is the same order as the camera
+        # noise this channel exists to avoid. So the rigid-body transport is not
+        # a refinement; it is the difference between a fix and a swap.
+        #
+        # The lever arm uses the estimator's own pose, which is camera-derived --
+        # and that is harmless where a camera-differenced *velocity* is not. A
+        # millimetre of position error contributes omega times a millimetre, or
+        # about 0.1 mm/s.
+        wrist_centre = robot.data.body_com_pos_w[:, body_id]
+        module_centre = self._pose[:, :3] + self._env.scene.env_origins
+        lever = module_centre - wrist_centre
+        linear = robot.data.body_lin_vel_w[:, body_id] + torch.linalg.cross(angular, lever, dim=-1)
+
+        velocity = torch.cat((linear, angular), dim=-1)
         return torch.where(self._module_tool_attached.unsqueeze(-1), velocity, torch.zeros_like(velocity))
 
     def _wrist_body_id(self, robot) -> int:
