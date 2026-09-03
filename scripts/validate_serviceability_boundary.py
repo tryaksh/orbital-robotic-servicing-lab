@@ -190,6 +190,29 @@ def classify_simulation_point(
     }
 
 
+def _dimension_status(points: list[dict[str, Any]], note: str) -> dict[str, Any]:
+    """Derive a dimension's status from its own rows instead of asserting it.
+
+    **These statuses used to be literals.** `"status": "mismatch"` was written
+    beside the rows rather than computed from them, which was true when it was
+    written and would have stayed "true" if the rows changed underneath it. A
+    fail-closed validator cannot have an authored verdict: the corrected
+    clearance arm is exactly the case that would have been reported as a
+    mismatch while its own rows said otherwise.
+    """
+
+    dissenting = [row["label"] for row in points if row["comparison"] != "supports_boundary"]
+    if dissenting:
+        reason = f"{note} Points that do not support the boundary: {', '.join(dissenting)}."
+    else:
+        reason = f"{note} Every point supports the boundary."
+    return {
+        "status": "mismatch" if dissenting else "supported_in_simulation",
+        "points_not_supporting": dissenting,
+        "reason": reason,
+    }
+
+
 def _section(geometry: dict[str, Any], width: float, height: float) -> dict[str, Any]:
     rows = geometry["boundary_section_envelope"]["sections"]
     matches = [
@@ -328,25 +351,32 @@ def build_report(
 
     dimensions = {
         "rack_clearance": {
-            "status": "mismatch",
+            **_dimension_status(
+                clearance_rows,
+                "The two-sided lateral clearance bound, against the swept clearance points.",
+            ),
             "analytical_window_m_per_side": {"low": lower, "high": upper},
             "points": clearance_rows,
-            "reason": "Both analytically excluded clearance arms overlap nominal simulation performance.",
         },
         "module_section": {
-            "status": "mismatch",
+            **_dimension_status(
+                section_rows,
+                "The intersection of the entry and grip bounds, against the swept module sections.",
+            ),
             "points": section_rows,
-            "reason": "The 120 x 16 mm loss supports the boundary; the 140 x 26 mm arm does not.",
         },
         "base_offset": {
-            "status": "mismatch",
+            **_dimension_status(
+                base_rows,
+                (
+                    "The parked-base kinematic gate, against the swept base positions. A rail stop "
+                    "error that clears this gate is kinematically feasible; a simulated loss at one "
+                    "that does is controller, rail-stop or hand-off sensitivity rather than a "
+                    "kinematic boundary, and the closed form does not claim to predict it."
+                ),
+            ),
             "kinematic_gate": PROTOCOL["parked_base_kinematic_gate"],
             "points": base_rows,
-            "reason": (
-                "A +10 mm rail stop error remains kinematically feasible with controller authority, "
-                "but simulation has a Wilson-separated loss; this is controller, rail-stop, or "
-                "handoff sensitivity rather than a kinematic boundary."
-            ),
         },
         "entry_attitude": {
             "status": "supported_in_simulation" if entry_supported else "mismatch",
