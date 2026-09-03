@@ -259,6 +259,11 @@ for _noised_id, _noised_cls in (
     ("Isaac-ZeroG-Blade-GrapplePin-ExtractPoseNoised-v0", "ZeroGBladeGrapplePinExtractPoseNoisedEnvCfg"),
     ("Isaac-ZeroG-Blade-GrapplePin-ExtractPoseNoised-Play-v0", "ZeroGBladeGrapplePinExtractPoseNoisedPlayEnvCfg"),
     ("Isaac-ZeroG-Blade-GrapplePin-ExtractVelocityNoised-v0", "ZeroGBladeGrapplePinExtractVelocityNoisedEnvCfg"),
+    # The in-loop tail as its own arm: the first arm's constants are inverted
+    # from the still-frame certificate, and this one's are calibrated against
+    # what the estimator records inside a closed loop.
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractNoisedTail-v0", "ZeroGBladeGrapplePinExtractNoisedTailEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractNoisedTail-Play-v0", "ZeroGBladeGrapplePinExtractNoisedTailPlayEnvCfg"),
     ("Isaac-ZeroG-Blade-GrapplePin-ExtractVelocityNoised-Play-v0", "ZeroGBladeGrapplePinExtractVelocityNoisedPlayEnvCfg"),
 ):
     gym.register(

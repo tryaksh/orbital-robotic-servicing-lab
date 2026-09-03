@@ -187,6 +187,44 @@ class ZeroGBladeGrapplePinExtractVelocityNoisedPlayEnvCfg(ZeroGBladeGrapplePinEx
         configure_insertion_play_presentation(self)
 
 
+class _InLoopTailSettings(_EstimatorNoiseSettings):
+    """The estimator's in-loop tail, as its own arm.
+
+    The certified residual is measured on held-out still frames, where position
+    error tops out at 3.3 mm. In the loop the same estimator records a
+    per-episode maximum around 30 mm, and it does so on the episodes that
+    *succeed* as much as on the ones that fail -- 1.89, 2.00 and 2.11 mm of mean
+    error on the winners against 2.29, 5.99 and 1.98 on the losers, across the
+    three vision seeds. So the tail is a property of the poses a closed loop
+    visits, not a symptom of an episode already going wrong.
+
+    The two constants are calibrated against those two recorded numbers and
+    nothing else. With the bulk sigma at 0.683 mm and roughly 950 camera frames
+    an episode, a 3% outlier rate at 15x the bulk gives a mean around 1.5 mm and
+    a per-episode maximum around 32 mm, against the 2.0 mm and 30 mm the loop
+    records. That is calibration against deployment rather than derivation from a
+    certificate, and it is the reason this is a separate task: the first arm's
+    constants are inverted from published evidence and this one's are fitted to
+    it, and a reader is entitled to know which is which.
+    """
+
+    estimator_noise_outlier_rate: float = 0.03
+    estimator_noise_outlier_scale: float = 15.0
+
+
+@configclass
+class ZeroGBladeGrapplePinExtractNoisedTailEnvCfg(ZeroGBladeGrapplePinExtractEnvCfg, _InLoopTailSettings):
+    observations: NoisedExtractObservationsCfg = NoisedExtractObservationsCfg()
+
+
+@configclass
+class ZeroGBladeGrapplePinExtractNoisedTailPlayEnvCfg(ZeroGBladeGrapplePinExtractNoisedTailEnvCfg):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.scene.num_envs = 1
+        configure_insertion_play_presentation(self)
+
+
 @configclass
 class ZeroGBladeGrapplePinGraspNoisedPlayEnvCfg(ZeroGBladeGrapplePinGraspNoisedEnvCfg):
     def __post_init__(self) -> None:
@@ -228,6 +266,8 @@ __all__ = [
     "NoisedInsertObservationsCfg",
     "NoisedInsertPolicyObsCfg",
     "ZeroGBladeGrapplePinExtractNoisedEnvCfg",
+    "ZeroGBladeGrapplePinExtractNoisedTailEnvCfg",
+    "ZeroGBladeGrapplePinExtractNoisedTailPlayEnvCfg",
     "ZeroGBladeGrapplePinExtractNoisedPlayEnvCfg",
     "ZeroGBladeGrapplePinGraspNoisedEnvCfg",
     "ZeroGBladeGrapplePinGraspNoisedPlayEnvCfg",
