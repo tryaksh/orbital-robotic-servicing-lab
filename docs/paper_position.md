@@ -1,5 +1,40 @@
 # What this paper may claim, after the 2026-09-03 literature check
 
+> ## Corrections made overnight on 2026-09-03/04 -- read before writing
+>
+> An audit found six claims stated more strongly than their evidence supports.
+> If a draft already contains any of these, it is wrong and this file is right.
+>
+> 1. **`2c/theta` does not predict the stall depth to within a millimetre.** It
+>    gives a bracket, 260.6 to 323.9 mm, because the bay has two clearances.
+>    **Lead claim 1 with the eight-point sweep instead**: fitting measured
+>    attitude against relief gives `3.609 * relief + 6.217 mrad`, R^2 = 0.9998 --
+>    the law's *form* confirmed, its coefficient 0.812 of the ideal, and the
+>    bound exceeded by about 2.4% at the two tightest points.
+> 2. **The requirement is computable before the *seating* policy is trained, not
+>    "before any policy is trained".** The delivered attitude is measured from a
+>    policy that already exists. The claim as first written is circular.
+> 3. **"The estimator is no worse on the episodes it loses" is too strong.**
+>    Those figures were medians; two losing episodes carry 154 and 355 mm. Say
+>    that thirteen of twenty failures carry 2.38 mm or less, so most failures are
+>    not explained by estimator error.
+> 4. **The sight-line derivation computes line of sight, not readability.**
+> 5. **`criterion_retention_v1.json` is retracted.** Do not quote a retention
+>    statistic; the archives carry no hand-over value and the velocity version
+>    was circular with the success predicate.
+> 6. **Do not quote the grip signature as mechanism.** It comes from episodes
+>    that never captured. The criterion is carried by the *rate of capture
+>    failure*, 33 of 192 against nominal's 3.
+>
+> Two things also got stronger. Every A/B here is a paired design and reads
+> better paired -- the lead-in guard and rack retention are both significant
+> under McNemar and inconclusive under unpaired Wilson intervals -- and the
+> perception interaction survives restatement as an odds ratio, 0.495
+> [0.378, 0.650]. And open the results with the failure-mode decomposition of
+> the nominal point: the chain delivers on 187 of 192 episodes, 97.4%, and the
+> residual is terminal seating precision. A reader who meets 57% first has
+> already formed an objection.
+
 `PAPER_PLAN.md` is frozen and carries the 2026-09-02 review. This file is the
 second pass, run after the boundary work of 2026-09-03 changed the result set,
 and it exists because that work produced a framing that **loses to prior art if
