@@ -176,10 +176,15 @@ articles.
 
 Two consequences, and both change how the remaining work should be planned.
 
-**The 2026-11-09 date in the frozen `PAPER_PLAN.md` is not this collection's and
-could not be confirmed anywhere today.** Planning around it would have compressed
-six months into ten weeks for no reason. The work is not deadline-bound; it is
-gate-bound, and the gates are in `NOW.md`.
+**The binding date is the owner's, not the venue's: a project ready to submit by
+early November 2026**, set 2026-09-03. The collection stays open to 2027-02-28,
+so the venue is not the constraint and a slip costs nothing externally -- but the
+work is planned against November, which is about two months.
+
+That is comfortable for what is queued and tight for anything new. It rules out
+a second training campaign of the size of the seed spreads, and it means any
+further experiment has to earn its place against the four claims already
+standing rather than opening a fifth.
 
 **The collection's own framing names perception**, which moves claim 4 from
 liability to fit. A reviewer for a topic about "environmental perception,
