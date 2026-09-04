@@ -116,6 +116,64 @@ be sized for what the policy will deliver, and that has to happen before the GPU
 is spent, because afterwards there is no knob. **That is the coupling the paper
 is about**, and no search run today returned it.
 
+## A correction to this document, made the same day it was written
+
+**The recommendation to stop spending GPU on the learned seating phase was
+wrong, and the owner was right to push back on it.** It rested on the claim that
+the terminal attitude is set by the interface rather than by the learner, which
+three objectives 0.4 mrad apart appear to support. What that argument never
+checked is whether the policy could *perceive* the quantity it was being scored
+on.
+
+It could not. The seating policy's observation vector is joint positions and
+velocities, tool pose, grip error, gripper state, module velocity, previous
+action and goal error. **There is no contact force in it, and the grapple-pin
+scene has no contact sensor at all.** Ten checkpoints of contact-rich assembly,
+done blind.
+
+`BladeContactWrenchObservation` has existed in this repository since the
+force-limited insertion work. Its own docstring says "the missing half of force
+control", explains that "two force-penalty strengths failed to change measured
+contact load because the policy was asked to regulate a quantity absent from its
+observations", and cites FORGE. It was never wired to the skill the chain runs.
+
+**The literature says this is the ingredient class, not a detail.** FORGE
+(arXiv 2408.04587) feeds the policy a noisy end-effector force estimate, adds a
+force threshold it is conditioned on, and randomizes controller gains, action
+scale, friction and a joint-friction dead-zone. It transfers contact-rich
+insertion zero-shot **while tolerating up to 5 mm of fixed-part pose error and
+2.5 mm of position noise.** This project's estimator is accurate to about 2 mm
+and its chain collapses on camera-derived state. A system that tolerates more
+pose error than ours has, using ingredients ours lacks, is the strongest possible
+evidence that the ceiling here is the recipe rather than the physics.
+
+Three of those ingredients are missing here, and they are separable:
+
+1. **Force observation.** Being tested now as
+   `Isaac-ZeroG-Blade-GrapplePin-InsertForce-v0`, one change, from scratch.
+2. **A compliant action space.** The seating policy commands pose deltas through
+   differential IK -- a stiff position controller. FORGE commands a target into a
+   spring-damper with randomized stiffness, so a jammed part pushes back instead
+   of being pushed harder. This is the second arm if the first is not enough.
+3. **Dynamics randomization during training.** Friction, controller gains, action
+   scale. FORGE's own ablation is instructive and matches this project's [T5]
+   prediction: removing it *raises* nominal success to 0.91 and destroys
+   robustness to controller gains at deployment. A flatter curve at a lower peak
+   is the trade, and it should be reported as one.
+
+**What this does to the claims.** Claim 1 needs rewording and survives in a
+better form. "The delivered attitude is not the reward's to give" is supported;
+"no policy can deliver it" was never measured and must not be implied. The honest
+statement is that the attitude does not respond to reward shaping *for a policy
+that cannot sense contact*, which is a statement about observability rather than
+about the interface -- and `2c/theta` predicting the achieved depth to within a
+millimetre still stands regardless of which controller is driving.
+
+If the force-feedback policy seats, the paper reports a learned seating phase and
+the reason ten previous attempts failed, which is a considerably better result
+than the negative one. If it does not, `docs/seating_controller.md` is a far
+stronger argument for having been tested against the recipe the field agrees on.
+
 ## The theme that ties the results together, found twice independently
 
 **The same class of error appears in both halves of this project: a correct
