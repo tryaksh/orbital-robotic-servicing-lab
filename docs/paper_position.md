@@ -323,6 +323,38 @@ rate moves for a dozen reasons, the predicted mechanism moves for one.
    of 29 failures are the controller's own terminal precision; and keep the
    instrument's own defects in the record.
 
+## The threat to validity a reviewer will raise first, and the answer
+
+**"Your nominal configuration succeeds 57% of the time. What can a boundary
+study on top of that possibly mean?"** It is the fair question and the paper has
+to meet it in the results, not in the limitations.
+
+The answer is that 57% is the wrong decomposition of the number. At the design
+point, over 192 episodes on three held-out seeds:
+
+| what happened | episodes | rate |
+| --- | ---: | ---: |
+| lost before delivery | 5 | 2.6% |
+| lost in transit | 0 | 0.0% |
+| jammed in the bay | 0 | 0.0% |
+| arrived, seated, and held | 110 | 57.3% |
+| arrived and missed the terminal gate | 77 | 40.1% |
+
+**The serviceability chain -- releasing the module, carrying it across and
+delivering it into the destination bay -- completes on 187 of 192 episodes,
+97.4%.** Nothing jams. What fails is the last few millimetres: of the 187 that
+arrive, 110 seat, 58.8%. That residual is the seating controller's terminal
+precision, which is a control problem in a bay the module has already entered,
+and it is the phase this paper reports separately for exactly that reason.
+
+So the boundary study is not measuring perturbations against a coin flip. It is
+measuring them against a delivery process that works 97 times in 100, using a
+partition that scores each criterion on the failure it predicts rather than on a
+pooled rate dominated by a phase no criterion claims to govern. **Lead the
+results section with this decomposition.** A reader who meets 57% before they
+meet its parts has already formed the objection, and every later number is read
+through it.
+
 ## Venue
 
 Unchanged in order, and the date is now confirmed rather than assumed.
