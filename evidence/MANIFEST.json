@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 64,
     "retracted": 12,
-    "historical": 165
+    "historical": 167
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -1505,6 +1505,10 @@
       "title": "Chained servicing workflow: remove",
       "generated_utc": "2026-08-20T02:37:27+00:00"
     },
+    "workflow_robot_carried_insert_v33force_chain_policy_certification.json": {
+      "title": "Robot-carried relocation, seating driven by the learned insert policy (insert_v33force)",
+      "generated_utc": "2026-09-04T20:17:08+00:00"
+    },
     "workflow_robot_carried_leadin_check_certification.json": {
       "title": "Robot-carried relocation, one seed, lead-ins derived from the rails",
       "generated_utc": "2026-08-24T22:17:49+00:00"
@@ -1512,6 +1516,10 @@
     "workflow_robot_carried_m130pin_check_certification.json": {
       "title": "Robot-carried relocation, one seed, after the criterion and rack changes",
       "generated_utc": "2026-08-24T20:57:19+00:00"
+    },
+    "workflow_robot_carried_vision_factorial_base_000_certification.json": {
+      "title": "RGB-D chain, factorial cell base_000",
+      "generated_utc": "2026-09-04T20:54:38+00:00"
     },
     "workflow_robot_carried_vision_rack_retention_640px_v2_certification.json": {
       "title": "Strict 640-pixel camera-guided workflow with visible destination retention",
