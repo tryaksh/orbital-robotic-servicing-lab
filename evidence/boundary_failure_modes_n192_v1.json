@@ -1,0 +1,338 @@
+{
+  "title": "Serviceability criteria scored against the failure each one predicts",
+  "evidence_type": "analytical_criteria_against_simulated_failure_modes",
+  "what_this_is": "The same 64-environment sweep episodes, counted a second way. Each closed-form criterion names a failure mode; the mode's rate at each point is compared with its rate at nominal on the same Wilson rule the pooled protocol uses. Nothing was re-run and no tolerance moved.",
+  "why": "At nominal, 27 of 29 failures reach the final phase and miss the terminal gate, so about two episodes in five are lost at the design point to a mode no serviceability criterion claims to predict. A pooled-rate comparison asks every boundary point to clear that noise floor before it can separate.",
+  "scope": [
+    "Simulation only. No result here was produced on real hardware.",
+    "This is a second reading of existing episodes, not a new measurement.",
+    "The two base-offset points do not change the channel, so neither channel criterion applies to them; they are reported to show what mode they do produce.",
+    "A mode rate at 64 episodes has a wide interval. A point whose mode moves in the predicted direction without separating is reported as unseparated, not as support."
+  ],
+  "mode_definitions": {
+    "lost_before_delivery": "timed out in capture, seat or extract; predicted by the grip criterion",
+    "jammed_in_the_bay": "reached insert and stopped short of the seated plane; predicted by the entry criterion",
+    "lost_in_transit": "timed out carrying the module between bays; predicted by neither",
+    "missed_the_terminal_gate": "arrived and seated, then missed the terminal gate; predicted by neither"
+  },
+  "nominal_point": "nominal",
+  "points": {
+    "nominal": {
+      "episodes": 192,
+      "successes": 110,
+      "success_rate": 0.572917,
+      "modes": {
+        "lost_before_delivery": {
+          "what_it_is": "timed out in capture, seat or extract; the module never reached the destination",
+          "predicted_by": "grip",
+          "count": 5,
+          "rate": 0.026042,
+          "wilson_95": {
+            "low": 0.011174,
+            "high": 0.059503
+          },
+          "timed_out_phase_counts": {
+            "capture": 3,
+            "seat": 0,
+            "extract": 2
+          }
+        },
+        "lost_in_transit": {
+          "what_it_is": "timed out carrying the module between bays; predicted by neither criterion",
+          "predicted_by": null,
+          "count": 0,
+          "rate": 0.0,
+          "wilson_95": {
+            "low": 0.0,
+            "high": 0.019615
+          }
+        },
+        "jammed_in_the_bay": {
+          "what_it_is": "reached the insert phase and stopped there, short of the seated plane",
+          "predicted_by": "entry",
+          "count": 0,
+          "rate": 0.0,
+          "wilson_95": {
+            "low": 0.0,
+            "high": 0.019615
+          }
+        },
+        "missed_the_terminal_gate": {
+          "what_it_is": "arrived and seated, then missed the 2.5 mm / 52.4 mrad terminal gate",
+          "predicted_by": null,
+          "count": 77,
+          "rate": 0.401042,
+          "wilson_95": {
+            "low": 0.334313,
+            "high": 0.471652
+          }
+        }
+      },
+      "median_grip_error_m": {
+        "successful": 0.013058,
+        "failing": 0.013086
+      },
+      "grip_signature_mm": 0.0275,
+      "dimension": "reference",
+      "analytical": {
+        "lateral_half_gap_m": 0.011065,
+        "vertical_half_gap_m": 0.008,
+        "required_half_gap_m": 0.01035,
+        "destination_relief_per_side_m": 0.0046125,
+        "pad_half_bearing_offset_m": 0.015,
+        "channel_corner_m": 0.013654,
+        "entry_margin_m": 0.002262,
+        "grip_margin_m": 0.001346,
+        "entry_admissible": true,
+        "grip_admissible": true
+      }
+    },
+    "section_120x16": {
+      "episodes": 192,
+      "successes": 88,
+      "success_rate": 0.458333,
+      "modes": {
+        "lost_before_delivery": {
+          "what_it_is": "timed out in capture, seat or extract; the module never reached the destination",
+          "predicted_by": "grip",
+          "count": 40,
+          "rate": 0.208333,
+          "wilson_95": {
+            "low": 0.156889,
+            "high": 0.27122
+          },
+          "timed_out_phase_counts": {
+            "capture": 33,
+            "seat": 0,
+            "extract": 7
+          }
+        },
+        "lost_in_transit": {
+          "what_it_is": "timed out carrying the module between bays; predicted by neither criterion",
+          "predicted_by": null,
+          "count": 0,
+          "rate": 0.0,
+          "wilson_95": {
+            "low": 0.0,
+            "high": 0.019615
+          }
+        },
+        "jammed_in_the_bay": {
+          "what_it_is": "reached the insert phase and stopped there, short of the seated plane",
+          "predicted_by": "entry",
+          "count": 0,
+          "rate": 0.0,
+          "wilson_95": {
+            "low": 0.0,
+            "high": 0.019615
+          }
+        },
+        "missed_the_terminal_gate": {
+          "what_it_is": "arrived and seated, then missed the 2.5 mm / 52.4 mrad terminal gate",
+          "predicted_by": null,
+          "count": 64,
+          "rate": 0.333333,
+          "wilson_95": {
+            "low": 0.2705,
+            "high": 0.402706
+          }
+        }
+      },
+      "median_grip_error_m": {
+        "successful": 0.013127,
+        "failing": 0.013834
+      },
+      "grip_signature_mm": 0.7072,
+      "dimension": "module_section",
+      "analytical": {
+        "lateral_half_gap_m": 0.016065,
+        "vertical_half_gap_m": 0.01,
+        "required_half_gap_m": 0.01035,
+        "destination_relief_per_side_m": 0.0046125,
+        "pad_half_bearing_offset_m": 0.015,
+        "channel_corner_m": 0.018923,
+        "entry_margin_m": 0.004262,
+        "grip_margin_m": -0.003923,
+        "entry_admissible": true,
+        "grip_admissible": false
+      }
+    },
+    "section_140x26": {
+      "episodes": 192,
+      "successes": 78,
+      "success_rate": 0.40625,
+      "modes": {
+        "lost_before_delivery": {
+          "what_it_is": "timed out in capture, seat or extract; the module never reached the destination",
+          "predicted_by": "grip",
+          "count": 17,
+          "rate": 0.088542,
+          "wilson_95": {
+            "low": 0.056015,
+            "high": 0.13721
+          },
+          "timed_out_phase_counts": {
+            "capture": 1,
+            "seat": 0,
+            "extract": 16
+          }
+        },
+        "lost_in_transit": {
+          "what_it_is": "timed out carrying the module between bays; predicted by neither criterion",
+          "predicted_by": null,
+          "count": 0,
+          "rate": 0.0,
+          "wilson_95": {
+            "low": 0.0,
+            "high": 0.019615
+          }
+        },
+        "jammed_in_the_bay": {
+          "what_it_is": "reached the insert phase and stopped there, short of the seated plane",
+          "predicted_by": "entry",
+          "count": 0,
+          "rate": 0.0,
+          "wilson_95": {
+            "low": 0.0,
+            "high": 0.019615
+          }
+        },
+        "missed_the_terminal_gate": {
+          "what_it_is": "arrived and seated, then missed the 2.5 mm / 52.4 mrad terminal gate",
+          "predicted_by": null,
+          "count": 97,
+          "rate": 0.505208,
+          "wilson_95": {
+            "low": 0.435083,
+            "high": 0.575129
+          }
+        }
+      },
+      "median_grip_error_m": {
+        "successful": 0.01304,
+        "failing": 0.012943
+      },
+      "grip_signature_mm": -0.0963,
+      "dimension": "module_section",
+      "analytical": {
+        "lateral_half_gap_m": 0.006065,
+        "vertical_half_gap_m": 0.005,
+        "required_half_gap_m": 0.01035,
+        "destination_relief_per_side_m": 0.0046125,
+        "pad_half_bearing_offset_m": 0.015,
+        "channel_corner_m": 0.00786,
+        "entry_margin_m": -0.000738,
+        "grip_margin_m": 0.00714,
+        "entry_admissible": false,
+        "grip_admissible": true
+      }
+    }
+  },
+  "verdicts": {
+    "section_120x16": {
+      "dimension": "module_section",
+      "pooled_success_rate": 0.458333,
+      "criteria": [
+        {
+          "criterion": "entry",
+          "margin_m": 0.004262,
+          "analytically_admissible": true,
+          "predicted_mode": "jammed_in_the_bay",
+          "mode_rate": 0.0,
+          "mode_wilson_95": {
+            "low": 0.0,
+            "high": 0.019615
+          },
+          "nominal_mode_rate": 0.0,
+          "nominal_mode_wilson_95": {
+            "low": 0.0,
+            "high": 0.019615
+          },
+          "mode_separated_from_nominal": false,
+          "grip_signature_mm": 0.7072,
+          "signature_present": null,
+          "supports_the_criterion": true
+        },
+        {
+          "criterion": "grip",
+          "margin_m": -0.003923,
+          "analytically_admissible": false,
+          "predicted_mode": "lost_before_delivery",
+          "mode_rate": 0.208333,
+          "mode_wilson_95": {
+            "low": 0.156889,
+            "high": 0.27122
+          },
+          "nominal_mode_rate": 0.026042,
+          "nominal_mode_wilson_95": {
+            "low": 0.011174,
+            "high": 0.059503
+          },
+          "mode_separated_from_nominal": true,
+          "grip_signature_mm": 0.7072,
+          "signature_present": true,
+          "supports_the_criterion": true
+        }
+      ]
+    },
+    "section_140x26": {
+      "dimension": "module_section",
+      "pooled_success_rate": 0.40625,
+      "criteria": [
+        {
+          "criterion": "entry",
+          "margin_m": -0.000738,
+          "analytically_admissible": false,
+          "predicted_mode": "jammed_in_the_bay",
+          "mode_rate": 0.0,
+          "mode_wilson_95": {
+            "low": 0.0,
+            "high": 0.019615
+          },
+          "nominal_mode_rate": 0.0,
+          "nominal_mode_wilson_95": {
+            "low": 0.0,
+            "high": 0.019615
+          },
+          "mode_separated_from_nominal": false,
+          "grip_signature_mm": -0.0963,
+          "signature_present": null,
+          "supports_the_criterion": false
+        },
+        {
+          "criterion": "grip",
+          "margin_m": 0.00714,
+          "analytically_admissible": true,
+          "predicted_mode": "lost_before_delivery",
+          "mode_rate": 0.088542,
+          "mode_wilson_95": {
+            "low": 0.056015,
+            "high": 0.13721
+          },
+          "nominal_mode_rate": 0.026042,
+          "nominal_mode_wilson_95": {
+            "low": 0.011174,
+            "high": 0.059503
+          },
+          "mode_separated_from_nominal": false,
+          "grip_signature_mm": -0.0963,
+          "signature_present": false,
+          "supports_the_criterion": true
+        }
+      ]
+    }
+  },
+  "compared_arm": {
+    "label": "compared_arm",
+    "directory": null,
+    "points": {}
+  },
+  "source_revision": {
+    "available": true,
+    "commit": "3c2bbc7b824b8456cfbf45c4ada8827387504cfb",
+    "branch": "paper/serviceability-qualification",
+    "dirty": false,
+    "tracked_changes": [],
+    "error": null
+  }
+}

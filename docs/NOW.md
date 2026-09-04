@@ -567,6 +567,23 @@ intervals nowhere near each other. **The grip criterion is confirmed.** The entr
 criterion is not: `140x26` is the point that fails it, and it jams zero times out
 of 192, so its elevated delivery loss is not the failure that criterion names.
 
+Both are now evidence rather than prose:
+`evidence/chain_robustness_sweep_section_n192_v1.json` carries the pooled points
+and `evidence/boundary_failure_modes_n192_v1.json` the mode partition, generated
+from a clean commit by `scripts/pool_sweep_points.py` out of archives that
+already existed. **The pooled rates still overlap nominal** -- 45.83%
+[38.9, 52.9] against 57.29% [50.2, 64.1] -- so tripling the sample did not make
+the *rate* separate this axis, and the separation is entirely in the mode. That
+is the strongest statement of the method note this project has: a criterion
+scored against the pooled rate would still be recorded as a mismatch here, on
+192 episodes, while the failure it actually predicts runs eight times over.
+
+The mechanism moves with it. The grip signature -- the failing episodes'
+tool-to-pin offset minus the successful ones' -- is **+0.71 mm** at the violated
+point against **+0.03 mm** at nominal and **-0.10 mm** at `140x26`, so the only
+point where the criterion is violated is the only point where the quantity it
+bounds is larger on the episodes that fail.
+
 **A rate is not the only thing an episode records, and the mechanism separates
 where the rate does not.** The grip criterion bounds how far a pad may slide off
 the pin, so where it is violated the failing episodes should sit further off the

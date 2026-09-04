@@ -191,6 +191,29 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         ),
     ),
     (
+        "chain_robustness_sweep_section_n192_v1.json",
+        (
+            "The module-section axis at three held-out seeds, 192 episodes a point, pooled from archives "
+            "that already existed. Nominal 57.29% [50.2, 64.1], 120x16 45.83% [38.9, 52.9], 140x26 40.62% "
+            "[33.9, 47.7]. The pooled rates still overlap nominal, which is the point: tripling n narrows "
+            "the interval from about twenty-four points to fourteen and the *pooled rate* still does not "
+            "separate this axis. Every other point is unchanged from chain_robustness_sweep_n64_channel_v1 "
+            "and the report names which is which."
+        ),
+    ),
+    (
+        "boundary_failure_modes_n192_v1.json",
+        (
+            "The section axis scored against the failure each criterion predicts, at 192 episodes. This is "
+            "where the axis separates and the pooled rate does not. The grip criterion is violated at "
+            "120x16 by 3.92 mm and that point loses 20.8% of episodes before delivery against nominal's "
+            "2.6%, separated, in exactly the mode the criterion names -- and its grip signature is +0.71 mm "
+            "against nominal's +0.03, so the mechanism moves too, not only the count. The entry criterion "
+            "is violated at 140x26 by 0.74 mm and produces zero jams in 192, so it is not supported. One "
+            "criterion confirmed and one contradicted, from the same episodes."
+        ),
+    ),
+    (
         "boundary_failure_modes_v1.json",
         (
             "The same episodes counted a second way: each closed-form criterion against the failure it "
