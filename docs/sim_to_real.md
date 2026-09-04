@@ -66,8 +66,11 @@ Push the module in on the stage at a commanded tilt swept through the derived
 
 * **What it falsifies.** `evidence/insert_depth_is_attitude.json` claims a module
   held at `theta` engages at most `2c/theta` before it wedges, and the recorded
-  seating sweep reports measured attitude at 0.87 to 1.02 of `2c/L` across eight
-  points. On a stage that is a direct measurement: plot depth against commanded
+  seating sweep reports measured attitude across eight points at a ratio to
+  `2c/L` that falls monotonically from 1.02 to 0.87 -- a structured deviation
+  and not scatter. The fit is `attitude = 3.609 * relief + 6.217 mrad` with
+  R^2 = 0.9998, so the *form* is confirmed and the coefficient is 0.81 of the
+  law's. This experiment is what separates the two candidate explanations. On a stage that is a direct measurement: plot depth against commanded
   tilt and the law is a line whose slope is `2c`.
 * **What it needs.** One bay, one module, a tilt fixture, a linear stage with a
   depth readout, and no robot at all.

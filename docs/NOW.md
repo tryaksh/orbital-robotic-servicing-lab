@@ -674,6 +674,62 @@ phase the criterion is about. The rate evidence carries the claim on its own and
 the signature column should be read as a description of the failure, not as a
 second measurement of it.
 
+## The wedging law is confirmed by a sweep, not by one number
+
+Claim 1 has been led by a single agreement -- the stalled population travels
+261.5 mm against `2c/theta` = 260.6 mm -- which needed a caveat, because the bay
+has two clearances and only the tighter one gives 260.6. There is a better test
+already in `evidence/workcell_geometry_check.json` and it was being quoted as
+though it were a scatter plot.
+
+`recorded_seating_sweep_against_the_law` sweeps the channel relief across eight
+points and records the attitude the module actually settles at. Fitting measured
+attitude against relief:
+
+**attitude = 3.609 * relief + 6.217 mrad, R^2 = 0.99979.**
+
+| relief per side | measured | `2c/L` predicts | ratio |
+| ---: | ---: | ---: | ---: |
+| 4.0 mm | 20.50 / 20.45 mrad | 20.00 | 1.025 / 1.022 |
+| 6.0 mm | 27.93 | 28.89 | 0.967 |
+| 8.0 mm | 35.22 | 37.78 | 0.932 |
+| 10.0 mm | 42.58 | 46.67 | 0.912 |
+| 12.0 mm | 49.79 | 55.56 | 0.896 |
+| 14.2 mm | 57.55 | 65.33 | 0.881 |
+| 16.0 mm | 63.55 | 73.33 | 0.867 |
+
+**The functional form is right and the coefficient is not.** An R^2 of 0.9998
+over eight points says attitude is linear in clearance, which is exactly what
+`2c/L` asserts. The measured slope is 3.609 against the law's `2/L` = 4.444, so
+**0.812 of it**, and there is a **6.2 mrad intercept** the law does not have.
+The ratios were being reported as "0.87 to 1.02", which reads like scatter about
+agreement; they decline monotonically with clearance, which is a structured
+deviation and a different fact.
+
+**Read as a bound rather than as a prediction, it holds where it matters least
+and fails where it matters most.** The law is an upper limit on the attitude a
+module can reach, and the measurement respects it at six of eight points -- by
+up to 13% at the loosest clearance. The two points where the measured attitude
+*exceeds* it are the two tightest, 4 mm, by 2.2 and 2.5%. A design gate that is
+conservative when the channel is loose and slightly optimistic when it is tight
+is the wrong way round, and the design point lives at the tight end.
+
+**Two readings of the offset, and the paper should state them as hypotheses.**
+A 6.2 mrad intercept at zero relief means the module reaches an attitude the
+relief alone does not explain, which is what a channel with clearance beyond the
+relief -- the guides' own gap -- would produce. That alone would leave the slope
+at 4.444, and it does not: a slope of 3.609 is `2/L` for an effective length of
+554 mm against a 450 mm module, which is what contacting at features outside the
+bare cross-section would produce. Neither is shown here. Both are exactly what
+the bench experiment in `docs/sim_to_real.md` measures directly, on a linear
+stage, with no robot.
+
+**Lead claim 1 with this and keep the single point as corroboration.** Eight
+points across a swept parameter, an R^2 of 0.9998, a named coefficient error and
+a named place where the bound is optimistic is a stronger and more honest
+opening than one number that agrees to a millimetre once the right clearance is
+chosen.
+
 ## Every A/B here is paired, and reading them unpaired was costing results
 
 Each A/B in this project is the same seeds, the same checkpoints, the same

@@ -248,9 +248,20 @@ rate moves for a dozen reasons, the predicted mechanism moves for one.
 ## Claim structure, in the order the paper should make them
 
 1. **A learned manipulator's delivered pose is not a design variable.** Led by
-   the mechanism: the stalled population holds 96.8 mrad and travels 261.5 mm,
-   against `2c/theta` = 260.6 mm taken against the *tighter* of the channel's two
-   clearances. Write it as the minimum over the constraining directions, state
+   the mechanism, and **lead it with the sweep, not with the single point**.
+   `workcell_geometry_check.json` varies the channel relief across eight points
+   and records the attitude the module settles at; the fit is
+   `attitude = 3.609 * relief + 6.217 mrad` with **R^2 = 0.9998**. That confirms
+   the *form* `2c/L` asserts -- attitude linear in clearance -- while the
+   coefficient is 0.812 of the law's and there is a 6.2 mrad intercept the law
+   does not have. Say both. Read as an upper bound the law is respected at six of
+   eight points and exceeded by about 2.4% at the two tightest, which is the end
+   the design point sits at, and that is worth stating rather than averaging
+   away.
+
+   The single point stays as corroboration: the stalled population holds
+   96.8 mrad and travels 261.5 mm, against `2c/theta` = 260.6 mm taken against
+   the *tighter* of the channel's two clearances. Write it as the minimum over the constraining directions, state
    that the looser clearance gives 323.9 mm, and say the observed travel falls at
    the tight end of that bracket -- not that the law predicts it to a millimetre.
    Corroborated by three objectives landing
