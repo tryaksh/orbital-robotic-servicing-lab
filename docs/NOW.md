@@ -1042,18 +1042,27 @@ channel that maximises the smaller margin, the cross-sections it accepts, and ho
 accurately the rail has to index. `scripts/derive_rack_requirement.py` is its
 CLI and needs no simulator.
 
-[`rack_requirement_sweep_v1.json`](../evidence/rack_requirement_sweep_v1.json)
+[`rack_requirement_sweep_v2.json`](../evidence/rack_requirement_sweep_v2.json)
 sweeps that derivation and is the figure the claim is made of. One measured
 number about the arm moves; the rack follows:
 
 | hand-over attitude | clearance window per side | window width | rail bound | sections of 36 | correcting lead-in |
 | ---: | --- | ---: | ---: | ---: | --- |
-| 5 mrad | 1.125 to 11.781 mm | 10.656 mm | 6.236 mm | 17 | no |
-| 20 mrad | 4.500 to 11.781 mm | 7.281 mm | 4.548 mm | 15 | no |
-| 35 mrad | 7.875 to 11.781 mm | 3.906 mm | 2.861 mm | 8 | no |
-| 40 mrad | 9.000 to 11.781 mm | 2.781 mm | 2.298 mm | 7 | **yes** |
-| **46 mrad, as built** | 10.350 to 11.781 mm | 1.431 mm | 1.623 mm | 7 | yes |
-| 52 mrad | 11.700 to 11.781 mm | 0.081 mm | 0.948 mm | 2 | yes |
+| 5 mrad | 1.125 to 11.781 mm | 10.656 mm | 6.236 mm | 12 | no |
+| 20 mrad | 4.500 to 11.781 mm | 7.281 mm | 4.548 mm | 6 | no |
+| 35 mrad | 7.875 to 11.781 mm | 3.906 mm | 2.861 mm | 4 | no |
+| 40 mrad | 9.000 to 11.781 mm | 2.781 mm | 2.298 mm | 4 | **yes** |
+| **46 mrad, as built** | 10.350 to 11.781 mm | 1.431 mm | 1.623 mm | 4 | yes |
+| 52 mrad | 11.700 to 11.781 mm | 0.081 mm | 0.948 mm | 0 | yes |
+
+**The section counts are lower than v1's and the windows are identical, because
+what changed is the check rather than the geometry.** Until 2026-09-04
+`section_verdict` consulted the window's lower bound and not its upper one, so a
+channel wider than a seated module's own acceptance tolerance was accepted; the
+sweep is evaluated at the shipped 4.6125 mm of relief, which puts every narrow
+section past that bound. `rack_requirement_sweep_v1.json` is kept beside it.
+Both bounds have always been published in the window column, which is what makes
+the correction a bug fix rather than a re-derivation.
 
 The four quantities do not move together, and that is what makes it a
 derivation rather than a scaling. Only the window's *lower* bound moves, so the
@@ -1065,8 +1074,9 @@ over at the interface's own acceptance limit and the rack having nothing left to
 give.
 
 For this workcell it derives 10.350 to 11.781 mm of clearance per side, a design
-point at 11.065 mm, seven admissible cross-sections of thirty-six, and a **rail
-indexing bound of 1.623 mm**. `tests/test_servicing_design.py` asserts all of it
+point at 11.065 mm, four admissible cross-sections of thirty-six -- none of them
+the shipped one, which the 4.6125 mm relief puts 3.897 mm past the upper bound --
+and a **rail indexing bound of 1.623 mm**. `tests/test_servicing_design.py` asserts all of it
 against `check_workcell_geometry.py` over the whole 36-cell grid, so the library
 and the certified check cannot drift apart. An arm that hands over at 20 mrad
 instead of 46 earns a clearance window 7.3 mm wide instead of 1.4 mm and a rail

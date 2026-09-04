@@ -171,12 +171,13 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         ),
     ),
     (
-        "rack_requirement_sweep_v1.json",
+        "rack_requirement_sweep_v2.json",
         (
             "The design derivation swept: one measured number about the arm -- the attitude it hands the "
             "insertion over at -- against the rack it implies. Closed form only. The shipped workcell is the "
             "46 mrad row, and between 35 and 40 mrad the correcting lead-in stops being required at all, "
-            "which is a part deleted by an arm's measured performance."
+            "which is a part deleted by an arm's measured performance. v2 is the first sweep whose section "
+            "counts read the clearance window's upper bound as well as its lower; v1 is kept beside it."
         ),
     ),
     (
