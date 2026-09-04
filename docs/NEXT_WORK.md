@@ -1,122 +1,67 @@
 # Next work
 
-## Start here -- handoff from the 2026-09-03 overnight session
+## Start here -- handoff, 2026-09-04 afternoon
 
-**The deadline is the owner's: a project ready to submit by early November
-2026.** The Frontiers collection stays open to 2027-02-28, so the venue is not
-the constraint.
+**Deadline: a project ready to submit by early November 2026.** The Frontiers
+collection stays open to 2027-02-28, so the venue is not the constraint.
 
-**Read `docs/paper_position.md` before anything else.** It carries the
-literature check, the framings that are forbidden, the threat-to-validity
-answer, and two corrections made after it was written. The manuscript is being
-drafted in a separate repository; `docs/manuscript_prompt.md` says where.
+**Read `docs/paper_position.md` first.** Its top block carries the corrections
+and the sharpened thesis; the manuscript is being drafted in a separate
+repository against it (`docs/manuscript_prompt.md`).
 
-### What the overnight audit found, because it will happen again
+### What landed today
 
-Six defects, none of which any mechanical check in this repository catches.
-They are worth reading as a class before trusting a number here.
+* **The camera-driven gate passed.** 17/24, 70.83%, Wilson [50.8, 85.1] against
+  the published 4/24, three held-out seeds on one commit. Neither single change
+  is distinguishable from the baseline, so the effect is entirely in the
+  combination.
+* **Claim 2 became a different object.** No passive channel satisfies this
+  interface -- 10.350 mm needed to admit the delivered attitude against a
+  2.500 mm lateral gate, and in zero gravity nothing recentres a released
+  module. Two thresholds, three regimes, `interface_regime()`, eight tests.
+* **The shipped rack is 3.897 mm past the tool's own upper bound**, its source
+  bay is on the design point, and the dominant failure is lateral.
+* **Certified skills over-predict the camera chain by at least 72.8 points**
+  while composing correctly under exact state.
+* The extraction retrained on the estimator's error certifies at 85.16%.
 
-| what | why it mattered |
+### What is running
+
+| supervisor | what it decides |
 | --- | --- |
-| A screen tested `grep -q '"error"'` on a report that carries `"error": null` | three completed RGB-D arms declared broken and discarded, results on disk the whole time |
-| `echo "[$(date)] thing exit=$?"` reports the clock | every `exit=` line ever logged, including every certification's, was `date`'s status |
-| "predicts the achieved depth to within a millimetre" | `2c/theta` gives a bracket, 260.6 to 323.9 mm, and only the matching end was quoted -- the report says so in its own limitations |
-| "the estimator is no worse on the episodes it loses" | those were medians labelled as means; two losing episodes carry 154 and 355 mm |
-| "no depth of the stroke where both plates are unreadable" | the derivation computes line of sight, which the report's scope states and the prose promoted |
-| every A/B read as two independent Wilson intervals | they are paired designs; two of the three main arms are significant paired and inconclusive unpaired |
+| `supervise_factorial.sh` | the five missing cells of the 2x2x2. `scripts/analyse_factorial.py` decomposes all eight into main effects and interactions |
+| `supervise_force_verify.sh` | **whether the paper reports a learned seating phase.** The first policy that can feel contact, on the skill and inside the chain against the scripted advance |
+| `supervise_relief.sh` | whether correcting the rack as the tool prescribes removes the dominant failure. Runs after the factorial |
+| `supervise_training.sh` | capture seed 72, the last of the seed spread |
+| `supervise_envcount_settle.sh` (queued last) | the environment-count risk |
 
-Three are prose growing a stronger meaning than its evidence file. `AGENTS.md`
-now says to read a report's `scope_and_limitations` before quoting it, which is
-the only defence, because none of ruff, the suite, the manifest, the link
-checker or the currency checks reads what a sentence claims.
+**Two supervisors, not twelve.** The overnight campaign died at 06:25 with
+`fork: retry: Resource temporarily unavailable` because twelve queue scripts
+were each parked in a sleep loop. Stages that must run in order are lines in one
+script now.
 
-**One result was retracted the same night it was published.**
-`criterion_retention_v1.json` claimed the transfer rule as a measurement. The
-episode archives carry no hand-over value -- `_freeze` records each row at the
-moment of judgement -- so the statistic was a concurrent association, and for
-velocity it was circular with the success predicate, which contains
-`linear_velocity`. `queue_handover_trace.sh` buys the data that would answer it
-properly. If it lands, check whether hand-over attitude ranks the jams where the
-flares are deleted and not where they are fitted.
+**Do not commit while a cohort is in flight.** `aggregate_evaluation.py` refuses
+a cohort whose runs came from different source commits, and a dirty worktree is
+recorded in every report produced during it. This cost 50 minutes of GPU today.
+`supervise_factorial.sh` retries a cell for this reason; the others do not.
 
-### The open risk nobody has priced, written down rather than chased
+### The four things worth doing next, in order
 
-**Every boundary number in this project was measured at 64 parallel
-environments, and the same nominal point scores zero at 16 and at 32.**
-
-| run | environments | driver steps | nominal |
-| --- | ---: | ---: | ---: |
-| `artifacts/envcount_16x5000` | 16 | 5,000 | 0/16 |
-| `artifacts/envcount_16x6000` | 16 | 6,000 | 0/16 |
-| `artifacts/envcount_32x6000` | 32 | 6,000 | 0/32 |
-| `artifacts/envcount_64x1900` | 64 | 1,900 | **35/64 = 54.69%** |
-| `artifacts/robustness64_corrected` | 64 | 6,000 | **35/64 = 54.69%** |
-
-It is not the step budget: 64 environments give the same 54.69% at 1,900 steps
-and at 6,000. It is not rack retention, which is disabled in every one of them.
-It tracks the environment count, and the effect is total -- not a shift in rate
-but the difference between a working chain and none.
-
-**This was named in the session brief as a thing not to chase, and it is not
-being chased.** It is written here because it is a threat to validity a reviewer
-could raise about every rate in the paper, and because it is invisible from the
-evidence: each report is internally consistent and none of them records the
-comparison. If a run at 32 environments cannot reproduce the design point, then
-either the batch size is a hidden parameter of the result or those runs were
-configured differently in some way no report captures -- and the second is far
-more likely than the first, which is exactly why it needs half a day of someone
-looking rather than a paragraph of speculation.
-
-**What it would cost to close.** One run of the nominal point at 32 environments
-with the same flags as `robustness64_corrected`, and a diff of the two reports'
-`geometry_arm` blocks, which exist from 2026-09-03 onward. If they match and the
-rates still differ, it is real and the paper reports every rate with its
-environment count. If they differ, it was a configuration mistake in a probe and
-nothing published is affected.
-
-### What is queued and what each queue decides
-
-Everything self-sequences through `artifacts/campaign/queue_*.sh`; check
-`artifacts/campaign/*.log`. **Do not trust an `exit=` line in a log written
-before this session** and verify a run by its artifact.
-
-| queue | what it decides |
-| --- | --- |
-| `queue_rgbd_seeds.sh` | **the submission gate.** The two seeds each RGB-D arm never got. First seeds gave 0/8, 3/8 and 7/8; the third arm is the best configuration the repository can field |
-| `queue_noised_skill_cert.sh` | the retrained extraction on the noised and clean tasks |
-| `queue_datum_pair_perception.sh` | a perception certificate for the datum layout actually deployed (T20) |
-| `queue_grasp_seed_spread.sh` | three from-scratch capture seeds (T3) |
-| `queue_after_slot_a.sh` | **verification of the first seating policy that can feel contact**, on the skill and inside the chain. The chain arm decides whether the paper reports a learned seating phase |
-| `queue_force_seeds.sh` | force-insert seeds 71 and 72, then the same task at robustness level 3 -- the first use of this family's own dynamics randomization, which every skill so far has trained without |
-| `queue_handover_trace.sh` | the hand-over state the retracted statistic needed |
-| `queue_cleanup.sh`, `queue_trace_rung.sh`, `queue_eval_tail.sh` | ladder rungs, the traced rung, the T4 degradation curve |
-
-**Run three trainings, not two.** `AGENTS.md` rule 7 was corrected: the old
-ceiling compared a peak against sustained medians. Three concurrent runs
-aggregate about 4,278 fps against a best single-run median of 2,213.
-
-### What is stronger than it was this morning
-
-- The section axis is canonical evidence at n=192, and the *pooled rate still
-  does not separate it* -- the separation is entirely in the failure mode, which
-  is the method note stated as strongly as this project can state it.
-- The lead-in deletion is canonical evidence: paired, 24 gained and 8 lost at
-  6 mm (p = 0.0035), and an informative null at nominal (13 gained, 16 lost,
-  p = 0.36). A part decisive at one clearance and inert at another is what a
-  conditional requirement looks like.
-- The channel interaction survives restatement as an odds ratio: 0.495
-  [0.378, 0.650].
-- Four unprovenanced reports were shown to rebuild byte-identically from source.
-- `section_verdict` now returns the inverse -- what the arm would have to
-  deliver -- so the tool specifies rather than only checks.
-
-### Three things the owner should decide, none blocking
-
-1. **What to do if the force-feedback seating policy verifies.** It turns claim
-   1's negative result into a positive one. If it does not,
-   `docs/seating_controller.md` is the defence.
-2. **When to start the second manuscript pass.** The first is running now.
-3. **Whether to open a fifth claim.** Still no.
+1. **Read the force verification.** If the chain arm beats the scripted guarded
+   advance, claim 1 turns from a negative result into a positive one and the
+   seating section is rewritten. If not, `docs/seating_controller.md` is the
+   defence and it is already written.
+2. **Close the library defect.** `section_verdict` returns `accepted = True` for
+   the relieved destination while `lateral_clearance_window` calls its clearance
+   3.897 mm too wide, because the section check never consults the upper bound.
+   The tool cannot be published able to accept a bay it elsewhere rejects.
+3. **Finish the seed spreads.** Capture seed 72 is training; the noised capture
+   fine-tune was interrupted at epoch 3,429 of 5,100 and finishing it turns the
+   composition bound from "granting a perfect capture" into a real product.
+4. **Record the pipeline flags in the report.** `geometry_arm` names the flags
+   that define a geometry arm; `--module_velocity_source`,
+   `--fiducial_guard_bounds` and `--insert_controller` still appear nowhere, and
+   every arm of claim 4 is defined by one of them.
 
 ---
 
