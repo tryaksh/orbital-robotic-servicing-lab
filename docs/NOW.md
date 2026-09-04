@@ -272,6 +272,17 @@ training-time surrogate:
 | velocity noised, pose channels exact | 1,537 | **80.42%** | [78.4, 82.3] | 10.21 |
 | both | 1,536 | **49.48%** | [47.0, 52.0] | 41.15 |
 
+**The interaction is not an artifact of the scale it is measured on.** A
+difference of proportions is not scale-free, and two large effects added on a
+bounded scale run out of room near zero, so the fair objection is that any two
+such effects would look super-additive. Recomputing the same contrast on the
+log-odds scale, where "no interaction" means the odds simply multiply, gives
+**-0.70 log-odds: an odds ratio of 0.495, 95% [0.378, 0.650]**. The interval
+excludes 1, so the two channels together halve the odds of success beyond what
+either does alone. `scripts/check_attribution_scale.py` recomputes both readings
+from the four counts in the same report, and its test constructs a purely
+multiplicative case to confirm the tool reports *no* interaction there.
+
 **The interaction is 22.61 points, larger than the sum of the two parts.** That
 refutes the standing hypothesis, which was that the velocity channel is the
 culprit because the camera runs at half the control rate and a differenced

@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-101 scripts. Grouped by the verb their filename starts with.
+102 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -15,6 +15,7 @@ These are the ones to run first and the ones that run in CI. A requirement only 
 
 | Script | What it is |
 | --- | --- |
+| `check_attribution_scale.py` | Is the channel interaction an artifact of the scale it was measured on? |
 | `check_camera_scale.py` | Render one frame and measure what the servicing camera can actually resolve. |
 | `check_criterion_currency.py` | Fail if an evidence report predates the code that defines what it measured. |
 | `check_destination_channel.py` | What channel does each entry point actually put the module in? |
