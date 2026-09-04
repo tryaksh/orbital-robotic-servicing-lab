@@ -306,7 +306,19 @@ rate moves for a dozen reasons, the predicted mechanism moves for one.
    Cite *Residual RL for Precise Assembly* (arXiv 2407.16677) as the properly
    distilled baseline -- 98% teacher to 73% student -- and do not compete with it.
    The claim here is the attribution, not the rate.
-5. **Method notes, honestly small:** score each criterion against the failure it
+5. **Method notes, honestly small:**
+
+   0. **Read the A/Bs as the paired designs they are.** Every comparison here is
+      the same seeds, the same checkpoints and the same environments with one
+      flag changed, and every one was first reported as two independent Wilson
+      intervals. McNemar's exact test on the discordant pairs changes the
+      conclusion for two of the three main arms -- the lead-in guard bound
+      (10 gained, 2 lost, one-sided p = 0.019) and rack retention (5 gained,
+      0 lost, p = 0.031) both have overlapping unpaired intervals and are
+      significant paired. Report both, and state the fixed cohort with the
+      number, because the pairing is an assumption about how the runs were made
+      and not a property of the data. `scripts/compare_paired_arms.py`.
+ score each criterion against the failure it
    predicts rather than against the pooled rate, because at the design point 27
    of 29 failures are the controller's own terminal precision; and keep the
    instrument's own defects in the record.
