@@ -165,8 +165,12 @@ plate must stay in frame, which leaves ∓[0.1025, 0.1275] m; this is that
 interval's centre. Marker size, quiet zone, plate plane, camera placement, lens,
 resolution and every estimator gate are unchanged.
 [`rack_sightline_datum_pair_v1.json`](../evidence/rack_sightline_datum_pair_v1.json)
-reports no depth of the stroke where both plates are unreadable, and that holds
-on the primary camera alone.
+reports no depth of the stroke where both plates are **out of line of sight**,
+and that holds on the primary camera alone. Line of sight is what that
+derivation computes and all it computes: it says nothing about decoding,
+exposure or motion blur, as the report's own scope states. It is a necessary
+condition, not a sufficient one, and the sufficient half is the separate
+perception certificate below.
 [`servicing_camera_geometry_v4_datum_pair.json`](../evidence/servicing_camera_geometry_v4_datum_pair.json)
 keeps 64/64 workflow-envelope poses covered with 8.62 px minimum marker cell
 against the unchanged 8.0 px requirement; neither plate covers the envelope alone
