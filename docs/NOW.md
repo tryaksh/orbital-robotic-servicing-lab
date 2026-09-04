@@ -593,6 +593,50 @@ point against **+0.03 mm** at nominal and **-0.10 mm** at `140x26`, so the only
 point where the criterion is violated is the only point where the quantity it
 bounds is larger on the episodes that fail.
 
+## The transfer rule is a measurement now, and it explains the mismatches
+
+**The rule used to be a story.** Five criteria came back as mismatches, and the
+explanation offered was that a bound transfers when nothing in the process
+corrects the quantity it bounds. That was inferred from which criteria happened
+to work. It predicted nothing and could not be wrong.
+
+`scripts/measure_criterion_retention.py` makes it falsifiable. For each
+criterion, take the quantity it bounds *as the episode hands it over*, and ask
+how well that value ranks the episodes that later fail in the mode that
+criterion predicts. The statistic is an AUC and reads directly: **the
+probability that a failing episode entered with a larger deviation than a
+surviving one.** Near 0.5, something between hand-over and the seated plane has
+erased the quantity, and no bound written on it can govern the outcome however
+correct its arithmetic. Well above 0.5, the deviation survives.
+
+| arm | criterion | criterion says | events | retention AUC | reading |
+| --- | --- | --- | ---: | --- | --- |
+| section 120x16, n=192 | grip | **violated** by 3.92 mm | 40 | **0.894** [0.805, 0.963] | the deviation survives; the bound governs |
+| section 140x26, n=192 | grip | admissible | 17 | 0.448 [0.237, 0.670] | carries nothing, as it should |
+| 6 mm/side, flares removed | entry | **violated** | 34 | **0.995** [0.982, 1.000] | attitude at hand-over almost decides the outcome |
+| 6 mm/side, flares fitted | entry | **violated** | 0 | -- | the mode does not occur at all |
+
+**The last two rows are the same design point with one flag changed.** Delete
+the geometry that squares the module and the quantity the entry criterion bounds
+goes from governing nothing -- because the failure never happens -- to ranking
+the jams at 0.995. The corrector is not weakening a correlation; it is removing
+the failure. That is the rule tested by removing the part it names, and it is
+the strongest experiment in this repository.
+
+**What this does to the paper's weakest sentence.** "Only one of seven criteria
+transferred" reads as a failed derivation. It is not. The criteria that did not
+transfer are the ones whose quantity the process corrects, and now that is a
+number rather than an excuse: a designer can compute retention from episodes
+already recorded and know, before trusting a bound, whether the closed loop will
+let it matter.
+
+**What retention is not.** It is not correctness. A criterion can retain
+perfectly and still bound the wrong quantity -- the rail-indexing axis does
+exactly that, where the surviving deviation is a settling *velocity* and the
+bound is written on a position. Retention says whether a bound *can* govern, not
+whether it is the right bound. It is also not a success rate and must never be
+quoted as one. Evidence: `evidence/criterion_retention_v1.json`.
+
 **A rate is not the only thing an episode records, and the mechanism separates
 where the rate does not.** The grip criterion bounds how far a pad may slide off
 the pin, so where it is violated the failing episodes should sit further off the

@@ -8,7 +8,7 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 60,
+    "canonical": 61,
     "retracted": 11,
     "historical": 163
   },
@@ -71,6 +71,16 @@
         "dirty": false
       },
       "holds_up": "The module-section axis at three held-out seeds, 192 episodes a point, pooled from archives that already existed. Nominal 57.29% [50.2, 64.1], 120x16 45.83% [38.9, 52.9], 140x26 40.62% [33.9, 47.7]. The pooled rates still overlap nominal, which is the point: tripling n narrows the interval from about twenty-four points to fourteen and the *pooled rate* still does not separate this axis. Every other point is unchanged from chain_robustness_sweep_n64_channel_v1 and the report names which is which."
+    },
+    "criterion_retention_v1.json": {
+      "title": "Does the quantity each criterion bounds still predict the failure it names?",
+      "evidence_type": "criterion_retention_under_closed_loop_correction",
+      "generated_utc": "2026-09-04T05:10:09+00:00",
+      "source_revision": {
+        "commit": "ac48600fec0b4157b55d82dcf189768807e794dc",
+        "dirty": false
+      },
+      "holds_up": "Whether the quantity each criterion bounds still predicts the failure it names, as an AUC over the hand-over value against the mode the criterion predicts. This turns the transfer rule from a story into a measurement. Where the grip criterion is violated (120x16) its quantity ranks the losses at 0.894 [0.805, 0.963]; where it is admissible (140x26) the same quantity carries nothing, 0.448 [0.237, 0.670]. Where the entry criterion is violated and the correcting flares are deleted, hand-over attitude ranks the jams at 0.995 [0.982, 1.000]; with the flares fitted that mode does not occur at all. A criterion governs the outcome only where the process leaves its quantity alone, and this says which is which without re-running anything. Retention is not correctness: the rail axis retains a settling velocity while its bound is written on a position."
     },
     "destination_channel_geometry.json": {
       "title": "What channel each entry point actually builds for the destination bay",

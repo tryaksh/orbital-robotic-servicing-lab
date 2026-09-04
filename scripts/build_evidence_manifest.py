@@ -191,6 +191,21 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         ),
     ),
     (
+        "criterion_retention_v1.json",
+        (
+            "Whether the quantity each criterion bounds still predicts the failure it names, as an AUC "
+            "over the hand-over value against the mode the criterion predicts. This turns the transfer "
+            "rule from a story into a measurement. Where the grip criterion is violated (120x16) its "
+            "quantity ranks the losses at 0.894 [0.805, 0.963]; where it is admissible (140x26) the same "
+            "quantity carries nothing, 0.448 [0.237, 0.670]. Where the entry criterion is violated and "
+            "the correcting flares are deleted, hand-over attitude ranks the jams at 0.995 [0.982, 1.000]; "
+            "with the flares fitted that mode does not occur at all. A criterion governs the outcome only "
+            "where the process leaves its quantity alone, and this says which is which without re-running "
+            "anything. Retention is not correctness: the rail axis retains a settling velocity while its "
+            "bound is written on a position."
+        ),
+    ),
+    (
         "boundary_lead_in_deletion_v1.json",
         (
             "The lead-in criterion tested by removing the part. Two arms at 6 mm of lateral clearance per "
