@@ -116,6 +116,7 @@ training runs do not.
 | # | Task | Cost | Blocks |
 | --- | --- | --- | --- |
 | **T14** | Destination load transfer: 22/22 eligible rack-only holds; full chain 22/24 | **done 2026-08-31, claim narrowed** | — |
+| **T21** | The delivered attitude everything is derived from has no measurement, and the traces say 8.19 mrad rather than 46 | CPU done; the rebuild is the cost | the clearance window, the regime, claim 2 |
 | **T16** | The clearance sweep moved the guides and left the mouth; 6 mm/side is 36/64, not 0/64 | one flag + a re-sweep | the whole rack-clearance axis |
 | **T20** | No perception certificate exists for the deployed datum *pair*; the surrogate's sigma comes from a single-datum one | one collection | the perception numbers, and the noise model |
 | **T19** | The solved-IK agreement check fires spuriously and costs a sweep point | <1 h | one ladder rung |
@@ -139,6 +140,83 @@ training runs do not.
 | **P1–P7** | [Publication track](#publication-track) — the same work on a submission deadline | see section | Frontiers, 2026-11-09 |
 
 ---
+
+<a id="t21"></a>
+## T21 -- The delivered attitude has never been measured, and the traces disagree with it
+
+**Opened 2026-09-04.** `DELIVERED_ATTITUDE_RAD = 0.046` in
+`scripts/check_workcell_geometry.py` is the input the whole workcell is derived
+from. It sets the clearance window's lower bound at 10.350 mm, it is what
+derives `GUIDE_CENTER_OFFSET_Y`, and it is the number that puts this arm above
+the ~40 mrad threshold where passive entry dies -- the "four times past the
+threshold" claim 2 is built on.
+
+**Its stated provenance does not exist.** The docstring said the value is
+"reported in every robot-carried report as `handoff_attitude_rad`". No report in
+`evidence/` or `artifacts/` contains that field, `run_workflow_demo.py` has never
+written it, and `git log -S` over the whole history finds the name only in the
+two docstrings that cited it. Both are corrected.
+
+**The quantity is recorded, under another name, and it does not agree.** The
+transit trace's `module_attitude_rad` is the module's axis-angle offset from
+`RELOCATION_INSERT_STAGING_ROT`, which is the insert task's own full-distance
+reset attitude. Read at the last transit sample, over environments that went on
+to reach the insert phase, that is the delivered attitude as section 6.2 of the
+interface specification defines it -- measured where the channel is not yet
+touching the module. `scripts/measure_delivered_attitude.py` pools it and needs
+no GPU.
+
+Over the hand-off cohort -- three held-out seeds, 95 environments, one clean
+commit, the current module and the current rack:
+
+| | attitude | channel must admit | regime |
+| --- | ---: | ---: | --- |
+| measured median | **8.19 mrad** | 1.843 mm | **passive** |
+| measured p95 | 14.50 mrad | 3.263 mm | active centring |
+| worst of 95 environments | 26.07 mrad | 5.866 mm | active centring |
+| the asserted constant | 46.00 mrad | 10.350 mm | active centring **and correction** |
+
+The constant is 5.62x the measured median, and it is the only one of the four
+readings that lands in the third regime.
+
+**This is section 6.2's own warning, possibly a second time.** That section
+retracted a 63-67 mrad "delivered attitude" because it had been read off runs
+whose channel was already open to 14-16 mm per side, where what a module reports
+is `2c/L` -- the tilt the *channel* permits, not the tilt the arm produced.
+Section 9.9 records "attitude at the end" of a compliant mating stroke as
+45.9 mrad, taken on the 450x160x35 module inside a channel with 15.75 mm lateral
+and 8.00 mm vertical clearance per side. Whether 0.046 is that number is **not
+established** and the report does not assert it.
+
+**What is not done, and why it is not an edit.** The constant is left at 0.046.
+Changing it re-derives `GUIDE_CENTER_OFFSET_Y`, the clearance window, the section
+grid, the boundary decision and the interface regime, and invalidates every
+result computed against the old rack -- so it is a workcell rebuild with a
+re-certification behind it, not a one-line change. What is done is the
+measurement, the corrected docstrings, and a tripwire test that fails if the
+constant moves while the report still quotes the old one.
+
+**What would close it.**
+
+1. Measure the delivered attitude on the **camera-driven** chain as well. The
+   cohort here is exact-state with the scripted guarded advance, and every
+   module-state channel in the published chain is estimated. If the camera chain
+   delivers materially worse, the two numbers are both worth having and the rack
+   is sized for the worse one.
+2. Decide the constant with both in hand. If the delivered attitude really is
+   about 8 mrad at the median and 26 at the worst, the required clearance is
+   1.8 to 5.9 mm per side rather than 10.350, the window is wide rather than
+   1.431 mm, and **this arm is not in the third interface regime**. Claim 2's
+   headline -- "no passive channel satisfies this interface", 10.350 mm needed
+   against a 2.500 mm gate -- becomes a much weaker statement, and the honest
+   version has to be written from the measurement.
+3. Re-derive the rack and re-certify, or state plainly in the paper that the
+   workcell was sized from a conservative attitude that the arm beats by five
+   times. Both are publishable; quoting 46 mrad as measured is not.
+
+**Cost.** The measurement is done. The camera-driven cohort is one evaluation
+batch. The rebuild, if it is taken, is a rack change plus a re-certification of
+everything keyed to the geometry.
 
 <a id="t16"></a>
 ## T16 -- The clearance sweep moved the guides and left the mouth: re-measure

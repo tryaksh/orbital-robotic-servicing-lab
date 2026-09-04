@@ -83,8 +83,27 @@ OBSERVED_CROSSING_TOOL_X_M = -0.2197
 #: module against the other's rack.
 HISTORIC_GUIDE_CENTER_OFFSET_Y = 0.08975
 
-#: The attitude the chain measurably hands the insertion over at. Reported in
-#: every robot-carried report as ``handoff_attitude_rad``; about 46 mrad.
+#: The attitude the chain is asserted to hand the insertion over at.
+#:
+#: **This value has no recorded measurement and the recorded traces disagree with
+#: it.** Its docstring used to say it was "reported in every robot-carried report
+#: as ``handoff_attitude_rad``"; no report in ``evidence/`` or ``artifacts/``
+#: contains that field, ``run_workflow_demo.py`` has never written it, and the
+#: whole history carries the name only in the two docstrings that cited it.
+#:
+#: The quantity is recorded, under another name.
+#: ``scripts/measure_delivered_attitude.py`` pools the transit trace's
+#: ``module_attitude_rad`` -- the module's axis-angle offset from the insert
+#: task's own reset attitude -- at the last transit sample, over the three
+#: held-out seeds of the hand-off cohort. It reads **8.19 mrad at the median and
+#: 26.07 mrad at the worst of 95 environments**, against the 46.0 mrad here.
+#:
+#: It is left at 0.046 deliberately. Every clearance in this workcell, the
+#: derived ``GUIDE_CENTER_OFFSET_Y``, the boundary decision and the published
+#: interface regime are computed from it, so changing it re-derives the rack and
+#: invalidates the evidence built on the old one. That is a decision with a
+#: measurement behind it now, and it is ``docs/NEXT_WORK.md`` T21 rather than an
+#: edit.
 DELIVERED_ATTITUDE_RAD = 0.046
 
 #: ``--destination_channel_relief_m`` in the shipped preset. The destination bay

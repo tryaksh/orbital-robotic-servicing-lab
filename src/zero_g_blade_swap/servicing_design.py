@@ -165,8 +165,10 @@ class ManipulatorPerformance:
     class is where it would start.
 
     ``delivered_attitude_rad`` is what the manipulator actually hands the
-    insertion over at, not what it is specified to. In this repository it is
-    reported as ``handoff_attitude_rad`` in every robot-carried run.
+    insertion over at, not what it is specified to. **In this repository it is
+    the transit trace's ``module_attitude_rad`` at the last transit sample**, and
+    `scripts/measure_delivered_attitude.py` pools it. This docstring used to name
+    a report field called ``handoff_attitude_rad``; nothing has ever written one.
 
     ``seating_tolerance_rad`` is the acceptance criterion for a seated module --
     a property of the interface, not of the arm -- and it enters because a

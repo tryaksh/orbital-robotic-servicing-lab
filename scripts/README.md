@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-105 scripts. Grouped by the verb their filename starts with.
+106 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -108,6 +108,7 @@ Envelopes, budgets and design windows.
 | --- | --- |
 | `measure_attitude_wall.sh` | How far off the base's own plane does a target have to be before the arm can |
 | `measure_criterion_retention.py` | Rank episodes by a recorded quantity against the failure mode a criterion names. |
+| `measure_delivered_attitude.py` | Measure the attitude the transit actually hands the insertion over at. |
 | `measure_gripper_envelope.py` | Measure where the Robotiq 2F-85 finger pads physically are. |
 | `measure_inference_budget.py` | What the autonomy stack costs to run, per control step. |
 | `measure_pin_design_window.py` | How tall a feature can the gripper accept, at each depth along its approach? |
