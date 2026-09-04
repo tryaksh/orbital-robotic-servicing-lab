@@ -659,6 +659,33 @@ phase the criterion is about. The rate evidence carries the claim on its own and
 the signature column should be read as a description of the failure, not as a
 second measurement of it.
 
+## Four of the unprovenanced reports were shown to rebuild from source
+
+The manifest now records `source_revision` for every report that has one: of 60
+canonical reports, 20 carry a clean commit, none is dirty, and 37 predate the
+field. That last group is the provenance gap ([T0](NEXT_WORK.md#t0)), and for
+reports whose generator needs no simulator and no checkpoint it can be closed by
+demonstration rather than by a recorded commit -- run the generator and compare.
+
+`scripts/check_reproducible_from_source.py` does that and restores `evidence/`
+afterwards. On 2026-09-03, from committed source:
+
+| result | reports |
+| --- | --- |
+| byte-identical | `rack_sightline_datum_pair_v1.json`, `rack_sightline_occlusion_v1.json`, `service_latch_clearance.json` |
+| identical but for the regenerated timestamp | `insert_depth_is_attitude.json` |
+| **diverged** | none |
+
+All four are from the 37 with no recorded commit, so four of that group are now
+demonstrably reproducible -- including the report claim 1's opening number comes
+from. The check refuses to run over an uncommitted `evidence/`, because the way
+it restores the tree is `git checkout -- evidence`.
+
+This does not close T0. The reports that matter most for the chain -- the skill
+certifications and the workflow runs -- need a checkpoint and a simulator, so
+their provenance still has to be recorded rather than demonstrated, and the 33
+that remain are exactly those.
+
 ## The transfer rule is still a story, and the attempt to measure it failed
 
 **Retracted the same night it was written, 2026-09-03.** The idea was to turn
