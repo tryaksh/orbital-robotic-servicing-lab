@@ -1,7 +1,15 @@
 # Serviceability qualification study plan
 
-Frozen 2026-08-26. This file defines the research question and evidence gates.
-It is not a manuscript. Do not draft one until every required gate below passes.
+Frozen 2026-08-26. This file defines the research question, the frozen
+variables and the evidence gates.
+
+**Its framing is superseded.** [`paper_position.md`](paper_position.md) carries
+the 2026-09-03 literature check and is the authority on what the paper may
+claim; where the two disagree, that file wins. The gates below still hold -- a
+claim does not enter the paper until its gate closes -- but the instruction that
+followed them, *do not draft until every gate passes*, does not: drafting began
+on 2026-09-03 in a separate repository, section by section, on the gates that
+have closed. See [`manuscript_prompt.md`](manuscript_prompt.md).
 
 ## Research question
 
