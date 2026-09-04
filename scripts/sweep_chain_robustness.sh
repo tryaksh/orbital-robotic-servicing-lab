@@ -6,6 +6,15 @@
 # until something says *to what*, so this sweeps one variable at a time around
 # the certified point and reports where the rate falls off.
 #
+# TRACE=1 additionally writes "$OUT/<point>_trace.npz", the phase-transition
+# trace. It is off by default so nothing already measured changes. It exists
+# because the episode archive records each row at the moment of *judgement* --
+# see `_freeze` in run_workflow_demo.py -- so no archive can say whether a
+# deviation at hand-over governed the outcome, and a statistic built on the
+# archive alone reads the success predicate back. The trace carries grip error,
+# attitude, pose and velocity at every phase transition, including the one into
+# the seating phase, which is the value that question needs.
+#
 # Sixteen environments and sixteen episodes per point, one seed. That is a
 # coarse instrument on purpose -- a 16-episode Wilson interval is about twenty
 # points wide -- and it is the right one for the question, which is ranking
@@ -65,6 +74,7 @@ point() {
       --mating_mode compliant --mating_force_cap_n 1000 \
       ${SWEEP_EXTRA:-} \
       "$@" \
+      ${TRACE:+--handoff_trace "$OUT/${tag}_trace.npz"} \
       --report "$OUT/${tag}_report.json" --episode_metrics "$OUT/${tag}.npz" \
       > "$OUT/${tag}.log" 2>&1
   rc=$?
