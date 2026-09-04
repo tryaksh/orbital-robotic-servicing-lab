@@ -16,6 +16,10 @@
     "boundary_failure_modes_v1.json": {
       "title": "Serviceability criteria scored against the failure each one predicts",
       "evidence_type": "analytical_criteria_against_simulated_failure_modes",
+      "source_revision": {
+        "commit": "9a1c504c6a0f5d1ebbac3dca9224f948e5025e99",
+        "dirty": false
+      },
       "holds_up": "The same episodes counted a second way: each closed-form criterion against the failure it predicts rather than against the pooled rate. At nominal, 27 of 29 failures reach the final phase and miss the terminal gate, so two episodes in five are lost at the design point to a mode no criterion claims to predict, and a pooled comparison makes every boundary point clear that floor first. Carries the guides-only clearance arm as the preserved comparison."
     },
     "chain_robustness_sweep.json": {
@@ -34,6 +38,10 @@
       "title": "What breaks the robot-carried chain first",
       "evidence_type": "simulation_only",
       "generated_utc": "2026-09-03T20:00:17.086455+00:00",
+      "source_revision": {
+        "commit": "1f0d7f54fe136d46d73558a5b5df74811e5b6c57",
+        "dirty": false
+      },
       "holds_up": "The same seven points with the two clearance arms re-measured under --rack_clearance_scope channel, which moves each bay's upper lips and entry flares with its side guides. The published arm moved the guides alone, leaving a rack whose mouth and walls disagreed by the clearance change. At 6 mm per side that is the difference between 0/64 with 62 jams and 36/64 with none; at 16 mm it changes nothing. The guides-only arm is preserved in chain_robustness_sweep_n64.json."
     },
     "destination_channel_geometry.json": {
@@ -45,6 +53,10 @@
     "estimator_surrogate_velocity_channel_v1.json": {
       "title": "Training-time estimator surrogate, measured against the certificate it reproduces",
       "task": "Isaac-ZeroG-Blade-GrapplePin-ExtractNoised-v0",
+      "source_revision": {
+        "commit": "71123f3352265e2cccd4f86ffb6ffa41fbf3bd68",
+        "dirty": false
+      },
       "holds_up": "The training-time estimator surrogate measured against the certificate it reproduces, and the velocity channel's noise floor against a seated module's own speed. Realized position p95 2.00 mm against a certified 1.91. With the arm held still the channel reads 17.02 mm/s at the deployed filter while the identical differencing on the simulator's own pose reads 3.38, so the estimator contributes 13.65 against a seated module's 0.69 -- and no filter time constant helps, because a longer one lowers the mean and raises the p95."
     },
     "extract_attribution.json": {
@@ -56,6 +68,10 @@
     "extract_channel_attribution_v1.json": {
       "title": "Which observation channel costs extraction its transfer",
       "evidence_type": "channel_attribution_on_an_unchanged_checkpoint",
+      "source_revision": {
+        "commit": "ed7fb2b72b0f00ea45186f5a8ba14f0e7c832e8e",
+        "dirty": false
+      },
       "holds_up": "Which observation channel costs extraction its transfer, on the unchanged v18pin checkpoint: exact state 90.62%, pose channels noised 82.29%, velocity channel noised 80.42%, both 49.48%. The two channels cost 8.33 and 10.21 points apart and 41.15 together, so the interaction is 22.61 points -- larger than the sum of the parts. Neither channel is the problem; having no reliable channel is."
     },
     "fiducial_rgbd_flush_v2_seed283.json": {
@@ -229,11 +245,19 @@
     "insertion_conditioned_controller_v3.json": {
       "evidence_type": "paired_conditioned_insertion_controller_comparison",
       "generated_utc": "2026-08-28T01:09:15+00:00",
+      "source_revision": {
+        "commit": "daa53d6daae9abbab805cbdf68f834b4f8635f7b",
+        "dirty": false
+      },
       "holds_up": "Paired v24 and guarded insertion at all nine reset stations and real chain handoffs; every losing arm retained."
     },
     "rack_requirement_sweep_v1.json": {
       "title": "The rack requirement as a function of the manipulator's delivered attitude",
       "evidence_type": "closed_form_design_sweep",
+      "source_revision": {
+        "commit": "a6656bfe12c546aa978ef27fec5987092159f5e3",
+        "dirty": false
+      },
       "holds_up": "The design derivation swept: one measured number about the arm -- the attitude it hands the insertion over at -- against the rack it implies. Closed form only. The shipped workcell is the 46 mrad row, and between 35 and 40 mrad the correcting lead-in stops being required at all, which is a part deleted by an arm's measured performance."
     },
     "rack_retention_geometry_v1.json": {
@@ -261,6 +285,10 @@
     },
     "rgbd_strict_capture_gate_v2_seed5070.json": {
       "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "source_revision": {
+        "commit": "57a61b36f3722cb0bc07b433dad2938daca91563",
+        "dirty": false
+      },
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
       "checkpoints_sha256": {
         "capture": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
@@ -271,6 +299,10 @@
     },
     "rgbd_strict_rack_retention_datum_pair_seed6070.json": {
       "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "source_revision": {
+        "commit": "7a82db205c49ba3f1cee41a7a3853080f5c084a1",
+        "dirty": false
+      },
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
       "checkpoints_sha256": {
         "capture": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
@@ -281,6 +313,10 @@
     },
     "rgbd_strict_rack_retention_gripper_clear_video2_seed4070.json": {
       "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "source_revision": {
+        "commit": "e16fae4ba2a20a2e633ff55b281a040e8ce39649",
+        "dirty": false
+      },
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
       "checkpoints_sha256": {
         "capture": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
@@ -334,18 +370,30 @@
       "title": "Serviceability boundary validation against simulation",
       "evidence_type": "analytical_boundary_against_simulation",
       "generated_utc": "2026-09-03T20:00:45.975029+00:00",
+      "source_revision": {
+        "commit": "8a16bc6ac3bd139a416b8a18bec443e9f64fff6a",
+        "dirty": false
+      },
       "holds_up": "The current boundary decision, on the sweep whose clearance points were re-measured with each bay's mouth moving with its walls. Still not qualified. The rack-clearance axis now fails on its *lower* bound rather than confirming it: 6 mm per side is analytically infeasible and scores 56.25% against nominal's 54.69%, while the upper bound holds at 16 mm. Dimension statuses are derived from their own rows here; in v1 three of them were literals."
     },
     "serviceability_boundary_validation_n64_v1.json": {
       "title": "Serviceability boundary validation against simulation",
       "evidence_type": "analytical_boundary_against_simulation",
       "generated_utc": "2026-09-03T15:47:23.400981+00:00",
+      "source_revision": {
+        "commit": "0436ae560bbbc2a949b91ead4f2259adbd14ea28",
+        "dirty": false
+      },
       "holds_up": "The boundary decision re-derived from the 64-environment sweep. Still not qualified, and now with per-point classifications: rack_lat_6mm confirms its analytical infeasibility, section_120x16, section_140x26 and rack_lat_16mm do not, base_y_+10mm shows a loss the analytical model did not predict."
     },
     "serviceability_boundary_validation_v2.json": {
       "title": "Serviceability boundary validation against simulation",
       "evidence_type": "analytical_boundary_against_simulation",
       "generated_utc": "2026-08-28T01:10:58.110603+00:00",
+      "source_revision": {
+        "commit": "291ea8af811efe64681197c6e3df48ed744d8dad",
+        "dirty": false
+      },
       "holds_up": "The current fail-closed boundary result: entry attitude supported; five dimensions unresolved or contradicted."
     },
     "servicing_camera_geometry_v1.json": {
@@ -451,6 +499,10 @@
         ]
       },
       "gate_passed": false,
+      "source_revision": {
+        "commit": "131e6ac011c8e737fc9610e31c40a25939a0acb9",
+        "dirty": false
+      },
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
       "holds_up": "The chain driven by camera-derived module state: 4/24, 16.67%, Wilson [6.7%, 35.9%]. Thirteen of twenty-four lose the module in extraction."
     },
@@ -468,6 +520,10 @@
         ]
       },
       "gate_passed": false,
+      "source_revision": {
+        "commit": "131e6ac011c8e737fc9610e31c40a25939a0acb9",
+        "dirty": false
+      },
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
       "holds_up": "The paired control: the same vision task, seeds, environments and code path with the module pose read from the simulator. 20/24, 83.33%, Wilson [64.1%, 93.3%]. The difference between the two is the estimator."
     },
@@ -485,6 +541,10 @@
         ]
       },
       "gate_passed": false,
+      "source_revision": {
+        "commit": "8b31216e4b96eb18e12e9f66d40889a6f3418d6d",
+        "dirty": false
+      },
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
       "holds_up": "Paired losing load-transfer arm: hand-first release scores 12/24 (50.00%) on identical seeds and states."
     },
@@ -502,6 +562,10 @@
         ]
       },
       "gate_passed": false,
+      "source_revision": {
+        "commit": "aef70802ac703739d53db4337744bb3d87036795",
+        "dirty": false
+      },
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
       "holds_up": "Current-source paired no-rack control: 17/24 (70.83%), exactly reproducing the pre-retention baseline."
     },
@@ -519,6 +583,10 @@
         ]
       },
       "gate_passed": false,
+      "source_revision": {
+        "commit": "aef70802ac703739d53db4337744bb3d87036795",
+        "dirty": false
+      },
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
       "holds_up": "Strict chain with visible destination retention: 22/24 (91.67%); below the unchanged 95% full-chain gate."
     },
@@ -536,6 +604,10 @@
         ]
       },
       "gate_passed": false,
+      "source_revision": {
+        "commit": "5207cf21494795d881414a7a1c63a4f7968ed541",
+        "dirty": false
+      },
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
       "holds_up": "Preserved pre-retention strict chain: 17/24 (70.83%) after both robot-side supports release and a 0.70 s free-module recheck."
     },
@@ -570,6 +642,10 @@
         ]
       },
       "gate_passed": false,
+      "source_revision": {
+        "commit": "32794ce3b3efcc6eab3a5136704657cf5c71f370",
+        "dirty": false
+      },
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
       "holds_up": "The RGB-D chain with the guarded advance admitting on the entry flare's catch rather than on the deployed estimator's own noise bound: 12/24, 50.00%, Wilson [31.4%, 68.6%], against the shipped bounds' 4/24. Published checkpoints, nothing retrained, one criterion change, and the detection interlock unchanged in both arms."
     },
@@ -587,6 +663,10 @@
         ]
       },
       "gate_passed": false,
+      "source_revision": {
+        "commit": "b76517b5f647184ec39d757d0b2e85470fc1a9b5",
+        "dirty": false
+      },
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
       "holds_up": "Preserved full-workflow camera failure: 0/24 on the fixed cohorts after the static overhead-camera corpus passed."
     }
@@ -678,6 +758,10 @@
     "insertion_conditioned_controller_v1.json": {
       "evidence_type": "paired_conditioned_insertion_controller_comparison",
       "generated_utc": "2026-08-27T04:18:31+00:00",
+      "source_revision": {
+        "commit": "3e078bcdf1985b69093e2f5f80c99a3b71cd937c",
+        "dirty": false
+      },
       "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
     },
     "vision_workflow_camera_twoslot_certification.json": {

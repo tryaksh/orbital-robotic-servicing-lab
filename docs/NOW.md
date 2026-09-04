@@ -92,13 +92,17 @@ training reward against the blind policy's, on the identical reward function:
 | --- | ---: | ---: |
 | `v24rack`, blind, plateaued | 1,900 / 2,000 / 2,100 | 43.3 / 41.7 / 43.9 |
 | `v33force`, with contact | 100 | 45.6 |
-| `v33force`, with contact | 200 | **93.3** |
+| `v33force`, with contact | 200 | 93.3 |
+| `v33force`, with contact | 400 / 500 / 600 / 700 / 800 | 94.4 / 99.2 / 98.0 / 98.0 / **98.2** |
 
-It passes the blind policy's plateau at epoch 100 and doubles it by 200.
+It passes the blind policy's plateau at epoch 100, doubles it by 200, and has
+now held near 98 for four hundred epochs. The blind policy needed 2,100 epochs
+to reach 43.9 and never left it. This is a converged plateau at more than twice
+the height, reached in a quarter of the epochs, on an identical reward.
 
 **This is a training reward and not a rate, and it must not be quoted as one.**
-Reward is not success, two hundred epochs is not a trend, and no episode has been
-certified. `verify_insert_skill.sh` is queued on both halves -- the skill on three
+Reward is not success and no episode has been certified; a policy can collect
+reward in ways that never seat a module. `verify_insert_skill.sh` is queued on both halves -- the skill on three
 held-out seeds and the same weights inside the chain against the scripted
 advance, which is the arm that decides. Until that runs, the honest claim is that
 the first seating policy able to feel contact is learning much faster than every

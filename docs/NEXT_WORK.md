@@ -668,14 +668,19 @@ matter of provenance, not of measurement).
 `Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0`, the *state* task: the module
 pose comes from the simulator, and the guarded advance's "deployed estimate" is
 the deployed code path reading ground truth. Perception is certified separately
-on 1,024 rendered frames. The RGB-D chain has been run end to end at **one seed**
-(`evidence/full_chain_rgbd_service_seed4070.json`) and not since the changes that
-produced the current rate. So the two strongest claims in the repository are
+on 1,024 rendered frames. The RGB-D chain has been run end to end at **one seed** -- originally
+`evidence/full_chain_rgbd_service_seed4070.json`, since retracted, and now
+`evidence/rgbd_strict_rack_retention_datum_pair_seed6070.json` -- and not since
+the changes that produced the current rate. So the two strongest claims in the repository are
 measured on different inputs and have never been combined at scale.
 
 **Evidence.** `evidence/workflow_robot_carried_m130pin_guarded_certification.json`
-(state, pooled), `evidence/fiducial_rgbd_service_plate.json` (perception, frames),
-`evidence/full_chain_rgbd_service_seed4070.json` (both, n=1).
+(state, pooled). The two RGB-D files this entry used to name --
+`fiducial_rgbd_service_plate.json` and `full_chain_rgbd_service_seed4070.json` --
+are **both retracted** and must not be quoted; see `evidence/RETRACTED.md`. Their
+live replacements are `evidence/fiducial_rgbd_flush_v4_seed285_gripper_clear.json`
+for perception and `evidence/rgbd_strict_rack_retention_datum_pair_seed6070.json`
+for the one continuous chain episode.
 
 **Code.** `scripts/run_robot_carried.sh` — the `certify` stage runs `$STATE_TASK`
 and the `rgbd` stage already runs `$VISION_TASK`

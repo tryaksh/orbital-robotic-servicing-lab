@@ -336,6 +336,20 @@ def _summarise(report: dict) -> dict:
     gate = report.get("gate")
     if isinstance(gate, dict) and "passed" in gate:
         out["gate_passed"] = gate["passed"]
+    # Provenance is the one field this index had no business dropping. The
+    # standing rule is to check `source_revision.dirty` in every report, and
+    # ten reports are known not to rebuild from committed code (NEXT_WORK T0).
+    # An index that answers every question except that one cannot be used to
+    # audit it, which is exactly what a reviewer asking whether a number
+    # reproduces will want.
+    revision = report.get("source_revision")
+    if isinstance(revision, dict):
+        out["source_revision"] = {
+            "commit": revision.get("commit"),
+            "dirty": revision.get("dirty"),
+        }
+    elif isinstance(revision, str):
+        out["source_revision"] = {"commit": revision, "dirty": None}
     policy = report.get("policy")
     if isinstance(policy, dict):
         for key in ("policy_set_sha256", "checkpoint_sha256"):
