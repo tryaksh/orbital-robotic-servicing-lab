@@ -593,49 +593,45 @@ point against **+0.03 mm** at nominal and **-0.10 mm** at `140x26`, so the only
 point where the criterion is violated is the only point where the quantity it
 bounds is larger on the episodes that fail.
 
-## The transfer rule is a measurement now, and it explains the mismatches
+## The transfer rule is still a story, and the attempt to measure it failed
 
-**The rule used to be a story.** Five criteria came back as mismatches, and the
-explanation offered was that a bound transfers when nothing in the process
-corrects the quantity it bounds. That was inferred from which criteria happened
-to work. It predicted nothing and could not be wrong.
+**Retracted the same night it was written, 2026-09-03.** The idea was to turn
+the transfer rule -- a bound transfers when nothing in the process corrects the
+quantity it bounds -- into a statistic: take the quantity a criterion bounds *as
+the episode hands it over*, and measure how well it ranks the episodes that later
+fail in the mode that criterion predicts. The numbers looked decisive. They were
+measuring something else.
 
-`scripts/measure_criterion_retention.py` makes it falsifiable. For each
-criterion, take the quantity it bounds *as the episode hands it over*, and ask
-how well that value ranks the episodes that later fail in the mode that
-criterion predicts. The statistic is an AUC and reads directly: **the
-probability that a failing episode entered with a larger deviation than a
-surviving one.** Near 0.5, something between hand-over and the seated plane has
-erased the quantity, and no bound written on it can govern the outcome however
-correct its arithmetic. Well above 0.5, the deviation survives.
+**The archives do not contain a hand-over value.** `_freeze` in
+`run_workflow_demo.py` stores an episode's row *at the moment of judgement*, and
+says so in its own docstring: a completed workflow idles for the rest of the
+episode, so the state at the timeout is not the state that was achieved. Every
+recorded grip error, attitude and velocity therefore describes the state the
+outcome was decided in. Ranking those against the outcome is a concurrent
+association, not a prediction, and no archive in this repository can support the
+claim that was made.
 
-| arm | criterion | criterion says | events | retention AUC | reading |
-| --- | --- | --- | ---: | --- | --- |
-| section 120x16, n=192 | grip | **violated** by 3.92 mm | 40 | **0.894** [0.805, 0.963] | the deviation survives; the bound governs |
-| section 140x26, n=192 | grip | admissible | 17 | 0.448 [0.237, 0.670] | carries nothing, as it should |
-| 6 mm/side, flares removed | entry | **violated** | 34 | **0.995** [0.982, 1.000] | attitude at hand-over almost decides the outcome |
-| 6 mm/side, flares fitted | entry | **violated** | 0 | -- | the mode does not occur at all |
+**For velocity it is worse than that: it is circular.** `SEATED_CONDITIONS`
+includes `linear_velocity` and `angular_velocity`, so an episode fails partly
+*because* its velocity is high. The scan duly returned an AUC of 1.000 with a
+bootstrap interval of [1.000, 1.000] for angular velocity on the rail axis. A
+perfect separation on 40 events is not a discovery; it is the success predicate
+being read back.
 
-**The last two rows are the same design point with one flag changed.** Delete
-the geometry that squares the module and the quantity the entry criterion bounds
-goes from governing nothing -- because the failure never happens -- to ranking
-the jams at 0.995. The corrector is not weakening a correlation; it is removing
-the failure. That is the rule tested by removing the part it names, and it is
-the strongest experiment in this repository.
+`evidence/criterion_retention_v1.json` is **retracted**. What survives is what
+the same episodes already supported: the grip signature in
+`evidence/boundary_failure_modes_n192_v1.json` (+0.71 mm at the violated point
+against +0.03 at nominal), which is the same concurrent association stated
+honestly, and `evidence/boundary_lead_in_deletion_v1.json`, which is rate-based
+and untouched by any of this.
 
-**What this does to the paper's weakest sentence.** "Only one of seven criteria
-transferred" reads as a failed derivation. It is not. The criteria that did not
-transfer are the ones whose quantity the process corrects, and now that is a
-number rather than an excuse: a designer can compute retention from episodes
-already recorded and know, before trusting a bound, whether the closed loop will
-let it matter.
-
-**What retention is not.** It is not correctness. A criterion can retain
-perfectly and still bound the wrong quantity -- the rail-indexing axis does
-exactly that, where the surviving deviation is a settling *velocity* and the
-bound is written on a position. Retention says whether a bound *can* govern, not
-whether it is the right bound. It is also not a success rate and must never be
-quoted as one. Evidence: `evidence/criterion_retention_v1.json`.
+**The measurement is still worth having and now has a price.** To ask whether a
+deviation at hand-over governs the outcome, the episode row has to carry the
+hand-over value as its own column -- module attitude and lateral offset at the
+moment transit ends -- alongside the judgement-time one. That is a change to
+`run_workflow_demo.py` and a re-run of the boundary arms, not an analysis of
+archives that exist. Until then the transfer rule stays what it was: a
+description of which criteria happened to work, not a prediction of which will.
 
 **A rate is not the only thing an episode records, and the mechanism separates
 where the rate does not.** The grip criterion bounds how far a pad may slide off

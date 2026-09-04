@@ -219,32 +219,24 @@ rate moves for a dozen reasons, the predicted mechanism moves for one.
    certified geometry check over a 36-cell grid, and the direction of derivation
    is the separation from Niu et al.
 3. **A simulator can say which of those derived bounds actually transfer, and
-   the rule is whether the process corrects the bounded quantity -- which is now
-   a statistic, not a story.** The table above, plus
-   `evidence/criterion_retention_v1.json`.
+   the rule is whether the process corrects the bounded quantity.** The table
+   above. Includes the two the simulator contradicts and why.
 
-   Lead with the measurement, not the table. For each criterion, take the
-   quantity it bounds as the episode hands it over and ask how well that value
-   ranks the episodes that later fail in the mode the criterion predicts. Where
-   the grip criterion is violated its quantity ranks the losses at 0.894
-   [0.805, 0.963]; where it is admissible the same quantity carries nothing,
-   0.448 [0.237, 0.670]. Where the entry criterion is violated *and the
-   correcting flares are deleted*, hand-over attitude ranks the jams at 0.995
-   [0.982, 1.000]; with the flares fitted the mode does not occur at all.
+   **State the rule as an observation, not as a predictor, and do not try to
+   dress it up.** An attempt to make it a statistic was made and retracted on
+   2026-09-03: the plan was to rank episodes by the quantity a criterion bounds
+   as the transit hands it over. The episode archives do not contain a hand-over
+   value -- `_freeze` stores the row at the moment of judgement -- so the
+   statistic measured a concurrent association, and for velocity it was circular
+   with the success predicate, which includes linear and angular velocity and
+   duly produced an AUC of 1.000. See `evidence/RETRACTED.md`.
 
-   **This is the paper's answer to its own weakest sentence.** "One of seven
-   criteria transferred" reads as a failed derivation. The retention statistic
-   says it is not: the criteria that did not transfer are exactly the ones whose
-   quantity the closed loop corrects, and a designer can compute that from
-   episodes already recorded rather than discovering it by building the rack.
-   Present it as the general contribution and the individual axes as its
-   instances -- it is the part of this work that transfers to a system that is
-   not ours.
+   If a reviewer asks why the rule is not quantified, the honest answer is that
+   quantifying it needs the hand-over state recorded per episode and the boundary
+   arms re-run, and that we chose to report the rule as what it is rather than
+   publish a number that reads back the outcome. That answer is stronger than a
+   statistic nobody checked.
 
-   State the limit in the same breath: retention is not correctness. The
-   rail-indexing axis retains a settling velocity while its bound is written on
-   a position, so a criterion can retain and still be the wrong criterion.
-   Includes the two the simulator contradicts and why.
 4. **The cost of perception, measured as a substitution rather than a
    comparison, then attributed, then removed.** Three measurements, and the
    middle one is the contribution.

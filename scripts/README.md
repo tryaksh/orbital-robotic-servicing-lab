@@ -104,7 +104,7 @@ Envelopes, budgets and design windows.
 | Script | What it is |
 | --- | --- |
 | `measure_attitude_wall.sh` | How far off the base's own plane does a target have to be before the arm can |
-| `measure_criterion_retention.py` | Does the quantity a criterion bounds still predict the failure it names? |
+| `measure_criterion_retention.py` | Rank episodes by a recorded quantity against the failure mode a criterion names. |
 | `measure_gripper_envelope.py` | Measure where the Robotiq 2F-85 finger pads physically are. |
 | `measure_inference_budget.py` | What the autonomy stack costs to run, per control step. |
 | `measure_pin_design_window.py` | How tall a feature can the gripper accept, at each depth along its approach? |
