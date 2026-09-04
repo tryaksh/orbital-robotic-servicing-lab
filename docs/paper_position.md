@@ -129,6 +129,32 @@ be sized for what the policy will deliver, and that has to happen before the GPU
 is spent, because afterwards there is no knob. **That is the coupling the paper
 is about**, and no search run today returned it.
 
+**Say "before the seating policy is trained", never "before any policy is
+trained", and the difference is not pedantic.** `ManipulatorPerformance` takes
+three numbers. Two are design inputs: the seating tolerance is a property of the
+interface, and the pad half-bearing offset is read off the gripper's collision
+geometry. The third, the *delivered attitude*, is measured from robot-carried
+transit runs -- which means it comes from a policy that already exists. A claim
+that the requirement is computable before any policy is trained is circular, and
+it is the kind of sentence a reviewer reads twice.
+
+The true ordering is still the contribution, and it is worth stating as an
+ordering rather than as a speed:
+
+1. Characterise the arm. Whatever moves the module has to be measured, because
+   its delivered pose is an outcome and not a specification. In this repository
+   that is the robot-carried transit; in a programme it could be a datasheet, a
+   scripted controller, or a policy from a previous build.
+2. Derive the interface from that measurement, in closed form, on a CPU. The
+   rack is a long-lead item and this is where its requirement is fixed.
+3. Train the seating policy against the interface the derivation produced.
+
+The novelty is that step 2 cannot be moved after step 3 -- the usual fix of
+tightening the controller is unavailable -- and that step 1's output is a
+distribution nobody specified. What the CPU buys is that step 2 costs seconds
+instead of a training run, so the rack can be sized while the arm is still being
+characterised.
+
 ## A correction to this document, made the same day it was written
 
 **The recommendation to stop spending GPU on the learned seating phase was

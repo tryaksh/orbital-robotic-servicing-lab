@@ -152,7 +152,17 @@ def requires_a_correcting_lead_in(
 
 @dataclass(frozen=True)
 class ManipulatorPerformance:
-    """The three measured numbers a rack requirement follows from.
+    """The three numbers a rack requirement follows from.
+
+    Two of them are design inputs and one is a measurement, and the difference
+    decides what may be claimed about ordering. ``seating_tolerance_rad`` is a
+    property of the interface and ``pad_half_bearing_offset_m`` is read off the
+    gripper's collision geometry, so both are known before anything is trained.
+    ``delivered_attitude_rad`` is not: it is what the arm actually achieves, and
+    something has to move the module before it can be measured. **A rack
+    requirement is therefore computable before the seating policy is trained,
+    not before any policy is trained.** The second claim is circular and this
+    class is where it would start.
 
     ``delivered_attitude_rad`` is what the manipulator actually hands the
     insertion over at, not what it is specified to. In this repository it is
