@@ -241,6 +241,20 @@ class SectionVerdict:
     channel_corner_m: float
     entry_margin_m: float
     grip_margin_m: float
+    #: How much of ``lateral_clearance_window``'s **upper** bound is left once the
+    #: channel's own lateral clearance and its relief are spent. Negative means a
+    #: module released here may come to rest further off the centre line than the
+    #: seating tolerance accepts, which is a rack that has made itself
+    #: responsible for an acceptance the interface already specifies.
+    #:
+    #: **This existed as a bound before it existed as a check.**
+    #: ``lateral_clearance_window`` has always returned ``upper_bound_m`` and
+    #: ``section_verdict`` never read it, so the tool accepted the shipped
+    #: relieved destination -- 15.678 mm per side against an 11.781 mm upper
+    #: bound -- while the same library called that clearance 3.897 mm too wide.
+    #: A design tool that contradicts itself cannot be published, and the
+    #: contradiction was on the side that says yes.
+    seating_margin_m: float
     #: The largest delivered attitude at which this section would still enter,
     #: in radians. A property of the section and the channel, not of what the arm
     #: currently delivers, which is what makes it the number to hand a controls
@@ -260,8 +274,23 @@ class SectionVerdict:
         return self.grip_margin_m >= -1.0e-9
 
     @property
+    def rests_within_tolerance(self) -> bool:
+        """Whether a module released here can be relied on to be square enough.
+
+        Lateral only, and deliberately. ``lateral_clearance_window`` is a
+        statement about the lateral axis, the relief opens both axes by the same
+        amount per side, and the chain's own dominant failure is lateral -- 77 of
+        192 nominal episodes arrive, seat and miss the terminal gate on lateral
+        error, with not one of them outside its orientation tolerance. The
+        vertical axis has the same law and no measured failure behind it, so it
+        is left out rather than asserted.
+        """
+
+        return self.seating_margin_m >= -1.0e-9
+
+    @property
     def accepted(self) -> bool:
-        return self.enters and self.pads_can_follow
+        return self.enters and self.pads_can_follow and self.rests_within_tolerance
 
     @property
     def attitude_headroom_rad(self) -> float:
@@ -280,9 +309,16 @@ class SectionVerdict:
 
         if self.accepted:
             return None
-        if not self.enters and not self.pads_can_follow:
-            return "entry_and_grip"
-        return "entry" if not self.enters else "grip"
+        failing = [
+            name
+            for name, ok in (
+                ("entry", self.enters),
+                ("grip", self.pads_can_follow),
+                ("seating", self.rests_within_tolerance),
+            )
+            if not ok
+        ]
+        return "_and_".join(failing)
 
 
 def section_verdict(
@@ -313,6 +349,13 @@ def section_verdict(
     # the arm would have to deliver instead.
     admitting_gap = min(lateral, vertical) + destination_relief_per_side_m
     admissible_attitude = 2.0 * admitting_gap / module_length_m if module_length_m > 0.0 else math.inf
+    # The upper bound of the same window, which this check used to ignore. A
+    # module released in a channel with ``g`` of lateral clearance per side may
+    # come to rest anywhere up to ``2g/L`` off the centre line, and in zero
+    # gravity nothing returns it, so the channel may not offer more than the
+    # seating tolerance is willing to accept.
+    resting_gap = lateral + destination_relief_per_side_m
+    seating_margin = 0.5 * performance.seating_tolerance_rad * module_length_m - resting_gap
     return SectionVerdict(
         width_m=module_width_m,
         height_m=module_height_m,
@@ -322,6 +365,7 @@ def section_verdict(
         channel_corner_m=corner,
         entry_margin_m=admitting_gap - needed,
         grip_margin_m=performance.pad_half_bearing_offset_m - corner,
+        seating_margin_m=seating_margin,
         admissible_delivered_attitude_rad=admissible_attitude,
     )
 
@@ -492,6 +536,7 @@ class RackRequirement:
                 "limiting_criterion": self.shipped_section.limiting_criterion,
                 "entry_margin_m": self.shipped_section.entry_margin_m,
                 "grip_margin_m": self.shipped_section.grip_margin_m,
+                "seating_margin_m": self.shipped_section.seating_margin_m,
             },
             "accepted_section_count": len(self.accepted_sections),
         }

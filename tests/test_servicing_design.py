@@ -86,6 +86,8 @@ def test_the_section_envelope_matches_the_certified_check(workcell, shipped) -> 
         )
         assert verdict.enters == bool(row["lead_ins_admit_the_delivered_attitude"]), row
         assert verdict.pads_can_follow == bool(row["pads_can_follow_the_corner"]), row
+        assert verdict.rests_within_tolerance == bool(row["a_seated_module_stays_inside_the_tolerance"]), row
+        assert verdict.seating_margin_m == pytest.approx(float(row["seating_margin_m"]), abs=1.0e-6)
         assert verdict.accepted == bool(row["accepted"]), row
         assert verdict.lateral_half_gap_m == pytest.approx(float(row["lateral_half_gap_m"]), abs=1.0e-6)
         assert verdict.vertical_half_gap_m == pytest.approx(float(row["vertical_half_gap_m"]), abs=1.0e-6)
@@ -103,7 +105,15 @@ def test_the_shipped_grip_margin_matches_the_certified_check(workcell, shipped) 
         channel_height_m=float(certified["channel_height_m"]),
         destination_relief_per_side_m=float(certified["destination_relief_per_side_m"]),
     )
-    assert requirement.shipped_section.accepted
+    # **The shipped section is rejected, and that is the tool working.** The
+    # destination bay ships with 4.6125 mm of relief per side, which takes an
+    # 11.065 mm channel to 15.678 mm against this library's own 11.781 mm upper
+    # bound. Until 2026-09-04 `section_verdict` never read that bound and
+    # returned `accepted = True` for a bay `lateral_clearance_window` calls
+    # 3.897 mm too wide.
+    assert not requirement.shipped_section.accepted
+    assert requirement.shipped_section.limiting_criterion == "seating"
+    assert requirement.shipped_section.seating_margin_m == pytest.approx(-0.003897, abs=1.0e-6)
     assert requirement.shipped_section.grip_margin_m == pytest.approx(
         float(certified["grip_margin_of_the_shipped_section_m"]), abs=1.0e-6
     )
@@ -294,3 +304,86 @@ def test_the_inverse_can_exceed_the_seating_tolerance_and_says_so(shipped) -> No
     assert verdict.admissible_delivered_attitude_rad > shipped.seating_tolerance_rad
     usable = min(verdict.admissible_delivered_attitude_rad, shipped.seating_tolerance_rad)
     assert usable == pytest.approx(shipped.seating_tolerance_rad)
+
+
+def test_the_tool_cannot_accept_a_bay_its_own_window_rejects(workcell, shipped) -> None:
+    """The defect `section_verdict` carried until 2026-09-04.
+
+    `lateral_clearance_window` returns two bounds and `section_verdict` consulted
+    one of them, so the library accepted the shipped relieved destination while
+    calling its clearance 3.897 mm too wide -- one file, two verdicts, and the
+    contradiction on the side that says yes. A design tool published with that in
+    it hands a reader a bay the same tool would refuse.
+
+    Swept across relief rather than asserted at one point, so the agreement is a
+    property of the arithmetic and not of a chosen example.
+    """
+
+    length = float(workcell.BLADE_LENGTH_M)
+    width = float(workcell._literal("BLADE_SIZE")[1])
+    height = float(workcell._literal("BLADE_SIZE")[2])
+    channel_height = float(workcell.section_envelope()["channel_height_m"])
+    window = lateral_clearance_window(shipped, length)
+    inner_face = 0.5 * width + window["equal_margin_design_point_m"]
+
+    seen = {True: 0, False: 0}
+    for relief_mm in range(0, 12):
+        relief = relief_mm / 1000.0
+        verdict = section_verdict(
+            shipped,
+            module_length_m=length,
+            module_width_m=width,
+            module_height_m=height,
+            channel_inner_face_half_width_m=inner_face,
+            channel_height_m=channel_height,
+            destination_relief_per_side_m=relief,
+        )
+        clearance = verdict.lateral_half_gap_m + relief
+        too_wide = clearance > window["upper_bound_m"] + 1.0e-9
+        seen[too_wide] += 1
+        if too_wide:
+            assert not verdict.accepted, (
+                f"relief {relief_mm} mm gives {clearance * 1000:.3f} mm of clearance against an upper "
+                f"bound of {window['upper_bound_m'] * 1000:.3f} mm, and the section was accepted"
+            )
+            assert "seating" in (verdict.limiting_criterion or "")
+        else:
+            assert verdict.rests_within_tolerance
+    assert min(seen.values()) > 0, f"the sweep never crossed the bound: {seen}"
+
+
+def test_removing_the_relief_removes_the_seating_violation(workcell, shipped) -> None:
+    """What the tool prescribes, and what it does not claim to fix.
+
+    The shipped bay is rejected on *seating* because of the 4.6125 mm of relief
+    every chain run adds. Take the relief out and that criterion passes with
+    0.715 mm in hand -- the channel is back on the equal-margin design point it
+    was derived at.
+
+    **Entry still fails, and it fails on the vertical axis rather than the
+    lateral one.** 8.000 mm of vertical half-gap against the 10.350 mm a 46 mrad
+    hand-over sweeps: this is `requires_a_correcting_lead_in` restated, the bay
+    needs a funnel, and it has one. So removing the relief is not "the bay now
+    passes everything"; it is "the bay stops violating the bound this library
+    publishes, and the remaining criterion is the one the flare answers".
+    """
+
+    certified = workcell.section_envelope()
+    relieved, unrelieved = (
+        rack_requirement(
+            shipped,
+            module_length_m=float(workcell.BLADE_LENGTH_M),
+            module_width_m=float(workcell._literal("BLADE_SIZE")[1]),
+            module_height_m=float(workcell._literal("BLADE_SIZE")[2]),
+            channel_height_m=float(certified["channel_height_m"]),
+            destination_relief_per_side_m=relief,
+        ).shipped_section
+        for relief in (float(certified["destination_relief_per_side_m"]), 0.0)
+    )
+    assert relieved.limiting_criterion == "seating"
+    assert relieved.seating_margin_m == pytest.approx(-0.003897, abs=1.0e-6)
+
+    assert unrelieved.rests_within_tolerance
+    assert unrelieved.seating_margin_m == pytest.approx(0.000715, abs=1.0e-6)
+    assert unrelieved.limiting_criterion == "entry"
+    assert unrelieved.vertical_half_gap_m < unrelieved.lateral_half_gap_m

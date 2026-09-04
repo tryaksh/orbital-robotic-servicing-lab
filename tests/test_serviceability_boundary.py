@@ -71,7 +71,16 @@ def test_current_geometry_recomputes_the_exact_section_predictions() -> None:
     assert small["lead_ins_admit_the_delivered_attitude"] is True
     assert small["pads_can_follow_the_corner"] is False
     assert small["accepted"] is False
-    assert nominal["accepted"] is True
+    # The nominal section entered and gripped and was accepted until the seating
+    # criterion was added on 2026-09-04. The relieved channel is 3.897 mm wider
+    # than the seated orientation tolerance permits, so the analytical model now
+    # rejects the bay this repository ships -- which is the mismatch the
+    # boundary decision below is about, stated in the geometry rather than only
+    # in the rate.
+    assert nominal["lead_ins_admit_the_delivered_attitude"] is True
+    assert nominal["pads_can_follow_the_corner"] is True
+    assert nominal["a_seated_module_stays_inside_the_tolerance"] is False
+    assert nominal["accepted"] is False
     assert large["lead_ins_admit_the_delivered_attitude"] is False
     assert large["pads_can_follow_the_corner"] is True
     assert large["accepted"] is False

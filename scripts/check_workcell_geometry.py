@@ -402,7 +402,17 @@ def section_envelope(
     * **grip** -- a module in the corner of the **source** channel, which has no
       relief, has to stay inside the offset at which a pad still keeps half its
       face on the pin, so ``hypot(lateral, vertical) <= pin_half_width``. That
-      bay is where the pull happens and nothing was ever checked there.
+      bay is where the pull happens and nothing was ever checked there;
+    * **seating** -- the destination channel, *with* its relief, may not be wider
+      than the seating tolerance is willing to accept, ``2c/L <= tolerance``,
+      because a released module rests anywhere up to that clearance off the
+      centre line and in zero gravity nothing returns it.
+
+    **The third criterion is new on 2026-09-04 and it changes the count.** The
+    window this file publishes has always had an upper bound and this grid never
+    read it, so the shipped relieved destination -- 15.678 mm per side against an
+    11.781 mm upper bound -- was accepted by the same file that calls it too
+    wide. The previous grid is kept in ``evidence/`` and labelled.
 
     A section that fails the first jams on the way in. A section that fails the
     second is one the rack can move further than the gripper can follow, which
@@ -418,6 +428,10 @@ def section_envelope(
     inner_face = guide_offset - 0.5 * GUIDE_THICKNESS_Y_M
     channel_height = SLOT_LIP_BOTTOM_Z - SLOT_FLOOR_TOP_Z
     needed = 0.5 * DELIVERED_ATTITUDE_RAD * BLADE_LENGTH_M
+    # ``lateral_clearance_window`` has always returned an upper bound and this
+    # grid never read it, so a bay the same file calls 3.897 mm too wide was
+    # accepted here. The bound is the third criterion below.
+    permitted = 0.5 * float(_literal("INSERTION_ORIENTATION_TOLERANCE_RAD", INSERTION)) * BLADE_LENGTH_M
 
     rows: list[dict[str, object]] = []
     for width in widths_m:
@@ -430,6 +444,13 @@ def section_envelope(
                 and vertical + DESTINATION_RELIEF_M >= needed - 1.0e-6
             )
             holds = bool(min(lateral, vertical) > 0.0 and corner <= GRIP_MAX_TRANSVERSE_M + 1.0e-6)
+            # A released module rests anywhere up to the clearance off the centre
+            # line and nothing in zero gravity returns it, so a channel wider
+            # than the seating tolerance permits has made itself responsible for
+            # an acceptance the interface already specifies. Lateral only: the
+            # window is a lateral statement and the chain's dominant failure is
+            # lateral error at the terminal gate.
+            rests = bool(lateral + DESTINATION_RELIEF_M <= permitted + 1.0e-6)
             rows.append(
                 {
                     "width_m": round(width, 6),
@@ -439,7 +460,9 @@ def section_envelope(
                     "channel_corner_m": None if corner == float("inf") else round(corner, 6),
                     "lead_ins_admit_the_delivered_attitude": enters,
                     "pads_can_follow_the_corner": holds,
-                    "accepted": bool(enters and holds),
+                    "a_seated_module_stays_inside_the_tolerance": rests,
+                    "seating_margin_m": round(permitted - (lateral + DESTINATION_RELIEF_M), 6),
+                    "accepted": bool(enters and holds and rests),
                 }
             )
     accepted = [row for row in rows if row["accepted"]]
@@ -452,6 +475,10 @@ def section_envelope(
         "guide_inner_face_half_width_m": round(inner_face, 6),
         "channel_height_m": round(channel_height, 6),
         "accepted_count": len(accepted),
+        "seated_orientation_tolerance_rad": float(
+            _literal("INSERTION_ORIENTATION_TOLERANCE_RAD", INSERTION)
+        ),
+        "permitted_half_gap_m": round(permitted, 6),
         "grip_margin_of_the_shipped_section_m": round(
             GRIP_MAX_TRANSVERSE_M
             - float(

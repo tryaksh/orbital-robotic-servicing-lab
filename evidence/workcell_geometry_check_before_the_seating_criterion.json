@@ -1,7 +1,7 @@
 {
   "title": "Where the arm stands, what authority it has there, and what the channel admits",
   "evidence_type": "geometry_check_no_simulator",
-  "generated_utc": "2026-09-04T22:16:19.182584+00:00",
+  "generated_utc": "2026-08-25T22:22:28.139095+00:00",
   "question": "Is the destination bay's seating failure caused by where the robot stands, and what attitude does the destination channel actually accept?",
   "method": "scripts/check_workcell_geometry.py. Closed-form UR10e kinematics validated against every configuration evidence/workcell_reach_solution.json recorded from the simulator, then a damped-least-squares IK at the head-on attitude for every required pose in both bays, with the realised authority of the chain's own DLS controller reported at each. The channel's angular acceptance is closed form from the rack dimensions.",
   "kinematic_validation": {
@@ -2509,9 +2509,7 @@
     "pad_half_bearing_offset_m": 0.015,
     "guide_inner_face_half_width_m": 0.076065,
     "channel_height_m": 0.036,
-    "accepted_count": 4,
-    "seated_orientation_tolerance_rad": 0.0523599,
-    "permitted_half_gap_m": 0.011781,
+    "accepted_count": 7,
     "grip_margin_of_the_shipped_section_m": 0.001346,
     "note_on_the_shipped_section": "GUIDE_CENTER_OFFSET_Y used to be derived as the *largest* lateral clearance the pads can follow, so the shipped module sat exactly on that bound with no margin. It is derived now at the equal-margin point between the attitude the transit delivers and the attitude a seated module is accepted at, which leaves 1.35 mm on the pads' bound as a consequence rather than as a target. See lateral_clearance_window.",
     "evaluated_count": 36,
@@ -2524,8 +2522,6 @@
         "channel_corner_m": 0.023764,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.013897,
         "accepted": false
       },
       {
@@ -2536,8 +2532,6 @@
         "channel_corner_m": 0.022907,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.013897,
         "accepted": false
       },
       {
@@ -2548,8 +2542,6 @@
         "channel_corner_m": 0.022533,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.013897,
         "accepted": false
       },
       {
@@ -2560,8 +2552,6 @@
         "channel_corner_m": 0.021903,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.013897,
         "accepted": false
       },
       {
@@ -2572,8 +2562,6 @@
         "channel_corner_m": 0.021278,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.013897,
         "accepted": false
       },
       {
@@ -2584,8 +2572,6 @@
         "channel_corner_m": 0.021071,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.013897,
         "accepted": false
       },
       {
@@ -2596,8 +2582,6 @@
         "channel_corner_m": 0.01947,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.008897,
         "accepted": false
       },
       {
@@ -2608,8 +2592,6 @@
         "channel_corner_m": 0.018414,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.008897,
         "accepted": false
       },
       {
@@ -2620,8 +2602,6 @@
         "channel_corner_m": 0.017947,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.008897,
         "accepted": false
       },
       {
@@ -2632,8 +2612,6 @@
         "channel_corner_m": 0.017149,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.008897,
         "accepted": false
       },
       {
@@ -2644,8 +2622,6 @@
         "channel_corner_m": 0.016343,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.008897,
         "accepted": false
       },
       {
@@ -2656,8 +2632,6 @@
         "channel_corner_m": 0.016073,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.008897,
         "accepted": false
       },
       {
@@ -2668,8 +2642,6 @@
         "channel_corner_m": 0.015602,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.003897,
         "accepted": false
       },
       {
@@ -2680,9 +2652,7 @@
         "channel_corner_m": 0.014263,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.003897,
-        "accepted": false
+        "accepted": true
       },
       {
         "width_m": 0.13,
@@ -2692,9 +2662,7 @@
         "channel_corner_m": 0.013654,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.003897,
-        "accepted": false
+        "accepted": true
       },
       {
         "width_m": 0.13,
@@ -2704,9 +2672,7 @@
         "channel_corner_m": 0.012587,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.003897,
-        "accepted": false
+        "accepted": true
       },
       {
         "width_m": 0.13,
@@ -2716,8 +2682,6 @@
         "channel_corner_m": 0.011464,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.003897,
         "accepted": false
       },
       {
@@ -2728,8 +2692,6 @@
         "channel_corner_m": 0.011076,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": false,
-        "seating_margin_m": -0.003897,
         "accepted": false
       },
       {
@@ -2740,8 +2702,6 @@
         "channel_corner_m": 0.012561,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.001103,
         "accepted": true
       },
       {
@@ -2752,8 +2712,6 @@
         "channel_corner_m": 0.010853,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.001103,
         "accepted": true
       },
       {
@@ -2764,8 +2722,6 @@
         "channel_corner_m": 0.010039,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.001103,
         "accepted": true
       },
       {
@@ -2776,8 +2732,6 @@
         "channel_corner_m": 0.008531,
         "lead_ins_admit_the_delivered_attitude": true,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.001103,
         "accepted": true
       },
       {
@@ -2788,8 +2742,6 @@
         "channel_corner_m": 0.006766,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.001103,
         "accepted": false
       },
       {
@@ -2800,8 +2752,6 @@
         "channel_corner_m": 0.006086,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.001103,
         "accepted": false
       },
       {
@@ -2812,8 +2762,6 @@
         "channel_corner_m": 0.011051,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.006103,
         "accepted": false
       },
       {
@@ -2824,8 +2772,6 @@
         "channel_corner_m": 0.009063,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.006103,
         "accepted": false
       },
       {
@@ -2836,8 +2782,6 @@
         "channel_corner_m": 0.008071,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.006103,
         "accepted": false
       },
       {
@@ -2848,8 +2792,6 @@
         "channel_corner_m": 0.006094,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.006103,
         "accepted": false
       },
       {
@@ -2860,8 +2802,6 @@
         "channel_corner_m": 0.003183,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.006103,
         "accepted": false
       },
       {
@@ -2872,8 +2812,6 @@
         "channel_corner_m": 0.001177,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": true,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.006103,
         "accepted": false
       },
       {
@@ -2884,8 +2822,6 @@
         "channel_corner_m": null,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.011103,
         "accepted": false
       },
       {
@@ -2896,8 +2832,6 @@
         "channel_corner_m": null,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.011103,
         "accepted": false
       },
       {
@@ -2908,8 +2842,6 @@
         "channel_corner_m": null,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.011103,
         "accepted": false
       },
       {
@@ -2920,8 +2852,6 @@
         "channel_corner_m": null,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.011103,
         "accepted": false
       },
       {
@@ -2932,8 +2862,6 @@
         "channel_corner_m": null,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.011103,
         "accepted": false
       },
       {
@@ -2944,8 +2872,6 @@
         "channel_corner_m": null,
         "lead_ins_admit_the_delivered_attitude": false,
         "pads_can_follow_the_corner": false,
-        "a_seated_module_stays_inside_the_tolerance": true,
-        "seating_margin_m": 0.011103,
         "accepted": false
       }
     ]

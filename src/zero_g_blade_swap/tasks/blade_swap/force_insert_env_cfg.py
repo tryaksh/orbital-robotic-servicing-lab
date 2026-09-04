@@ -48,10 +48,10 @@ from isaaclab.utils import configclass
 
 from . import mdp
 from .grapple_pin_env_cfg import InsertPolicyObsCfg
+from .robust_insertion_env_cfg import configure_insertion_play_presentation
 from .scene_cfg import ZeroGTwoSlotGrapplePinSceneCfg
 from .two_slot_env_cfg import (
     ZeroGBladeGrapplePinInsertTwoSlotEnvCfg,
-    ZeroGBladeGrapplePinInsertTwoSlotPlayEnvCfg,
     ZeroGBladeGrapplePinTwoSlotWorkflowEnvCfg,
 )
 from .workflow_demo_env_cfg import WorkflowInsertObsCfg, WorkflowObservationsCfg
@@ -135,10 +135,30 @@ class ZeroGBladeGrapplePinInsertForceEnvCfg(ZeroGBladeGrapplePinInsertTwoSlotEnv
 
 @configclass
 class ZeroGBladeGrapplePinInsertForcePlayEnvCfg(ZeroGBladeGrapplePinInsertForceEnvCfg):
+    """The force task at play scale, with the two-slot play presentation.
+
+    **The presentation is applied directly rather than borrowed from
+    ``ZeroGBladeGrapplePinInsertTwoSlotPlayEnvCfg``.** This used to call that
+    class's ``__post_init__`` unbound, and every construction of this task raised
+    ``TypeError: super(type, obj): obj must be an instance or subtype of type``:
+    a zero-argument ``super()`` binds to the class its source sits in, and this
+    class is a sibling of that one rather than a subclass, so the call could
+    never resolve. The two bodies are the same three steps -- the shared
+    post-init, one environment, the inspection view -- and writing them out is
+    both correct and shorter than the borrowing was.
+
+    **The task registered and only failed on construction, which is why it was
+    invisible.** The 2026-09-04 force verification's three skill runs each exited
+    in ten seconds having written no episodes, and the aggregation that followed
+    reported a missing file rather than a broken task. So the first seating
+    policy that can feel contact reached its chain arm without ever having been
+    scored on its own skill.
+    """
+
     def __post_init__(self) -> None:
         super().__post_init__()
         self.scene.num_envs = 1
-        ZeroGBladeGrapplePinInsertTwoSlotPlayEnvCfg.__post_init__(self)
+        configure_insertion_play_presentation(self)
 
 
 # ---------------------------------------------------------------------------
