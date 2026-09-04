@@ -1,5 +1,56 @@
 # Next work
 
+## Start here -- handoff from the 2026-09-03 session
+
+**The deadline is the owner's: a project ready to submit by early November
+2026.** The Frontiers collection stays open to 2027-02-28, so the venue is not
+the constraint. About two months.
+
+**Read `docs/paper_position.md` before anything else.** It records what the paper
+may and may not claim after a literature check, and several of its decisions
+would be expensive to re-derive -- most importantly that the obvious way to state
+this session's boundary results is textbook tolerance analysis and must not be
+used.
+
+**A long GPU batch was left running.** Everything is self-sequencing through
+`artifacts/campaign/queue_*.sh`; one evaluation process at a time behind two or
+three training slots. Check `artifacts/campaign/*.log` for where it got to. In
+order:
+
+| queue | what it produces | check |
+| --- | --- | --- |
+| `queue_master.sh` | section axis at seeds 5070/6070, then an environment-count probe | `artifacts/robustness64_seed*` |
+| `queue_rgbd_cohorts.sh` | **the submission gate**: three RGB-D arms over three seeds each | `evidence/workflow_robot_carried_vision_*_certification.json` |
+| `queue_noised_skill_cert.sh` | the retrained extraction certified on both the noised and the clean task | `evidence/grapple_extract_v19noised_*` |
+| `queue_datum_pair_perception.sh` | closes [T20](#t20): a certificate for the datum layout actually deployed | a new `fiducial_rgbd_datum_pair_*` report |
+| `queue_cleanup.sh` | two missing rail-ladder rungs | `artifacts/robustness64_baseladder` |
+| `queue_trace_rung.sh` | the velocity *vector* at 6 mm of rail error, to settle a hypothesis | `artifacts/campaign/tracedrung` |
+| `queue_eval_tail.sh` | the robustness degradation curve, T4 | `evidence/grapple_*_robustness_level*` |
+| `queue_training_slot_a/b.sh` | the seed spreads, and the wedge-gated insert | `logs/rl_games/.../grapple_*` |
+
+**Three things the owner should decide, none of them blocking.**
+
+1. **Whether to keep the scripted seating controller.** One last experiment is
+   queued ([T13](#t13) territory: `InsertWedgeGated`). If it fails,
+   `docs/seating_controller.md` is the written defence and the recommendation is
+   to publish with the scripted advance. That is a claim decision, not a
+   technical one.
+2. **When to start drafting.** With two months and the gates nearly closed,
+   drafting should start within a week or two. `PAPER_PLAN.md` is frozen and says
+   not to draft until its gates pass; `docs/paper_position.md` says what the
+   draft should argue.
+3. **Whether to spend GPU on anything new at all.** The recommendation is no --
+   four claims stand and a fifth would not fit the time.
+
+**Two traps that cost time this session, both now in `AGENTS.md`.** CI runs
+`ruff` and the pre-flight never said so, so the branch was red for months and
+every push emailed the owner. And `pytest` and `python -m pytest` differ -- the
+module form puts the working directory on `sys.path` -- so one test failed
+collection in CI while passing locally. Also: `cmd | tail` masks the exit code,
+which is how a broken evidence reference got pushed.
+
+---
+
 Every known weakness, exposed defect, unverified assumption and scalability
 limit in this repository, as a bounded task. Current priority is set by the
 verified gates in [`NOW.md`](NOW.md), not by this legacy numbering.
