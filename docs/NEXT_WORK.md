@@ -39,6 +39,41 @@ velocity it was circular with the success predicate, which contains
 properly. If it lands, check whether hand-over attitude ranks the jams where the
 flares are deleted and not where they are fitted.
 
+### The open risk nobody has priced, written down rather than chased
+
+**Every boundary number in this project was measured at 64 parallel
+environments, and the same nominal point scores zero at 16 and at 32.**
+
+| run | environments | driver steps | nominal |
+| --- | ---: | ---: | ---: |
+| `artifacts/envcount_16x5000` | 16 | 5,000 | 0/16 |
+| `artifacts/envcount_16x6000` | 16 | 6,000 | 0/16 |
+| `artifacts/envcount_32x6000` | 32 | 6,000 | 0/32 |
+| `artifacts/envcount_64x1900` | 64 | 1,900 | **35/64 = 54.69%** |
+| `artifacts/robustness64_corrected` | 64 | 6,000 | **35/64 = 54.69%** |
+
+It is not the step budget: 64 environments give the same 54.69% at 1,900 steps
+and at 6,000. It is not rack retention, which is disabled in every one of them.
+It tracks the environment count, and the effect is total -- not a shift in rate
+but the difference between a working chain and none.
+
+**This was named in the session brief as a thing not to chase, and it is not
+being chased.** It is written here because it is a threat to validity a reviewer
+could raise about every rate in the paper, and because it is invisible from the
+evidence: each report is internally consistent and none of them records the
+comparison. If a run at 32 environments cannot reproduce the design point, then
+either the batch size is a hidden parameter of the result or those runs were
+configured differently in some way no report captures -- and the second is far
+more likely than the first, which is exactly why it needs half a day of someone
+looking rather than a paragraph of speculation.
+
+**What it would cost to close.** One run of the nominal point at 32 environments
+with the same flags as `robustness64_corrected`, and a diff of the two reports'
+`geometry_arm` blocks, which exist from 2026-09-03 onward. If they match and the
+rates still differ, it is real and the paper reports every rate with its
+environment count. If they differ, it was a configuration mistake in a probe and
+nothing published is affected.
+
 ### What is queued and what each queue decides
 
 Everything self-sequences through `artifacts/campaign/queue_*.sh`; check
