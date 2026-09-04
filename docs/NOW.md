@@ -659,6 +659,35 @@ phase the criterion is about. The rate evidence carries the claim on its own and
 the signature column should be read as a description of the failure, not as a
 second measurement of it.
 
+## Every A/B here is paired, and reading them unpaired was costing results
+
+Each A/B in this project is the same seeds, the same checkpoints, the same
+environments, one flag changed -- and every one has been reported as two
+independent Wilson intervals. That throws the pairing away. The right reading is
+McNemar's exact test on the episodes whose outcome actually changed.
+`scripts/compare_paired_arms.py` does both and prints both.
+
+| comparison | baseline | treatment | gained | lost | McNemar one-sided |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| oracle pose against camera pose | 4/24 | 20/24 | 17 | 1 | **0.00007** |
+| lead-in guard bound against the shipped estimator bound | 4/24 | 12/24 | 10 | 2 | **0.019** |
+| rack retention against the no-rack control | 17/24 | 22/24 | 5 | 0 | **0.031** |
+
+**Two of the three change conclusion.** The guard-bounds A/B and the rack
+retention arm both have overlapping Wilson intervals -- read unpaired, neither
+shows anything -- and both are significant paired. The guard-bounds result is
+one of the two candidate fixes for the camera-driven gate, and it was being
+under-reported.
+
+**What this does not license.** The paired reading assumes episode *i* of one arm
+started from the same state as episode *i* of the other, which follows from
+identical seeds, identical checkpoints and deterministic resets -- what every
+certification here means by "identical fixed cohorts". Arms run at different
+seeds are not paired and must be read unpaired. The tool cannot check which it
+has been given, so the claim of a fixed cohort travels with the number. The
+unpaired intervals stay in every report, because "how far apart are these two
+arms" and "what is this arm's rate" are different questions.
+
 ## Four of the unprovenanced reports were shown to rebuild from source
 
 The manifest now records `source_revision` for every report that has one: of 60

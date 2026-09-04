@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-103 scripts. Grouped by the verb their filename starts with.
+104 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -168,6 +168,7 @@ Each takes `--check` so CI can prove the artifact is current.
 | `audit_pose_head_dataset.py` | Audit why a camera pose head generalizes or fails without retraining it. |
 | `benchmark.py` | Benchmark safe parallel-environment counts in isolated Isaac Sim processes. |
 | `calibrate_grasp_pose.py` | Solve the arm joint angles that put the finger pads on the blade's interface. |
+| `compare_paired_arms.py` | Compare two arms that were run on the same cohort, as the paired data they are. |
 | `compare_workcells.py` | Print the before/after table straight from the evidence files. |
 | `derive_rack_requirement.py` | Compute a rack requirement from a manipulator's measured performance. |
 | `diagnose_extract_section.sh` | Why did 900 epochs of fine-tuning move extract 1.4 points? |
