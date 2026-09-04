@@ -94,7 +94,8 @@ if has train; then
         --max_iterations "$EPOCHS" \
         --run_name "$run" \
         > "$OUT/train_${name}.log" 2>&1
-    echo "[$(date +%H:%M:%S)]   exit=$?"
+    rc=$?
+    echo "[$(date +%H:%M:%S)]   exit=$rc"
     checkpoint=$(checkpoint_for "$name")
     if [ -z "$checkpoint" ]; then
       echo "[$(date +%H:%M:%S)] NO CHECKPOINT for $name"
@@ -121,7 +122,8 @@ evaluate() {
       --report "$OUT/${tag}_play.json" \
       --episode_metrics "$OUT/${tag}.npz" \
       > "$OUT/${tag}.log" 2>&1
-  echo "[$(date +%H:%M:%S)]   $tag exit=$?"
+  rc=$?
+  echo "[$(date +%H:%M:%S)]   $tag exit=$rc"
 }
 
 for arm in "${arms[@]}"; do
@@ -170,7 +172,8 @@ if has aggregate; then
             "The grasp is a PhysX fixed joint standing in for an already-secured grasp. It is not learned grasping." \
             "One PPO training seed. The evaluation seeds are held out, but training repeatability is untested." \
           > "$OUT/aggregate_${name}_certification.log" 2>&1
-      echo "[$(date +%H:%M:%S)] certification ${name} exit=$? -> evidence/uncertain_insertion_${name}_certification.json"
+      rc=$?
+      echo "[$(date +%H:%M:%S)] certification ${name} exit=$rc -> evidence/uncertain_insertion_${name}_certification.json"
     fi
 
     sweep_rows=("$OUT/${name}"_b??_s0_seed*.npz)
@@ -184,7 +187,8 @@ if has aggregate; then
             "One reset distance, the full-distance approach; the moved channel leaves no room for the nearer stages." \
             "Simulation only. One PPO training seed." \
           > "$OUT/aggregate_${name}_envelope.log" 2>&1
-      echo "[$(date +%H:%M:%S)] envelope ${name} exit=$? -> evidence/uncertain_insertion_${name}_envelope.json"
+      rc=$?
+      echo "[$(date +%H:%M:%S)] envelope ${name} exit=$rc -> evidence/uncertain_insertion_${name}_envelope.json"
     fi
   done
 fi

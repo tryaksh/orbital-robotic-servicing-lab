@@ -76,7 +76,8 @@ case "$stage" in
         --episode_metrics "$OUT/passive.npz" \
         --handoff_trace "$OUT/passive_trace.npz" \
         > "$OUT/passive.log" 2>&1
-    echo "[$(date +%H:%M:%S)] passive exit=$?"
+    rc=$?
+    echo "[$(date +%H:%M:%S)] passive exit=$rc"
     ;;
 
   latched)
@@ -93,7 +94,8 @@ case "$stage" in
         --episode_metrics "$OUT/latched.npz" \
         --handoff_trace "$OUT/latched_trace.npz" \
         > "$OUT/latched.log" 2>&1
-    echo "[$(date +%H:%M:%S)] latched exit=$?"
+    rc=$?
+    echo "[$(date +%H:%M:%S)] latched exit=$rc"
     ;;
 
   sweep)
@@ -117,7 +119,8 @@ case "$stage" in
           --report "$OUT/sweep_${tag}_report.json" \
           --handoff_trace "$OUT/sweep_${tag}_trace.npz" \
           > "$OUT/sweep_${tag}.log" 2>&1
-      echo "[$(date +%H:%M:%S)]   exit=$?"
+      rc=$?
+      echo "[$(date +%H:%M:%S)]   exit=$rc"
     done
     ;;
 
@@ -139,7 +142,8 @@ case "$stage" in
         --report "${REPORT:-$OUT/smoke_latched_report.json}" \
         --handoff_trace "${TRACE:-$OUT/smoke_latched_trace.npz}" \
         > "${LOG:-$OUT/smoke_latched.log}" 2>&1
-    echo "[$(date +%H:%M:%S)] smoke exit=$?"
+    rc=$?
+    echo "[$(date +%H:%M:%S)] smoke exit=$rc"
     ;;
 
   mating)
@@ -151,7 +155,8 @@ case "$stage" in
         tag="k${stiffness}_r${relief}"
         echo "[$(date +%H:%M:%S)] MATING stiffness=${stiffness} N/m relief=${relief} m"
         chain --num_envs "${ENVS:-8}" --episodes "${EPISODES:-8}" --seed "${SEED:-4070}"             --latch_on_release --latch_joint_mode fixed             --latch_rated_force_n "${LATCH_N:-20000}" --latch_rated_torque_nm "${LATCH_NM:-1000}"             --latch_position_stiffness_n_per_m "$stiffness"             --destination_channel_relief_m "$relief"             --report "$OUT/mating_${tag}_report.json"             --episode_metrics "$OUT/mating_${tag}.npz"             > "$OUT/mating_${tag}.log" 2>&1
-        echo "[$(date +%H:%M:%S)]   exit=$?"
+        rc=$?
+        echo "[$(date +%H:%M:%S)]   exit=$rc"
       done
     done
     ;;
@@ -207,7 +212,8 @@ case "$stage" in
           ${CHAIN_EXTRA:-} \
           --report "${out}_report.json" --episode_metrics "${out}.npz" \
           > "${out}.log" 2>&1
-      echo "[$(date +%H:%M:%S)]   exit=$?"
+      rc=$?
+      echo "[$(date +%H:%M:%S)]   exit=$rc"
       rows+=("${out}.npz")
     done
     release_scope='Success requires 0.70 s supported settling, release of both robot-side supports, then a separate 0.70 s free-module recheck.'
@@ -225,7 +231,8 @@ case "$stage" in
           "The transit legs are commanded from a solved inverse kinematics through actuator targets; the robot rides a lateral rail whose own load path is not modelled." \
           "$release_scope" \
         > "$OUT/aggregate_certify_${CERT_TAG}.log" 2>&1
-    echo "[$(date +%H:%M:%S)] aggregate exit=$? -> evidence/workflow_robot_carried_${CERT_TAG}_certification.json"
+    rc=$?
+    echo "[$(date +%H:%M:%S)] aggregate exit=$rc -> evidence/workflow_robot_carried_${CERT_TAG}_certification.json"
     tail -6 "$OUT/aggregate_certify_${CERT_TAG}.log"
     ;;
 
@@ -257,7 +264,8 @@ case "$stage" in
         --report "${REPORT:-$OUT/rail_report.json}" \
         --handoff_trace "${TRACE:-$OUT/rail_trace.npz}" \
         > "${LOG:-$OUT/rail.log}" 2>&1
-    echo "[$(date +%H:%M:%S)] rail exit=$?"
+    rc=$?
+    echo "[$(date +%H:%M:%S)] rail exit=$rc"
     ;;
 
   follower)
@@ -278,7 +286,8 @@ case "$stage" in
         --report "${REPORT:-$OUT/follower_report.json}" \
         --handoff_trace "${TRACE:-$OUT/follower_trace.npz}" \
         > "${LOG:-$OUT/follower.log}" 2>&1
-    echo "[$(date +%H:%M:%S)] follower exit=$?"
+    rc=$?
+    echo "[$(date +%H:%M:%S)] follower exit=$rc"
     ;;
 
   rgbd)
@@ -307,7 +316,8 @@ case "$stage" in
         --report "${REPORT:-$OUT/rgbd_report.json}" \
         --handoff_trace "${TRACE:-$OUT/rgbd_trace.npz}" \
         > "${LOG:-$OUT/rgbd.log}" 2>&1
-    echo "[$(date +%H:%M:%S)] rgbd exit=$?"
+    rc=$?
+    echo "[$(date +%H:%M:%S)] rgbd exit=$rc"
     ;;
 
   *)

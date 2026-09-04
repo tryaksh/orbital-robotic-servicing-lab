@@ -35,6 +35,7 @@ for tag in final best; do
       --episode_metrics "artifacts/insert_balance/probe_${tag}.npz" \
       --report "artifacts/insert_balance/probe_${tag}.json" \
       > "artifacts/insert_balance/probe_${tag}.log" 2>&1
-  echo "[$(date +%H:%M:%S)]   $tag exit=$? $(grep -oE '"success_rate": [0-9.]+' "artifacts/insert_balance/probe_${tag}.json" | head -1)"
+  rc=$?
+  echo "[$(date +%H:%M:%S)]   $tag exit=$rc $(grep -oE '"success_rate": [0-9.]+' "artifacts/insert_balance/probe_${tag}.json" | head -1)"
 done
 echo "[$(date +%H:%M:%S)] INSERT REBALANCE DONE"

@@ -85,7 +85,8 @@ for skill in "${skills[@]}"; do
           --report "${out}_play.json" \
           --episode_metrics "${out}.npz" \
           > "${out}.log" 2>&1
-      echo "[$(date +%H:%M:%S)]   eval $skill stage=$stage seed=$seed exit=$?"
+      rc=$?
+      echo "[$(date +%H:%M:%S)]   eval $skill stage=$stage seed=$seed exit=$rc"
       rows+=("${out}.npz")
     done
   done
@@ -101,7 +102,8 @@ for skill in "${skills[@]}"; do
         "One PPO training seed. The evaluation seeds are held out, but training repeatability is untested." \
         "This certifies the skill in isolation. It says nothing about the chained workflow, which is certified separately." \
       > "$OUT/aggregate_${lower}_${version}.log" 2>&1
-  echo "[$(date +%H:%M:%S)] aggregate $skill exit=$? -> evidence/grapple_${lower}_${version}_certification.json"
+  rc=$?
+  echo "[$(date +%H:%M:%S)] aggregate $skill exit=$rc -> evidence/grapple_${lower}_${version}_certification.json"
   tail -5 "$OUT/aggregate_${lower}_${version}.log"
 done
 

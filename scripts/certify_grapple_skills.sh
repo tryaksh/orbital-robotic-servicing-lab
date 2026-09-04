@@ -38,7 +38,8 @@ for seed in 1070 2070 3070; do
         --curriculum_stage "$stage" --seed "$seed" --grip_axis_metrics $EXTRA \
         --episode_metrics "${out}.npz" --report "${out}.json" \
         > "${out}.log" 2>&1
-    echo "[$(date +%H:%M:%S)]   $TAG stage=$stage seed=$seed exit=$? $(grep -oE '"success_rate": [0-9.]+' "${out}.json" | head -1)"
+    rc=$?
+    echo "[$(date +%H:%M:%S)]   $TAG stage=$stage seed=$seed exit=$rc $(grep -oE '"success_rate": [0-9.]+' "${out}.json" | head -1)"
     rows+=("${out}.npz")
   done
 done
@@ -51,5 +52,6 @@ done
       "The grasp is physical pad-against-pin contact, not a fixed joint." \
       "One PPO training seed. The evaluation seeds are held out, but training repeatability is untested." \
     > "$OUT/aggregate_${TAG}.log" 2>&1
-echo "[$(date +%H:%M:%S)] aggregate exit=$? -> evidence/grapple_${TAG}_certification.json"
+rc=$?
+echo "[$(date +%H:%M:%S)] aggregate exit=$rc -> evidence/grapple_${TAG}_certification.json"
 tail -4 "$OUT/aggregate_${TAG}.log"

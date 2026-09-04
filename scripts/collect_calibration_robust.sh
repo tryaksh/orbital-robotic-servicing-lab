@@ -31,7 +31,8 @@ for spec in "0 0" "3 4" "6 8" "9 12" "4 10" "8 3" "2 14" "10 6"; do
       --camera_offset_mm "$mm" --camera_tilt_mrad "$mrad" \
       --seed $((90 + i)) \
       --output "datasets/calib/run_${i}.npz" >> artifacts/collect_calib.log 2>&1
-  echo "[$(date +%H:%M:%S)]   exit=$?"
+  rc=$?
+  echo "[$(date +%H:%M:%S)]   exit=$rc"
   i=$((i + 1))
 done
 echo "[$(date +%H:%M:%S)] CALIBRATION COLLECTION DONE"

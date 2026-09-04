@@ -59,7 +59,8 @@ echo "[$(date +%H:%M:%S)] RESET GATE: is the module actually held at reset"
     --num_envs 64 --episodes 128 --curriculum_stage 0 --seed 1070 --grip_axis_metrics \
     --episode_metrics "$OUT/reset_gate.npz" --report "$OUT/reset_gate.json" \
     > "$OUT/reset_gate.log" 2>&1
-echo "[$(date +%H:%M:%S)]   exit=$?"
+rc=$?
+echo "[$(date +%H:%M:%S)]   exit=$rc"
 OUT="$OUT" "$PYTHON" - <<'PY' 2>/dev/null || true
 import json, numpy as np, os
 rows = np.load(f"{os.environ['OUT']}/reset_gate.npz", allow_pickle=True)

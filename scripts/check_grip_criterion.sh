@@ -35,7 +35,8 @@ for pair in "s0 0" "s2 2"; do
         --grip_axis_metrics $extra \
         --episode_metrics "$OUT/${tag}.npz" --report "$OUT/${tag}.json" \
         > "$OUT/${tag}.log" 2>&1
-    echo "[$(date +%H:%M:%S)]   exit=$? $(grep -oE '"success_rate": [0-9.]+' "$OUT/${tag}.json" | head -1)"
+    rc=$?
+    echo "[$(date +%H:%M:%S)]   exit=$rc $(grep -oE '"success_rate": [0-9.]+' "$OUT/${tag}.json" | head -1)"
   done
 done
 echo "[$(date +%H:%M:%S)] DONE"

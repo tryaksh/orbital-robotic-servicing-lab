@@ -102,7 +102,8 @@ for workflow in "${workflows[@]}"; do
         "Success is the workflow's own condition re-checked after a 0.70 s settling window, not the instant a predicate fired." \
         "One PPO training seed per skill. The evaluation seeds are held out, but training repeatability is untested." \
       > "$OUT/aggregate_${workflow}${TAG}.log" 2>&1
-  echo "[$(date +%H:%M:%S)] aggregate exit=$? -> evidence/workflow_${workflow}${TAG}_certification.json"
+  rc=$?
+  echo "[$(date +%H:%M:%S)] aggregate exit=$rc -> evidence/workflow_${workflow}${TAG}_certification.json"
   tail -5 "$OUT/aggregate_${workflow}${TAG}.log"
 done
 

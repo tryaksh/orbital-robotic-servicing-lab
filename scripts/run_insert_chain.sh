@@ -90,7 +90,8 @@ if [ "${SKIP_TRAIN:-0}" != "1" ]; then
       --checkpoint "$RESUME" \
       --run_name "$RUN" \
       > artifacts/chain/train_${RUN}.log 2>&1
-  echo "[$(date +%H:%M:%S)] train exit=$?"
+  rc=$?
+  echo "[$(date +%H:%M:%S)] train exit=$rc"
 fi
 
 # Highest *epoch*, not newest mtime. rl-games keeps rewriting an untagged

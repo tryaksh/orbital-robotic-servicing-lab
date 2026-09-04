@@ -99,7 +99,8 @@ for skill in "${skills[@]}"; do
           --seed "$seed" \
           --episode_metrics "${out}.npz" \
           > "${out}.log" 2>&1
-      echo "[$(date +%H:%M:%S)]   eval stage=$stage seed=$seed exit=$?"
+      rc=$?
+      echo "[$(date +%H:%M:%S)]   eval stage=$stage seed=$seed exit=$rc"
       rows+=("${out}.npz")
     done
   done
@@ -113,7 +114,8 @@ for skill in "${skills[@]}"; do
         "The grasp is physical pad-against-pin contact, not a fixed joint." \
         "One PPO training seed. The evaluation seeds are held out, but training repeatability is untested." \
       > "artifacts/grapple/aggregate_${skill}.log" 2>&1
-  echo "[$(date +%H:%M:%S)] aggregate exit=$? -> evidence/grapple_${skill,,}_certification.json"
+  rc=$?
+  echo "[$(date +%H:%M:%S)] aggregate exit=$rc -> evidence/grapple_${skill,,}_certification.json"
 done
 
 echo "[$(date +%H:%M:%S)] ALL DONE"

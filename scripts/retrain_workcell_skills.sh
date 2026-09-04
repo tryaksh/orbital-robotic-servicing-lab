@@ -79,7 +79,8 @@ for skill in "${skills[@]}"; do
       --checkpoint "$ckpt" \
       --run_name "$run" \
       > "$OUT/train_${skill}.log" 2>&1
-  echo "[$(date +%H:%M:%S)] train exit=$?  (judge progress from summaries/ and nn/ mtime, never this log)"
+  rc=$?
+  echo "[$(date +%H:%M:%S)] train exit=$rc  (judge progress from summaries/ and nn/ mtime, never this log)"
   ls -t "logs/rl_games"/*/"$run"/nn/*.pth 2>/dev/null | head -1
 done
 

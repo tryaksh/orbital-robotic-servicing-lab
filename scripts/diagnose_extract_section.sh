@@ -37,7 +37,8 @@ run() {
       --seed "$SEED" --grip_axis_metrics \
       --episode_metrics "$OUT/${tag}.npz" --report "$OUT/${tag}.json" \
       "$@" > "$OUT/${tag}.log" 2>&1
-  echo "[$(date +%H:%M:%S)]   exit=$? $(grep -oE '"success_rate": [0-9.]+' "$OUT/${tag}.json" | head -1)"
+  rc=$?
+  echo "[$(date +%H:%M:%S)]   exit=$rc $(grep -oE '"success_rate": [0-9.]+' "$OUT/${tag}.json" | head -1)"
 }
 
 run x_v17_s0_new "$V17" 0
