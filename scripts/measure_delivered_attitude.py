@@ -73,6 +73,10 @@ DEFAULT_TRACES = tuple(
     for seed in (4070, 5070, 6070)
 )
 
+#: How many transit samples before the hand-off to check the attitude against.
+#: Twenty samples is forty control steps, at TRANSIT_TRACE_STRIDE = 2.
+TAIL_SAMPLES = 20
+
 #: The phase index at which the transit has handed over. `PHASE_NAMES` in
 #: `run_workflow_demo.py` is ("capture", "seat", "extract", "transit", "insert",
 #: "done"), so an episode that reached 4 got as far as the insertion.
@@ -126,9 +130,33 @@ def handover_attitudes(trace_path: Path) -> dict[str, Any]:
         for index, value in per_env.items()
         if index < len(reached) and reached[index] >= INSERT_PHASE_INDEX
     }
+    # Two corroborations, both from fields this same trace already carries.
+    #
+    # The first answers "is the last sample the hand-off": how much the module's
+    # attitude moves over the last twenty transit samples, which is forty control
+    # steps. If that is small the two-step gap before the phase change cannot
+    # matter.
+    #
+    # The second is an independent bound and it is the stronger of the two. The
+    # module can only be as crooked as the tool is off its commanded attitude
+    # plus however far the module has drifted off the tool, and both are recorded
+    # separately from `module_attitude_rad`. If their sum cannot reach the
+    # asserted constant, no reading of the first field can either.
+    tool_error, drift = (fields.index(name) for name in ("tool_attitude_error_rad", "tool_to_module_drift_rad"))
+    tail_spread: dict[int, float] = {}
+    bound: dict[int, float] = {}
+    for index in np.unique(rows[:, env]):
+        block = rows[rows[:, env] == index]
+        block = block[np.argsort(block[:, step])]
+        tail = block[-TAIL_SAMPLES:, attitude]
+        tail_spread[int(index)] = float(tail.max() - tail.min())
+        bound[int(index)] = float(block[-1, tool_error] + block[-1, drift])
+
     return {
         "trace": trace_path.as_posix(),
         "seed": int(metadata.get("seed", -1)),
+        "tail_spread_rad": [tail_spread[index] for index in sorted(kept)],
+        "attitude_bound_rad": [bound[index] for index in sorted(kept)],
         "task": str(metadata.get("task", "")),
         "source_revision": metadata.get("source_revision"),
         "checkpoint_sha256": metadata.get("checkpoint_sha256"),
@@ -199,6 +227,12 @@ def build_report(traces: list[dict[str, Any]]) -> dict[str, Any]:
 
     statistics = summarize(pooled)
     asserted = implied_requirement(ASSERTED_DELIVERED_ATTITUDE_RAD)
+    spread: list[float] = []
+    bound: list[float] = []
+    for trace in traces:
+        spread.extend(trace["tail_spread_rad"])
+        bound.extend(trace["attitude_bound_rad"])
+    reachable = int(sum(1 for value in bound if value >= ASSERTED_DELIVERED_ATTITUDE_RAD))
     return {
         "title": "The attitude the transit hands the insertion over at, from recorded traces",
         "evidence_type": "measurement_from_recorded_traces",
@@ -236,6 +270,29 @@ def build_report(traces: list[dict[str, Any]]) -> dict[str, Any]:
             "at_the_worst_environment": implied_requirement(statistics["max_rad"]),
         },
         "what_the_asserted_constant_implies": asserted,
+        "corroboration": {
+            "the_last_sample_is_the_hand_off": {
+                "what_it_checks": (
+                    "How far the module's attitude moves over the last twenty transit samples, forty "
+                    "control steps. If it is flat, the gap between the last sample and the phase change "
+                    "cannot carry the result."
+                ),
+                "median_spread_rad": float(np.median(spread)),
+                "max_spread_rad": float(np.max(spread)),
+            },
+            "an_independent_bound_on_how_crooked_the_module_can_be": {
+                "what_it_checks": (
+                    "The module can be no more off square than the tool is off its commanded attitude "
+                    "plus however far the module has drifted off the tool. Both are recorded separately "
+                    "from module_attitude_rad, so this bound does not depend on how that field is "
+                    "defined."
+                ),
+                "median_rad": float(np.median(bound)),
+                "max_rad": float(np.max(bound)),
+                "environments_whose_bound_reaches_the_asserted_constant": reachable,
+                "environments": len(bound),
+            },
+        },
         "asserted_delivered_attitude_rad": ASSERTED_DELIVERED_ATTITUDE_RAD,
         "ratio_asserted_over_measured_median": ASSERTED_DELIVERED_ATTITUDE_RAD / statistics["median_rad"],
         "scope_and_limitations": [
@@ -325,6 +382,24 @@ def main() -> int:
     print(
         f"    {'asserted constant':18s} {block['delivered_attitude_rad'] * 1000:6.2f} mrad  "
         f"clearance >= {window['lower_bound_m'] * 1000:6.3f} mm   regime {block['interface_regime']}"
+    )
+
+    corroboration = report["corroboration"]
+    tail = corroboration["the_last_sample_is_the_hand_off"]
+    limit = corroboration["an_independent_bound_on_how_crooked_the_module_can_be"]
+    print()
+    print("  corroboration")
+    print(
+        f"    attitude spread over the last {TAIL_SAMPLES} transit samples: "
+        f"median {tail['median_spread_rad'] * 1000:.3f} mrad, worst {tail['max_spread_rad'] * 1000:.2f}"
+    )
+    print(
+        f"    tool attitude error + drift off the tool:                "
+        f"median {limit['median_rad'] * 1000:.2f} mrad, worst {limit['max_rad'] * 1000:.2f}"
+    )
+    print(
+        f"    environments whose bound could even reach the constant:  "
+        f"{limit['environments_whose_bound_reaches_the_asserted_constant']} of {limit['environments']}"
     )
 
     if arguments.report is not None:

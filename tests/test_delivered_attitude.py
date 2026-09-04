@@ -122,6 +122,8 @@ def _trace(commit: str, dirty: bool, seed: int, task: str = "T") -> dict:
         "environments_traced": 2,
         "environments_that_handed_over": 2,
         "attitudes_rad": [0.008, 0.009],
+        "tail_spread_rad": [0.0002, 0.0003],
+        "attitude_bound_rad": [0.011, 0.012],
     }
 
 
@@ -144,3 +146,29 @@ def test_pooling_refuses_what_the_aggregator_refuses(measure) -> None:
         measure.build_report(
             [_trace("a" * 40, False, 4070), _trace("a" * 40, False, 5070, task="other")]
         )
+
+
+def test_the_independent_bound_is_reported_and_counted(measure) -> None:
+    """The corroboration that does not depend on how one field is defined.
+
+    A module can be no more off square than the tool is off its commanded
+    attitude plus its drift off the tool, and both are recorded separately. The
+    report has to say how many environments could even reach the asserted
+    constant, because "none of them" is the part that settles it.
+    """
+
+    report = measure.build_report([_trace("a" * 40, False, seed) for seed in (4070, 5070)])
+    bound = report["corroboration"]["an_independent_bound_on_how_crooked_the_module_can_be"]
+    assert bound["environments"] == 4
+    assert bound["environments_whose_bound_reaches_the_asserted_constant"] == 0
+    assert bound["max_rad"] == pytest.approx(0.012, abs=1.0e-12)
+
+    over = _trace("a" * 40, False, 6070)
+    over["attitude_bound_rad"] = [0.050, 0.060]
+    counted = measure.build_report([_trace("a" * 40, False, 4070), over])
+    assert (
+        counted["corroboration"]["an_independent_bound_on_how_crooked_the_module_can_be"][
+            "environments_whose_bound_reaches_the_asserted_constant"
+        ]
+        == 2
+    )
