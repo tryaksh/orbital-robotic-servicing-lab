@@ -52,6 +52,7 @@ training runs do not.
 | --- | --- | --- | --- |
 | **T14** | Destination load transfer: 22/22 eligible rack-only holds; full chain 22/24 | **done 2026-08-31, claim narrowed** | — |
 | **T16** | The clearance sweep moved the guides and left the mouth; 6 mm/side is 36/64, not 0/64 | one flag + a re-sweep | the whole rack-clearance axis |
+| **T20** | No perception certificate exists for the deployed datum *pair*; the surrogate's sigma comes from a single-datum one | one collection | the perception numbers, and the noise model |
 | **T19** | The solved-IK agreement check fires spuriously and costs a sweep point | <1 h | one ladder rung |
 | **T17** | Score each criterion against the failure it predicts, not the pooled rate | CPU only | the boundary decision |
 | **T18** | Train the skills on the estimator's error; the filter is already ruled out | one fine-tune + one cohort | the RGB chain's 50% gate |
@@ -138,6 +139,58 @@ the flare or the guard does the squaring; it is queued. Then decide whether
 `check_workcell_geometry.py`'s `lateral_clearance_window` should report its lower
 bound as conditional on the absence of a correcting lead-in, which is a criterion
 change and needs its own before-and-after.
+
+<a id="t20"></a>
+## T20 -- There is no perception certification for the datum layout that is deployed
+
+**Opened 2026-09-03, and it is a gap in a published claim rather than a
+provenance nicety.**
+
+Every fiducial certificate in `evidence/` -- `fiducial_rgbd_flush_v2_seed283`,
+`v3_seed284_overhead`, `v4_seed285_gripper_clear` -- was collected when the
+module carried a **single centred datum**. The chain now carries a **pair**,
+ArUco 23 aft and ArUco 15 forward at module-frame x = -+0.115 m, and that change
+landed after the last collection. `NOW.md` quotes the single-datum numbers for
+detection rate and pose error while describing a system that runs the pair.
+
+**The mismatch is measured, not suspected.** Replaying the preserved v4 dataset
+through the current detector gives a position p95 of **116.08 mm** against the
+published **1.91 mm**, with orientation p95 unchanged at 20.08 mrad against
+20.06. One hundred and sixteen millimetres is the datum offset: the current
+detector resolves a plate 115 mm off centre in frames whose ground truth assumes
+a centred one. So the old datasets cannot be re-certified on current code, and
+the discrepancy is a layout mismatch rather than a detector regression.
+`evidence/fiducial_v4_dataset_replayed_on_the_datum_pair_detector.json` is that
+replay, kept and named for what it is.
+
+**It also matters to the estimator surrogate.** `mdp/estimator_surrogate.py`
+inverts its position sigma from the v4 certificate's p95, so the noise the
+retrained skills were trained against is calibrated from a datum layout the chain
+no longer has. The residual is a property of marker size, resolution and lens,
+none of which changed, so the constant is probably close -- but "probably close"
+is the shape of assumption this repository's rules exist to stop.
+
+**Run it.** Collect 1,024 held-out workflow-envelope frames on the current scene
+and certify them; seed 286 is held out from every previous collection. Queued
+2026-09-03 as `artifacts/campaign/queue_datum_pair_perception.sh`.
+
+```bash
+C:/isaac-sim/python.bat scripts/collect_grapple_vision.py \
+  --task Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Collect-v0 \
+  --output datasets/fiducial_rgbd_datum_pair_seed286.npz \
+  --samples 1024 --num_envs 16 --seed 286 \
+  --rgb_source raw --pose_distribution workflow_envelope
+C:/isaac-sim/python.bat scripts/certify_fiducial_perception.py \
+  --dataset datasets/fiducial_rgbd_datum_pair_seed286.npz \
+  --report evidence/fiducial_rgbd_datum_pair_seed286.json
+```
+
+**Done when** a certificate exists for the deployed datum pair, `NOW.md` quotes
+it instead of the single-datum numbers, and the surrogate either keeps its sigma
+because the new p95 agrees or is re-derived because it does not. Re-running
+`check_estimator_surrogate.py` afterwards is what says which.
+
+**Cost.** One rendering collection and a CPU certification.
 
 <a id="t19"></a>
 ## T19 -- The solved-IK agreement check fires spuriously, about one run in fifteen

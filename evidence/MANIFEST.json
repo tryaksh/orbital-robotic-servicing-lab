@@ -781,13 +781,13 @@
     "fiducial_detector_late_approach_replay_v1.json": {
       "title": "Fiducial decoder replay on continuous late-approach RGB frames"
     },
-    "fiducial_rgbd_flush_v4_recertified_v1.json": {
-      "title": "Calibrated RGB-D fiducial perception qualification"
-    },
     "fiducial_rgbd_flush_v5_seed286_640px.json": {
       "title": "Calibrated RGB-D fiducial perception qualification"
     },
     "fiducial_rgbd_flush_v6_seed286_640px_robust_decoder.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification"
+    },
+    "fiducial_v4_dataset_replayed_on_the_datum_pair_detector.json": {
       "title": "Calibrated RGB-D fiducial perception qualification"
     },
     "force_feedback_certification.json": {
