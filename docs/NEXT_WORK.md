@@ -10,44 +10,61 @@ the constraint. About two months.
 may and may not claim after a literature check, and several of its decisions
 would be expensive to re-derive -- most importantly that the obvious way to state
 this session's boundary results is textbook tolerance analysis and must not be
-used.
+used. It also carries a correction made the same day it was written, which is the
+most important thing in it: see below.
 
-**A long GPU batch was left running.** Everything is self-sequencing through
-`artifacts/campaign/queue_*.sh`; one evaluation process at a time behind two or
-three training slots. Check `artifacts/campaign/*.log` for where it got to. In
-order:
+**The biggest finding of the session was found last, by the owner pushing back.**
+The learned seating policy has been doing contact-rich assembly *blind* for this
+project's entire history -- there is no contact force in its observations and the
+grapple-pin scene had no contact sensor at all. `BladeContactWrenchObservation`
+has existed here since the force-limited insertion work, cites FORGE in its own
+docstring, and was never wired to the skill the chain runs. FORGE (arXiv
+2408.04587) transfers contact-rich insertion zero-shot while tolerating 5 mm of
+part-pose error; this estimator is accurate to 2 mm and the chain collapses. So
+the ceiling was the recipe. `Isaac-ZeroG-Blade-GrapplePin-InsertForce-v0` is one
+change -- the policy can feel contact -- and it is training from scratch.
+
+**Everything is self-sequencing through `artifacts/campaign/queue_*.sh`.** Check
+`artifacts/campaign/*.log` for where each got to. The evaluation chain runs one
+process at a time behind the training slots:
 
 | queue | what it produces | check |
 | --- | --- | --- |
-| `queue_master.sh` | section axis at seeds 5070/6070, then an environment-count probe | `artifacts/robustness64_seed*` |
-| `queue_rgbd_cohorts.sh` | **the submission gate**: three RGB-D arms over three seeds each | `evidence/workflow_robot_carried_vision_*_certification.json` |
-| `queue_noised_skill_cert.sh` | the retrained extraction certified on both the noised and the clean task | `evidence/grapple_extract_v19noised_*` |
-| `queue_datum_pair_perception.sh` | closes [T20](#t20): a certificate for the datum layout actually deployed | a new `fiducial_rgbd_datum_pair_*` report |
+| `queue_master.sh` | section axis at three seeds (**done: grip criterion confirmed**), then an environment-count probe | `artifacts/robustness64_seed*` |
+| `queue_rgbd_cohorts.sh` | **the submission gate**: three RGB-D arms, three seeds each | `evidence/workflow_robot_carried_vision_*_certification.json` |
+| `queue_noised_skill_cert.sh` | the retrained extraction on both the noised and the clean task | `evidence/grapple_extract_v19noised_*` |
+| `queue_datum_pair_perception.sh` | closes [T20](#t20): a certificate for the datum layout deployed | a new `fiducial_rgbd_datum_pair_*` report |
+| `queue_grasp_seed_spread.sh` | [T3](#t3): three from-scratch capture seeds, certified on the published protocol | `evidence/grapple_grasp_v8scratch_seed*` |
 | `queue_cleanup.sh` | two missing rail-ladder rungs | `artifacts/robustness64_baseladder` |
 | `queue_trace_rung.sh` | the velocity *vector* at 6 mm of rail error, to settle a hypothesis | `artifacts/campaign/tracedrung` |
 | `queue_eval_tail.sh` | the robustness degradation curve, T4 | `evidence/grapple_*_robustness_level*` |
-| `queue_training_slot_a/b.sh` | the seed spreads, and the wedge-gated insert | `logs/rl_games/.../grapple_*` |
+| `queue_training_slot_a.sh` | extraction seeds 71 and 72 | `logs/rl_games/.../grapple_extract_l0_seed7*_v18stage` |
+| `queue_training_slot_b.sh` | capture seed 71, the wedge-gated insert, capture seed 72 | `logs/rl_games/.../grapple_*` |
+| `queue_after_slot_a.sh` | resumes the noised capture fine-tune, then verifies the force-feedback seating policy on **both** halves | `artifacts/campaign/verify_insert_v33force.log` |
+
+**Two trainings plus one evaluation is the measured ceiling** and going past it
+costs throughput -- see `AGENTS.md` rule 7, which now carries the numbers. Four
+trainings report about 1,250 fps each against 6,000 for one alone.
 
 **Three things the owner should decide, none of them blocking.**
 
-1. **Whether to keep the scripted seating controller.** One last experiment is
-   queued ([T13](#t13) territory: `InsertWedgeGated`). If it fails,
-   `docs/seating_controller.md` is the written defence and the recommendation is
-   to publish with the scripted advance. That is a claim decision, not a
-   technical one.
-2. **When to start drafting.** With two months and the gates nearly closed,
-   drafting should start within a week or two. `PAPER_PLAN.md` is frozen and says
-   not to draft until its gates pass; `docs/paper_position.md` says what the
-   draft should argue.
-3. **Whether to spend GPU on anything new at all.** The recommendation is no --
-   four claims stand and a fifth would not fit the time.
+1. **What to do if the force-feedback seating policy works.** It changes claim 1
+   from a negative result into a positive one and the paper gets stronger. If it
+   does not, `docs/seating_controller.md` is the defence and it is now much
+   stronger for having been tested against the recipe the field agrees on. Two
+   further ingredients are named and not yet built: a compliant action space, and
+   dynamics randomization during training.
+2. **When to start drafting.** `docs/manuscript_prompt.md` has the folder layout,
+   the Markdown-then-Overleaf recommendation, and a prompt to paste into a fresh
+   session. Two weeks out is about right.
+3. **Whether to open a fifth claim.** The recommendation is still no.
 
-**Two traps that cost time this session, both now in `AGENTS.md`.** CI runs
-`ruff` and the pre-flight never said so, so the branch was red for months and
-every push emailed the owner. And `pytest` and `python -m pytest` differ -- the
-module form puts the working directory on `sys.path` -- so one test failed
-collection in CI while passing locally. Also: `cmd | tail` masks the exit code,
-which is how a broken evidence reference got pushed.
+**Three traps that cost time this session, all now recorded.** CI runs `ruff` and
+the pre-flight never said so, so the branch was red for months and every push
+emailed the owner. `pytest` and `python -m pytest` differ -- the module form puts
+the working directory on `sys.path` -- so a test failed collection in CI while
+passing locally. And `cmd | tail` masks the exit code, which is how a broken
+evidence reference got pushed. All three are in `AGENTS.md`.
 
 ---
 
