@@ -1,70 +1,87 @@
 # Next work
 
-## Start here -- handoff from the 2026-09-03 session
+## Start here -- handoff from the 2026-09-03 overnight session
 
 **The deadline is the owner's: a project ready to submit by early November
 2026.** The Frontiers collection stays open to 2027-02-28, so the venue is not
-the constraint. About two months.
+the constraint.
 
-**Read `docs/paper_position.md` before anything else.** It records what the paper
-may and may not claim after a literature check, and several of its decisions
-would be expensive to re-derive -- most importantly that the obvious way to state
-this session's boundary results is textbook tolerance analysis and must not be
-used. It also carries a correction made the same day it was written, which is the
-most important thing in it: see below.
+**Read `docs/paper_position.md` before anything else.** It carries the
+literature check, the framings that are forbidden, the threat-to-validity
+answer, and two corrections made after it was written. The manuscript is being
+drafted in a separate repository; `docs/manuscript_prompt.md` says where.
 
-**The biggest finding of the session was found last, by the owner pushing back.**
-The learned seating policy has been doing contact-rich assembly *blind* for this
-project's entire history -- there is no contact force in its observations and the
-grapple-pin scene had no contact sensor at all. `BladeContactWrenchObservation`
-has existed here since the force-limited insertion work, cites FORGE in its own
-docstring, and was never wired to the skill the chain runs. FORGE (arXiv
-2408.04587) transfers contact-rich insertion zero-shot while tolerating 5 mm of
-part-pose error; this estimator is accurate to 2 mm and the chain collapses. So
-the ceiling was the recipe. `Isaac-ZeroG-Blade-GrapplePin-InsertForce-v0` is one
-change -- the policy can feel contact -- and it is training from scratch.
+### What the overnight audit found, because it will happen again
 
-**Everything is self-sequencing through `artifacts/campaign/queue_*.sh`.** Check
-`artifacts/campaign/*.log` for where each got to. The evaluation chain runs one
-process at a time behind the training slots:
+Six defects, none of which any mechanical check in this repository catches.
+They are worth reading as a class before trusting a number here.
 
-| queue | what it produces | check |
-| --- | --- | --- |
-| `queue_master.sh` | section axis at three seeds (**done: grip criterion confirmed**), then an environment-count probe | `artifacts/robustness64_seed*` |
-| `queue_rgbd_cohorts.sh` | **the submission gate**: three RGB-D arms, three seeds each | `evidence/workflow_robot_carried_vision_*_certification.json` |
-| `queue_noised_skill_cert.sh` | the retrained extraction on both the noised and the clean task | `evidence/grapple_extract_v19noised_*` |
-| `queue_datum_pair_perception.sh` | closes [T20](#t20): a certificate for the datum layout deployed | a new `fiducial_rgbd_datum_pair_*` report |
-| `queue_grasp_seed_spread.sh` | [T3](#t3): three from-scratch capture seeds, certified on the published protocol | `evidence/grapple_grasp_v8scratch_seed*` |
-| `queue_cleanup.sh` | two missing rail-ladder rungs | `artifacts/robustness64_baseladder` |
-| `queue_trace_rung.sh` | the velocity *vector* at 6 mm of rail error, to settle a hypothesis | `artifacts/campaign/tracedrung` |
-| `queue_eval_tail.sh` | the robustness degradation curve, T4 | `evidence/grapple_*_robustness_level*` |
-| `queue_training_slot_a.sh` | extraction seeds 71 and 72 | `logs/rl_games/.../grapple_extract_l0_seed7*_v18stage` |
-| `queue_training_slot_b.sh` | capture seed 71, the wedge-gated insert, capture seed 72 | `logs/rl_games/.../grapple_*` |
-| `queue_after_slot_a.sh` | resumes the noised capture fine-tune, then verifies the force-feedback seating policy on **both** halves | `artifacts/campaign/verify_insert_v33force.log` |
+| what | why it mattered |
+| --- | --- |
+| A screen tested `grep -q '"error"'` on a report that carries `"error": null` | three completed RGB-D arms declared broken and discarded, results on disk the whole time |
+| `echo "[$(date)] thing exit=$?"` reports the clock | every `exit=` line ever logged, including every certification's, was `date`'s status |
+| "predicts the achieved depth to within a millimetre" | `2c/theta` gives a bracket, 260.6 to 323.9 mm, and only the matching end was quoted -- the report says so in its own limitations |
+| "the estimator is no worse on the episodes it loses" | those were medians labelled as means; two losing episodes carry 154 and 355 mm |
+| "no depth of the stroke where both plates are unreadable" | the derivation computes line of sight, which the report's scope states and the prose promoted |
+| every A/B read as two independent Wilson intervals | they are paired designs; two of the three main arms are significant paired and inconclusive unpaired |
 
-**Two trainings plus one evaluation is the measured ceiling** and going past it
-costs throughput -- see `AGENTS.md` rule 7, which now carries the numbers. Four
-trainings report about 1,250 fps each against 6,000 for one alone.
+Three are prose growing a stronger meaning than its evidence file. `AGENTS.md`
+now says to read a report's `scope_and_limitations` before quoting it, which is
+the only defence, because none of ruff, the suite, the manifest, the link
+checker or the currency checks reads what a sentence claims.
 
-**Three things the owner should decide, none of them blocking.**
+**One result was retracted the same night it was published.**
+`criterion_retention_v1.json` claimed the transfer rule as a measurement. The
+episode archives carry no hand-over value -- `_freeze` records each row at the
+moment of judgement -- so the statistic was a concurrent association, and for
+velocity it was circular with the success predicate, which contains
+`linear_velocity`. `queue_handover_trace.sh` buys the data that would answer it
+properly. If it lands, check whether hand-over attitude ranks the jams where the
+flares are deleted and not where they are fitted.
 
-1. **What to do if the force-feedback seating policy works.** It changes claim 1
-   from a negative result into a positive one and the paper gets stronger. If it
-   does not, `docs/seating_controller.md` is the defence and it is now much
-   stronger for having been tested against the recipe the field agrees on. Two
-   further ingredients are named and not yet built: a compliant action space, and
-   dynamics randomization during training.
-2. **When to start drafting.** `docs/manuscript_prompt.md` has the folder layout,
-   the Markdown-then-Overleaf recommendation, and a prompt to paste into a fresh
-   session. Two weeks out is about right.
-3. **Whether to open a fifth claim.** The recommendation is still no.
+### What is queued and what each queue decides
 
-**Three traps that cost time this session, all now recorded.** CI runs `ruff` and
-the pre-flight never said so, so the branch was red for months and every push
-emailed the owner. `pytest` and `python -m pytest` differ -- the module form puts
-the working directory on `sys.path` -- so a test failed collection in CI while
-passing locally. And `cmd | tail` masks the exit code, which is how a broken
-evidence reference got pushed. All three are in `AGENTS.md`.
+Everything self-sequences through `artifacts/campaign/queue_*.sh`; check
+`artifacts/campaign/*.log`. **Do not trust an `exit=` line in a log written
+before this session** and verify a run by its artifact.
+
+| queue | what it decides |
+| --- | --- |
+| `queue_rgbd_seeds.sh` | **the submission gate.** The two seeds each RGB-D arm never got. First seeds gave 0/8, 3/8 and 7/8; the third arm is the best configuration the repository can field |
+| `queue_noised_skill_cert.sh` | the retrained extraction on the noised and clean tasks |
+| `queue_datum_pair_perception.sh` | a perception certificate for the datum layout actually deployed (T20) |
+| `queue_grasp_seed_spread.sh` | three from-scratch capture seeds (T3) |
+| `queue_after_slot_a.sh` | **verification of the first seating policy that can feel contact**, on the skill and inside the chain. The chain arm decides whether the paper reports a learned seating phase |
+| `queue_force_seeds.sh` | force-insert seeds 71 and 72, then the same task at robustness level 3 -- the first use of this family's own dynamics randomization, which every skill so far has trained without |
+| `queue_handover_trace.sh` | the hand-over state the retracted statistic needed |
+| `queue_cleanup.sh`, `queue_trace_rung.sh`, `queue_eval_tail.sh` | ladder rungs, the traced rung, the T4 degradation curve |
+
+**Run three trainings, not two.** `AGENTS.md` rule 7 was corrected: the old
+ceiling compared a peak against sustained medians. Three concurrent runs
+aggregate about 4,278 fps against a best single-run median of 2,213.
+
+### What is stronger than it was this morning
+
+- The section axis is canonical evidence at n=192, and the *pooled rate still
+  does not separate it* -- the separation is entirely in the failure mode, which
+  is the method note stated as strongly as this project can state it.
+- The lead-in deletion is canonical evidence: paired, 24 gained and 8 lost at
+  6 mm (p = 0.0035), and an informative null at nominal (13 gained, 16 lost,
+  p = 0.36). A part decisive at one clearance and inert at another is what a
+  conditional requirement looks like.
+- The channel interaction survives restatement as an odds ratio: 0.495
+  [0.378, 0.650].
+- Four unprovenanced reports were shown to rebuild byte-identically from source.
+- `section_verdict` now returns the inverse -- what the arm would have to
+  deliver -- so the tool specifies rather than only checks.
+
+### Three things the owner should decide, none blocking
+
+1. **What to do if the force-feedback seating policy verifies.** It turns claim
+   1's negative result into a positive one. If it does not,
+   `docs/seating_controller.md` is the defence.
+2. **When to start the second manuscript pass.** The first is running now.
+3. **Whether to open a fifth claim.** Still no.
 
 ---
 
