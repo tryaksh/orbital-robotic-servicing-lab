@@ -884,6 +884,32 @@ it does not depend on our rack, and it says a skill-level robustness benchmark i
 not evidence about a chain under a real estimator, with the error always
 optimistic.
 
+## The force-feedback seating verification is inconclusive, and one half never ran
+
+**Do not read this as "learned seating does not work".** Two things went wrong
+with the test before the result means anything.
+
+* **The skill half crashed.** `Isaac-ZeroG-Blade-GrapplePin-InsertForce-Play-v0`
+  raises `TypeError: super(type, obj): obj must be an instance or subtype of
+  type` at construction. All three seed runs exited in ten seconds and wrote no
+  episodes, so the policy has never been scored in isolation. The training task
+  and the chain task both construct; only the Play variant is broken.
+* **The chain half ran in a rack that is 3.897 mm outside its own requirement.**
+  It scored 4/24 against the scripted guarded advance's 20/24 in the same cell.
+  That cell is in the regime where the geometry cannot guarantee the lateral
+  gate, and the seating policy is the thing being asked to close 7.850 mm the
+  channel gives away.
+
+So the honest statement is that **the first seating policy able to feel contact
+has not been fairly tested**: half the test is broken, the other half ran on a
+misconfigured bay, and it is one seed. Its training reward plateaued at 95-101
+from epoch 500 to 3,000 against the blind policy's 43.9, which is why it is worth
+testing properly rather than filing as a negative result.
+
+The three things that would make the test fair, in order: fix the Play task; run
+the chain arm at zero relief once `supervise_relief.sh` says whether that is the
+better bay; and seed it, which `supervise_training2.sh` is doing.
+
 ## The camera-driven gate is closed, and the combination is the whole effect
 
 Three held-out seeds, 24 episodes an arm, one commit, same checkpoints.
