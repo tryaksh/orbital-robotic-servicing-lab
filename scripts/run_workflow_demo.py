@@ -6296,6 +6296,21 @@ def main() -> dict[str, object]:
                 "destination_channel_relief_m": args.destination_channel_relief_m,
                 "module_mass_kg": getattr(args, "module_mass_kg", None),
             },
+            # The same reasoning as `geometry_arm` above, for the arms that are
+            # defined by a controller or a channel rather than by geometry. Every
+            # arm of the perception factorial is one of these flags, and the
+            # seating head to head is `insert_controller` alone; none of them was
+            # recorded until 2026-09-04, so an arm could be told from its control
+            # only by the shell that launched it.
+            "pipeline_arm": {
+                "insert_controller": args.insert_controller,
+                "fiducial_guard_bounds": getattr(args, "fiducial_guard_bounds", None),
+                "module_velocity_source": args.module_velocity_source,
+                "perception_backend": getattr(args, "perception_backend", None),
+                "rack_retention": bool(getattr(args, "rack_retention", False)),
+                "mating_mode": getattr(args, "mating_mode", None),
+                "release_sequence": getattr(args, "release_sequence", None),
+            },
             "visual_randomization": "off (recording)" if args.stable_lighting else "on",
             "workflow": args.workflow,
             "seed": args.seed,
@@ -6778,6 +6793,26 @@ def main() -> dict[str, object]:
                                 "workflow": args.workflow,
                                 "stress": {"pose_noise_scale": 1.0, "out_of_distribution": False},
                                 "module_velocity_source": args.module_velocity_source,
+                                # **The flags that define which arm this run is.**
+                                # `--insert_controller` is the whole difference
+                                # between a scripted seating phase and a learned
+                                # one, and until 2026-09-04 no artifact recorded
+                                # it: a paired head to head could be labelled
+                                # only from the shell that launched it, which is
+                                # exactly what "label on the controller that ran"
+                                # forbids. Recorded here so an arm can be read off
+                                # its own npz.
+                                "pipeline_flags": {
+                                    "insert_controller": args.insert_controller,
+                                    "fiducial_guard_bounds": getattr(args, "fiducial_guard_bounds", None),
+                                    "perception_backend": getattr(args, "perception_backend", None),
+                                    "rack_retention": bool(getattr(args, "rack_retention", False)),
+                                    "mating_mode": getattr(args, "mating_mode", None),
+                                    "release_sequence": getattr(args, "release_sequence", None),
+                                    "destination_channel_relief_m": getattr(
+                                        args, "destination_channel_relief_m", None
+                                    ),
+                                },
                                 "rack_clearance": {
                                     "per_side_mm": args.rack_lateral_clearance_mm,
                                     "scope": args.rack_clearance_scope,
