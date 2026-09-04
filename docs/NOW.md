@@ -244,12 +244,33 @@ the p95 *rises* from 29 to 59, because a first-order filter integrates the rando
 walk of held estimates. The shipped 0.10 s is already the best of the sweep.
 [`estimator_surrogate_velocity_channel_v1.json`](../evidence/estimator_surrogate_velocity_channel_v1.json)
 
-**And the estimator is no worse on the episodes it loses.** Across the three
-vision seeds the winning episodes carry 1.89, 2.00 and 2.11 mm of mean estimator
-error and the losing ones carry 2.29, 5.99 and 1.98 mm. The long detection
-dropouts a losing run records -- up to 2,865 consecutive misses -- are what
-happens after the module has left the cameras' useful envelope, not what put it
-there.
+**Most of the episodes it loses carry the same estimator error as the ones it
+wins -- but not all, and the earlier statement of this was wrong twice.** It read
+"the estimator is no worse on the episodes it loses", and gave 2.29, 5.99 and
+1.98 mm as the losers' *mean* error. Those three numbers are **medians**, per
+seed. The means are 63.60, 28.52 and 1.96 mm, because two losing episodes carry
+excursions of 154 and 355 mm.
+
+Pooled over the three seeds, per episode, sorted:
+
+| | n | estimator error, mm |
+| --- | ---: | --- |
+| succeeded | 4 | 1.69, 2.00, 2.09, 2.11 |
+| failed | 20 | 1.44 … 2.38 for thirteen of them, then 5.29, 5.99, 9.60, 17.48, 20.37, **154.39**, **355.55** |
+
+**Thirteen of the twenty failures sit inside the successes' own range.** For
+those, estimator accuracy cannot be the explanation, and that is the argument
+the training-distribution fix rests on -- it is enough, and it is what should be
+claimed. Seven exceed 5 mm and four exceed 10 mm, against none of the four
+successes.
+
+**Whether that tail is cause or consequence is not settled here.** The long
+detection dropouts a losing run records -- up to 2,865 consecutive misses -- are
+consistent with the module having already left the cameras' useful envelope, and
+the ordering is not recorded, so the reading is a hypothesis. With four
+successes there is also no power to resolve it: a losing episode carries the
+larger error with probability 0.738, permutation p = 0.08. The honest sentence is
+that most failures are not explained by estimator error, not that none are.
 
 So the fix is the training distribution, and
 `Isaac-ZeroG-Blade-GrapplePin-{Grasp,Extract,Insert}Noised-v0` are it: the four
