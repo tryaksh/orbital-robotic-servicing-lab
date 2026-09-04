@@ -75,9 +75,9 @@
     "delivered_attitude_from_traces_v1.json": {
       "title": "The attitude the transit hands the insertion over at, from recorded traces",
       "evidence_type": "measurement_from_recorded_traces",
-      "generated_utc": "2026-09-04T22:37:27.053915+00:00",
+      "generated_utc": "2026-09-04T22:39:54.210870+00:00",
       "source_revision": {
-        "commit": "8f7abb3fdb664ac9debbdb6fc6792dd903f148e4",
+        "commit": "52627f800a6d46f2a9d54d81f024bb4e3b06da10",
         "dirty": false
       },
       "holds_up": "The attitude the transit actually hands the insertion over at, pooled from recorded transit traces over three held-out seeds and 95 environments: 8.19 mrad at the median, 26.07 at the worst. The constant every clearance in this workcell is derived from asserts 46 mrad and has no recorded measurement. Exact-state chain, guarded advance; the camera-driven equivalent has not been measured. See NEXT_WORK T21."

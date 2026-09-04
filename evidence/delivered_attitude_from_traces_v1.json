@@ -1,7 +1,7 @@
 {
   "title": "The attitude the transit hands the insertion over at, from recorded traces",
   "evidence_type": "measurement_from_recorded_traces",
-  "generated_utc": "2026-09-04T22:37:27.053915+00:00",
+  "generated_utc": "2026-09-04T22:39:54.210870+00:00",
   "question": "check_workcell_geometry.py asserts a delivered attitude of 46 mrad and cites a report field that has never been written. What do the recorded transit traces say the module's attitude actually is when the transit hands over?",
   "measurement": {
     "field": "module_attitude_rad, last transit sample",
@@ -104,6 +104,20 @@
     },
     "interface_regime": "active_centring_and_correction"
   },
+  "corroboration": {
+    "the_last_sample_is_the_hand_off": {
+      "what_it_checks": "How far the module's attitude moves over the last twenty transit samples, forty control steps. If it is flat, the gap between the last sample and the phase change cannot carry the result.",
+      "median_spread_rad": 0.00025626737624406815,
+      "max_spread_rad": 0.02580065606161952
+    },
+    "an_independent_bound_on_how_crooked_the_module_can_be": {
+      "what_it_checks": "The module can be no more off square than the tool is off its commanded attitude plus however far the module has drifted off the tool. Both are recorded separately from module_attitude_rad, so this bound does not depend on how that field is defined.",
+      "median_rad": 0.011572545627132058,
+      "max_rad": 0.028222064720466733,
+      "environments_whose_bound_reaches_the_asserted_constant": 0,
+      "environments": 95
+    }
+  },
   "asserted_delivered_attitude_rad": 0.046,
   "ratio_asserted_over_measured_median": 5.615715767635562,
   "scope_and_limitations": [
@@ -115,7 +129,7 @@
   ],
   "source_revision": {
     "available": true,
-    "commit": "8f7abb3fdb664ac9debbdb6fc6792dd903f148e4",
+    "commit": "52627f800a6d46f2a9d54d81f024bb4e3b06da10",
     "branch": "work/force-play-and-section-bound",
     "dirty": false,
     "tracked_changes": [],

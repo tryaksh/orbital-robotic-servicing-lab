@@ -179,6 +179,46 @@ commit, the current module and the current rack:
 The constant is 5.62x the measured median, and it is the only one of the four
 readings that lands in the third regime.
 
+**Two corroborations, and the second does not depend on how `module_attitude_rad`
+is defined.** The attitude moves 0.256 mrad at the median over the last forty
+control steps, so the gap between the last sample and the phase change cannot be
+carrying the result. And the module can be no more off square than the tool is
+off its commanded attitude plus its drift off the tool -- both recorded as
+separate fields -- which bounds it at 11.57 mrad median and 28.22 worst. **Not
+one of the 95 environments has a bound that could reach 46 mrad.**
+
+**The prescription does not depend on which attitude is right, and that is worth
+knowing before the rebuild.** At every reading, measured or asserted, the
+as-built unrelieved channel is inside the window and the relieved one is too
+wide:
+
+| delivered attitude | window per side | width | as-built 11.065 mm | relieved 15.678 mm |
+| --- | --- | ---: | --- | --- |
+| measured median, 8.19 mrad | 1.843 to 11.781 mm | 9.938 mm | inside | too wide |
+| measured p95, 14.50 mrad | 3.263 to 11.781 mm | 8.518 mm | inside | too wide |
+| measured worst, 26.07 mrad | 5.866 to 11.781 mm | 5.915 mm | inside | too wide |
+| asserted, 46.00 mrad | 10.350 to 11.781 mm | 1.431 mm | inside | too wide |
+
+So `supervise_relief.sh` is worth running whichever number survives. What changes
+is the *margin*: a window 5.9 to 9.9 mm wide rather than 1.431 mm, which is a
+workcell with room in it rather than one balanced on a knife edge.
+
+**And it is specifically claim 2's factor that moves.** The 2.500 mm lateral gate
+and the 3-degree orientation tolerance are chosen acceptance criteria, and the
+pad's 15 mm half-bearing offset is an authored pin dimension -- all three are
+sourced by construction, so the delivered attitude is the only unsourced input to
+the claim. Against the 2.500 mm gate the channel must admit:
+
+| | needed | factor over the gate |
+| --- | ---: | ---: |
+| measured median | 1.843 mm | **0.74 -- no conflict at all** |
+| measured p95 | 3.263 mm | 1.31 |
+| measured worst | 5.866 mm | 2.35 |
+| asserted constant | 10.350 mm | 4.14 |
+
+"No passive channel satisfies this interface", and the factor of 4.14 it is made
+of, survive only at the asserted attitude.
+
 **This is section 6.2's own warning, possibly a second time.** That section
 retracted a 63-67 mrad "delivered attitude" because it had been read off runs
 whose channel was already open to 14-16 mm per side, where what a module reports
