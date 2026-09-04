@@ -116,6 +116,38 @@ be sized for what the policy will deliver, and that has to happen before the GPU
 is spent, because afterwards there is no knob. **That is the coupling the paper
 is about**, and no search run today returned it.
 
+## The theme that ties the results together, found twice independently
+
+**The same class of error appears in both halves of this project: a correct
+quantity used to answer the wrong question.** It is worth stating explicitly,
+because it is what makes a collection of measurements into a paper.
+
+* **In the design model.** `2c/L` correctly bounds the attitude a *seated*
+  module can hold, and it was being used to size the clearance an *entering*
+  module needs. The entering module does not carry its hand-over attitude --
+  something straightens it on the way in -- so the bound was right about a state
+  the module is never in at that moment. Correcting it turned a clearance floor
+  into a lead-in requirement, and removing the lead-in produced the predicted
+  failure.
+
+* **In the deployed controller.** `FIDUCIAL_GUARDED_ORIENTATION_TOLERANCE_RAD`
+  correctly bounds *whether the pose estimate is trustworthy* -- its own comment
+  derives it from the certified estimator errors -- and it was being used to
+  decide *whether the module may enter the bay*. Those are different questions
+  and the bay's own funnel catches five times the angle. Correcting it was worth
+  33 percentage points with nothing retrained.
+
+Neither was a tolerance that had been tuned loose, and neither was a bug in the
+arithmetic. Both were quantities that were individually right, attached to
+decisions they were not about. **That is a failure mode a reviewer can carry away
+and apply to their own system**, and it is more transferable than either
+individual number.
+
+It also gives the validation protocol its justification. Scoring a criterion
+against the *failure mode it predicts* rather than against a pooled success rate
+is precisely how you catch a bound that is attached to the wrong decision: the
+rate moves for a dozen reasons, the predicted mechanism moves for one.
+
 ## Claim structure, in the order the paper should make them
 
 1. **A learned manipulator's delivered pose is not a design variable.** Led by
