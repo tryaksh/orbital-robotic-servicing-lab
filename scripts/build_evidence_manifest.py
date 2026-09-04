@@ -191,6 +191,21 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         ),
     ),
     (
+        "boundary_lead_in_deletion_v1.json",
+        (
+            "The lead-in criterion tested by removing the part. Two arms at 6 mm of lateral clearance per "
+            "side with the mouth moving with the walls, differing only in whether the bays keep their "
+            "entry flares. With the flares: 56.25% and a jam rate of 0.000. Without them: 31.25% and a jam "
+            "rate of 0.531 -- the failure mode the entry criterion names, absent in one arm and in more "
+            "than half the episodes of the other, with nothing else changed. At nominal clearance removal "
+            "changes nothing (59.38% against 54.69%, jam 0.000 in both), so the flare is load-bearing "
+            "exactly where the criterion says it should be and idle where it says it should be idle. This "
+            "is the only place in the project where a predicted failure was produced on demand by deleting "
+            "the geometry that prevents it. The flag is not recorded in the reports; the invocation is "
+            "artifacts/campaign/queue_flare_removal.sh, which is committed."
+        ),
+    ),
+    (
         "chain_robustness_sweep_section_n192_v1.json",
         (
             "The module-section axis at three held-out seeds, 192 episodes a point, pooled from archives "

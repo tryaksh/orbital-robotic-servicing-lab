@@ -8,7 +8,7 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 59,
+    "canonical": 60,
     "retracted": 11,
     "historical": 163
   },
@@ -30,6 +30,15 @@
         "dirty": false
       },
       "holds_up": "The same episodes counted a second way: each closed-form criterion against the failure it predicts rather than against the pooled rate. At nominal, 27 of 29 failures reach the final phase and miss the terminal gate, so two episodes in five are lost at the design point to a mode no criterion claims to predict, and a pooled comparison makes every boundary point clear that floor first. Carries the guides-only clearance arm as the preserved comparison."
+    },
+    "boundary_lead_in_deletion_v1.json": {
+      "title": "Serviceability criteria scored against the failure each one predicts",
+      "evidence_type": "analytical_criteria_against_simulated_failure_modes",
+      "source_revision": {
+        "commit": "b3e3871b7140c79ba98744883e6dda86dbdcad08",
+        "dirty": false
+      },
+      "holds_up": "The lead-in criterion tested by removing the part. Two arms at 6 mm of lateral clearance per side with the mouth moving with the walls, differing only in whether the bays keep their entry flares. With the flares: 56.25% and a jam rate of 0.000. Without them: 31.25% and a jam rate of 0.531 -- the failure mode the entry criterion names, absent in one arm and in more than half the episodes of the other, with nothing else changed. At nominal clearance removal changes nothing (59.38% against 54.69%, jam 0.000 in both), so the flare is load-bearing exactly where the criterion says it should be and idle where it says it should be idle. This is the only place in the project where a predicted failure was produced on demand by deleting the geometry that prevents it. The flag is not recorded in the reports; the invocation is artifacts/campaign/queue_flare_removal.sh, which is committed."
     },
     "chain_robustness_sweep.json": {
       "title": "What breaks the robot-carried chain first",

@@ -443,6 +443,15 @@ lateral entry flares out of the scene:
 | nominal clearance, flares fitted | 54.69% | 0.0% | 42.2% |
 | nominal clearance, flares removed | 59.38% | **0.0%** | 35.9% |
 
+This is now `evidence/boundary_lead_in_deletion_v1.json`, written from a clean
+commit through the same failure-mode partition every other boundary point uses.
+One caveat travels with it: **the reports written before 2026-09-03 do not
+record `--remove_entry_flares`**, so for these two arms the identity rests on the
+committed invocation in `artifacts/campaign/queue_flare_removal.sh` rather than
+on the report. Every run from now on carries a `geometry_arm` block naming the
+flags that define a boundary arm, so a future reader never has to trust a
+directory name.
+
 **At 6 mm the flare converts 53% jams into none; at nominal clearance removing it
 changes nothing.** So the flare is what squares the module during the stroke, and
 it is load-bearing exactly when the channel is tight -- which is the question

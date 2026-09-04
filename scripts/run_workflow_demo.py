@@ -6278,6 +6278,24 @@ def main() -> dict[str, object]:
         result: dict[str, object] = {
             'destination_rack_retention': _rack_retention_report(driver, args),
             "task": args.task,
+            # Which geometry this run actually used. A boundary arm is defined by
+            # these flags and nothing else, and until 2026-09-03 none of them
+            # reached the report: the lead-in deletion experiment -- the one place
+            # a predicted failure was produced on demand by removing the part that
+            # prevents it -- could be told from its control only by the directory
+            # it was written to. A directory name is not evidence.
+            "geometry_arm": {
+                "remove_entry_flares": bool(args.remove_entry_flares),
+                "rack_lateral_clearance_mm": args.rack_lateral_clearance_mm,
+                "rack_clearance_scope": args.rack_clearance_scope,
+                "module_cross_section_m": (
+                    list(args.module_cross_section_m) if args.module_cross_section_m is not None else None
+                ),
+                "robot_base_x": args.robot_base_x,
+                "robot_base_y": args.robot_base_y,
+                "destination_channel_relief_m": args.destination_channel_relief_m,
+                "module_mass_kg": getattr(args, "module_mass_kg", None),
+            },
             "visual_randomization": "off (recording)" if args.stable_lighting else "on",
             "workflow": args.workflow,
             "seed": args.seed,
