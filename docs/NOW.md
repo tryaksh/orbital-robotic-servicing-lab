@@ -687,6 +687,7 @@ McNemar's exact test on the episodes whose outcome actually changed.
 | oracle pose against camera pose | 4/24 | 20/24 | 17 | 1 | **0.00007** |
 | lead-in guard bound against the shipped estimator bound | 4/24 | 12/24 | 10 | 2 | **0.019** |
 | rack retention against the no-rack control | 17/24 | 22/24 | 5 | 0 | **0.031** |
+| clearance scope: mouth moves with the walls, against guides only | 0/64 | 36/64 | 36 | 0 | **1.5e-11** |
 
 **Two of the three change conclusion.** The guard-bounds A/B and the rack
 retention arm both have overlapping Wilson intervals -- read unpaired, neither

@@ -60,10 +60,14 @@ def mcnemar_exact(gained: int, lost: int) -> dict:
     if n == 0:
         return {"discordant": 0, "one_sided_p": None, "two_sided_p": None}
     tail = sum(math.comb(n, k) for k in range(0, min(gained, lost) + 1)) / 2**n
+    # Stored at full precision and rounded only when printed. Thirty-six
+    # discordant pairs all in one direction give 2**-36; rounded to five decimal
+    # places that prints 0.0, which claims the result is impossible rather than
+    # very unlikely. Rounding belongs in the presentation, not in the data.
     return {
         "discordant": n,
-        "one_sided_p": round(tail, 5),
-        "two_sided_p": round(min(1.0, 2 * tail), 5),
+        "one_sided_p": tail,
+        "two_sided_p": min(1.0, 2 * tail),
     }
 
 
@@ -115,7 +119,10 @@ def main() -> int:
     print(f"  treatment {treat['successes']:3d}  {treat['rate']:.4f}  Wilson {treat['wilson_95']}")
     print(f"  discordant: gained {paired['gained']}, lost {paired['lost']}")
     if paired["one_sided_p"] is not None:
-        print(f"  McNemar exact: one-sided p = {paired['one_sided_p']}, two-sided p = {paired['two_sided_p']}")
+        print(
+            f"  McNemar exact: one-sided p = {paired['one_sided_p']:.3g}, "
+            f"two-sided p = {paired['two_sided_p']:.3g}"
+        )
     if result["wilson_intervals_overlap"] and paired["one_sided_p"] is not None and paired["one_sided_p"] < 0.05:
         print("  The unpaired intervals overlap and the paired test does not. The pairing is")
         print("  carrying the result, so report it as paired and say the cohorts are fixed.")
