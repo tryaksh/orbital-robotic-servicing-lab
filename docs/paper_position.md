@@ -70,9 +70,22 @@ worst-case versus statistical anything:
 passes to state correctly, which is itself the argument for the mechanism check.
 
 Pass one, from the ladder alone: *the bound is conservative by a factor of three*
--- the textbook framing this document opens by forbidding. Pass two, from the
-grip signature: *the bound predicts a failure that does not occur*, because the
-lost modules are held at a normal offset. Pass three, from the phase counts and
+-- the textbook framing this document opens by forbidding. Pass two, from where
+the losses stopped: *the bound predicts a failure that does not occur*. All forty
+losses at `base_y_+6mm` time out in extraction, not in capture, holding the
+module at 12.74 mm against the successes' 12.96 mm. They were gripped properly
+and lost afterwards, so whatever ends them is not the grip.
+
+**Use the offset this way and not the other way.** A near-identical offset on the
+losses is evidence that the grip is *not* the mechanism, and that reading is
+sound. The reverse -- a larger offset on the losses proving the grip *is* the
+mechanism -- is not available, because an episode that never captures records the
+distance the tool stopped at, and that is large by definition. The section axis
+shows exactly this: its signature of +0.71 mm comes entirely from 33 episodes
+that never gripped, while the seven that gripped and then lost it sit at 13.11 mm
+against the successes' 13.13. There the criterion is carried by the *rate of
+capture failure* instead -- 33 of 192 against nominal's 3 -- which is the phase
+the criterion is about and is not circular. Pass three, from the phase counts and
 the settling limits: **the bound is static and the failure is dynamic.** The
 module leaves the bay carrying residual motion that zero gravity never removes,
 and the extraction predicate, which requires it to be *settled*, never fires.
@@ -91,8 +104,8 @@ both.
 
 Recording the near miss, because it is the reason the mechanism check exists: the
 ladder alone reads as "the bound is conservative by a factor of three", which is
-the textbook framing this document opens by forbidding. Only the grip signature
-distinguishes a conservative bound from an inapplicable one.
+the textbook framing this document opens by forbidding. Only knowing *where the
+losses stopped* distinguishes a conservative bound from an inapplicable one.
 
 The lower clearance bound was not wrong arithmetic. It was the right law applied
 to the wrong state. That is a usable rule for a designer -- *check whether the

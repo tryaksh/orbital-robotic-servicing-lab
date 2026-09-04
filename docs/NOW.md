@@ -587,11 +587,41 @@ is the strongest statement of the method note this project has: a criterion
 scored against the pooled rate would still be recorded as a mismatch here, on
 192 episodes, while the failure it actually predicts runs eight times over.
 
-The mechanism moves with it. The grip signature -- the failing episodes'
-tool-to-pin offset minus the successful ones' -- is **+0.71 mm** at the violated
-point against **+0.03 mm** at nominal and **-0.10 mm** at `140x26`, so the only
-point where the criterion is violated is the only point where the quantity it
-bounds is larger on the episodes that fail.
+**The grip signature does not survive decomposition, and the rate does.**
+The signature -- failing episodes' tool-to-pin offset minus successful ones' --
+reads +0.71 mm at the violated point against +0.03 at nominal, and it was
+offered as independent evidence of mechanism. Splitting the 40 losses by where
+they stopped shows what it is made of:
+
+| `section_120x16`, n=192 | episodes | median tool-to-pin offset |
+| --- | ---: | ---: |
+| timed out **in capture**, never gripped | 33 | 66.86 mm |
+| gripped, then lost it | 7 | 13.11 mm |
+| succeeded | 88 | 13.13 mm |
+
+The episodes that achieved a grip and then lost it sit at 13.11 mm against the
+successes' 13.13 mm -- the same number. **The whole signature comes from the 33
+episodes that never captured**, whose "grip error" is the distance the tool
+happened to be from the pin when the clock ran out. It restates that an
+unsuccessful capture ends far from the pin. It is not independent evidence and
+must not be quoted as mechanism.
+
+**What the decomposition gives back is stronger than what it takes.** The
+criterion says a module in the corner of the source channel has to stay inside
+the offset at which a pad keeps half its face on the pin; violate it and the
+robot should struggle to *achieve* a grip at all. It does, and that is a clean
+rate:
+
+| point | timed out in capture | of 192 |
+| --- | ---: | ---: |
+| nominal | 3 | 1.6% |
+| `120x16`, grip-inadmissible by 3.92 mm | **33** | **17.2%** |
+| `140x26`, grip-admissible | 1 | 0.5% |
+
+Eleven times nominal, at the one point the criterion calls inadmissible, in the
+phase the criterion is about. The rate evidence carries the claim on its own and
+the signature column should be read as a description of the failure, not as a
+second measurement of it.
 
 ## The transfer rule is still a story, and the attempt to measure it failed
 
