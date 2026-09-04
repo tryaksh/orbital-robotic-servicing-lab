@@ -326,6 +326,33 @@ for _two_slot_id, _two_slot_cls in (
         },
     )
 
+# The seating task with the policy allowed to feel the contact it is making.
+#
+# The learned seating phase has been doing contact-rich assembly blind for this
+# project's entire history: ten checkpoints and three objectives, and in none of
+# them could the policy observe contact force. `BladeContactWrenchObservation`
+# has existed here since the force-limited insertion work and was never wired to
+# the skill the chain runs. FORGE (arXiv 2408.04587) takes a noisy end-effector
+# force estimate as a policy input and transfers contact-rich insertion while
+# tolerating 5 mm of fixed-part pose error; this estimator is accurate to 2 mm
+# and the chain still collapses, which says the gap is what the policy may sense.
+#
+# One change, and it is the observation. The width changes, so it trains from
+# scratch rather than resuming v24rack.
+for _force_id, _force_cls in (
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertForce-v0", "ZeroGBladeGrapplePinInsertForceEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertForce-Play-v0", "ZeroGBladeGrapplePinInsertForcePlayEnvCfg"),
+):
+    gym.register(
+        id=_force_id,
+        entry_point=INSERTION_ENTRY_POINT,
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{__name__}.force_insert_env_cfg:{_force_cls}",
+            "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+        },
+    )
+
 # The seating task with the wedge law as a terminal condition. One change from
 # the task v24rack trained on, and it is not a reward: three objectives already
 # left the attitude 0.4 mrad apart, so the angle is not the reward's to give.
