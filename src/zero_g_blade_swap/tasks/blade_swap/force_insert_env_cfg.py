@@ -40,6 +40,8 @@ this way.
 
 from __future__ import annotations
 
+import copy
+
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.sensors import ContactSensorCfg
 from isaaclab.utils import configclass
@@ -77,6 +79,27 @@ class ZeroGTwoSlotGrapplePinForceSceneCfg(ZeroGTwoSlotGrapplePinSceneCfg):
         update_period=0.0,
         history_length=0,
     )
+
+    def __post_init__(self) -> None:
+        """Turn the module's contact reporter on, for this scene only.
+
+        `GRAPPLE_PIN_BLADE_CFG` ships with `activate_contact_sensors=False`, and
+        a contact sensor on a prim without the reporter API raises rather than
+        returning zeros -- which is the right failure and is how this was found.
+        The shared asset is deep-copied rather than mutated, because every
+        published grapple-pin task reads the same object and none of them should
+        acquire a contact reporter by side effect.
+
+        This is a second difference from the baseline task and is disclosed as
+        one. It is a *reporting* change: enabling the API does not alter contact
+        dynamics, only whether they can be read.
+        """
+
+        if hasattr(super(), "__post_init__"):
+            super().__post_init__()
+        blade = copy.deepcopy(self.spare_blade)
+        blade.spawn.activate_contact_sensors = True
+        self.spare_blade = blade
 
 
 @configclass
