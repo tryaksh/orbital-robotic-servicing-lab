@@ -260,6 +260,28 @@ checkpoint is not a mild stand-in: the surrogate reproduces a large part of what
 the cameras actually cost, using only the residual, the sample-and-hold and the
 miss rate inverted from a published certificate.
 
+**And a second, independent fix needs no training at all: the guard was using a
+noise bound to answer an admissibility question.**
+`FIDUCIAL_GUARDED_ORIENTATION_TOLERANCE_RAD` is 15 mrad and its own comment
+derives it from "above the certified RGB-D p95 errors" -- a bound on whether the
+estimate is *trustworthy*, used to decide whether the module may *enter the bay*.
+Those are different questions, and the entry flare catches 73.9 mrad.
+
+`--fiducial_guard_bounds lead_in` runs the same guard on the bay's own catch. On
+the published checkpoints, three held-out seeds, eight environments, nothing
+retrained:
+[`workflow_robot_carried_vision_leadin_guard_v1_certification.json`](../evidence/workflow_robot_carried_vision_leadin_guard_v1_certification.json)
+
+| arm | successes | rate | Wilson 95% |
+| --- | ---: | ---: | --- |
+| shipped estimator bounds | 4/24 | 16.67% | [6.7, 35.9] |
+| entry flare's catch | **12/24** | **50.00%** | [31.4, 68.6] |
+
+Per seed 3, 4 and 5 of 8. **One criterion change, correctly derived, is worth 33
+points and reaches the 50% gate on its own** -- and it is a change of criterion
+rather than a widened tolerance: the detection interlock is unchanged in both
+arms and a missing datum still fails closed.
+
 **First evidence that putting the estimator's error into training works, and it
 is a probe rather than a rate.** One seed, eight environments, and a *mid-training*
 checkpoint -- `grapple_extract_l0_seed70_v19noised` at epoch 13,400, eight hundred
@@ -352,6 +374,30 @@ during the stroke rather than carried through it**, so the bound belongs on
 whatever does the correcting -- the 12-degree entry flare, or the guarded advance
 refusing to push -- and not on the channel. `--remove_entry_flares` is the run
 that separates those two, and it is queued.
+
+**The correcting lead-in was tested by deleting it, and it is the flare.** Same
+seed, same checkpoints, one flag -- `--remove_entry_flares` takes each bay's two
+lateral entry flares out of the scene:
+
+| arm | success | jammed in the bay | missed the terminal gate |
+| --- | ---: | ---: | ---: |
+| 6 mm per side, flares fitted | 56.25% | **0.0%** | 43.8% |
+| 6 mm per side, flares removed | 31.25% | **53.1%** | 15.6% |
+| nominal clearance, flares fitted | 54.69% | 0.0% | 42.2% |
+| nominal clearance, flares removed | 59.38% | **0.0%** | 35.9% |
+
+**At 6 mm the flare converts 53% jams into none; at nominal clearance removing it
+changes nothing.** So the flare is what squares the module during the stroke, and
+it is load-bearing exactly when the channel is tight -- which is the question
+`servicing_design.requires_a_correcting_lead_in` exists to answer, tested by
+removing the part and watching the predicted failure appear.
+
+The rule is directionally right and conservative at the easy end. It fires at
+both clearances: at 11.065 mm the module's admissible engagement falls 48 mm
+short of the 529 mm stroke, and at 6 mm it falls 268 mm short. The measurement
+says the 48 mm shortfall needs no flare and the 268 mm shortfall needs one
+badly. Two points are not a calibration curve, but the jam rate tracks the
+predicted shortfall and the mechanism is the predicted one.
 
 **This does not contradict the entry-attitude axis, and the distinction is the
 useful part.** `2c/L` is confirmed as a bound on the attitude a *seated* module

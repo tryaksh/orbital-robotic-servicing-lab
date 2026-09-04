@@ -8,9 +8,9 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 56,
+    "canonical": 57,
     "retracted": 11,
-    "historical": 164
+    "historical": 163
   },
   "canonical": {
     "boundary_failure_modes_v1.json": {
@@ -555,6 +555,23 @@
       "gate_passed": false,
       "policy_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
       "holds_up": "The before, two sessions back: 31.25%."
+    },
+    "workflow_robot_carried_vision_leadin_guard_v1_certification.json": {
+      "title": "RGB-D chain with the guarded advance admitting on the entry flare's catch",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-03T22:41:19+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 12,
+        "success_rate": 0.5,
+        "wilson_95": [
+          0.314274,
+          0.685726
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "The RGB-D chain with the guarded advance admitting on the entry flare's catch rather than on the deployed estimator's own noise bound: 12/24, 50.00%, Wilson [31.4%, 68.6%], against the shipped bounds' 4/24. Published checkpoints, nothing retrained, one criterion change, and the detection interlock unchanged in both arms."
     },
     "workflow_robot_carried_vision_rack_retention_overhead_v1_certification.json": {
       "title": "Strict camera-guided workflow with visible destination retention",
@@ -1282,10 +1299,6 @@
     "workflow_robot_carried_m130pin_check_certification.json": {
       "title": "Robot-carried relocation, one seed, after the criterion and rack changes",
       "generated_utc": "2026-08-24T20:57:19+00:00"
-    },
-    "workflow_robot_carried_vision_leadin_guard_v1_certification.json": {
-      "title": "RGB-D chain with the guarded advance admitting on the entry flare's catch",
-      "generated_utc": "2026-09-03T22:41:19+00:00"
     },
     "workflow_robot_carried_vision_rack_retention_640px_v2_certification.json": {
       "title": "Strict 640-pixel camera-guided workflow with visible destination retention",

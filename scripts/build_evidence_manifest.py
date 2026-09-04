@@ -152,6 +152,15 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "The boundary decision re-derived from the 64-environment sweep. Still not qualified, and now with per-point classifications: rack_lat_6mm confirms its analytical infeasibility, section_120x16, section_140x26 and rack_lat_16mm do not, base_y_+10mm shows a loss the analytical model did not predict.",
     ),
     (
+        "workflow_robot_carried_vision_leadin_guard_v1_certification.json",
+        (
+            "The RGB-D chain with the guarded advance admitting on the entry flare's catch rather than "
+            "on the deployed estimator's own noise bound: 12/24, 50.00%, Wilson [31.4%, 68.6%], against "
+            "the shipped bounds' 4/24. Published checkpoints, nothing retrained, one criterion change, "
+            "and the detection interlock unchanged in both arms."
+        ),
+    ),
+    (
         "extract_channel_attribution_v1.json",
         (
             "Which observation channel costs extraction its transfer, on the unchanged v18pin checkpoint: "
