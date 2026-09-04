@@ -98,7 +98,13 @@ def test_no_exemption_outlives_its_reason() -> None:
     for name in IN_FLIGHT:
         path = next((p for p in _shell_files() if p.name == name), None)
         if path is None:
-            stale.append(f"{name} (no longer exists)")
-        elif not _offenders(path):
+            # Not stale -- unreachable. The campaign queues live under
+            # `artifacts/`, which is gitignored, so a clean checkout does not
+            # have them and CI cannot see them. Absence here means "cannot
+            # check", and reporting it as "deleted" turned this guard into a red
+            # CI on every push. The cost is that an exemption for a genuinely
+            # deleted script is only caught on a machine that has the file.
+            continue
+        if not _offenders(path):
             stale.append(f"{name} (already fixed)")
     assert not stale, "remove these from IN_FLIGHT; they do not need an exemption:\n  " + "\n  ".join(stale)
