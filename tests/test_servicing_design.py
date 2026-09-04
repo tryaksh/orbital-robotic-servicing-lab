@@ -209,3 +209,88 @@ def test_this_bay_is_predicted_to_need_a_correcting_lead_in_and_has_one() -> Non
     tight = requires_a_correcting_lead_in(performance, seating_stroke_m=0.529, clearance_per_side_m=0.006)
     assert tight["required"] is True
     assert tight["shortfall_m"] > verdict["shortfall_m"]
+
+
+def test_the_admissible_attitude_inverts_the_entry_bound(shipped) -> None:
+    """A section admitted at exactly its admissible attitude has zero entry margin.
+
+    The inverse is the number a designer hands a controls team when the section
+    cannot change: not "this fails by 3.92 mm of gap" but "the arm must deliver
+    at or below this angle". The two have to be the same statement, so the test
+    is that evaluating at the returned attitude lands exactly on the boundary.
+    """
+
+    from dataclasses import replace
+
+    # 140x26, whose inverse is 22.72 mrad and so below the seating tolerance.
+    # The 120x16 section returns 64.94 mrad, above the 52.36 mrad tolerance, and
+    # ManipulatorPerformance rightly refuses to be built at it -- which is the
+    # documented case where entry is not the binding constraint.
+    verdict = section_verdict(
+        shipped,
+        module_length_m=0.450,
+        module_width_m=0.140,
+        module_height_m=0.026,
+        channel_inner_face_half_width_m=0.0705,
+        channel_height_m=0.036,
+        destination_relief_per_side_m=0.0046125,
+    )
+
+    at_the_limit = replace(shipped, delivered_attitude_rad=verdict.admissible_delivered_attitude_rad)
+    boundary = section_verdict(
+        at_the_limit,
+        module_length_m=0.450,
+        module_width_m=0.140,
+        module_height_m=0.026,
+        channel_inner_face_half_width_m=0.0705,
+        channel_height_m=0.036,
+        destination_relief_per_side_m=0.0046125,
+    )
+    assert boundary.entry_margin_m == pytest.approx(0.0, abs=1.0e-12)
+    assert boundary.enters
+
+
+def test_headroom_and_margin_agree_on_the_verdict(shipped) -> None:
+    """Positive headroom and positive entry margin must never disagree.
+
+    They are the same bound in different units -- radians of attitude and metres
+    of gap -- so a section that enters must have headroom and one that does not
+    must not. A sign disagreement would mean the inverse is not the inverse.
+    """
+
+    for width, height in ((0.120, 0.016), (0.130, 0.020), (0.140, 0.026)):
+        verdict = section_verdict(
+            shipped,
+            module_length_m=0.450,
+            module_width_m=width,
+            module_height_m=height,
+            channel_inner_face_half_width_m=0.0705,
+            channel_height_m=0.036,
+            destination_relief_per_side_m=0.0046125,
+        )
+        assert verdict.enters == (verdict.attitude_headroom_rad >= -1.0e-12), (width, height)
+
+
+def test_the_inverse_can_exceed_the_seating_tolerance_and_says_so(shipped) -> None:
+    """Entry is not always the binding constraint, and the tool must not pretend it is.
+
+    For the shipped bay's 120x16 section the entry bound admits 64.94 mrad while
+    the interface accepts 52.36. Handing 64.94 to a controls team as a
+    requirement would specify an arm the interface still rejects. The value is
+    correct for what it names -- the entry bound alone -- and the caller takes
+    the minimum.
+    """
+
+    verdict = section_verdict(
+        shipped,
+        module_length_m=0.450,
+        module_width_m=0.120,
+        module_height_m=0.016,
+        channel_inner_face_half_width_m=0.0705,
+        channel_height_m=0.036,
+        destination_relief_per_side_m=0.0046125,
+    )
+    assert verdict.enters
+    assert verdict.admissible_delivered_attitude_rad > shipped.seating_tolerance_rad
+    usable = min(verdict.admissible_delivered_attitude_rad, shipped.seating_tolerance_rad)
+    assert usable == pytest.approx(shipped.seating_tolerance_rad)

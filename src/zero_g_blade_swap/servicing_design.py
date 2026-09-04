@@ -233,11 +233,23 @@ class SectionVerdict:
 
     width_m: float
     height_m: float
+    #: The delivered attitude this verdict was computed at, kept so the verdict
+    #: can state its own headroom without the caller re-supplying the input.
+    delivered_attitude_rad: float
     lateral_half_gap_m: float
     vertical_half_gap_m: float
     channel_corner_m: float
     entry_margin_m: float
     grip_margin_m: float
+    #: The largest delivered attitude at which this section would still enter,
+    #: in radians. A property of the section and the channel, not of what the arm
+    #: currently delivers, which is what makes it the number to hand a controls
+    #: team. **It is the entry bound alone and is not a specification by
+    #: itself**: it can exceed ``seating_tolerance_rad`` -- for the 120x16
+    #: section in the shipped bay it returns 64.94 mrad against a 52.36 mrad
+    #: tolerance -- and where it does, entry is not the binding constraint and
+    #: the usable requirement is the smaller of the two.
+    admissible_delivered_attitude_rad: float
 
     @property
     def enters(self) -> bool:
@@ -250,6 +262,17 @@ class SectionVerdict:
     @property
     def accepted(self) -> bool:
         return self.enters and self.pads_can_follow
+
+    @property
+    def attitude_headroom_rad(self) -> float:
+        """How much delivered attitude the entry bound still has in hand.
+
+        Negative means the section is inadmissible on entry and by how much in
+        the quantity a controls team can act on, which ``entry_margin_m`` states
+        in millimetres of gap instead. Same fact, the other unit.
+        """
+
+        return self.admissible_delivered_attitude_rad - self.delivered_attitude_rad
 
     @property
     def limiting_criterion(self) -> str | None:
@@ -283,14 +306,23 @@ def section_verdict(
     vertical = 0.5 * (channel_height_m - module_height_m)
     needed = 0.5 * performance.delivered_attitude_rad * module_length_m
     corner = math.hypot(lateral, vertical) if min(lateral, vertical) > 0.0 else math.inf
+    # The inverse of the entry bound. ``needed = 0.5 * theta * L`` must not
+    # exceed the admitting gap, so the largest attitude that still enters is
+    # ``2 * gap / L``. Stating it turns the tool from a checker into a
+    # specification: a designer who cannot change the section can read off what
+    # the arm would have to deliver instead.
+    admitting_gap = min(lateral, vertical) + destination_relief_per_side_m
+    admissible_attitude = 2.0 * admitting_gap / module_length_m if module_length_m > 0.0 else math.inf
     return SectionVerdict(
         width_m=module_width_m,
         height_m=module_height_m,
+        delivered_attitude_rad=performance.delivered_attitude_rad,
         lateral_half_gap_m=lateral,
         vertical_half_gap_m=vertical,
         channel_corner_m=corner,
-        entry_margin_m=min(lateral, vertical) + destination_relief_per_side_m - needed,
+        entry_margin_m=admitting_gap - needed,
         grip_margin_m=performance.pad_half_bearing_offset_m - corner,
+        admissible_delivered_attitude_rad=admissible_attitude,
     )
 
 
