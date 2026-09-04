@@ -61,7 +61,7 @@ say "  sha256     $(sha256sum "$CKPT" | cut -c1-32)"
 # ---------------------------------------------------------------------------
 say "STAGE 1/2  skill certification, stages '$STAGES', three held-out seeds"
 # ---------------------------------------------------------------------------
-SKILL=Insert CKPT="$CKPT" TAG="$TAG" STAGES="$STAGES" \
+SKILL=Insert CKPT="$CKPT" TAG="$TAG" STAGES="$STAGES" PLAY_TASK="${PLAY_TASK:-}" \
   TITLE="Head-on grapple-pin insert skill, ${TAG}, orientation scaled to the channel" \
   scripts/certify_grapple_skills.sh
 say "  -> evidence/grapple_${TAG}_certification.json"
@@ -77,7 +77,9 @@ say "STAGE 2/2  the same checkpoint inside the full chain, against the guarded a
 # Only the seating controller changes. Same task, same capture and extraction
 # checkpoints, same three held-out seeds, same workcell -- so the difference
 # between this and $BASELINE is the seating phase and cannot be anything else.
-INSERT_CKPT="$CKPT" \
+# CHAIN_TASK likewise: a force-feedback policy needs the workflow task that
+# reports contact, or the chain hands it an observation of the wrong width.
+TASK="${CHAIN_TASK:-}" INSERT_CKPT="$CKPT" \
 CERT_TAG="${TAG}_chain_policy" \
 CERT_TITLE="Robot-carried relocation, seating driven by the learned insert policy (${TAG})" \
 CHAIN_EXTRA="--insert_controller policy" \

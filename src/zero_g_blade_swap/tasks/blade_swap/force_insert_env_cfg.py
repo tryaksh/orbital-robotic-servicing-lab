@@ -52,7 +52,9 @@ from .scene_cfg import ZeroGTwoSlotGrapplePinSceneCfg
 from .two_slot_env_cfg import (
     ZeroGBladeGrapplePinInsertTwoSlotEnvCfg,
     ZeroGBladeGrapplePinInsertTwoSlotPlayEnvCfg,
+    ZeroGBladeGrapplePinTwoSlotWorkflowEnvCfg,
 )
+from .workflow_demo_env_cfg import WorkflowInsertObsCfg, WorkflowObservationsCfg
 
 #: Divides the seven force channels. Twenty newtons is the scale the force-limited
 #: insertion work chose against a measured median contact of 4.7 N, and it is
@@ -139,8 +141,57 @@ class ZeroGBladeGrapplePinInsertForcePlayEnvCfg(ZeroGBladeGrapplePinInsertForceE
         ZeroGBladeGrapplePinInsertTwoSlotPlayEnvCfg.__post_init__(self)
 
 
+# ---------------------------------------------------------------------------
+# The chain, with the same force channel, so the policy can actually be used.
+#
+# **A force-feedback seating policy cannot be dropped into the published chain**:
+# that task's scene has no contact sensor and its insert observation group has no
+# force channel, so the policy would be handed an observation of the wrong width.
+# Training it without this would have produced a checkpoint that could only ever
+# be certified in isolation -- which is the exact failure `verify_insert_skill.sh`
+# exists to catch, and it would have been caught after the GPU was spent.
+#
+# Registered separately, so `Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0` and
+# every number measured on it stay what they were.
+# ---------------------------------------------------------------------------
+
+
+@configclass
+class ForceFeedbackWorkflowInsertObsCfg(WorkflowInsertObsCfg):
+    """The chain's insert-phase input, plus the contact the module is making."""
+
+    contact_wrench = ObsTerm(
+        func=mdp.BladeContactWrenchObservation,
+        params={
+            "force_scale_n": FORCE_OBSERVATION_SCALE_N,
+            "noise_std_n": FORCE_OBSERVATION_NOISE_N,
+        },
+    )
+
+
+@configclass
+class ForceFeedbackWorkflowObsCfg(WorkflowObservationsCfg):
+    """Capture and extraction unchanged; only the seating group gains force."""
+
+    insert: ForceFeedbackWorkflowInsertObsCfg = ForceFeedbackWorkflowInsertObsCfg()
+
+
+@configclass
+class ZeroGBladeGrapplePinTwoSlotWorkflowForceEnvCfg(ZeroGBladeGrapplePinTwoSlotWorkflowEnvCfg):
+    scene: ZeroGTwoSlotGrapplePinForceSceneCfg = ZeroGTwoSlotGrapplePinForceSceneCfg(
+        num_envs=8,
+        env_spacing=2.6,
+        replicate_physics=False,
+        clone_in_fabric=False,
+    )
+    observations: ForceFeedbackWorkflowObsCfg = ForceFeedbackWorkflowObsCfg()
+
+
 __all__ = [
     "FORCE_OBSERVATION_NOISE_N",
+    "ForceFeedbackWorkflowInsertObsCfg",
+    "ForceFeedbackWorkflowObsCfg",
+    "ZeroGBladeGrapplePinTwoSlotWorkflowForceEnvCfg",
     "FORCE_OBSERVATION_SCALE_N",
     "ForceFeedbackInsertObsCfg",
     "ForceFeedbackInsertObservationsCfg",

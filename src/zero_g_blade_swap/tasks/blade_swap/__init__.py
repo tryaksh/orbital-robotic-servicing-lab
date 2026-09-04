@@ -342,6 +342,7 @@ for _two_slot_id, _two_slot_cls in (
 for _force_id, _force_cls in (
     ("Isaac-ZeroG-Blade-GrapplePin-InsertForce-v0", "ZeroGBladeGrapplePinInsertForceEnvCfg"),
     ("Isaac-ZeroG-Blade-GrapplePin-InsertForce-Play-v0", "ZeroGBladeGrapplePinInsertForcePlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflowForce-v0", "ZeroGBladeGrapplePinTwoSlotWorkflowForceEnvCfg"),
 ):
     gym.register(
         id=_force_id,

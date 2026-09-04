@@ -23,6 +23,11 @@ EVAL_ENVS="${EVAL_ENVS:-128}"
 EVAL_EPISODES="${EVAL_EPISODES:-1000}"
 PLAY="Isaac-ZeroG-Blade-GrapplePin-${SKILL}-Play-v0"
 [ "$SKILL" = "Insert" ] && PLAY="Isaac-ZeroG-Blade-GrapplePin-InsertTwoSlot-Play-v0"
+# PLAY_TASK overrides the default for a checkpoint whose observation width is
+# not the default task's. The force-feedback seating policy is the first of
+# those: certifying it on a task it did not train on hands it an observation of
+# the wrong size, which fails loudly but only after the run has started.
+PLAY="${PLAY_TASK:-$PLAY}"
 
 rows=()
 for seed in 1070 2070 3070; do
