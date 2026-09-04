@@ -35,6 +35,34 @@
 > residual is terminal seating precision. A reader who meets 57% first has
 > already formed an objection.
 
+> ## 2026-09-04: the thesis, sharpened, and claim 2 rewritten
+>
+> **One thesis, two subsystems.** The paper reads as two papers sharing a
+> workcell. It is one result twice: *the component is inside its specification
+> and the system fails anyway, because the binding quantity belongs to the closed
+> loop rather than to the part.* The arm is precise and its **delivered
+> attitude** is what sizes the rack. The estimator is accurate to 2 mm and what
+> binds is **whether any channel remains trustworthy**. Say this once, before
+> either half, and claim 4 stops being a guest.
+>
+> **Claim 2 is much stronger than a clearance window.** No passive channel
+> satisfies this interface: admitting the delivered attitude needs 10.350 mm per
+> side, the seating gate accepts 2.500 mm, and in zero gravity nothing recentres
+> a released module. Two thresholds follow -- `2*t_lat/L` = 11.11 mrad where
+> passive alignment dies, and `2c/stroke` ~ 40 mrad where passive entry dies --
+> and three regimes. This arm is at 46 mrad, in the third, and the cell
+> implements exactly what the third demands. **Lead claim 2 with the regimes.**
+>
+> **Claim 3 gains a prescription.** The shipped rack is 3.897 mm past the tool's
+> own upper bound, its source bay sits on the design point, and the dominant
+> failure is lateral. A zero-relief arm is running to test whether correcting the
+> rack as the tool prescribes removes the failure.
+>
+> **Claim 4's gate is closed:** 17/24 against 4/24, with neither single change
+> distinguishable from the baseline. And the most transferable result in the
+> paper is next to it -- certified skills compose under exact state and
+> over-predict the camera chain by at least 72.8 points.
+
 `PAPER_PLAN.md` is frozen and carries the 2026-09-02 review. This file is the
 second pass, run after the boundary work of 2026-09-03 changed the result set,
 and it exists because that work produced a framing that **loses to prior art if

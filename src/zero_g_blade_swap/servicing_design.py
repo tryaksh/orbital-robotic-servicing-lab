@@ -351,6 +351,106 @@ def rail_indexing_bound_m(
     return math.sqrt(reach) - lateral_half_gap_m
 
 
+#: The lateral offset a seated module may carry, from the insertion criterion.
+#: Imported as a number rather than from the task package, which needs Isaac to
+#: import; the test asserts the two agree.
+DEFAULT_LATERAL_SEATING_TOLERANCE_M = 0.0025
+
+
+def passive_alignment_limit_rad(module_length_m: float, lateral_seating_tolerance_m: float) -> float:
+    """The delivered attitude above which no plain channel can guarantee seating.
+
+    A channel must be at least ``(L/2) * theta`` per side to admit a module of
+    length ``L`` arriving at attitude ``theta`` without squaring it. A module
+    resting in that channel may sit anywhere up to the clearance off the centre
+    line, and the seating gate accepts only ``t_lat``. The two requirements meet
+    at
+
+        theta = 2 * t_lat / L
+
+    and above it there is no clearance that satisfies both: widen the channel to
+    let the module in and it can rest outside the gate; narrow it to hold the
+    gate and the module will not enter. **Something other than the channel has to
+    close the difference.**
+
+    **This bites harder in orbit than on a bench.** On the ground a released part
+    is centred for free -- gravity plus a chamfer takes up the slack -- so the
+    clearance is an upper bound something else closes. In zero gravity a module
+    released at an offset stays there. The clearance is the whole error budget.
+    """
+
+    if module_length_m <= 0.0:
+        raise ValueError("module_length_m must be positive")
+    if lateral_seating_tolerance_m <= 0.0:
+        raise ValueError("lateral_seating_tolerance_m must be positive")
+    return 2.0 * lateral_seating_tolerance_m / module_length_m
+
+
+def interface_regime(
+    performance: ManipulatorPerformance,
+    *,
+    module_length_m: float,
+    seating_stroke_m: float,
+    clearance_per_side_m: float,
+    lateral_seating_tolerance_m: float = DEFAULT_LATERAL_SEATING_TOLERANCE_M,
+) -> dict[str, object]:
+    """Which class of interface a measured manipulator forces, before anything is built.
+
+    Three regimes, in order of what they cost a designer:
+
+    ``passive``
+        Below ``2 * t_lat / L``. A plain channel works: pick a clearance in the
+        window and geometry alone guarantees seating.
+
+    ``active_centring``
+        Above that limit. The channel admits the module but cannot guarantee it
+        is within the lateral gate, and **no choice of clearance fixes it**. A
+        controller has to centre the module.
+
+    ``active_centring_and_correction``
+        Also above ``2c/stroke``, so the module wedges before reaching the seated
+        plane. The bay must additionally square it during the stroke -- a lead-in,
+        or a controller that refuses to advance while cocked.
+
+    The regime is the useful output. A clearance window says how wide to cut a
+    slot; the regime says whether cutting a slot is a solution at all.
+    """
+
+    alignment_limit = passive_alignment_limit_rad(module_length_m, lateral_seating_tolerance_m)
+    lead_in = requires_a_correcting_lead_in(
+        performance, seating_stroke_m=seating_stroke_m, clearance_per_side_m=clearance_per_side_m
+    )
+    passive_alignment = performance.delivered_attitude_rad <= alignment_limit
+    needs_correction = bool(lead_in["required"])
+
+    if passive_alignment and not needs_correction:
+        regime = "passive"
+    elif needs_correction:
+        regime = "active_centring_and_correction"
+    else:
+        regime = "active_centring"
+
+    return {
+        "regime": regime,
+        "delivered_attitude_rad": performance.delivered_attitude_rad,
+        "passive_alignment_limit_rad": alignment_limit,
+        "passive_alignment_possible": passive_alignment,
+        "alignment_shortfall_m": max(
+            0.0, 0.5 * performance.delivered_attitude_rad * module_length_m - lateral_seating_tolerance_m
+        ),
+        "correcting_lead_in_required": needs_correction,
+        "lead_in": lead_in,
+        "what_the_channel_cannot_do": (
+            "A module released in this channel may rest anywhere up to the clearance off the centre "
+            "line, and in zero gravity nothing returns it. Above the alignment limit the geometry "
+            "cannot guarantee the lateral gate and the controller that placed the module is the only "
+            "thing that can."
+            if not passive_alignment
+            else "Within the alignment limit a plain channel guarantees the lateral gate on its own."
+        ),
+    }
+
+
 @dataclass(frozen=True)
 class RackRequirement:
     """Everything the closed form says about a rack for one manipulator."""

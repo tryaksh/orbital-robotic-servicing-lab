@@ -788,6 +788,130 @@ certifications and the workflow runs -- need a checkpoint and a simulator, so
 their provenance still has to be recorded rather than demonstrated, and the 33
 that remain are exactly those.
 
+## No passive rack satisfies this interface, and the tool can prove it
+
+Found while checking whether the force-feedback seating policy was chasing an
+achievable target. It is the strongest thing the design library can say and it
+needs no simulator.
+
+A channel must be at least `(L/2) * theta` per side to admit a module arriving at
+the delivered attitude without squaring it: **10.350 mm**. A module resting in
+that channel may sit anywhere up to the clearance off the centre line, and
+`INSERTION_LATERAL_TOLERANCE_M` accepts **2.500 mm**. **No clearance satisfies
+both -- they differ by a factor of 4.14, and 7.850 mm has to be closed by
+something that is not the channel.**
+
+That gives two thresholds and three regimes, of which the library reported only
+the second:
+
+| threshold | closed form | here |
+| --- | --- | ---: |
+| passive **alignment** dies | `2 * t_lat / L` | **11.11 mrad** |
+| passive **entry** dies | `2c / stroke` | ~40 mrad |
+
+| delivered attitude | what the interface must have |
+| --- | --- |
+| below 11.11 mrad | a plain channel is a solution |
+| 11.11 to ~40 mrad | **active centring**; no clearance choice substitutes |
+| above ~40 mrad | **also geometric correction** -- a lead-in, or a controller that will not advance while cocked |
+
+**This arm delivers 46 mrad and the cell implements exactly the two things the
+third regime demands** -- a guarded advance that centres and entry flares that
+square. The design was right and nothing said why until the thresholds were
+written down. `interface_regime()` returns this, and
+`tests/test_interface_regime.py` holds it to all three cases.
+
+**It bites harder in orbit than on a bench.** On the ground gravity and a chamfer
+centre a released part for free, so the clearance is an upper bound something
+else closes. In zero gravity a module released at an offset stays there: the
+clearance *is* the error budget.
+
+**And the shipped rack is 3.897 mm past its own upper bound.** The window is
+[10.350, 11.781] mm with an equal-margin design point at 11.066. The source bay
+is 11.065 mm -- the design point to a micron. Every chain run then passes
+`--destination_channel_relief_m 0.0046125`, taking the destination to 15.678 mm,
+which is what turns its entry margin from -2.350 mm to +2.262 and buys
+admissibility by spending the upper bound. The rack contains its own control: one
+bay built to the requirement, one relieved past it, and the relieved one is where
+40.1% of nominal episodes arrive, seat and miss the terminal gate -- separated
+from the successes by **lateral** error, 3.348 mm against 1.395, with not one of
+the 77 exceeding the orientation tolerance. `supervise_relief.sh` measures the
+prescription at zero relief on three seeds.
+
+**A defect this exposed in the library itself.** `section_verdict` returns
+`accepted = True` for the relieved destination while `lateral_clearance_window`
+calls its clearance 3.897 mm too wide. The section check consults the lower bound
+and the grip criterion and never the upper bound, so a caller can read an
+acceptance for a bay the same library calls inadmissible. That has to be closed
+before the tool is published.
+
+## The grip criterion is a dose, not a verdict
+
+With the shipped 15 mm pad half-bearing offset, the three section points order
+monotonically by margin and the rate jumps where the sign changes:
+
+| section | grip margin | timed out in capture | rate | Wilson |
+| --- | ---: | ---: | ---: | --- |
+| 140 x 26 | +7.140 mm | 1/192 | 0.52% | [0.1, 2.9] |
+| nominal | +1.346 mm | 3/192 | 1.56% | [0.5, 4.5] |
+| 120 x 16 | **-3.923 mm** | **33/192** | **17.19%** | [12.5, 23.2] |
+
+The inadmissible point's interval overlaps neither admissible one. A design bound
+reported as a margin with a monotone cost is worth more than a pass/fail, and
+this is the evidence for saying so.
+
+## Skill certifications do not compose once perception is shared
+
+Stage-matched, because the chain runs curriculum stage 0.
+
+| | |
+| --- | ---: |
+| capture, certified stage 0 | 0.9914 |
+| extraction, certified stage 0 | 0.9108 |
+| product if independent | 0.9030 |
+| **measured oracle-pose chain** | **20/24 = 0.8333** [0.641, 0.933] |
+
+Under exact state the product sits inside the measured interval: **skills
+compose.** Under camera-derived state they do not. Extraction with the
+estimator's error injected certifies at 0.8945 at stage 0, so **granting a
+perfect capture** the chain should be at least 0.8945; it measured 4/24 = 0.1667.
+**The certified skills over-predict by at least 72.8 points.**
+
+The mechanism is the interaction already measured: a skill test degrades one
+skill's channels independently, and one estimator degrades every channel of every
+skill at once and keeps doing it. **This is the most transferable result here** --
+it does not depend on our rack, and it says a skill-level robustness benchmark is
+not evidence about a chain under a real estimator, with the error always
+optimistic.
+
+## The camera-driven gate is closed, and the combination is the whole effect
+
+Three held-out seeds, 24 episodes an arm, one commit, same checkpoints.
+
+| arm | successes | rate | Wilson 95% |
+| --- | ---: | ---: | --- |
+| published camera cohort | 4/24 | 16.67% | [6.7, 35.9] |
+| retrained extraction alone | 3/24 | 12.50% | [4.3, 31.0] |
+| kinematic velocity alone | 2/24 | 8.33% | [2.3, 25.8] |
+| **all three, with the lead-in guard** | **17/24** | **70.83%** | **[50.8, 85.1]** |
+
+**Neither single change is distinguishable from the published cohort, and all
+three together are.** The best arm's interval does not overlap the baseline's.
+This is the channel interaction at chain scale: the skill-level factorial found
+that noising pose alone costs 8.33 points and velocity alone 10.21 while both
+together cost 41.15, and the chain shows the same shape in reverse -- fixing one
+channel buys nothing and fixing the set buys everything.
+
+The full 2x2x2 is running (`artifacts/campaign/supervise_factorial.sh`); five
+cells remain and `scripts/analyse_factorial.py` decomposes them into main
+effects and interactions on both the probability and log-odds scales.
+
+**The skill was never the problem.** The retrained extraction certifies at
+**85.16%** on the noised task, 4,608 episodes, against the published clean
+87.75%. Training on the sensing the robot actually has costs about two and a half
+points of skill and the chain still collapsed, which is why this is a composition
+result rather than a skill one.
+
 ## The transfer rule is still a story, and the attempt to measure it failed
 
 **Retracted the same night it was written, 2026-09-03.** The idea was to turn

@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-104 scripts. Grouped by the verb their filename starts with.
+105 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -96,6 +96,7 @@ Written for one question each; kept because the question recurs.
 
 | Script | What it is |
 | --- | --- |
+| `analyse_factorial.py` | Decompose the camera-driven chain into main effects and interactions. |
 | `analyse_grip_loss.py` | Read what an extraction actually died of, from the rows a play run recorded. |
 | `analyse_handoff.py` | Compare the state a chain hands a skill against the state that skill trains on. |
 

@@ -191,6 +191,42 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         ),
     ),
     (
+        "workflow_robot_carried_vision_noised_extract_kinematic_leadin_certification.json",
+        (
+            "**The camera-driven gate, closed.** The best configuration this repository can field -- extraction "
+            "retrained on the estimator's certified error, module velocity from the robot's encoders, and the "
+            "guarded advance admitting on the entry flare's catch -- scores 17/24, 70.83%, Wilson "
+            "[50.8, 85.1], against the published camera cohort's 4/24. The intervals do not overlap. Read "
+            "beside the two single-change arms it is the chain-scale form of the channel interaction: neither "
+            "change alone is distinguishable from the published cohort and all three together are."
+        ),
+    ),
+    (
+        "workflow_robot_carried_vision_noised_extract_certification.json",
+        (
+            "The retrained extraction alone, in the camera-driven chain: 3/24, 12.50%, Wilson [4.3, 31.0]. "
+            "Indistinguishable from the published 4/24. The skill itself is fine -- it certifies at 85.16% on "
+            "the noised task -- so this is the arm that shows a good skill does not rescue the chain on its own."
+        ),
+    ),
+    (
+        "workflow_robot_carried_vision_kinematic_velocity_certification.json",
+        (
+            "The kinematic velocity channel alone, no retrain, in the camera-driven chain: 2/24, 8.33%, "
+            "Wilson [2.3, 25.8]. Indistinguishable from the published 4/24. Removing the manufactured velocity "
+            "noise is necessary and not sufficient."
+        ),
+    ),
+    (
+        "grapple_extract_v19noised_noised_certification.json",
+        (
+            "The extraction skill retrained on the estimator's certified error, scored on the noised task: "
+            "3924/4608, 85.16%, Wilson [84.1, 86.2], against the published v18pin's 87.75% on the clean task. "
+            "Training on the sensing the robot actually has costs about two and a half points of skill. That "
+            "is the number that makes the chain-level collapse a composition result rather than a skill one."
+        ),
+    ),
+    (
         "boundary_lead_in_deletion_v1.json",
         (
             "The lead-in criterion tested by removing the part. Two arms at 6 mm of lateral clearance per "
