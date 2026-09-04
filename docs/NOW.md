@@ -262,11 +262,12 @@ Pooled over the three seeds, per episode, sorted:
 | succeeded | 4 | 1.69, 2.00, 2.09, 2.11 |
 | failed | 20 | 1.44 … 2.38 for thirteen of them, then 5.29, 5.99, 9.60, 17.48, 20.37, **154.39**, **355.55** |
 
-**Thirteen of the twenty failures sit inside the successes' own range.** For
-those, estimator accuracy cannot be the explanation, and that is the argument
-the training-distribution fix rests on -- it is enough, and it is what should be
-claimed. Seven exceed 5 mm and four exceed 10 mm, against none of the four
-successes.
+**Thirteen of the twenty failures carry 2.38 mm or less, against the successes'
+1.69 to 2.11** -- the same order, and six of them fall strictly inside the
+successes' own range. For those episodes estimator accuracy cannot be the
+explanation, and that is the argument the training-distribution fix rests on: it
+is enough, and it is what should be claimed. Seven exceed 5 mm and four exceed
+10 mm, against none of the four successes.
 
 **Whether that tail is cause or consequence is not settled here.** The long
 detection dropouts a losing run records -- up to 2,865 consecutive misses -- are
