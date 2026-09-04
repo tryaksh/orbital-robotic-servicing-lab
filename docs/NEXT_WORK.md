@@ -182,7 +182,7 @@ C:/isaac-sim/python.bat scripts/collect_grapple_vision.py \
   --rgb_source raw --pose_distribution workflow_envelope
 C:/isaac-sim/python.bat scripts/certify_fiducial_perception.py \
   --dataset datasets/fiducial_rgbd_datum_pair_seed286.npz \
-  --report evidence/fiducial_rgbd_datum_pair_seed286.json
+  --report <a new versioned path under evidence/>
 ```
 
 **Done when** a certificate exists for the deployed datum pair, `NOW.md` quotes
