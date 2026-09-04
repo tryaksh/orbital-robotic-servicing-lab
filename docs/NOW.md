@@ -356,7 +356,7 @@ at [`serviceability_boundary_validation_n64_v1.json`](../evidence/serviceability
 | Dimension | Corrected state (n=64) |
 | --- | --- |
 | Rack clearance | mismatch, and now on the *lower* bound: 6 mm/side is analytically infeasible and scores 56.25% against nominal's 54.69%. The upper bound holds -- 16 mm/side loses 0.203 of its episodes before delivery against nominal's 0.031, Wilson-separated, which is the grip criterion's own prediction |
-| Module section | mismatch; 120x16 loses 0.156 before delivery against nominal's 0.031 -- the direction the grip criterion predicts, not separated at 64 episodes -- and 140x26 shows no jam at all |
+| Module section | **half confirmed at n=192**, three held-out seeds. The *grip* criterion is right: 120x16 is inadmissible by 3.92 mm and loses 40 of 192 episodes before delivery, 20.8%, Wilson [15.7, 27.1] against nominal's 2.6% [1.1, 6.0] -- eight times the rate, decisively separated, in exactly the mode the criterion names. The *entry* criterion is not: 140x26 is inadmissible by 0.74 mm and jams zero times |
 | Robot base offset | mismatch, and the criterion is the wrong one rather than the number. The pad bound is 1.624 mm and the cliff is between 4 and 6 mm; every failing episode is extracted, still gripped at a normal offset, and fails the settling condition instead, carrying 16 to 30 mm/s against a derived 14.29 mm/s limit. The loss is entirely in extraction and capture is untouched at every rung |
 | Entry attitude | supported in simulation against the derived `2c/L` boundary |
 | Capture geometry | analytical only; no current contact/load certificate |
@@ -494,6 +494,21 @@ from this repository today is **"index to better than 4 mm, and the binding
 constraint is extraction settling, not the grasp"**. Whether a policy trained
 across base positions could null that residual is untested and is the obvious
 next arm.
+
+**Raising the section axis to three seeds separated it, as predicted.** At 64
+episodes `section_120x16` moved in the direction the grip criterion names and did
+not clear nominal's interval. At 192 it does, and by a wide margin:
+
+| point | episodes | success | lost before delivery | Wilson 95% on the loss |
+| --- | ---: | ---: | ---: | --- |
+| nominal | 192 | 57.29% | 5 (2.6%) | [1.1, 6.0] |
+| 120 x 16 mm, grip-inadmissible by 3.92 mm | 192 | 45.83% | **40 (20.8%)** | **[15.7, 27.1]** |
+| 140 x 26 mm, entry-inadmissible by 0.74 mm | 192 | 40.62% | 17 (8.9%) | [5.6, 13.7] |
+
+Eight times nominal's rate, in the mode the criterion predicts, with the
+intervals nowhere near each other. **The grip criterion is confirmed.** The entry
+criterion is not: `140x26` is the point that fails it, and it jams zero times out
+of 192, so its elevated delivery loss is not the failure that criterion names.
 
 **A rate is not the only thing an episode records, and the mechanism separates
 where the rate does not.** The grip criterion bounds how far a pad may slide off
