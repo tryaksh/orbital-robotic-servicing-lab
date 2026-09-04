@@ -488,6 +488,21 @@ on the report. Every run from now on carries a `geometry_arm` block naming the
 flags that define a boundary arm, so a future reader never has to trust a
 directory name.
 
+Read paired -- the arms are the same seed, the same checkpoints and the same
+sixty-four environments with one flag changed -- both halves sharpen:
+
+| clearance | flares fitted | removed | gained by fitting | lost | McNemar one-sided |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 6 mm per side | 36/64 | 20/64 | 24 | 8 | **0.0035** |
+| nominal | 35/64 | 38/64 | 13 | 16 | 0.36 |
+
+**The null at nominal is doing as much work as the effect at 6 mm.** Twenty-nine
+episodes change outcome there and they split thirteen to sixteen -- the flare is
+not helping, not hurting, and with that many discordant pairs the result is an
+informative null rather than an absence of evidence. A part that is decisive at
+one clearance and inert at another is what a *conditional* requirement looks
+like, which is exactly what `requires_a_correcting_lead_in` returns.
+
 **At 6 mm the flare converts 53% jams into none; at nominal clearance removing it
 changes nothing.** So the flare is what squares the module during the stroke, and
 it is load-bearing exactly when the channel is tight -- which is the question
