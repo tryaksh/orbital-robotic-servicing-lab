@@ -171,6 +171,16 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         ),
     ),
     (
+        "delivered_attitude_from_traces_v1.json",
+        (
+            "The attitude the transit actually hands the insertion over at, pooled from recorded "
+            "transit traces over three held-out seeds and 95 environments: 8.19 mrad at the median, "
+            "26.07 at the worst. The constant every clearance in this workcell is derived from asserts "
+            "46 mrad and has no recorded measurement. Exact-state chain, guarded advance; the "
+            "camera-driven equivalent has not been measured. See NEXT_WORK T21."
+        ),
+    ),
+    (
         "rack_requirement_sweep_v2.json",
         (
             "The design derivation swept: one measured number about the arm -- the attitude it hands the "
