@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-81 scripts. Grouped by the verb their filename starts with.
+105 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -15,16 +15,22 @@ These are the ones to run first and the ones that run in CI. A requirement only 
 
 | Script | What it is |
 | --- | --- |
+| `check_attribution_scale.py` | Is the channel interaction an artifact of the scale it was measured on? |
 | `check_camera_scale.py` | Render one frame and measure what the servicing camera can actually resolve. |
 | `check_criterion_currency.py` | Fail if an evidence report predates the code that defines what it measured. |
 | `check_destination_channel.py` | What channel does each entry point actually put the module in? |
 | `check_estimate_stability.py` | Is the pose estimate steady, or does it jitter the policy around? |
+| `check_estimator_surrogate.py` | Does the training-time estimator surrogate actually deliver the deployed error? |
 | `check_evidence_currency.py` | Fail if a workflow loaded a policy that nothing in ``evidence/`` certifies. |
 | `check_evidence_links.py` | Every evidence file the documentation names must exist. |
 | `check_grip_criterion.sh` | Separate the criterion change from the policy change, before training anything. |
 | `check_perturbations_bite.py` | Prove the perturbations reach the image before trusting any robustness curve. |
 | `check_pin_gripper_clearance.py` | Does the grapple pin fit inside the gripper that grips it? |
+| `check_rack_retention.py` | Prove the rack-side retention geometry and its simulator binding without Isaac Sim. |
+| `check_rack_sightlines.py` | Which rack part stands in the camera's line to the flush datum, and where. |
+| `check_reproducible_from_source.py` | Which published reports can this repository still rebuild from its own source? |
 | `check_service_latch_clearance.py` | Prove the robot-side service latch fits, from measurements and no simulator. |
+| `check_servicing_camera_geometry.py` | Project the flush datum through the shipped camera over the workflow envelope. |
 | `check_source_provenance.py` | Can the source that produced a report still be recovered from git? |
 | `check_workcell_geometry.py` | Answer the workcell's geometry questions before anything starts a simulator. |
 
@@ -35,6 +41,7 @@ One stage per question. `run_robot_carried.sh` is the chain.
 | Script | What it is |
 | --- | --- |
 | `run_capture_alignment.sh` | Retrain capture against what the chain actually asks of it, then re-close. |
+| `run_conditioned_insertion.ps1` | Run paired learned/guarded insertion from every reset station and optional chain handoffs. |
 | `run_extract_settling.sh` | Pay the extract policy to arrive settled, which nothing ever did. |
 | `run_extract_settling_dose.sh` | Dose-response on the settling weight, to tell a trade from a threshold. |
 | `run_extract_unsaturated.sh` | Stop the attitude penalty switching itself off where it is needed. |
@@ -70,11 +77,16 @@ These read `.npz` episode metrics and write `evidence/*.json`.
 | Script | What it is |
 | --- | --- |
 | `report_attitude_wall_move.py` | Does the insert skill's attitude floor move with the channel throat? |
+| `report_boundary_failure_modes.py` | Score each analytical criterion against the failure it predicts, not the pooled rate. |
 | `report_chain_robustness.py` | Rank what breaks the chain, from the sweep's own per-episode rows. |
+| `report_channel_isolation.py` | Which observation channel costs extraction its transfer, on an unchanged checkpoint. |
+| `report_conditioned_insertion.py` | Compare learned and guarded insertion on exactly paired initial conditions. |
 | `report_extract_attribution.py` | One table: what each change to the extract task was worth, on one policy. |
 | `report_insert_attitude.py` | Why the insert skill does not seat: attitude it cannot deliver, not creep. |
 | `report_insert_depth_limit.py` | Why the insert skill stops short: it is attitude again, one layer down. |
+| `report_insert_distribution_intervention.py` | Preserve a targeted insertion-training intervention and its losing control. |
 | `report_mating_compliance.py` | Pool the mating-compliance runs into one table, and one specification number. |
+| `report_rack_retention.py` | Pair strict no-rack and rack-retention cohorts and report load transfer. |
 | `report_robot_carried_interface.py` | Pool the robot-carried transit runs into one interface result. |
 | `report_seating_head_to_head.py` | Which seating controller does the chain keep, decided arithmetically. |
 
@@ -84,6 +96,7 @@ Written for one question each; kept because the question recurs.
 
 | Script | What it is |
 | --- | --- |
+| `analyse_factorial.py` | Decompose the camera-driven chain into main effects and interactions. |
 | `analyse_grip_loss.py` | Read what an extraction actually died of, from the rows a play run recorded. |
 | `analyse_handoff.py` | Compare the state a chain hands a skill against the state that skill trains on. |
 
@@ -94,6 +107,7 @@ Envelopes, budgets and design windows.
 | Script | What it is |
 | --- | --- |
 | `measure_attitude_wall.sh` | How far off the base's own plane does a target have to be before the arm can |
+| `measure_criterion_retention.py` | Rank episodes by a recorded quantity against the failure mode a criterion names. |
 | `measure_gripper_envelope.py` | Measure where the Robotiq 2F-85 finger pads physically are. |
 | `measure_inference_budget.py` | What the autonomy stack costs to run, per control step. |
 | `measure_pin_design_window.py` | How tall a feature can the gripper accept, at each depth along its approach? |
@@ -115,6 +129,7 @@ Coarse on purpose: these rank variables rather than measure them.
 | --- | --- |
 | `sweep_camera_calibration.py` | How well does the camera have to be mounted for the pose head to work? |
 | `sweep_chain_robustness.sh` | What breaks this chain first? |
+| `sweep_rack_requirement.py` | The rack requirement as a function of the manipulator, which is the whole claim. |
 
 ## Builders — regenerate a tracked artifact
 
@@ -140,7 +155,10 @@ Each takes `--check` so CI can prove the artifact is current.
 | Script | What it is |
 | --- | --- |
 | `train.py` | Train the zero-g blade-swap task with RL-Games PPO. |
+| `train_insert_handoff.sh` | Fine-tune insertion from an actual recorded transit-to-insert handoff. |
+| `train_insert_handoff_curriculum.sh` | Resume v24 through a measured, success-gated reverse station curriculum. |
 | `train_insert_stroke.sh` | Train the insert skill on the stroke it is actually asked to drive. |
+| `train_insert_task_space_handoff.sh` | Train insertion on a recorded chain handoff using only local assembly state. |
 | `train_pose_head.py` | Train the module-pose head that replaces the simulator's answer. |
 
 ## Everything else
@@ -151,21 +169,27 @@ Each takes `--check` so CI can prove the artifact is current.
 | `audit_pose_head_dataset.py` | Audit why a camera pose head generalizes or fails without retraining it. |
 | `benchmark.py` | Benchmark safe parallel-environment counts in isolated Isaac Sim processes. |
 | `calibrate_grasp_pose.py` | Solve the arm joint angles that put the finger pads on the blade's interface. |
+| `compare_paired_arms.py` | Compare two arms that were run on the same cohort, as the paired data they are. |
 | `compare_workcells.py` | Print the before/after table straight from the evidence files. |
+| `derive_rack_requirement.py` | Compute a rack requirement from a manipulator's measured performance. |
 | `diagnose_extract_section.sh` | Why did 900 epochs of fine-tuning move extract 1.4 points? |
 | `grasp_diagnostics.py` | Measure what the simulated Robotiq 2F-85 friction grasp can actually hold. |
 | `plan_relocation_joint_path.py` | Plan the collision-aware UR10e branch change used by relocation. |
 | `play.py` | Evaluate or record an RL-Games blade-swap policy. |
+| `pool_sweep_points.py` | Pool a sweep point measured at several seeds into one entry, at the full n. |
 | `pretrain_student.py` | Offline behavioural cloning for the multimodal vision actor. |
 | `probe_workcell_policies.sh` | Phase 1: run the UNCHANGED promoted policies on the changed workcell. |
+| `project_insertion_checkpoint.py` | Project the frozen insertion actor onto local assembly observations. |
 | `promote_checkpoints.py` | Move every script's default checkpoint set to a newly promoted one, atomically. |
 | `rebuild_perception.sh` | Phase 8: rebuild perception on the changed geometry. |
 | `record_demo.sh` | Record demonstration clips of a trained insertion policy. |
 | `relabel_lead_in.py` | Correct the lead-in label that ``play.py`` misread, without re-measuring. |
+| `replay_fiducial_detector.py` | Compare the deployed fiducial fallback on preserved workflow RGB frames. |
 | `retrain_extract_on_pin.sh` | Extract, retrained against the criterion and the rack it actually has. |
 | `retrain_workcell_skills.sh` | Fine-tune the three promoted skills onto the moved workcell. |
 | `setup_windows.ps1` | Install Isaac Lab and RL-Games against Isaac Sim's interpreter, at the pinned commits. |
 | `smoke_env.py` | Run deterministic state and vision smoke tests against the installed tasks. |
+| `validate_serviceability_boundary.py` | Compare the derived serviceability boundary with preserved simulation arms. |
 | `validate_sim.py` | Launch Isaac Sim headlessly and record a machine-readable readiness marker. |
 | `verify_insert_skill.sh` | Verify an insert checkpoint the way extraction is verified: alone, then in the chain. |
 | `write_environment_lock.py` | Write local Isaac stack versions without importing Isaac Lab before Kit starts. |

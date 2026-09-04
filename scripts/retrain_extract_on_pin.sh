@@ -33,7 +33,8 @@ for stage in 0 2; do
       --grip_axis_metrics \
       --episode_metrics "$OUT/${tag}.npz" --report "$OUT/${tag}.json" \
       > "$OUT/${tag}.log" 2>&1
-  echo "[$(date +%H:%M:%S)]   exit=$? $(grep -oE '"success_rate": [0-9.]+' "$OUT/${tag}.json" | head -1)"
+  rc=$?
+  echo "[$(date +%H:%M:%S)]   exit=$rc $(grep -oE '"success_rate": [0-9.]+' "$OUT/${tag}.json" | head -1)"
 done
 
 resume=$(echo "$V17" | sed -n 's/.*_ep_\([0-9]\+\)_.*/\1/p')
@@ -43,5 +44,6 @@ echo "[$(date +%H:%M:%S)] TRAIN extract  $resume + $EPOCHS -> $target  run=$RUN"
     --num_envs "${NUM_ENVS:-512}" --seed 70 --robustness_level 0 \
     --max_iterations "$target" --checkpoint "$V17" --run_name "$RUN" \
     > "$OUT/train.log" 2>&1
-echo "[$(date +%H:%M:%S)] train exit=$?"
+rc=$?
+echo "[$(date +%H:%M:%S)] train exit=$rc"
 ls -t "$CKPT_ROOT/$RUN/nn"/*.pth 2>/dev/null | head -3

@@ -12,15 +12,24 @@ import numpy as np
 
 from zero_g_blade_swap.fiducial import estimate_fiducial_pose
 from zero_g_blade_swap.grapple_geometry import EXTRACTED_BLADE_CENTRE_X
+from zero_g_blade_swap.servicing_camera import (
+    CAMERA_FOCAL_LENGTH_MM,
+    CAMERA_HORIZONTAL_APERTURE_MM,
+    CAMERA_QUATERNION_WXYZ_ROS,
+)
+from zero_g_blade_swap.servicing_camera import (
+    CAMERA_POSITION_M as CAMERA_POSITION_TUPLE_M,
+)
 
-CAMERA_POSITION_M = np.asarray((-0.55, -0.65, 1.15), dtype=np.float64)
-CAMERA_QUATERNION_WXYZ = np.asarray((0.4846, -0.7242, 0.4100, -0.2744), dtype=np.float64)
-FOCAL_LENGTH_MM = 45.0
-HORIZONTAL_APERTURE_MM = 30.0
+CAMERA_POSITION_M = np.asarray(CAMERA_POSITION_TUPLE_M, dtype=np.float64)
+CAMERA_QUATERNION_WXYZ = np.asarray(CAMERA_QUATERNION_WXYZ_ROS, dtype=np.float64)
+FOCAL_LENGTH_MM = CAMERA_FOCAL_LENGTH_MM
+HORIZONTAL_APERTURE_MM = CAMERA_HORIZONTAL_APERTURE_MM
 SLOT_CENTRES_Y_M = np.asarray((0.0, -0.22), dtype=np.float64)
 BAY_OCCUPANCY_HALF_WIDTH_M = 0.0725
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_SOURCES = (
+    Path("src/zero_g_blade_swap/servicing_camera.py"),
     Path("src/zero_g_blade_swap/fiducial.py"),
     Path("src/zero_g_blade_swap/tasks/blade_swap/assets.py"),
     Path("src/zero_g_blade_swap/tasks/blade_swap/mdp/perception.py"),
@@ -213,12 +222,12 @@ def main() -> int:
             "simulator_pose_used_by_estimator": False,
             "simulator_pose_used_only_for_error_metrics": True,
             "dropout_behavior": (
-                "tool forward-kinematics propagation before physical shuttle handoff; "
-                "hold-last and guarded-motion pause boundary after handoff"
+                "hold-last before verified robot capture; tool forward-kinematics propagation only "
+                "after capture; hold-last and guarded-motion pause after handoff"
             ),
             "critical_bay_definition": (
-                "source occupancy preflight and destination insertion alignment; random free-transfer "
-                "frames include deliberate robot line-of-sight occlusion"
+                "source occupancy preflight and destination insertion alignment; the collector holds "
+                "the robot still, so continuous robot occlusion is exercised only by the strict RGB-D chain"
             ),
         },
         "runtime_source_bindings": [

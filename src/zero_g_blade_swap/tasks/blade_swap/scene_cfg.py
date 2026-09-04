@@ -8,6 +8,20 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import TiledCameraCfg
 from isaaclab.utils import configclass
 
+from zero_g_blade_swap.servicing_camera import (
+    CAMERA_CLIPPING_RANGE_M,
+    CAMERA_FOCAL_LENGTH_MM,
+    CAMERA_FOCUS_DISTANCE_M,
+    CAMERA_HEIGHT_PX,
+    CAMERA_HORIZONTAL_APERTURE_MM,
+    CAMERA_POSITION_M,
+    CAMERA_QUATERNION_WXYZ_ROS,
+    CAMERA_UPDATE_PERIOD_S,
+    CAMERA_WIDTH_PX,
+    INSERT_CAMERA_POSITION_M,
+    INSERT_CAMERA_QUATERNION_WXYZ_ROS,
+)
+
 from .assets import (
     CONTACT_INSERTION_BLADE_CFG,
     GRAPPLE_MOUNT_ANCHOR_CFG,
@@ -197,6 +211,8 @@ class ZeroGTwoSlotGrapplePinSceneCfg(ZeroGGrapplePinSceneCfg):
     # on, which is the rule this repository applies to every geometry change.
     blade_slot_two_entry_upper_ramp: RigidObjectCfg | None = None
     blade_slot_two_entry_lower_ramp: RigidObjectCfg | None = None
+    rack_retention_hardware: AssetBaseCfg | None = None
+    rack_retention_joint: AssetBaseCfg | None = None
 
 
 def make_tiled_camera_cfg() -> TiledCameraCfg:
@@ -211,31 +227,42 @@ def make_tiled_camera_cfg() -> TiledCameraCfg:
 
     return TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/Camera",
-        update_period=1.0 / 15.0,
-        height=384,
-        width=384,
+        update_period=CAMERA_UPDATE_PERIOD_S,
+        height=CAMERA_HEIGHT_PX,
+        width=CAMERA_WIDTH_PX,
         # Metric image-plane depth is paired with RGB for the industrial
         # fiducial path.  RGB identifies the service datum; depth removes the
         # weak, noise-sensitive scale/tilt estimate of single-plane RGB PnP.
         data_types=["rgb", "distance_to_image_plane"],
         offset=TiledCameraCfg.OffsetCfg(
-            pos=(-0.55, -0.65, 1.15),
-            # ROS camera frame (+z forward, +x right, +y down), aimed at the
-            # centre of the two-bay transfer envelope (0.35, -0.11, 0.72).
-            rot=(0.4846, -0.7242, 0.4100, -0.2744),
+            pos=CAMERA_POSITION_M,
+            # ROS optical frame aimed vertically at the centre of the complete
+            # two-bay workflow envelope. The flush top-face datum is therefore
+            # seen near-normal rather than at the former 68-degree incidence.
+            rot=CAMERA_QUATERNION_WXYZ_ROS,
             convention="ros",
         ),
         spawn=sim_utils.PinholeCameraCfg(
             # The 30 mm aperture widens the earlier crop enough to keep the
             # complete two-bay transfer envelope in frame. 384 px preserves
             # (and slightly improves) its measured ground sampling density.
-            focal_length=45.0,
-            horizontal_aperture=30.0,
-            focus_distance=1.4,
+            focal_length=CAMERA_FOCAL_LENGTH_MM,
+            horizontal_aperture=CAMERA_HORIZONTAL_APERTURE_MM,
+            focus_distance=CAMERA_FOCUS_DISTANCE_M,
             f_stop=0.0,
-            clipping_range=(0.05, 4.0),
+            clipping_range=CAMERA_CLIPPING_RANGE_M,
         ),
     )
+
+
+def make_insert_tiled_camera_cfg() -> TiledCameraCfg:
+    '''Create the complementary fixed view used through rack entry.'''
+
+    cfg = make_tiled_camera_cfg()
+    cfg.prim_path = '{ENV_REGEX_NS}/CameraInsert'
+    cfg.offset.pos = INSERT_CAMERA_POSITION_M
+    cfg.offset.rot = INSERT_CAMERA_QUATERNION_WXYZ_ROS
+    return cfg
 
 
 __all__ = [

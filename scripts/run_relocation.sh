@@ -73,7 +73,8 @@ case "$stage" in
         --num_envs "${NUM_ENVS:-512}" --seed 70 --robustness_level 0 \
         --max_iterations "$TARGET" --checkpoint "$INSERT_CKPT" --run_name "$RUN" \
         > "$OUT/train_two_slot.log" 2>&1
-    echo "[$(date +%H:%M:%S)] train exit=$?"
+    rc=$?
+    echo "[$(date +%H:%M:%S)] train exit=$rc"
     ;;
 
   certify2)
@@ -94,7 +95,8 @@ case "$stage" in
             --checkpoint "$checkpoint" --num_envs "${EVAL_ENVS:-128}" \
             --episodes "${EVAL_EPISODES:-500}" --curriculum_stage "$slot" --seed "$seed" \
             --episode_metrics "${out}.npz" > "${out}.log" 2>&1
-        echo "[$(date +%H:%M:%S)]   slot=$slot seed=$seed exit=$?"
+        rc=$?
+        echo "[$(date +%H:%M:%S)]   slot=$slot seed=$seed exit=$rc"
         rows+=("${out}.npz")
       done
     done
@@ -107,7 +109,8 @@ case "$stage" in
           "The gate is the worst bay, not the pool: one policy has to seat a module in either slot." \
           "The module is held by physical pad-against-pin contact throughout, with no fixed joint." \
         > "$OUT/aggregate_two_slot.log" 2>&1
-    echo "[$(date +%H:%M:%S)] aggregate exit=$? -> evidence/grapple_insert_two_slot${TAG}_certification.json"
+    rc=$?
+    echo "[$(date +%H:%M:%S)] aggregate exit=$rc -> evidence/grapple_insert_two_slot${TAG}_certification.json"
     tail -6 "$OUT/aggregate_two_slot.log"
     ;;
 
@@ -134,7 +137,8 @@ case "$stage" in
         --report "$OUT/relocate_trace_report.json" \
         --handoff_trace "$OUT/relocate_handoff.npz" \
         > "$OUT/relocate_trace.log" 2>&1
-    echo "[$(date +%H:%M:%S)] trace exit=$?"
+    rc=$?
+    echo "[$(date +%H:%M:%S)] trace exit=$rc"
     for phase in transit insert; do
       "$PYTHON" scripts/analyse_handoff.py "$OUT/relocate_handoff.npz" --to_phase "$phase" \
           --json "evidence/relocate_handoff_to_${phase}${TAG}.json" > "$OUT/handoff_${phase}.log" 2>&1
@@ -171,7 +175,8 @@ case "$stage" in
           --num_envs "${ENVS:-64}" --episodes "${EPISODES:-192}" --seed "$seed" \
           --report "${out}_report.json" --episode_metrics "${out}.npz" \
           > "${out}.log" 2>&1
-      echo "[$(date +%H:%M:%S)]   relocate seed=$seed exit=$?"
+      rc=$?
+      echo "[$(date +%H:%M:%S)]   relocate seed=$seed exit=$rc"
       rows+=("${out}.npz")
     done
     "$PYTHON" scripts/aggregate_evaluation.py --episodes "${rows[@]}" \
@@ -184,7 +189,8 @@ case "$stage" in
           "Capture, extraction and insertion are trained policies; the seating pause and the waypoint-followed transit are scripted and labelled." \
           "Success is the workflow's own condition re-checked after a 0.70 s settling window." \
         > "$OUT/aggregate_relocate.log" 2>&1
-    echo "[$(date +%H:%M:%S)] aggregate exit=$? -> evidence/workflow_relocate${TAG}_certification.json"
+    rc=$?
+    echo "[$(date +%H:%M:%S)] aggregate exit=$rc -> evidence/workflow_relocate${TAG}_certification.json"
     tail -6 "$OUT/aggregate_relocate.log"
     ;;
 

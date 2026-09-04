@@ -34,7 +34,7 @@ from isaaclab.utils import configclass
 
 from . import mdp
 from .assets import BLADE_INSERTED_POS, CONTACT_INSERTION_STAGE_BLADE_POSE, SECOND_SLOT_CENTER_Y
-from .scene_cfg import ZeroGTwoSlotGrapplePinSceneCfg, make_tiled_camera_cfg
+from .scene_cfg import ZeroGTwoSlotGrapplePinSceneCfg, make_insert_tiled_camera_cfg, make_tiled_camera_cfg
 from .two_slot_env_cfg import RelocationCommandsCfg
 from .vision_grapple_env_cfg import (
     PerceivedWorkflowObsCfg,
@@ -80,7 +80,7 @@ VISION_TWO_SLOT_STAGE_BLADE_POSE = (
 class VisionTwoSlotGrappleSceneCfg(ZeroGTwoSlotGrapplePinSceneCfg):
     """Two bays, with the same servicing camera watching the interface.
 
-    The camera is `make_tiled_camera_cfg()` unchanged, including the 256 px /
+    The camera is `make_tiled_camera_cfg()` unchanged, including the 384 px /
     45 mm scale-preserving overview field of view. It is not re-aimed for the second bay, and that is the
     honest configuration to measure: a fixed servicing camera is what a real
     manipulator carries, and whether this one frames both bays well enough to
@@ -89,6 +89,7 @@ class VisionTwoSlotGrappleSceneCfg(ZeroGTwoSlotGrapplePinSceneCfg):
     """
 
     camera: TiledCameraCfg = make_tiled_camera_cfg()
+    camera_insert: TiledCameraCfg = make_insert_tiled_camera_cfg()
 
 
 @configclass

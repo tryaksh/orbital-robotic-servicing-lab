@@ -17,6 +17,7 @@ import pytest
 
 from zero_g_blade_swap.evaluation import (
     BLADE_MASS_FIELD,
+    RESET_STATION_FIELD,
     TERMINAL_METRIC_FIELDS,
     TERMINATION_REASONS,
     TerminalEpisodeRecorder,
@@ -269,6 +270,22 @@ def test_align_rows_maps_optional_columns_by_name() -> None:
 
     with pytest.raises(ValueError):
         align_rows(plain, source, source)
+
+
+def test_reset_station_is_an_optional_named_category() -> None:
+    source = (*TERMINAL_METRIC_FIELDS, RESET_STATION_FIELD)
+    rows = np.array(
+        [
+            _row(success=1.0) + [0.0],
+            _row(success=0.0) + [0.0],
+            _row(success=1.0) + [8.0],
+        ]
+    )
+
+    stations = group_rows(rows, RESET_STATION_FIELD, source)
+    assert sorted(stations) == [0, 8]
+    assert summarize_terminal_episodes(stations[0], source)["success_rate"] == pytest.approx(0.5)
+    assert summarize_terminal_episodes(stations[8], source)["success_rate"] == pytest.approx(1.0)
 
 
 def test_missing_optional_column_is_not_counted_as_instability() -> None:

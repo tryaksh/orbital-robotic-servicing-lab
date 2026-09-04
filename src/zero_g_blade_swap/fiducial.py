@@ -15,7 +15,6 @@ import cv2
 import numpy as np
 
 FIDUCIAL_DICTIONARY = cv2.aruco.DICT_4X4_50
-FIDUCIAL_MARKER_ID = 23
 # **The service plate lies on the module's top face, and it used to float above
 # it.**
 #
@@ -26,10 +25,11 @@ FIDUCIAL_MARKER_ID = 23
 # which is not a service plate, it is a billboard.
 #
 # It is now flush on the top face, tag frame aligned with the module frame, and
-# sized to fit inside the 130 mm width with its quiet zone. The overview camera
-# at (-0.55, -0.65, 1.15) looks down on the rack, so a top-face plate is inside
-# its view; what changes is the incidence angle, and that is a perception
-# question rather than a geometry one.
+# sized to fit inside the 130 mm width with its quiet zone. The original oblique
+# overview saw this plane at roughly 68 degrees from normal and failed the
+# visibility gate. ``servicing_camera.py`` now places the same lens overhead;
+# the datum stays flush. Where it sits on the module changed later, and the
+# block below is why.
 #
 # **This invalidates evidence/fiducial_rgbd_service_plate.json**, which was
 # certified against the old plate pose. Perception has to be re-certified on
@@ -37,8 +37,39 @@ FIDUCIAL_MARKER_ID = 23
 # changed size.
 FIDUCIAL_TAG_SIZE_M = 0.090
 FIDUCIAL_QUIET_ZONE_SIZE_M = 0.120
+# **One datum on the module's centre cannot be seen into the destination bay,
+# and no camera placement fixes that.**
+#
+# ``scripts/check_rack_sightlines.py`` derives it without a simulator. The
+# destination bay's vertical lead-in is an 80 x 60 x 18 mm plate at 12 degrees
+# over the bay centre line, hanging 25 mm above the module's top face. It is a
+# roof: over 154 mm of the 529 mm seating stroke it covers the centred datum
+# from both fixed views, and a camera that clears it has to look under an 82 mm
+# span through 25 mm of headroom, which foreshortens the marker cell below the
+# resolution the estimator needs. The recorded strict run
+# ``rgbd_strict_rack_retention_dual_camera_full_seed6070.json`` stopped inside
+# that band, and moving the second camera 370 mm along x moved the loss depth
+# 6.5 mm.
+#
+# So the datum becomes a *pair*, flush on the same plane, and the requirement
+# is that their shadows do not overlap: the pair has to be separated by more
+# than the lead-in's 203 mm shadow, and each has to stay inside the frame. That
+# leaves offsets in +/-[0.1025, 0.1275] m, and this is its centre. The marker,
+# the quiet zone, the plane, the lens, the resolution and every estimator gate
+# are unchanged; what changed is where the datum is and how many there are.
+#: Module-frame x of the two flush datums, aligned with ``FIDUCIAL_MARKER_IDS``.
+FIDUCIAL_DATUM_OFFSETS_X_M = (-0.115, 0.115)
+#: Marker 23 stays the aft datum. It is the one every earlier report names, and
+#: it is the one still readable at the seated plane, which is where the release
+#: interlock needs a live detection. Marker 15 is the forward datum: of the
+#: other 49 codes in ``DICT_4X4_50`` it is the furthest from 23, differing in
+#: 12 of its 16 payload cells, so a misread cannot silently swap the two.
+FIDUCIAL_MARKER_IDS = (23, 15)
+FIDUCIAL_MARKER_ID = 23
+FIDUCIAL_FORWARD_MARKER_ID = 15
 #: Half the module's 20 mm thickness, plus a millimetre of plate standoff.
-FIDUCIAL_TAG_CENTER_M = (0.0, 0.0, 0.011)
+FIDUCIAL_TAG_CENTER_M = (-0.115, 0.0, 0.011)
+FIDUCIAL_FORWARD_TAG_CENTER_M = (0.115, 0.0, 0.011)
 # Columns are the tag-frame x/y/normal axes expressed in the module frame. The
 # plate lies in the module's own xy plane with its normal up, so this is the
 # identity and the tag's rows read along the module's length.
@@ -61,9 +92,34 @@ FIDUCIAL_TAG_BITS: tuple[tuple[int, ...], ...] = (
     (0, 0, 0, 1, 0, 0),
     (0, 0, 0, 0, 0, 0),
 )
+#: Marker 15 from the same dictionary, generated the same way.
+FIDUCIAL_FORWARD_TAG_BITS: tuple[tuple[int, ...], ...] = (
+    (0, 0, 0, 0, 0, 0),
+    (0, 0, 0, 1, 0, 0),
+    (0, 0, 1, 1, 0, 0),
+    (0, 0, 0, 1, 1, 0),
+    (0, 1, 1, 1, 0, 0),
+    (0, 0, 0, 0, 0, 0),
+)
+
+#: Marker id to the module-frame centre of that datum's plate, and to the raster
+#: the USD spawner builds it from. One mapping, so the geometry the scene draws
+#: and the offset the estimator subtracts cannot disagree about a datum.
+FIDUCIAL_DATUM_CENTRES_M: dict[int, tuple[float, float, float]] = {
+    FIDUCIAL_MARKER_ID: FIDUCIAL_TAG_CENTER_M,
+    FIDUCIAL_FORWARD_MARKER_ID: FIDUCIAL_FORWARD_TAG_CENTER_M,
+}
+FIDUCIAL_DATUM_BITS: dict[int, tuple[tuple[int, ...], ...]] = {
+    FIDUCIAL_MARKER_ID: FIDUCIAL_TAG_BITS,
+    FIDUCIAL_FORWARD_MARKER_ID: FIDUCIAL_FORWARD_TAG_BITS,
+}
+assert tuple(FIDUCIAL_DATUM_CENTRES_M) == FIDUCIAL_MARKER_IDS
+assert (
+    tuple(centre[0] for centre in FIDUCIAL_DATUM_CENTRES_M.values()) == FIDUCIAL_DATUM_OFFSETS_X_M
+), "datum offsets and datum centres describe different plates"
+assert len({centre[2] for centre in FIDUCIAL_DATUM_CENTRES_M.values()}) == 1, "both datums are flush"
 
 _HALF_TAG = 0.5 * FIDUCIAL_TAG_SIZE_M
-_TAG_CENTER = np.asarray(FIDUCIAL_TAG_CENTER_M, dtype=np.float64)
 _ROTATION_MODULE_FROM_TAG = np.asarray(FIDUCIAL_TAG_BASIS_MODULE, dtype=np.float64)
 # ArUco returns canonical top-left, top-right, bottom-right, bottom-left image
 # corners.  The authored tag frame is right-handed with +y pointing toward the
@@ -90,9 +146,10 @@ class FiducialPose:
     image_points_px: np.ndarray
     reprojection_error_px: float
     confidence: float
+    marker_id: int = FIDUCIAL_MARKER_ID
 
 
-def _marker_corners(image_rgb: np.ndarray) -> np.ndarray:
+def _marker_corners(image_rgb: np.ndarray) -> tuple[int, np.ndarray]:
     image = np.asarray(image_rgb)
     if image.ndim != 3 or image.shape[2] < 3:
         raise ValueError(f"RGB image must have shape (height, width, channels), got {image.shape}")
@@ -104,20 +161,44 @@ def _marker_corners(image_rgb: np.ndarray) -> np.ndarray:
     elif rgb.dtype != np.uint8:
         rgb = rgb.astype(np.uint8)
     gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
-    parameters = cv2.aruco.DetectorParameters()
-    parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
-    parameters.minMarkerPerimeterRate = 0.02
-    detector = cv2.aruco.ArucoDetector(
-        cv2.aruco.getPredefinedDictionary(FIDUCIAL_DICTIONARY),
-        parameters,
-    )
-    corners, identifiers, _ = detector.detectMarkers(gray)
-    if identifiers is None:
-        raise RuntimeError(f"ArUco service datum {FIDUCIAL_MARKER_ID} was not detected")
-    matches = np.flatnonzero(identifiers.reshape(-1) == FIDUCIAL_MARKER_ID)
-    if matches.size != 1:
-        raise RuntimeError(f"expected one ArUco service datum {FIDUCIAL_MARKER_ID}, detected {int(matches.size)}")
-    return np.asarray(corners[int(matches[0])], dtype=np.float64).reshape(4, 2)
+    dictionary = cv2.aruco.getPredefinedDictionary(FIDUCIAL_DICTIONARY)
+    # Keep the fast detector first.  The late guarded approach resolves each
+    # rendered cell, but its oblique edge transitions defeated adaptive
+    # thresholding with sub-pixel refinement: the unchanged decoder found 0/8
+    # preserved frames from steps 1440--1860.  OpenCV's AprilTag corner method
+    # found marker 23 in all 8/8 of those same RGB frames, without changing the
+    # marker, camera, pose gates or success limits.  It is therefore a bounded
+    # fallback only when the original pass does not find the service datum.
+    for refinement in (
+        cv2.aruco.CORNER_REFINE_SUBPIX,
+        cv2.aruco.CORNER_REFINE_APRILTAG,
+    ):
+        parameters = cv2.aruco.DetectorParameters()
+        parameters.cornerRefinementMethod = refinement
+        parameters.minMarkerPerimeterRate = 0.02
+        detector = cv2.aruco.ArucoDetector(dictionary, parameters)
+        corners, identifiers, _ = detector.detectMarkers(gray)
+        if identifiers is None:
+            continue
+        found: list[tuple[float, int, np.ndarray]] = []
+        detected_ids = identifiers.reshape(-1)
+        for marker_id in FIDUCIAL_MARKER_IDS:
+            matches = np.flatnonzero(detected_ids == marker_id)
+            if matches.size > 1:
+                raise RuntimeError(
+                    f"expected one ArUco service datum {marker_id}, detected {int(matches.size)}"
+                )
+            if matches.size == 1:
+                quad = np.asarray(corners[int(matches[0])], dtype=np.float64).reshape(4, 2)
+                found.append((float(cv2.arcLength(quad.astype(np.float32), True)), marker_id, quad))
+        if found:
+            # Both datums are on the same rigid plate pair, so either answers the
+            # question. Take the one that subtends the most image, which is the
+            # better-conditioned solve and makes the choice deterministic rather
+            # than dependent on the order OpenCV happened to return.
+            _perimeter, marker_id, quad = max(found, key=lambda item: item[0])
+            return marker_id, quad
+    raise RuntimeError(f"no ArUco service datum in {FIDUCIAL_MARKER_IDS} was detected")
 
 
 def _refine_tag_pose_from_depth(
@@ -187,7 +268,8 @@ def estimate_fiducial_pose(
     intrinsic = np.asarray(intrinsic_matrix, dtype=np.float64)
     if intrinsic.shape != (3, 3) or not np.isfinite(intrinsic).all():
         raise ValueError("camera intrinsic matrix must be finite with shape (3, 3)")
-    image_points = _marker_corners(image_rgb)
+    marker_id, image_points = _marker_corners(image_rgb)
+    tag_centre = np.asarray(FIDUCIAL_DATUM_CENTRES_M[marker_id], dtype=np.float64)
     solved, rotation_vector, translation = cv2.solvePnP(
         _OBJECT_POINTS,
         image_points,
@@ -205,7 +287,7 @@ def estimate_fiducial_pose(
         )
         translation = tag_position.reshape(3, 1)
     rotation = rotation_camera_from_tag @ _ROTATION_MODULE_FROM_TAG.T
-    position = translation.reshape(3) - rotation @ _TAG_CENTER
+    position = translation.reshape(3) - rotation @ tag_centre
     if not np.isfinite(rotation).all() or not np.isfinite(position).all() or position[2] <= 0.0:
         raise RuntimeError("calibrated fiducial PnP returned an invalid pose")
 
@@ -227,12 +309,19 @@ def estimate_fiducial_pose(
     perimeter = float(cv2.arcLength(image_points.astype(np.float32), True))
     size_score = min(1.0, perimeter / 100.0)
     confidence = float(np.clip(size_score * np.exp(-0.5 * reprojection_error), 0.0, 1.0))
-    return FiducialPose(position, rotation, image_points, reprojection_error, confidence)
+    return FiducialPose(position, rotation, image_points, reprojection_error, confidence, marker_id)
 
 
 __all__ = [
+    "FIDUCIAL_DATUM_BITS",
+    "FIDUCIAL_DATUM_CENTRES_M",
+    "FIDUCIAL_DATUM_OFFSETS_X_M",
     "FIDUCIAL_DICTIONARY",
+    "FIDUCIAL_FORWARD_MARKER_ID",
+    "FIDUCIAL_FORWARD_TAG_BITS",
+    "FIDUCIAL_FORWARD_TAG_CENTER_M",
     "FIDUCIAL_MARKER_ID",
+    "FIDUCIAL_MARKER_IDS",
     "FIDUCIAL_QUIET_ZONE_SIZE_M",
     "FIDUCIAL_TAG_BITS",
     "FIDUCIAL_TAG_BASIS_MODULE",

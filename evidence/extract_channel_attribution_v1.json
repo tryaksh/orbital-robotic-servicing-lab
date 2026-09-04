@@ -1,0 +1,83 @@
+{
+  "title": "Which observation channel costs extraction its transfer",
+  "evidence_type": "channel_attribution_on_an_unchanged_checkpoint",
+  "what_this_is": "One checkpoint, one curriculum stage, three held-out evaluation seeds, four arms. The certified v18pin weights are unchanged in all four; only which observation channels read the training-time estimator surrogate differs, so the difference between arms is the channel and cannot be a different policy.",
+  "scope": [
+    "Simulation only. No result here was produced on real hardware.",
+    "The surrogate reproduces the estimator's certified residual, sample-and-hold and miss rate. It does not reproduce occlusion or the in-loop tail, so these are lower bounds on what the cameras cost.",
+    "Curriculum stage 0 only: that is the station the chain hands extraction over at."
+  ],
+  "arms": [
+    {
+      "task": "Extract",
+      "arm": "exact state",
+      "what_differs": "the published task; the control",
+      "episodes": 1536,
+      "successes": 1392,
+      "success_rate": 0.90625,
+      "wilson_95": {
+        "low": 0.890643,
+        "high": 0.91983
+      },
+      "source": "extract_channel_isolation_Extract.json",
+      "points_below_the_control": 0.0
+    },
+    {
+      "task": "ExtractPoseNoised",
+      "arm": "pose only",
+      "what_differs": "grip error and remaining travel from the surrogate; velocity exact",
+      "episodes": 1536,
+      "successes": 1264,
+      "success_rate": 0.822917,
+      "wilson_95": {
+        "low": 0.803027,
+        "high": 0.841195
+      },
+      "source": "extract_channel_isolation_ExtractPoseNoised.json",
+      "points_below_the_control": 8.33
+    },
+    {
+      "task": "ExtractVelocityNoised",
+      "arm": "velocity only",
+      "what_differs": "velocity from the surrogate; every pose channel exact",
+      "episodes": 1537,
+      "successes": 1236,
+      "success_rate": 0.804164,
+      "wilson_95": {
+        "low": 0.783576,
+        "high": 0.823235
+      },
+      "source": "extract_channel_isolation_ExtractVelocityNoised.json",
+      "points_below_the_control": 10.21
+    },
+    {
+      "task": "ExtractNoised",
+      "arm": "both",
+      "what_differs": "the full noised task the fine-tune trains on",
+      "episodes": 1536,
+      "successes": 760,
+      "success_rate": 0.494792,
+      "wilson_95": {
+        "low": 0.469832,
+        "high": 0.519777
+      },
+      "source": "extract_channel_isolation_ExtractNoised.json",
+      "points_below_the_control": 41.15
+    }
+  ],
+  "attribution_points": {
+    "pose_channels_alone": 8.33,
+    "velocity_channel_alone": 10.21,
+    "both_together": 41.15,
+    "interaction": 22.61,
+    "reading": "A positive interaction means the two channels cost more together than apart, which is what servoing on a noisy pose with a noisy velocity would predict; a negative one means one channel's damage is already done by the other."
+  },
+  "source_revision": {
+    "available": true,
+    "commit": "ed7fb2b72b0f00ea45186f5a8ba14f0e7c832e8e",
+    "branch": "paper/serviceability-qualification",
+    "dirty": false,
+    "tracked_changes": [],
+    "error": null
+  }
+}

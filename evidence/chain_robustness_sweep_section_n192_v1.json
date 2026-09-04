@@ -1,0 +1,199 @@
+{
+  "title": "What breaks the robot-carried chain first, module-section axis pooled over three seeds",
+  "evidence_type": "simulation_only",
+  "generated_utc": "2026-09-04T04:59:47+00:00",
+  "question": "The chain is certified at one point in a space a real cell varies across. Which variable takes it down soonest?",
+  "method": "scripts/sweep_chain_robustness.sh: one variable moved at a time around the certified configuration, same seed, same checkpoints, same everything else.",
+  "source_revision": {
+    "available": true,
+    "commit": "3c2bbc7b824b8456cfbf45c4ada8827387504cfb",
+    "branch": "paper/serviceability-qualification",
+    "dirty": false,
+    "tracked_changes": [],
+    "error": null
+  },
+  "notes": [
+    "Five of seven points are the published 64-environment sweep unchanged. The two clearance points were re-measured under --rack_clearance_scope channel, which moves each bay's upper lips and entry flares with its side guides; the published arm moved the guides alone and is preserved in evidence/chain_robustness_sweep_n64.json.",
+    "At 6 mm per side the corrected arm scores 36/64 against the guides-only arm's 0/64, and zero of its episodes jam. The published 0/64 was a rack whose mouth and walls disagreed by 5.065 mm per side, not a narrow channel.",
+    "Points nominal, section_120x16, section_140x26 pooled over 3 seeds to 192 episodes each; all other points unchanged from chain_robustness_sweep_n64_channel_v1.json."
+  ],
+  "nominal_point": "nominal",
+  "nominal_success_rate": 0.572917,
+  "ranked_by_points_below_nominal": [
+    "base_y_+10mm",
+    "base_x_-0.70",
+    "section_140x26",
+    "rack_lat_16mm",
+    "section_120x16",
+    "rack_lat_6mm"
+  ],
+  "points": {
+    "base_x_-0.70": {
+      "success_rate": 0.328125,
+      "episodes": 64,
+      "wilson_95": {
+        "low": 0.225706,
+        "high": 0.450009
+      },
+      "median_terminal": {
+        "axial_error_m": 0.000498,
+        "lateral_error_m": 0.003241,
+        "orientation_error_rad": 0.008319
+      },
+      "points_below_nominal": 21.88
+    },
+    "base_y_+10mm": {
+      "success_rate": 0.015625,
+      "episodes": 64,
+      "wilson_95": {
+        "low": 0.002764,
+        "high": 0.083341
+      },
+      "median_terminal": {
+        "axial_error_m": 0.45331,
+        "lateral_error_m": 0.249556,
+        "orientation_error_rad": 0.249558
+      },
+      "points_below_nominal": 53.12
+    },
+    "nominal": {
+      "success_rate": 0.572917,
+      "successes": 110,
+      "episodes": 192,
+      "wilson_95": {
+        "low": 0.502193,
+        "high": 0.64078
+      },
+      "median_terminal": {
+        "axial_error_m": 0.000542,
+        "lateral_error_m": 0.002186,
+        "orientation_error_rad": 0.009288
+      },
+      "pooled_from": {
+        "seeds": [
+          4070,
+          5070,
+          6070
+        ],
+        "episodes_each": [
+          64,
+          64,
+          64
+        ],
+        "directories": [
+          "artifacts\\robustness64_corrected",
+          "artifacts\\robustness64_seed5070",
+          "artifacts\\robustness64_seed6070"
+        ]
+      }
+    },
+    "rack_lat_16mm": {
+      "success_rate": 0.421875,
+      "episodes": 64,
+      "wilson_95": {
+        "low": 0.308698,
+        "high": 0.5439
+      },
+      "median_terminal": {
+        "axial_error_m": 0.00058,
+        "lateral_error_m": 0.002739,
+        "orientation_error_rad": 0.0098
+      },
+      "points_below_nominal": 12.5
+    },
+    "rack_lat_6mm": {
+      "success_rate": 0.5625,
+      "episodes": 64,
+      "wilson_95": {
+        "low": 0.440862,
+        "high": 0.67706
+      },
+      "median_terminal": {
+        "axial_error_m": 0.000548,
+        "lateral_error_m": 0.002379,
+        "orientation_error_rad": 0.009445
+      },
+      "points_below_nominal": -1.56
+    },
+    "section_120x16": {
+      "success_rate": 0.458333,
+      "successes": 88,
+      "episodes": 192,
+      "wilson_95": {
+        "low": 0.389362,
+        "high": 0.528939
+      },
+      "median_terminal": {
+        "axial_error_m": 0.000582,
+        "lateral_error_m": 0.002674,
+        "orientation_error_rad": 0.010322
+      },
+      "pooled_from": {
+        "seeds": [
+          4070,
+          5070,
+          6070
+        ],
+        "episodes_each": [
+          64,
+          64,
+          64
+        ],
+        "directories": [
+          "artifacts\\robustness64_corrected",
+          "artifacts\\robustness64_seed5070",
+          "artifacts\\robustness64_seed6070"
+        ]
+      }
+    },
+    "section_140x26": {
+      "success_rate": 0.40625,
+      "successes": 78,
+      "episodes": 192,
+      "wilson_95": {
+        "low": 0.339279,
+        "high": 0.476899
+      },
+      "median_terminal": {
+        "axial_error_m": 0.00055,
+        "lateral_error_m": 0.002797,
+        "orientation_error_rad": 0.009204
+      },
+      "pooled_from": {
+        "seeds": [
+          4070,
+          5070,
+          6070
+        ],
+        "episodes_each": [
+          64,
+          64,
+          64
+        ],
+        "directories": [
+          "artifacts\\robustness64_corrected",
+          "artifacts\\robustness64_seed5070",
+          "artifacts\\robustness64_seed6070"
+        ]
+      }
+    }
+  },
+  "scope_and_limitations": "Sixteen episodes a point on one seed. The Wilson interval on each is about twenty points wide, so this ranks variables and does not measure any of them. Whatever it ranks first is what deserves the 96-episode protocol.",
+  "pooling": {
+    "pooled_points": [
+      "nominal",
+      "section_120x16",
+      "section_140x26"
+    ],
+    "pooled_episodes": 192,
+    "left_at_original_sample": [
+      "base_x_-0.70",
+      "base_y_+10mm",
+      "rack_lat_16mm",
+      "rack_lat_6mm"
+    ],
+    "base_report": "evidence\\chain_robustness_sweep_n64_channel_v1.json",
+    "why": "At 64 episodes a Wilson interval on this chain is about twenty points wide, so a point can move exactly as its criterion predicts and still not separate from nominal. The module-section axis did that. These points are the same configuration measured at three held-out seeds and pooled, so the comparison against nominal is answered at 192 episodes.",
+    "read_this_before_comparing_rows": "Points listed in left_at_original_sample are still at the base report's sample size. Do not compare a pooled point's interval width with theirs and conclude anything about the design; only the pooled points and pooled nominal are measured at the larger n."
+  }
+}

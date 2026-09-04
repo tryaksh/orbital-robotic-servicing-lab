@@ -6,8 +6,7 @@ defending mechanically. Three of them are structural and can be checked from the
 source without a simulator:
 
 * the transit and the insertion command the *robot*, never the module;
-* the form lock is released before the module is judged, so a settling check
-  cannot be a statement about a joint;
+* seating is checked before release and again after both load paths let go;
 * the world-mounted payload stage is not reachable from the robot-carried path.
 """
 
@@ -31,7 +30,10 @@ def test_the_rigid_carry_path_is_selected_only_by_the_form_lock() -> None:
     )
     assert "if self.rigid_transit and bool(transiting.any()):" in source
     assert "elif bool(transiting.any()):" in source
-    assert "if self.rigid_transit and bool(inserting.any()):" in source
+    assert "direct_insert = self.rigid_transit or self.insert_only" in source
+    assert "elif direct_insert and bool(inserting.any()):" in source
+    assert "learned_insert_selected = not (" in source
+    assert "& learned_insert_selected" in source
     assert "elif bool(inserting.any()):" in source
 
 
@@ -72,7 +74,7 @@ def test_the_guarded_insertion_advances_only_on_the_deployed_estimate() -> None:
 
 
 def test_the_form_lock_has_three_states_and_ends_in_none_of_them() -> None:
-    """Rigid to carry, compliant to mate, released before the module is judged."""
+    """Rigid to carry, compliant to mate, then released after seating settles."""
 
     source = DRIVER.read_text(encoding="utf-8")
     transit = source.split("def _step_rigid_transit(")[1].split("def _front_overhang_x(")[0]
@@ -87,8 +89,8 @@ def test_the_form_lock_has_three_states_and_ends_in_none_of_them() -> None:
     assert "FLARE_LEADING_X - MATING_SOFTEN_LEAD_M" in transit
     assert "(leg == 0)" in transit
     assert "soften_grapple_latch(task, mating)" in transit
-    # The seating re-check is taken on a module the lock is no longer holding.
-    assert "release_grapple_latch(task, fired)" in body
+    # Firing the seating predicate does not release the compliant load path.
+    assert "release_grapple_latch(task, fired)" not in body
     # Rigid mating is a measured alternative, so the gate is on the mode
     # rather than on the lock unconditionally.
     assert "~grapple_latch_rigid(task)" in body
@@ -112,9 +114,32 @@ def test_softening_keeps_the_load_path_and_stores_no_energy() -> None:
 
 def test_the_hand_opens_only_after_the_settling_recheck() -> None:
     source = DRIVER.read_text(encoding="utf-8")
-    assert "verified = ripe & self.outcome & self.all_conditions" in source
-    assert "self.gripper_released |= verified" in source
+    assert "stabilizing = finished & self.predicate_fired & ~self.gripper_released & ~plan_blocked" in source
+    assert 'self.rigid_transit and self.insert_controller == "guarded"' in source
+    assert "self._step_guarded_insert(stabilizing, step, tool, tool_rot)" in source
+    assert "ready_to_release = ripe & awaiting_first_release & outcome & everything" in source
+    assert "self.actions[ready_to_release, :6] = 0.0" in source
+    assert "self.done_at[ready_to_release] = step" in source
+    assert "post_release = ripe & self.gripper_released & self.latch_released & ~just_released_latch" in source
+    assert 'latch_clear = ~grapple_latch_diagnostics(task)["engaged"]' in source
     assert "self.actions[finished & self.gripper_released, 6] = -1.0" in source
+
+
+def test_hand_first_release_preserves_a_rack_only_recheck() -> None:
+    source = DRIVER.read_text(encoding="utf-8")
+    assert 'choices=("simultaneous", "hand_first")' in source
+    assert 'if self.release_sequence == "simultaneous":' in source
+    assert "ready_to_release_latch = waiting_on_latch & outcome" in source
+    assert "self.done_at[ready_to_release_latch] = step" in source
+    assert "post_release = ripe & self.gripper_released & self.latch_released & ~just_released_latch" in source
+
+
+def test_parallel_bounded_runs_summarize_the_fixed_cohort_without_timeout_reset() -> None:
+    source = DRIVER.read_text(encoding="utf-8")
+    assert "if not collecting and task.num_envs > 1:" in source
+    assert "cohort_ids = torch.arange(task.num_envs, device=task.device)" in source
+    assert "bounded_recorder.record(driver.harvest(cohort_ids, step).cpu().numpy())" in source
+    assert "summary_recorder = recorder if collecting else bounded_recorder" in source
 
 
 def test_the_release_disables_the_joint_and_stows_the_visible_jaws() -> None:
@@ -154,6 +179,45 @@ def test_the_transit_records_the_tool_to_module_transform_throughout() -> None:
     assert "TRANSIT_RETENTION_POSITION_LIMIT_M = INSERT_HANDOFF_POSITION_TOLERANCE_M" in source
     assert "TRANSIT_RETENTION_ORIENTATION_LIMIT_RAD = INSERTION_ORIENTATION_TOLERANCE_RAD" in source
     assert '"robot_carried_transit": _transit_retention_report(driver, args)' in source
+
+
+def test_rack_retention_is_visible_rack_owned_and_seating_gated() -> None:
+    driver = DRIVER.read_text(encoding='utf-8')
+    assets = ASSETS.read_text(encoding='utf-8')
+    joint_cfg = assets.split('class RackRetentionJointCfg', 1)[1].split(
+        'def spawn_rack_retention', 1
+    )[0]
+    assert 'body0_relative_path: str' in joint_cfg
+    assert 'Rack' in joint_cfg
+    assert 'body1_relative_path: str' in joint_cfg
+    assert 'SpareBlade' in joint_cfg
+    assert 'def spawn_rack_retention(' in assets
+    scene = SCENE.read_text(encoding='utf-8')
+    assert 'rack_retention_hardware: AssetBaseCfg | None = None' in scene
+    assert 'rack_retention_joint: AssetBaseCfg | None = None' in scene
+    assert 'env_cfg.configure_rack_retention()' in driver
+    spawner = assets.split('def spawn_rack_retention(', 1)[1].split(
+        'class RackRetentionHardwareCfg', 1
+    )[0]
+    assert 'define_collision_properties' not in spawner
+    retention = driver.split('class RackRetention:', 1)[1].split(
+        'class WorkflowDriver:', 1
+    )[0]
+    assert 'write_root_pose' not in retention
+    assert 'write_root_state' not in retention
+    assert driver.count('self.rack_retention.engage(fired, step)') == 3
+    assert 'final_success = post_release & outcome & latch_clear & rack_carrying' in driver
+
+
+def test_guarded_insertion_trace_separates_target_motion_from_module_motion() -> None:
+    source = DRIVER.read_text(encoding="utf-8")
+    assert "INSERT_TRACE_FIELDS" in source
+    assert '"estimated_blade_x_m"' in source
+    assert '"true_blade_x_m"' in source
+    assert '"clear_to_advance"' in source
+    assert '"following_target"' in source
+    assert '"latch_applied_force_n"' in source
+    assert "def _record_guarded_insert(" in source
 
 
 def test_the_live_preset_does_not_use_the_world_mounted_payload_stage() -> None:
@@ -200,7 +264,7 @@ def test_the_report_says_the_insertion_is_scripted_on_the_carried_path() -> None
     source = DRIVER.read_text(encoding="utf-8")
     # Keyed on the controller: relocate, with the form lock, without the payload
     # shuttle, and with the guarded advance selected rather than the policy.
-    guarded = source.split("guarded_insert = (")[1].split(")\n")[0]
+    guarded = source.split("guarded_insert = (")[1].split("insert_only =")[0]
     assert 'args.workflow == "relocate"' in guarded
     assert "args.latch_on_release" in guarded
     assert "not args.base_rail_on_relocation" in guarded
@@ -210,10 +274,9 @@ def test_the_report_says_the_insertion_is_scripted_on_the_carried_path() -> None
     # section 10.2 of the interface specification actually asks for. The label
     # has to survive both cases: named when carried and unused, absent when not
     # carried, and never claimed as a learned phase either way.
-    assert (
-        '"loaded_but_not_executed_policies": (["insert"] if guarded_insert and "insert" in policies else []),'
-        in source
-    )
+    assert 'if guarded_insert and "insert" in policies:' in source
+    assert 'loaded_but_not_executed.append("insert")' in source
+    assert '"loaded_but_not_executed_policies": loaded_but_not_executed' in source
     assert 'if args.insert_checkpoint is not None:' in source
     assert 'parser.error("--insert_controller policy needs an --insert_checkpoint to run")' in source
     # And the phase it does run is named in the scripted list.
@@ -390,12 +453,15 @@ def test_the_guarded_envelope_is_the_flare_and_says_why() -> None:
 
 
 def test_the_seating_controller_carries_its_own_action_scale() -> None:
-    """The insert policy's scale belongs to the policy, not to the phase."""
+    """Both insertion controllers use insertion resolution, never extraction's."""
 
     source = DRIVER.read_text(encoding="utf-8")
     body = source.split("def _apply_scales(")[1].split("def _set_stage_arm_servo(")[0]
-    assert "self._guarded_receiver()" in body
-    assert "self.scales[TRANSIT]" in body
+    guarded = source.split("def _step_guarded_insert(")[1].split("def _front_overhang_x(")[0]
+    assert "self.arm._scale[:] = self.scales[self.phase]" in body
+    assert "self.scales[INSERT]" in guarded
+    assert "self.scales[TRANSIT]" not in guarded
+    assert '"cartesian_action_scale": [float(value) for value in INSERT_ACTION_SCALE]' in source
 
 
 def test_the_last_transit_leg_leaves_the_module_at_the_mouth_for_both_controllers() -> None:
@@ -415,16 +481,40 @@ def test_the_last_transit_leg_leaves_the_module_at_the_mouth_for_both_controller
     The old behaviour stays reachable for replaying an archived checkpoint, and
     it is off.
 
-    ``_guarded_receiver`` still has to be read at call time, because it still
-    selects the seating *scale*: ``MATING_MODE`` is overwritten from the command
-    line long after import, so a module constant computed from it is a constant
-    computed from the default.
+    Controller selection changes actions, not the physical handoff or the
+    insertion phase's configured Cartesian resolution.
     """
 
     source = DRIVER.read_text(encoding="utf-8")
     assert "GUARDED_RECEIVER" not in source
-    assert "self.module_leg_pos[0, ids] = staging if LEG_ZERO_AT_POLICY_RESET else crossed" in source
-    assert 'LEG_ZERO_AT_POLICY_RESET = os.environ.get("LEG_ZERO_AT_POLICY_RESET", "0") == "1"' in source
-    body = source.split("def _guarded_receiver(")[1].split("def _apply_scales(")[0]
-    assert 'self.insert_controller == "guarded"' in body
-    assert 'MATING_MODE == "compliant"' in body
+    assert "self.module_leg_pos[0, ids] = crossed" in source
+    assert "self.module_leg_rot[0, ids] = square_rot" in source
+    assert "handoff_alignment" not in source
+
+
+def test_report_labels_the_controller_that_receives_the_handoff() -> None:
+    source = DRIVER.read_text(encoding="utf-8")
+    report = source.split('"insert_handoff_contract": (')[1].split('"transit_planner": (')[0]
+    assert 'if args.insert_controller == "guarded"' in report
+    assert 'if args.latch_on_release and args.mating_mode == "compliant"' not in report
+
+
+def test_rigid_transit_uses_the_gentle_grip_after_the_form_lock_engages() -> None:
+    source = DRIVER.read_text(encoding="utf-8")
+    body = source.split("if self.rigid_transit and bool(transiting.any()):")[1].split(
+        "elif bool(transiting.any()):"
+    )[0]
+    assert "latched_transit = transiting & grapple_latched(task)" in body
+    assert "self.gripper.retain_latch[latched_transit] = True" in body
+    assert body.index("retain_latch[latched_transit]") < body.index("_step_rigid_transit(")
+
+
+def test_guarded_insertion_keeps_gentle_retention_on_the_compliant_load_path() -> None:
+    source = DRIVER.read_text(encoding="utf-8")
+    transition = source.split("if self.rigid_transit and bool(transiting.any()):")[1].split(
+        "elif bool(transiting.any()):"
+    )[0]
+    guarded = source.split("def _step_guarded_insert(")[1].split("def _front_overhang_x(")[0]
+    assert "self.gripper.retain_latch[arrived] = True" in transition
+    assert "self.gripper.retain_latch[inserting] = True" in guarded
+    assert "self.gripper.retain_latch[inserting] = False" not in guarded

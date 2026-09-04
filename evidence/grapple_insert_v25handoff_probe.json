@@ -1,0 +1,400 @@
+{
+  "schema_version": 1,
+  "title": "Rack-mouth-only insertion training intervention",
+  "evidence_type": "simulation_only_insertion_distribution_intervention",
+  "generated_utc": "2026-08-28T04:55:36.672673+00:00",
+  "intervention": {
+    "parent_checkpoint_sha256": "47AA9EFB60F7794BE5CDD1EBD0AD5EC0E94CE00345BCF975D83AE9418D9A1B9F",
+    "candidate_checkpoint_sha256": "C3333F7419D93C82964CDDEFBB9E28303C522242ADB9E9F0849B85B7BCBA0B1D",
+    "epochs_resumed": 400,
+    "changed_variable": "reset station fixed at rack mouth (station 0)",
+    "unchanged": [
+      "geometry",
+      "observations",
+      "actions",
+      "rewards",
+      "success criteria",
+      "phase budget",
+      "fixed-to-compliant load path"
+    ]
+  },
+  "identical_state_comparison": {
+    "seed": 1070,
+    "initial_state_sha256": "3f399f9d658e390fed9a7b34e879df4eb2e6d7938f3d9147628d7b67831c2645",
+    "load_path": {
+      "source": "ZeroGBladeGrapplePinInsertTwoSlotEnvCfg",
+      "joint_mode": "fixed",
+      "engage_after_steps": 5,
+      "soften_on_engage": true,
+      "require_armed": false,
+      "rated_force_n": 20000.0,
+      "rated_torque_nm": 1000.0,
+      "mating_force_cap_n": 1000.0,
+      "mating_torque_cap_nm": 40.0,
+      "mating_translation_stiffness_n_per_m": 40000.0,
+      "mating_rotation_stiffness_nm_per_rad": 20000.0,
+      "mating_translation_limit_m": 0.025,
+      "mating_rotation_limit_deg": 8.0,
+      "scene_replication": false,
+      "clone_in_fabric": false
+    },
+    "arms": {
+      "v24": {
+        "source_revision": {
+          "available": true,
+          "commit": "daa53d6daae9abbab805cbdf68f834b4f8635f7b",
+          "branch": "paper/serviceability-qualification",
+          "dirty": false,
+          "tracked_changes": [],
+          "error": null
+        },
+        "seed": 1070,
+        "checkpoint_sha256": "47AA9EFB60F7794BE5CDD1EBD0AD5EC0E94CE00345BCF975D83AE9418D9A1B9F",
+        "initial_state_sha256": "3f399f9d658e390fed9a7b34e879df4eb2e6d7938f3d9147628d7b67831c2645",
+        "load_path": {
+          "source": "ZeroGBladeGrapplePinInsertTwoSlotEnvCfg",
+          "joint_mode": "fixed",
+          "engage_after_steps": 5,
+          "soften_on_engage": true,
+          "require_armed": false,
+          "rated_force_n": 20000.0,
+          "rated_torque_nm": 1000.0,
+          "mating_force_cap_n": 1000.0,
+          "mating_torque_cap_nm": 40.0,
+          "mating_translation_stiffness_n_per_m": 40000.0,
+          "mating_rotation_stiffness_nm_per_rad": 20000.0,
+          "mating_translation_limit_m": 0.025,
+          "mating_rotation_limit_deg": 8.0,
+          "scene_replication": false,
+          "clone_in_fabric": false
+        },
+        "episodes": 64,
+        "successes": 0,
+        "success_rate": 0.0,
+        "terminal_metrics": {
+          "axial_error_m": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 0.247153,
+            "p50": 0.247604,
+            "p95": 0.260705,
+            "max": 0.262061,
+            "min": 0.228878
+          },
+          "lateral_error_m": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 0.010639,
+            "p50": 0.010562,
+            "p95": 0.012178,
+            "max": 0.012223,
+            "min": 0.00861
+          },
+          "orientation_error_rad": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 0.111815,
+            "p50": 0.110805,
+            "p95": 0.12126,
+            "max": 0.125322,
+            "min": 0.100517
+          },
+          "blade_linear_velocity_mps": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 0.00032,
+            "p50": 0.000295,
+            "p95": 0.000591,
+            "max": 0.000681,
+            "min": 0.00011
+          },
+          "blade_angular_velocity_radps": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 0.005737,
+            "p50": 0.005786,
+            "p95": 0.008676,
+            "max": 0.010078,
+            "min": 0.001552
+          },
+          "tool_to_handle_error_m": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 0.012073,
+            "p50": 0.012083,
+            "p95": 0.012114,
+            "max": 0.01214,
+            "min": 0.011968
+          },
+          "tool_to_handle_orientation_rad": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 0.020928,
+            "p50": 0.020945,
+            "p95": 0.021617,
+            "max": 0.021754,
+            "min": 0.020047
+          },
+          "control_steps": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 901.0,
+            "p50": 901.0,
+            "p95": 901.0,
+            "max": 901.0,
+            "min": 901.0
+          },
+          "cycle_time_s": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 30.033333,
+            "p50": 30.033333,
+            "p95": 30.033333,
+            "max": 30.033333,
+            "min": 30.033333
+          }
+        }
+      },
+      "v25_handoff_only": {
+        "source_revision": {
+          "available": true,
+          "commit": "4f1489f35a0ffc8afad0cfc0b7241e0f750feb69",
+          "branch": "paper/serviceability-qualification",
+          "dirty": false,
+          "tracked_changes": [],
+          "error": null
+        },
+        "seed": 1070,
+        "checkpoint_sha256": "C3333F7419D93C82964CDDEFBB9E28303C522242ADB9E9F0849B85B7BCBA0B1D",
+        "initial_state_sha256": "3f399f9d658e390fed9a7b34e879df4eb2e6d7938f3d9147628d7b67831c2645",
+        "load_path": {
+          "source": "ZeroGBladeGrapplePinInsertTwoSlotEnvCfg",
+          "joint_mode": "fixed",
+          "engage_after_steps": 5,
+          "soften_on_engage": true,
+          "require_armed": false,
+          "rated_force_n": 20000.0,
+          "rated_torque_nm": 1000.0,
+          "mating_force_cap_n": 1000.0,
+          "mating_torque_cap_nm": 40.0,
+          "mating_translation_stiffness_n_per_m": 40000.0,
+          "mating_rotation_stiffness_nm_per_rad": 20000.0,
+          "mating_translation_limit_m": 0.025,
+          "mating_rotation_limit_deg": 8.0,
+          "scene_replication": false,
+          "clone_in_fabric": false
+        },
+        "episodes": 64,
+        "successes": 0,
+        "success_rate": 0.0,
+        "terminal_metrics": {
+          "axial_error_m": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 0.228653,
+            "p50": 0.23048,
+            "p95": 0.244266,
+            "max": 0.24939,
+            "min": 0.18863
+          },
+          "lateral_error_m": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 0.008774,
+            "p50": 0.008912,
+            "p95": 0.010093,
+            "max": 0.010854,
+            "min": 0.006052
+          },
+          "orientation_error_rad": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 0.105288,
+            "p50": 0.10397,
+            "p95": 0.114709,
+            "max": 0.117034,
+            "min": 0.092392
+          },
+          "blade_linear_velocity_mps": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 0.000354,
+            "p50": 0.000306,
+            "p95": 0.000766,
+            "max": 0.000803,
+            "min": 9.9e-05
+          },
+          "blade_angular_velocity_radps": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 0.008146,
+            "p50": 0.007331,
+            "p95": 0.014798,
+            "max": 0.015366,
+            "min": 0.002452
+          },
+          "tool_to_handle_error_m": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 0.012071,
+            "p50": 0.012079,
+            "p95": 0.012113,
+            "max": 0.012135,
+            "min": 0.011966
+          },
+          "tool_to_handle_orientation_rad": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 0.020922,
+            "p50": 0.020944,
+            "p95": 0.021618,
+            "max": 0.021751,
+            "min": 0.020052
+          },
+          "control_steps": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 901.0,
+            "p50": 901.0,
+            "p95": 901.0,
+            "max": 901.0,
+            "min": 901.0
+          },
+          "cycle_time_s": {
+            "count": 64,
+            "non_finite": 0,
+            "mean": 30.033333,
+            "p50": 30.033333,
+            "p95": 30.033333,
+            "max": 30.033333,
+            "min": 30.033333
+          }
+        }
+      }
+    },
+    "median_change": {
+      "axial_error_m": -0.017124,
+      "lateral_error_m": -0.0016500000000000004,
+      "orientation_error_rad": -0.006834999999999994
+    }
+  },
+  "candidate_on_its_training_task": {
+    "source_revision": {
+      "available": true,
+      "commit": "4f1489f35a0ffc8afad0cfc0b7241e0f750feb69",
+      "branch": "paper/serviceability-qualification",
+      "dirty": false,
+      "tracked_changes": [],
+      "error": null
+    },
+    "seed": null,
+    "seed_reported_in_json": false,
+    "checkpoint_sha256": "C3333F7419D93C82964CDDEFBB9E28303C522242ADB9E9F0849B85B7BCBA0B1D",
+    "task": "Isaac-ZeroG-Blade-GrapplePin-InsertHandoff-v0",
+    "episodes": 64,
+    "successes": 0,
+    "success_rate": 0.0,
+    "terminal_metrics": {
+      "axial_error_m": {
+        "count": 64,
+        "non_finite": 0,
+        "mean": 0.201916,
+        "p50": 0.201528,
+        "p95": 0.239068,
+        "max": 0.246662,
+        "min": 0.153362
+      },
+      "lateral_error_m": {
+        "count": 64,
+        "non_finite": 0,
+        "mean": 0.006975,
+        "p50": 0.006841,
+        "p95": 0.009564,
+        "max": 0.010363,
+        "min": 0.004701
+      },
+      "orientation_error_rad": {
+        "count": 64,
+        "non_finite": 0,
+        "mean": 0.097605,
+        "p50": 0.097481,
+        "p95": 0.107213,
+        "max": 0.1216,
+        "min": 0.081733
+      },
+      "blade_linear_velocity_mps": {
+        "count": 64,
+        "non_finite": 0,
+        "mean": 0.005748,
+        "p50": 0.005135,
+        "p95": 0.008855,
+        "max": 0.009731,
+        "min": 0.000817
+      },
+      "blade_angular_velocity_radps": {
+        "count": 64,
+        "non_finite": 0,
+        "mean": 0.029121,
+        "p50": 0.029782,
+        "p95": 0.040273,
+        "max": 0.052218,
+        "min": 0.004861
+      },
+      "tool_to_handle_error_m": {
+        "count": 64,
+        "non_finite": 0,
+        "mean": 0.011778,
+        "p50": 0.0118,
+        "p95": 0.011929,
+        "max": 0.011992,
+        "min": 0.011345
+      },
+      "tool_to_handle_orientation_rad": {
+        "count": 64,
+        "non_finite": 0,
+        "mean": 0.022934,
+        "p50": 0.022197,
+        "p95": 0.032051,
+        "max": 0.035262,
+        "min": 0.01346
+      },
+      "control_steps": {
+        "count": 64,
+        "non_finite": 0,
+        "mean": 900.0,
+        "p50": 900.0,
+        "p95": 900.0,
+        "max": 900.0,
+        "min": 900.0
+      },
+      "cycle_time_s": {
+        "count": 64,
+        "non_finite": 0,
+        "mean": 30.000002,
+        "p50": 30.000002,
+        "p95": 30.000002,
+        "max": 30.000002,
+        "min": 30.000002
+      }
+    }
+  },
+  "decision": {
+    "promoted": false,
+    "reason": "candidate produced no successful episode on the identical handoff or its own training task",
+    "next": "retain this losing arm; expand from v24's successful late stations with a success-gated reverse curriculum"
+  },
+  "raw_reports": {
+    "baseline": {
+      "path": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v2\\station_00_seed1070_policy_report.json",
+      "sha256": "50C1A3515995DB8E0A5769F0D691049F5F9E905E1C92E3BB60DF3F337299477D"
+    },
+    "candidate": {
+      "path": "D:\\6axis-space-robotics\\artifacts\\insert_v25handoff\\eval_station0_seed1070\\report.json",
+      "sha256": "36760535B0F4485094E59FF62492962012D39B709D5C0127E26C623A52BA19E0"
+    },
+    "training_task": {
+      "path": "D:\\6axis-space-robotics\\artifacts\\insert_v25handoff\\eval_training_task_seed1070\\report.json",
+      "sha256": "09CF5E735DB4F7C7C291870B7B394F04333A7ED81D4B069EE9CBDEED5820F0A5"
+    }
+  }
+}

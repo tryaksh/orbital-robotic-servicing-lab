@@ -51,4 +51,5 @@ echo "[$(date +%H:%M:%S)] LATERAL PROFILE of the attitude wall"
     --alt_start_joint_pos 0 -1.5708 0 -1.5708 0 0 \
     --report evidence/attitude_wall_lateral_profile.json \
     > "$OUT/attitude_wall_lateral.log" 2>&1
-echo "[$(date +%H:%M:%S)] exit=$? -> evidence/attitude_wall_lateral_profile.json"
+rc=$?
+echo "[$(date +%H:%M:%S)] exit=$rc -> evidence/attitude_wall_lateral_profile.json"

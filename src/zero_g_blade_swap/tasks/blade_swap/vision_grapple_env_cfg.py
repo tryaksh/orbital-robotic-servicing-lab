@@ -23,7 +23,7 @@ from isaaclab.utils import configclass
 
 from . import mdp
 from .grapple_pin_env_cfg import GrappleSkillObsCfg
-from .scene_cfg import ZeroGGrapplePinSceneCfg, make_tiled_camera_cfg
+from .scene_cfg import ZeroGGrapplePinSceneCfg, make_insert_tiled_camera_cfg, make_tiled_camera_cfg
 from .vision_insertion_env_cfg import VisualRandomizationCfg
 from .workflow_demo_env_cfg import (
     WorkflowCurriculumCfg,
@@ -41,6 +41,7 @@ class VisionGrappleSceneCfg(ZeroGGrapplePinSceneCfg):
     """The head-on capture scene with a servicing camera watching the interface."""
 
     camera: TiledCameraCfg = make_tiled_camera_cfg()
+    camera_insert: TiledCameraCfg = make_insert_tiled_camera_cfg()
 
 
 @configclass
@@ -120,7 +121,12 @@ class ZeroGBladeGrappleVisionCollectEnvCfg(ZeroGBladeGrapplePinWorkflowEnvCfg):
         super().__post_init__()
         # Eight physics steps per render exactly matches the 15 Hz camera.
         self.sim.render_interval = 8
-        self.num_rerenders_on_reset = 1
+        # The 640 px tiled RGB-D render product has two queued buffers behind
+        # the reset render.  With one rerender, some clean process starts expose
+        # the annotator's zero-filled allocation for the whole first episode.
+        # Drain those buffers while the workcell is still at reset; this changes
+        # neither physics nor the 15 Hz measurement cadence.
+        self.num_rerenders_on_reset = 3
 
     def configure_robustness(self, level: int) -> None:
         super().configure_robustness(level)

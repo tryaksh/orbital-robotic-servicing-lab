@@ -179,6 +179,23 @@ def build_report(runs: list[dict[str, Any]], title: str, minimum_stage_success_r
     checkpoints = {run["metadata"].get("checkpoint_sha256") for run in runs}
     if len(checkpoints) != 1:
         raise ValueError(f"runs came from different checkpoints: {sorted(map(str, checkpoints))}")
+    source_revisions = [run["metadata"].get("source_revision") for run in runs]
+    sources_present = [source for source in source_revisions if isinstance(source, dict)]
+    if sources_present and len(sources_present) != len(runs):
+        raise ValueError("runs mix recorded and missing source revisions")
+    source_revision = None
+    if sources_present:
+        unusable = [
+            source
+            for source in sources_present
+            if not source.get("available") or not source.get("commit") or source.get("dirty") is not False
+        ]
+        if unusable:
+            raise ValueError("runs must come from available, clean source revisions")
+        source_commits = {str(source["commit"]) for source in sources_present}
+        if len(source_commits) != 1:
+            raise ValueError(f"runs came from different source commits: {sorted(source_commits)}")
+        source_revision = dict(sources_present[0])
     tasks = sorted({str(run["metadata"].get("task")) for run in runs})
     seeds = sorted({int(run["metadata"]["seed"]) for run in runs})
     levels = sorted({run["metadata"].get("robustness_level") for run in runs})
@@ -274,7 +291,7 @@ def build_report(runs: list[dict[str, Any]], title: str, minimum_stage_success_r
         gate["applies"] = False
         gate["note"] = "capability envelope sweep; the gate certifies in-distribution runs only"
 
-    return {
+    report = {
         "title": title,
         "generated_utc": datetime.now(UTC).replace(microsecond=0).isoformat(),
         "evidence_type": "simulation_capability_envelope" if out_of_distribution else "simulation_only",
@@ -337,6 +354,9 @@ def build_report(runs: list[dict[str, Any]], title: str, minimum_stage_success_r
         "by_stage_and_seed": sorted(by_stage_and_seed, key=lambda entry: (entry["stage"], entry["seed"])),
         "gate": gate,
     }
+    if source_revision is not None:
+        report["source_revision"] = source_revision
+    return report
 
 
 def main() -> int:

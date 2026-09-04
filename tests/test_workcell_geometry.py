@@ -37,6 +37,7 @@ from check_workcell_geometry import (  # noqa: E402
     explain_seating_sweep,
     handoff_attitude_requirement,
     lateral_clearance_window,
+    parked_base_offset_profile,
     rail_constraint,
     rail_constraint_change,
     realised_authority,
@@ -246,6 +247,21 @@ def test_a_base_opposite_the_bay_makes_that_bay_identical_to_the_first():
         assert bay_two[name]["jacobian_min_singular_value"] == pytest.approx(
             reference["jacobian_min_singular_value"], abs=1.0e-4
         )
+
+
+def test_a_ten_millimetre_rail_stop_error_is_still_kinematically_feasible():
+    shipped = tuple(float(value) for value in _literal("GRAPPLE_ROBOT_ROOT_POS"))
+    profile = parked_base_offset_profile(
+        base_x_m=shipped[0], stop_error_y_m=0.010, tool_z_m=TOOL_Z, base_z_m=shipped[2]
+    )
+    assert profile["required_poses"] == 8
+    assert profile["maximum_position_residual_m"] < 1.0e-4
+    assert profile["maximum_attitude_residual_rad"] < 1.0e-4
+    assert profile["minimum_worst_axis_authority"] > 0.9
+    assert all(
+        pose["base_y_m"] == pytest.approx(pose["bay_y_m"] + 0.010, abs=1.0e-6)
+        for pose in profile["poses"]
+    )
 
 
 def test_the_jacobian_matches_a_finite_difference_of_the_forward_kinematics():

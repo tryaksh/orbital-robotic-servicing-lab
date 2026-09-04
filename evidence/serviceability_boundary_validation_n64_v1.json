@@ -1,0 +1,792 @@
+{
+  "schema_version": 2,
+  "title": "Serviceability boundary validation against simulation",
+  "evidence_type": "analytical_boundary_against_simulation",
+  "generated_utc": "2026-09-03T15:47:23.400981+00:00",
+  "source_revision": {
+    "available": true,
+    "commit": "0436ae560bbbc2a949b91ead4f2259adbd14ea28",
+    "branch": "paper/serviceability-qualification",
+    "dirty": false,
+    "tracked_changes": [],
+    "error": null
+  },
+  "protocol": {
+    "name": "serviceability_boundary_validation_v2",
+    "simulation_loss_rule": "point Wilson-95 upper bound is below nominal Wilson-95 lower bound",
+    "analytical_law_ratio_gate": {
+      "low": 0.85,
+      "high": 1.15
+    },
+    "parked_base_kinematic_gate": {
+      "maximum_position_residual_m": 0.0001,
+      "maximum_attitude_residual_rad": 0.0001,
+      "minimum_worst_axis_authority": 0.9
+    },
+    "decision_rule": "a feasible point supports the boundary only without a separated loss; an infeasible point supports it only with a separated loss",
+    "qualification_rule": "every named dimension must have supporting analytical and simulation evidence; a mismatch, missing arm, or idealized-only arm fails qualification",
+    "tolerances_changed_for_this_report": false
+  },
+  "input_bindings": [
+    {
+      "file": "chain_robustness_sweep.json",
+      "sha256": "2FC3AB571C9D95A4EBAF5F6E0ABA8A336810F1C8244F1A167C47C14E34059E5B",
+      "manifest_status": "canonical"
+    },
+    {
+      "file": "workcell_geometry_check.json",
+      "sha256": "EB41D8B8B33720E508532AE7D6D67D8BCF63279CBDCF6A67BCC882B56BDE18FF",
+      "manifest_status": "canonical"
+    },
+    {
+      "file": "insert_attitude_wall_moved.json",
+      "sha256": "3D9DA70A8F721C70AC45C89F8F44A765D55DD98D9A8E505BBB4A859EAC43C89D",
+      "manifest_status": "canonical"
+    },
+    {
+      "file": "service_latch_clearance.json",
+      "sha256": "D0985825A2AAB912223408F5ECDAA289A0CF049C72BC08774D1641AA21D391FA",
+      "manifest_status": "canonical"
+    },
+    {
+      "file": "robot_carried_rigid_mating_refuted.json",
+      "sha256": "3251CC239A1D628822440608B1F7861916CBED7F918715D9445002DEA24B69FA",
+      "manifest_status": "canonical"
+    },
+    {
+      "file": "workflow_robot_carried_m130pin_guarded_c11065_certification.json",
+      "sha256": "5AD8E292B63ADA15892695DCCDBB650D70E97E61A8E29E87EC605A5E366DC193",
+      "manifest_status": "canonical"
+    },
+    {
+      "file": "chain_robustness_sweep_n64.json",
+      "sha256": "74D32E8166F9F860A41CE478FE7913E3AAE37D38970AB0EA1E48166CA3CB4D16",
+      "manifest_status": "canonical",
+      "substituted_for": "chain_robustness_sweep.json"
+    }
+  ],
+  "analytical_model_check": {
+    "recomputed_from_current_source": true,
+    "matches_preserved_geometry_report": true,
+    "simulator_configurations_checked": 8,
+    "simulator_configuration_check_passed": true
+  },
+  "dimensions": {
+    "rack_clearance": {
+      "status": "mismatch",
+      "analytical_window_m_per_side": {
+        "low": 0.01035,
+        "high": 0.011781
+      },
+      "points": [
+        {
+          "label": "6 mm per side",
+          "analytically_feasible": false,
+          "simulation": {
+            "episodes": 64,
+            "success_rate": 0.0,
+            "wilson_95": {
+              "low": 0.0,
+              "high": 0.056624
+            },
+            "nominal_success_rate": 0.546875,
+            "nominal_wilson_95": {
+              "low": 0.425736,
+              "high": 0.662706
+            },
+            "statistically_separated_loss": true
+          },
+          "comparison": "supports_boundary",
+          "clearance_per_side_m": 0.006
+        },
+        {
+          "label": "as built",
+          "analytically_feasible": true,
+          "simulation": {
+            "episodes": 64,
+            "success_rate": 0.546875,
+            "wilson_95": {
+              "low": 0.425736,
+              "high": 0.662706
+            },
+            "nominal_success_rate": 0.546875,
+            "nominal_wilson_95": {
+              "low": 0.425736,
+              "high": 0.662706
+            },
+            "statistically_separated_loss": false
+          },
+          "comparison": "supports_boundary",
+          "clearance_per_side_m": 0.011065
+        },
+        {
+          "label": "16 mm per side",
+          "analytically_feasible": false,
+          "simulation": {
+            "episodes": 64,
+            "success_rate": 0.40625,
+            "wilson_95": {
+              "low": 0.294569,
+              "high": 0.528548
+            },
+            "nominal_success_rate": 0.546875,
+            "nominal_wilson_95": {
+              "low": 0.425736,
+              "high": 0.662706
+            },
+            "statistically_separated_loss": false
+          },
+          "comparison": "does_not_support_boundary",
+          "clearance_per_side_m": 0.016
+        }
+      ],
+      "reason": "Both analytically excluded clearance arms overlap nominal simulation performance."
+    },
+    "module_section": {
+      "status": "mismatch",
+      "points": [
+        {
+          "label": "120 x 16 mm",
+          "analytically_feasible": false,
+          "simulation": {
+            "episodes": 64,
+            "success_rate": 0.5,
+            "wilson_95": {
+              "low": 0.381021,
+              "high": 0.618979
+            },
+            "nominal_success_rate": 0.546875,
+            "nominal_wilson_95": {
+              "low": 0.425736,
+              "high": 0.662706
+            },
+            "statistically_separated_loss": false
+          },
+          "comparison": "does_not_support_boundary",
+          "analytical": {
+            "width_m": 0.12,
+            "height_m": 0.016,
+            "lateral_half_gap_m": 0.016065,
+            "vertical_half_gap_m": 0.01,
+            "channel_corner_m": 0.018923,
+            "lead_ins_admit_the_delivered_attitude": true,
+            "pads_can_follow_the_corner": false,
+            "accepted": false
+          }
+        },
+        {
+          "label": "130 x 20 mm",
+          "analytically_feasible": true,
+          "simulation": {
+            "episodes": 64,
+            "success_rate": 0.546875,
+            "wilson_95": {
+              "low": 0.425736,
+              "high": 0.662706
+            },
+            "nominal_success_rate": 0.546875,
+            "nominal_wilson_95": {
+              "low": 0.425736,
+              "high": 0.662706
+            },
+            "statistically_separated_loss": false
+          },
+          "comparison": "supports_boundary",
+          "analytical": {
+            "width_m": 0.13,
+            "height_m": 0.02,
+            "lateral_half_gap_m": 0.011065,
+            "vertical_half_gap_m": 0.008,
+            "channel_corner_m": 0.013654,
+            "lead_ins_admit_the_delivered_attitude": true,
+            "pads_can_follow_the_corner": true,
+            "accepted": true
+          }
+        },
+        {
+          "label": "140 x 26 mm",
+          "analytically_feasible": false,
+          "simulation": {
+            "episodes": 64,
+            "success_rate": 0.359375,
+            "wilson_95": {
+              "low": 0.252884,
+              "high": 0.481791
+            },
+            "nominal_success_rate": 0.546875,
+            "nominal_wilson_95": {
+              "low": 0.425736,
+              "high": 0.662706
+            },
+            "statistically_separated_loss": false
+          },
+          "comparison": "does_not_support_boundary",
+          "analytical": {
+            "width_m": 0.14,
+            "height_m": 0.026,
+            "lateral_half_gap_m": 0.006065,
+            "vertical_half_gap_m": 0.005,
+            "channel_corner_m": 0.00786,
+            "lead_ins_admit_the_delivered_attitude": false,
+            "pads_can_follow_the_corner": true,
+            "accepted": false
+          }
+        }
+      ],
+      "reason": "The 120 x 16 mm loss supports the boundary; the 140 x 26 mm arm does not."
+    },
+    "base_offset": {
+      "status": "mismatch",
+      "kinematic_gate": {
+        "maximum_position_residual_m": 0.0001,
+        "maximum_attitude_residual_rad": 0.0001,
+        "minimum_worst_axis_authority": 0.9
+      },
+      "points": [
+        {
+          "label": "nominal parked base",
+          "analytically_feasible": true,
+          "simulation": {
+            "episodes": 64,
+            "success_rate": 0.546875,
+            "wilson_95": {
+              "low": 0.425736,
+              "high": 0.662706
+            },
+            "nominal_success_rate": 0.546875,
+            "nominal_wilson_95": {
+              "low": 0.425736,
+              "high": 0.662706
+            },
+            "statistically_separated_loss": false
+          },
+          "comparison": "supports_boundary",
+          "analytical": {
+            "model": "rail parks at each bay centre plus a shared lateral stop error",
+            "base_x_m": -0.65,
+            "base_z_m": 0.15,
+            "rail_stop_error_y_m": 0.0,
+            "required_poses": 8,
+            "maximum_position_residual_m": 6.7e-08,
+            "maximum_attitude_residual_rad": 0.0,
+            "minimum_worst_axis_authority": 0.982039,
+            "minimum_rotational_authority": 0.999377,
+            "minimum_jacobian_singular_value": 0.073944,
+            "poses": [
+              {
+                "pose": "installed",
+                "bay_y_m": 0.0,
+                "base_y_m": 0.0,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 5.6e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999786,
+                "authority_yaw": 0.999815,
+                "authority_worst_rotation_axis": 0.999782,
+                "authority_worst_any_axis": 0.999077,
+                "jacobian_min_singular_value": 0.328923,
+                "joint_travel_used_fraction": 0.309026
+              },
+              {
+                "pose": "staging",
+                "bay_y_m": 0.0,
+                "base_y_m": 0.0,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 6.5e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999761,
+                "authority_yaw": 0.999792,
+                "authority_worst_rotation_axis": 0.999755,
+                "authority_worst_any_axis": 0.999094,
+                "jacobian_min_singular_value": 0.332087,
+                "joint_travel_used_fraction": 0.307094
+              },
+              {
+                "pose": "extracted",
+                "bay_y_m": 0.0,
+                "base_y_m": 0.0,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 6e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.99983,
+                "authority_yaw": 0.999573,
+                "authority_worst_rotation_axis": 0.999573,
+                "authority_worst_any_axis": 0.9953,
+                "jacobian_min_singular_value": 0.145524,
+                "joint_travel_used_fraction": 0.63393
+              },
+              {
+                "pose": "retreated",
+                "bay_y_m": 0.0,
+                "base_y_m": 0.0,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 6.7e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999582,
+                "authority_yaw": 0.999377,
+                "authority_worst_rotation_axis": 0.999377,
+                "authority_worst_any_axis": 0.982039,
+                "jacobian_min_singular_value": 0.073944,
+                "joint_travel_used_fraction": 0.595609
+              },
+              {
+                "pose": "installed",
+                "bay_y_m": -0.22,
+                "base_y_m": -0.22,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 5.6e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999786,
+                "authority_yaw": 0.999815,
+                "authority_worst_rotation_axis": 0.999782,
+                "authority_worst_any_axis": 0.999077,
+                "jacobian_min_singular_value": 0.328923,
+                "joint_travel_used_fraction": 0.309026
+              },
+              {
+                "pose": "staging",
+                "bay_y_m": -0.22,
+                "base_y_m": -0.22,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 6.5e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999761,
+                "authority_yaw": 0.999792,
+                "authority_worst_rotation_axis": 0.999755,
+                "authority_worst_any_axis": 0.999094,
+                "jacobian_min_singular_value": 0.332087,
+                "joint_travel_used_fraction": 0.307094
+              },
+              {
+                "pose": "extracted",
+                "bay_y_m": -0.22,
+                "base_y_m": -0.22,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 6e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.99983,
+                "authority_yaw": 0.999573,
+                "authority_worst_rotation_axis": 0.999573,
+                "authority_worst_any_axis": 0.9953,
+                "jacobian_min_singular_value": 0.145524,
+                "joint_travel_used_fraction": 0.63393
+              },
+              {
+                "pose": "retreated",
+                "bay_y_m": -0.22,
+                "base_y_m": -0.22,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 6.7e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999582,
+                "authority_yaw": 0.999377,
+                "authority_worst_rotation_axis": 0.999377,
+                "authority_worst_any_axis": 0.982039,
+                "jacobian_min_singular_value": 0.073944,
+                "joint_travel_used_fraction": 0.595609
+              }
+            ]
+          }
+        },
+        {
+          "label": "base x = -0.70 m",
+          "analytically_feasible": true,
+          "simulation": {
+            "episodes": 64,
+            "success_rate": 0.328125,
+            "wilson_95": {
+              "low": 0.225706,
+              "high": 0.450009
+            },
+            "nominal_success_rate": 0.546875,
+            "nominal_wilson_95": {
+              "low": 0.425736,
+              "high": 0.662706
+            },
+            "statistically_separated_loss": false
+          },
+          "comparison": "supports_boundary",
+          "analytical": {
+            "model": "rail parks at each bay centre plus a shared lateral stop error",
+            "base_x_m": -0.7,
+            "base_z_m": 0.15,
+            "rail_stop_error_y_m": 0.0,
+            "required_poses": 8,
+            "maximum_position_residual_m": 6.2e-08,
+            "maximum_attitude_residual_rad": 0.0,
+            "minimum_worst_axis_authority": 0.993401,
+            "minimum_rotational_authority": 0.999519,
+            "minimum_jacobian_singular_value": 0.122693,
+            "poses": [
+              {
+                "pose": "installed",
+                "bay_y_m": 0.0,
+                "base_y_m": 0.0,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 5.6e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999792,
+                "authority_yaw": 0.999822,
+                "authority_worst_rotation_axis": 0.999788,
+                "authority_worst_any_axis": 0.998997,
+                "jacobian_min_singular_value": 0.315603,
+                "joint_travel_used_fraction": 0.322007
+              },
+              {
+                "pose": "staging",
+                "bay_y_m": 0.0,
+                "base_y_m": 0.0,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 6e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999783,
+                "authority_yaw": 0.999802,
+                "authority_worst_rotation_axis": 0.999777,
+                "authority_worst_any_axis": 0.999172,
+                "jacobian_min_singular_value": 0.347484,
+                "joint_travel_used_fraction": 0.407978
+              },
+              {
+                "pose": "extracted",
+                "bay_y_m": 0.0,
+                "base_y_m": 0.0,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 5.8e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999535,
+                "authority_yaw": 0.999641,
+                "authority_worst_rotation_axis": 0.999525,
+                "authority_worst_any_axis": 0.996862,
+                "jacobian_min_singular_value": 0.17824,
+                "joint_travel_used_fraction": 0.407901
+              },
+              {
+                "pose": "retreated",
+                "bay_y_m": 0.0,
+                "base_y_m": 0.0,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 6.2e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.9998,
+                "authority_yaw": 0.999519,
+                "authority_worst_rotation_axis": 0.999519,
+                "authority_worst_any_axis": 0.993401,
+                "jacobian_min_singular_value": 0.122693,
+                "joint_travel_used_fraction": 0.621572
+              },
+              {
+                "pose": "installed",
+                "bay_y_m": -0.22,
+                "base_y_m": -0.22,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 5.6e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999792,
+                "authority_yaw": 0.999822,
+                "authority_worst_rotation_axis": 0.999788,
+                "authority_worst_any_axis": 0.998997,
+                "jacobian_min_singular_value": 0.315603,
+                "joint_travel_used_fraction": 0.322007
+              },
+              {
+                "pose": "staging",
+                "bay_y_m": -0.22,
+                "base_y_m": -0.22,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 6e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999783,
+                "authority_yaw": 0.999802,
+                "authority_worst_rotation_axis": 0.999777,
+                "authority_worst_any_axis": 0.999172,
+                "jacobian_min_singular_value": 0.347484,
+                "joint_travel_used_fraction": 0.407978
+              },
+              {
+                "pose": "extracted",
+                "bay_y_m": -0.22,
+                "base_y_m": -0.22,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 5.8e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999535,
+                "authority_yaw": 0.999641,
+                "authority_worst_rotation_axis": 0.999525,
+                "authority_worst_any_axis": 0.996862,
+                "jacobian_min_singular_value": 0.17824,
+                "joint_travel_used_fraction": 0.407901
+              },
+              {
+                "pose": "retreated",
+                "bay_y_m": -0.22,
+                "base_y_m": -0.22,
+                "rail_stop_error_y_m": 0.0,
+                "position_residual_m": 6.2e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.9998,
+                "authority_yaw": 0.999519,
+                "authority_worst_rotation_axis": 0.999519,
+                "authority_worst_any_axis": 0.993401,
+                "jacobian_min_singular_value": 0.122693,
+                "joint_travel_used_fraction": 0.621572
+              }
+            ]
+          }
+        },
+        {
+          "label": "base y stop error = +10 mm",
+          "analytically_feasible": true,
+          "simulation": {
+            "episodes": 64,
+            "success_rate": 0.015625,
+            "wilson_95": {
+              "low": 0.002764,
+              "high": 0.083341
+            },
+            "nominal_success_rate": 0.546875,
+            "nominal_wilson_95": {
+              "low": 0.425736,
+              "high": 0.662706
+            },
+            "statistically_separated_loss": true
+          },
+          "comparison": "does_not_support_boundary",
+          "analytical": {
+            "model": "rail parks at each bay centre plus a shared lateral stop error",
+            "base_x_m": -0.65,
+            "base_z_m": 0.15,
+            "rail_stop_error_y_m": 0.01,
+            "required_poses": 8,
+            "maximum_position_residual_m": 6.3e-08,
+            "maximum_attitude_residual_rad": 0.0,
+            "minimum_worst_axis_authority": 0.982235,
+            "minimum_rotational_authority": 0.999429,
+            "minimum_jacobian_singular_value": 0.074357,
+            "poses": [
+              {
+                "pose": "installed",
+                "bay_y_m": 0.0,
+                "base_y_m": 0.01,
+                "rail_stop_error_y_m": 0.01,
+                "position_residual_m": 5.3e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999785,
+                "authority_yaw": 0.999816,
+                "authority_worst_rotation_axis": 0.99978,
+                "authority_worst_any_axis": 0.999077,
+                "jacobian_min_singular_value": 0.328921,
+                "joint_travel_used_fraction": 0.309043
+              },
+              {
+                "pose": "staging",
+                "bay_y_m": 0.0,
+                "base_y_m": 0.01,
+                "rail_stop_error_y_m": 0.01,
+                "position_residual_m": 6.2e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999758,
+                "authority_yaw": 0.999793,
+                "authority_worst_rotation_axis": 0.999752,
+                "authority_worst_any_axis": 0.999095,
+                "jacobian_min_singular_value": 0.332216,
+                "joint_travel_used_fraction": 0.30707
+              },
+              {
+                "pose": "extracted",
+                "bay_y_m": 0.0,
+                "base_y_m": 0.01,
+                "rail_stop_error_y_m": 0.01,
+                "position_residual_m": 5.8e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999817,
+                "authority_yaw": 0.999586,
+                "authority_worst_rotation_axis": 0.999586,
+                "authority_worst_any_axis": 0.995324,
+                "jacobian_min_singular_value": 0.145892,
+                "joint_travel_used_fraction": 0.634002
+              },
+              {
+                "pose": "retreated",
+                "bay_y_m": 0.0,
+                "base_y_m": 0.01,
+                "rail_stop_error_y_m": 0.01,
+                "position_residual_m": 6.3e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999497,
+                "authority_yaw": 0.999437,
+                "authority_worst_rotation_axis": 0.999429,
+                "authority_worst_any_axis": 0.982235,
+                "jacobian_min_singular_value": 0.074357,
+                "joint_travel_used_fraction": 0.595759
+              },
+              {
+                "pose": "installed",
+                "bay_y_m": -0.22,
+                "base_y_m": -0.21,
+                "rail_stop_error_y_m": 0.01,
+                "position_residual_m": 5.3e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999785,
+                "authority_yaw": 0.999816,
+                "authority_worst_rotation_axis": 0.99978,
+                "authority_worst_any_axis": 0.999077,
+                "jacobian_min_singular_value": 0.328921,
+                "joint_travel_used_fraction": 0.309043
+              },
+              {
+                "pose": "staging",
+                "bay_y_m": -0.22,
+                "base_y_m": -0.21,
+                "rail_stop_error_y_m": 0.01,
+                "position_residual_m": 6.2e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999758,
+                "authority_yaw": 0.999793,
+                "authority_worst_rotation_axis": 0.999752,
+                "authority_worst_any_axis": 0.999095,
+                "jacobian_min_singular_value": 0.332216,
+                "joint_travel_used_fraction": 0.30707
+              },
+              {
+                "pose": "extracted",
+                "bay_y_m": -0.22,
+                "base_y_m": -0.21,
+                "rail_stop_error_y_m": 0.01,
+                "position_residual_m": 5.8e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999817,
+                "authority_yaw": 0.999586,
+                "authority_worst_rotation_axis": 0.999586,
+                "authority_worst_any_axis": 0.995324,
+                "jacobian_min_singular_value": 0.145892,
+                "joint_travel_used_fraction": 0.634002
+              },
+              {
+                "pose": "retreated",
+                "bay_y_m": -0.22,
+                "base_y_m": -0.21,
+                "rail_stop_error_y_m": 0.01,
+                "position_residual_m": 6.3e-08,
+                "attitude_residual_rad": 0.0,
+                "authority_pitch": 0.999497,
+                "authority_yaw": 0.999437,
+                "authority_worst_rotation_axis": 0.999429,
+                "authority_worst_any_axis": 0.982235,
+                "jacobian_min_singular_value": 0.074357,
+                "joint_travel_used_fraction": 0.595759
+              }
+            ]
+          }
+        }
+      ],
+      "reason": "A +10 mm rail stop error remains kinematically feasible with controller authority, but simulation has a Wilson-separated loss; this is controller, rail-stop, or handoff sensitivity rather than a kinematic boundary."
+    },
+    "entry_attitude": {
+      "status": "supported_in_simulation",
+      "ratio_gate": {
+        "low": 0.85,
+        "high": 1.15
+      },
+      "recorded_clearance_sweep_ratios": [
+        1.025,
+        1.0223,
+        0.9669,
+        0.9322,
+        0.9123,
+        0.8962,
+        0.8808,
+        0.8665
+      ],
+      "unchanged_checkpoint_wall_move_ratios": [
+        0.9936,
+        0.9304
+      ],
+      "unchanged_checkpoint": true,
+      "reason": "The measured seating wall follows 2c/L within the frozen ratio gate."
+    },
+    "capture_geometry": {
+      "status": "analytical_only",
+      "analytical_clearance_checks": 20,
+      "all_analytical_clearance_checks_pass": true,
+      "canonical_contact_or_load_arm": null,
+      "reason": "Visual bounding-volume clearance is derived; contact retention/load capacity is not canonically validated."
+    },
+    "load_path_type": {
+      "status": "idealized_unpaired_only",
+      "compliant_form_lock_arm": {
+        "episodes": 96,
+        "successes": 94,
+        "success_rate": 0.979167,
+        "joint_model": "bounded spring-damper between wrist and module"
+      },
+      "rigid_form_lock_arm": {
+        "episodes": 1,
+        "completed": false,
+        "joint_model": "break-rated fixed joint between wrist and module",
+        "final": {
+          "axial_error_m": 0.448515,
+          "lateral_error_m": 0.109632,
+          "orientation_error_rad": 0.269355,
+          "grip_error_m": 0.013498,
+          "grip_attitude_rad": 0.071611,
+          "blade_centre_x_m": 0.227485
+        }
+      },
+      "paired_states_and_seeds": false,
+      "contact_reaction_loads_available": false,
+      "base_mount_ablation": {
+        "authored": true,
+        "robot_root_fixed_to_world": true,
+        "in_load_path": false,
+        "max_measured_mount_rotation_rad": 0.0,
+        "claim_supported": false,
+        "status": "excluded_fixed_root"
+      },
+      "conclusion": "The rigid failure and compliant-chain success motivate compliance, but they are not a paired causal qualification and neither arm exposes physical contact/load reactions."
+    }
+  },
+  "decision": {
+    "qualified": false,
+    "status": "not_qualified",
+    "supported_dimensions": [
+      "entry_attitude"
+    ],
+    "blocking_dimensions": [
+      "rack_clearance",
+      "module_section",
+      "base_offset",
+      "capture_geometry",
+      "load_path_type"
+    ]
+  },
+  "required_next_arms": [
+    "Increase episodes around both rack-clearance bounds; keep the 6 mm, nominal, and 16 mm arms.",
+    "Repeat the 120 x 16, nominal, and 140 x 26 mm section arms at qualification episode counts.",
+    "Bracket the base-y controller/rail-stop failure around +10 mm on identical seeds.",
+    "Run a canonical contact-retention/load arm for the capture interface; do not substitute visual overlap.",
+    "Pair rigid and compliant form-lock arms on identical initial states and seeds with reaction-load telemetry.",
+    "Make base compliance part of the articulation load path before claiming a compliance tolerance."
+  ],
+  "scope_and_limitations": [
+    "Simulation only; no hardware qualification is represented.",
+    "Robustness points have 16 episodes each, so overlapping Wilson intervals remain unresolved.",
+    "The latch is visual geometry and the simulator force readings are not treated as hardware load evidence.",
+    "The robot root is fixed to the world; compliant-base tolerance is explicitly excluded.",
+    "No failed or losing arm was removed, and no tolerance was widened for this report."
+  ],
+  "input_substitution": {
+    "substituted_for": "chain_robustness_sweep.json",
+    "with": "chain_robustness_sweep_n64.json",
+    "why": "the shipped sweep is a 16-episode ranking instrument whose Wilson interval is about twenty points wide, which cannot separate a loss from the nominal point",
+    "episodes_per_point": {
+      "base_x_-0.70": 64,
+      "base_y_+10mm": 64,
+      "nominal": 64,
+      "rack_lat_16mm": 64,
+      "rack_lat_6mm": 64,
+      "section_120x16": 64,
+      "section_140x26": 64
+    },
+    "protocol_or_tolerances_changed": false
+  }
+}

@@ -1,0 +1,176 @@
+{
+  "status": "failed",
+  "title": "What stands in the servicing cameras line to the flush datum along the seating stroke",
+  "evidence_type": "geometric_derivation_no_simulator",
+  "generated_utc": "2026-09-03T05:22:08.400933+00:00",
+  "question": "check_servicing_camera_geometry.py proves the datum is in frame and resolvable over the transit envelope. It never asked what is in front of it during insertion. This does.",
+  "stroke": {
+    "from_module_centre_x_m": 0.1467528907,
+    "to_module_centre_x_m": 0.676,
+    "derivation": "transit-clear plane to the derived destination seated plane",
+    "slot_mouth_x_m": 0.45,
+    "step_m": 0.0005
+  },
+  "datum": {
+    "marker_size_m": 0.09,
+    "quiet_zone_size_m": 0.12,
+    "cell_m": 0.015,
+    "plane_in_module_m": 0.011,
+    "offsets_x_m": [
+      0.0
+    ],
+    "shipped_offsets_x_m": [
+      -0.115,
+      0.115
+    ],
+    "evaluates_the_shipped_layout": false
+  },
+  "per_datum": [
+    {
+      "module_frame_offset_x_m": 0.0,
+      "cameras": {
+        "primary": {
+          "marker": {
+            "occluded": {
+              "from_module_centre_x_m": 0.3242528907000002,
+              "to_module_centre_x_m": 0.49725289070000034,
+              "fraction_of_stroke": 0.3150943396226415
+            },
+            "first_occluder_at_module_centre_x_m": {
+              "destination_entry_upper_ramp": 0.3242528907000002
+            }
+          },
+          "marker_border_row_consumed": {
+            "occluded": {
+              "from_module_centre_x_m": 0.3392528907000002,
+              "to_module_centre_x_m": 0.4822528907000003,
+              "fraction_of_stroke": 0.27075471698113207
+            },
+            "first_occluder_at_module_centre_x_m": {
+              "destination_entry_upper_ramp": 0.3392528907000002
+            }
+          },
+          "quiet_zone": {
+            "occluded": {
+              "from_module_centre_x_m": 0.30925289070000017,
+              "to_module_centre_x_m": 0.5122528907000004,
+              "fraction_of_stroke": 0.3150943396226415
+            },
+            "first_occluder_at_module_centre_x_m": {
+              "destination_entry_upper_ramp": 0.30925289070000017
+            }
+          },
+          "out_of_frame": {
+            "from_module_centre_x_m": null,
+            "to_module_centre_x_m": null,
+            "fraction_of_stroke": 0.0
+          },
+          "below_cell_resolution": {
+            "from_module_centre_x_m": null,
+            "to_module_centre_x_m": null,
+            "fraction_of_stroke": 0.0
+          },
+          "readable": {
+            "from_module_centre_x_m": 0.1467528907,
+            "to_module_centre_x_m": 0.6762528907000005,
+            "fraction_of_stroke": 0.6849056603773584
+          }
+        },
+        "insert": {
+          "marker": {
+            "occluded": {
+              "from_module_centre_x_m": 0.33075289070000014,
+              "to_module_centre_x_m": 0.5037528907000003,
+              "fraction_of_stroke": 0.3150943396226415
+            },
+            "first_occluder_at_module_centre_x_m": {
+              "destination_entry_upper_ramp": 0.33075289070000014
+            }
+          },
+          "marker_border_row_consumed": {
+            "occluded": {
+              "from_module_centre_x_m": 0.34575289070000015,
+              "to_module_centre_x_m": 0.4887528907000003,
+              "fraction_of_stroke": 0.27075471698113207
+            },
+            "first_occluder_at_module_centre_x_m": {
+              "destination_entry_upper_ramp": 0.34575289070000015
+            }
+          },
+          "quiet_zone": {
+            "occluded": {
+              "from_module_centre_x_m": 0.3157528907000001,
+              "to_module_centre_x_m": 0.5187528907000003,
+              "fraction_of_stroke": 0.3150943396226415
+            },
+            "first_occluder_at_module_centre_x_m": {
+              "destination_entry_upper_ramp": 0.3157528907000001
+            }
+          },
+          "out_of_frame": {
+            "from_module_centre_x_m": null,
+            "to_module_centre_x_m": null,
+            "fraction_of_stroke": 0.0
+          },
+          "below_cell_resolution": {
+            "from_module_centre_x_m": null,
+            "to_module_centre_x_m": null,
+            "fraction_of_stroke": 0.0
+          },
+          "readable": {
+            "from_module_centre_x_m": 0.1467528907,
+            "to_module_centre_x_m": 0.6762528907000005,
+            "fraction_of_stroke": 0.6849056603773584
+          }
+        }
+      },
+      "readable_fraction_of_stroke_any_camera": 0.7094339622641509
+    }
+  ],
+  "blind_stroke_any_camera_m": [
+    0.3157528907000001,
+    0.5122528907000004
+  ],
+  "blind_stroke_length_m": 0.154,
+  "blind_stroke_primary_camera_only_m": [
+    0.30925289070000017,
+    0.5122528907000004
+  ],
+  "unchanged_gates": {
+    "minimum_quiet_zone_frame_margin_px": 89.6995546834305,
+    "minimum_marker_cell_px": 9.624529626433027,
+    "minimum_marker_cell_requirement_px": 8.0,
+    "requirement_source": "check_servicing_camera_geometry.MIN_MARKER_CELL_PX",
+    "measured_over": "only the depths at which a datum is reported readable"
+  },
+  "self_validation": {
+    "recorded_run": "rgbd_strict_rack_retention_dual_camera_full_seed6070.json",
+    "recorded_run_datum_offsets_x_m": [
+      0.0
+    ],
+    "recorded_terminal_axial_target_m": 0.336171,
+    "recorded_detector_failures": 385,
+    "recorded_max_consecutive_failures": 385,
+    "derived_marker_first_touched_m": 0.33075289070000014,
+    "derived_marker_border_row_consumed_m": 0.34575289070000015,
+    "agrees": true,
+    "reads": "the recorded advance had to stop between the depth at which the lead-in first covers any of that run marker outline in every view and the depth at which it has covered a whole border cell in every view"
+  },
+  "source_bindings": {
+    "guide_size_literal": true,
+    "lip_size_literal": true,
+    "floor_size_literal": true,
+    "floor_centre_literal": true,
+    "flare_size_literal": true,
+    "rack_size_literal": true,
+    "rack_position_literal": true,
+    "lead_ins_are_not_relieved": true,
+    "module_section_unchanged": true
+  },
+  "scope_and_limitations": [
+    "Occluders are the parts own cuboids; fillets, fasteners and cable runs are not modelled.",
+    "Visibility is line of sight only. It does not predict decoding, exposure or motion blur.",
+    "The module is swept at the seated lateral and vertical pose; the guarded envelope moves the datum by less than the plate clearances that decide the answer.",
+    "Robot-side occluders are the gripper collision envelope and the latch jaw boxes, both stowed and engaged, riding with the captured module. Arm links beyond the wrist are not modelled."
+  ]
+}

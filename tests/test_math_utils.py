@@ -14,6 +14,7 @@ from zero_g_blade_swap.math_utils import (
     robotiq_2f85_coupled_positions,
     transform_points,
     update_curriculum_stage,
+    update_reverse_station_frontier,
 )
 
 
@@ -79,6 +80,17 @@ def test_curriculum_requires_practice_time_before_promotion() -> None:
         False,
     )
     assert update_curriculum_stage(0, outcomes, threshold=0.8, steps_elapsed=1600, minimum_steps=1600) == (1, 0.0, True)
+
+
+def test_reverse_station_curriculum_moves_toward_the_rack_mouth() -> None:
+    outcomes = [True] * 205 + [False] * 51
+    assert update_reverse_station_frontier(6, outcomes, steps_elapsed=1_599) == (
+        6,
+        pytest.approx(205 / 256),
+        False,
+    )
+    assert update_reverse_station_frontier(6, outcomes, steps_elapsed=1_600) == (5, 0.0, True)
+    assert update_reverse_station_frontier(0, [True] * 256, steps_elapsed=1_600) == (0, 1.0, False)
 
 
 def test_insertion_curriculum_retains_earlier_reset_stages() -> None:

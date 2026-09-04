@@ -23,9 +23,13 @@ episodes are the episodes. It is a claim that the relationship between the
 published number and the committed code is unverified, which is a different
 thing and has to be said out loud rather than assumed benign.
 
-Line endings are handled: this repository is checked out with ``core.autocrlf``
-true, so a run hashes CRLF bytes while git stores LF. Blobs are converted before
-hashing, and the conversion is proved on every file that does match.
+Line endings are handled, and handling them wrongly is what made most of this
+look unrecoverable. The repository is checked out with ``core.autocrlf`` true, so
+a run usually hashes CRLF bytes while git stores LF -- but a file a tool wrote
+with LF and left in place is byte-identical to the blob. Both renderings of a
+blob are therefore accepted, because git treats them as the same content. The
+commit walk also runs when the working tree still matches, so a report bound to
+an earlier commit is reported against that commit rather than as ``working``.
 
 CPU only. Reads JSON and ``git show``; imports nothing from Isaac Lab.
 
@@ -64,9 +68,32 @@ def _find(node: object, key: str):
     return None
 
 
-def _as_checked_out(blob: bytes) -> bytes:
-    """Git stores LF; a Windows checkout hashes CRLF. Normalise then expand."""
-    return blob.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+def _as_checked_out(blob: bytes) -> tuple[bytes, ...]:
+    """Every rendering of one blob a working tree here can legitimately hold.
+
+    **This used to assume one, and that assumption is what made most of T0 look
+    unrecoverable.** Git stores LF; with ``core.autocrlf=true`` a Windows
+    checkout holds CRLF, and the runtime hashes the bytes it read from disk. So
+    the old single CRLF expansion matched every file that had been checked out
+    and missed every file a tool had written with LF and left there --
+    ``rack_retention.py``, ``servicing_camera.py`` and ``provenance.py`` in the
+    most recent RGB-D report, all three of which are byte-identical to the
+    committed blob and were reported lost anyway.
+
+    Git treats the two renderings as the same content under ``autocrlf``, so a
+    recorded hash matching either one identifies the same source. Returning both
+    is the fix; comparing normalised text on both sides is not, because the
+    recorded hash is of raw bytes and cannot be re-normalised after the fact.
+    """
+
+    normalised = blob.replace(b"\r\n", b"\n")
+    return (normalised, normalised.replace(b"\n", b"\r\n"))
+
+
+def _matches(blob: bytes, recorded: str) -> bool:
+    return any(
+        hashlib.sha256(rendering).hexdigest() == recorded for rendering in _as_checked_out(blob)
+    )
 
 
 def _commits(depth: int) -> list[tuple[str, str]]:
@@ -94,18 +121,26 @@ def _blob(commit: str, path: str) -> bytes | None:
 def classify(path: str, recorded: str, commits: list[tuple[str, str]]) -> dict:
     """Where, if anywhere, do these bytes still exist."""
     on_disk = ROOT / path
-    if on_disk.is_file() and hashlib.sha256(on_disk.read_bytes()).hexdigest() == recorded:
+    still_on_disk = (
+        on_disk.is_file() and hashlib.sha256(on_disk.read_bytes()).hexdigest() == recorded
+    )
+    if still_on_disk:
         head = _blob("HEAD", path)
-        if head is not None and hashlib.sha256(_as_checked_out(head)).hexdigest() == recorded:
+        if head is not None and _matches(head, recorded):
             return {"path": path, "state": "recovered", "commit": "HEAD"}
-        return {"path": path, "state": "working"}
+    # **Falling through here is the point.** This used to return "working" the
+    # moment the file on disk matched and HEAD did not, and never looked at
+    # history -- so a report produced on a verified-clean tree a few commits ago
+    # was reported unrecoverable purely because HEAD had moved since. The commit
+    # walk below is what answers the question; "working" is only the right
+    # answer when it finds nothing.
     for short, subject in commits:
         blob = _blob(short, path)
         if blob is None:
             continue
-        if hashlib.sha256(_as_checked_out(blob)).hexdigest() == recorded:
+        if _matches(blob, recorded):
             return {"path": path, "state": "recovered", "commit": short, "subject": subject}
-    return {"path": path, "state": "lost"}
+    return {"path": path, "state": "working" if still_on_disk else "lost"}
 
 
 def main() -> int:

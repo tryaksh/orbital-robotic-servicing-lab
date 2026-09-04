@@ -742,6 +742,56 @@ def sweep_bases(bases: list[tuple[float, float, float]], tool_z: float) -> list[
     return rows
 
 
+def parked_base_offset_profile(
+    *, base_x_m: float, stop_error_y_m: float, tool_z_m: float, base_z_m: float = 0.15
+) -> dict[str, object]:
+    """Profile every required pose when the rail parks opposite each bay.
+
+    The relocation robustness sweep enables the lateral rail. Its ``base_y``
+    perturbation is therefore a rail stop error, not a fixed-base bay crossing:
+    at each bay the base target is that bay's centre plus the same stop error.
+    Treating it as a fixed base would test a motion the executed chain never
+    asks the arm to make.
+    """
+
+    offsets, installed_tool_x, bays = _required_poses()
+    poses: list[dict[str, object]] = []
+    for bay_y in bays:
+        base = np.array((base_x_m, bay_y + stop_error_y_m, base_z_m), dtype=float)
+        for name, offset in offsets.items():
+            tool = np.array((installed_tool_x + offset, bay_y, tool_z_m), dtype=float)
+            joints, position_residual, attitude_residual = solve_ik(
+                tool - base, HEAD_ON, SEED_JOINTS
+            )
+            row: dict[str, object] = {
+                "pose": name,
+                "bay_y_m": round(bay_y, 6),
+                "base_y_m": round(float(base[1]), 6),
+                "rail_stop_error_y_m": round(stop_error_y_m, 6),
+                "position_residual_m": round(position_residual, 9),
+                "attitude_residual_rad": round(attitude_residual, 9),
+            }
+            row.update({key: round(value, 6) for key, value in realised_authority(joints).items()})
+            poses.append(row)
+    return {
+        "model": "rail parks at each bay centre plus a shared lateral stop error",
+        "base_x_m": base_x_m,
+        "base_z_m": base_z_m,
+        "rail_stop_error_y_m": stop_error_y_m,
+        "required_poses": len(poses),
+        "maximum_position_residual_m": max(float(row["position_residual_m"]) for row in poses),
+        "maximum_attitude_residual_rad": max(float(row["attitude_residual_rad"]) for row in poses),
+        "minimum_worst_axis_authority": min(float(row["authority_worst_any_axis"]) for row in poses),
+        "minimum_rotational_authority": min(
+            float(row["authority_worst_rotation_axis"]) for row in poses
+        ),
+        "minimum_jacobian_singular_value": min(
+            float(row["jacobian_min_singular_value"]) for row in poses
+        ),
+        "poses": poses,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Workcell geometry check, no simulator.")
     parser.add_argument("--report", type=Path, default=None, help="Write the result as evidence JSON.")

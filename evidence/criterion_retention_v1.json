@@ -1,0 +1,197 @@
+{
+  "title": "Does the quantity each criterion bounds still predict the failure it names?",
+  "evidence_type": "criterion_retention_under_closed_loop_correction",
+  "generated_utc": "2026-09-04T05:10:09+00:00",
+  "source_revision": {
+    "available": true,
+    "commit": "ac48600fec0b4157b55d82dcf189768807e794dc",
+    "branch": "paper/serviceability-qualification",
+    "dirty": false,
+    "tracked_changes": [],
+    "error": null
+  },
+  "statistic": "Area under the ROC curve of the hand-over quantity against the failure mode the criterion predicts. 0.5 means the hand-over value carries no information about the outcome, so something between hand-over and the seated plane corrected it and a bound written on that quantity cannot govern the result. Above 0.5 means the deviation survives to the outcome.",
+  "what_this_does_not_say": "Retention is not correctness. A criterion can retain and still bound the wrong quantity: the rail-indexing axis retains a settling velocity while its bound is written on a position. Retention says whether a bound can govern, not whether it is the right bound. It is also not a success rate and must never be quoted as one.",
+  "arms": {
+    "entry flares fitted, 6 mm per side": {
+      "directory": "artifacts/flare_fitted",
+      "points": {
+        "nominal": {
+          "episodes": 64,
+          "criteria": {
+            "grip": {
+              "hand_over_quantity": "grip_error_m",
+              "unit": "mm",
+              "predicted_mode": "lost_before_delivery",
+              "events": 2,
+              "median_at_hand_over": 13.0631,
+              "verdict": "too_few_events",
+              "retention_auc": 1.0
+            },
+            "entry": {
+              "hand_over_quantity": "grip_attitude_rad",
+              "unit": "mrad",
+              "predicted_mode": "jammed_in_the_bay",
+              "events": 0,
+              "median_at_hand_over": 53.7398,
+              "verdict": "mode_never_occurred"
+            }
+          }
+        },
+        "rack_lat_6mm": {
+          "episodes": 64,
+          "criteria": {
+            "grip": {
+              "hand_over_quantity": "grip_error_m",
+              "unit": "mm",
+              "predicted_mode": "lost_before_delivery",
+              "events": 0,
+              "median_at_hand_over": 12.9981,
+              "verdict": "mode_never_occurred"
+            },
+            "entry": {
+              "hand_over_quantity": "grip_attitude_rad",
+              "unit": "mrad",
+              "predicted_mode": "jammed_in_the_bay",
+              "events": 0,
+              "median_at_hand_over": 53.0174,
+              "verdict": "mode_never_occurred"
+            }
+          }
+        }
+      }
+    },
+    "entry flares removed, 6 mm per side": {
+      "directory": "artifacts/flare_removed",
+      "points": {
+        "nominal": {
+          "episodes": 64,
+          "criteria": {
+            "grip": {
+              "hand_over_quantity": "grip_error_m",
+              "unit": "mm",
+              "predicted_mode": "lost_before_delivery",
+              "events": 3,
+              "median_at_hand_over": 13.0961,
+              "verdict": "too_few_events",
+              "retention_auc": 0.6667
+            },
+            "entry": {
+              "hand_over_quantity": "grip_attitude_rad",
+              "unit": "mrad",
+              "predicted_mode": "jammed_in_the_bay",
+              "events": 0,
+              "median_at_hand_over": 53.5839,
+              "verdict": "mode_never_occurred"
+            }
+          }
+        },
+        "rack_lat_6mm": {
+          "episodes": 64,
+          "criteria": {
+            "grip": {
+              "hand_over_quantity": "grip_error_m",
+              "unit": "mm",
+              "predicted_mode": "lost_before_delivery",
+              "events": 0,
+              "median_at_hand_over": 12.207,
+              "verdict": "mode_never_occurred"
+            },
+            "entry": {
+              "hand_over_quantity": "grip_attitude_rad",
+              "unit": "mrad",
+              "predicted_mode": "jammed_in_the_bay",
+              "events": 34,
+              "median_at_hand_over": 56.3363,
+              "retention_auc": 0.9951,
+              "bootstrap_95": [
+                0.9824,
+                1.0
+              ],
+              "verdict": "retained"
+            }
+          }
+        }
+      }
+    },
+    "module section axis, three seeds": {
+      "directory": "artifacts/robustness192_section",
+      "points": {
+        "nominal": {
+          "episodes": 192,
+          "criteria": {
+            "grip": {
+              "hand_over_quantity": "grip_error_m",
+              "unit": "mm",
+              "predicted_mode": "lost_before_delivery",
+              "events": 5,
+              "median_at_hand_over": 13.0777,
+              "verdict": "too_few_events",
+              "retention_auc": 0.9711
+            },
+            "entry": {
+              "hand_over_quantity": "grip_attitude_rad",
+              "unit": "mrad",
+              "predicted_mode": "jammed_in_the_bay",
+              "events": 0,
+              "median_at_hand_over": 53.3706,
+              "verdict": "mode_never_occurred"
+            }
+          }
+        },
+        "section_120x16": {
+          "episodes": 192,
+          "criteria": {
+            "grip": {
+              "hand_over_quantity": "grip_error_m",
+              "unit": "mm",
+              "predicted_mode": "lost_before_delivery",
+              "events": 40,
+              "median_at_hand_over": 13.4131,
+              "retention_auc": 0.8938,
+              "bootstrap_95": [
+                0.8045,
+                0.963
+              ],
+              "verdict": "retained"
+            },
+            "entry": {
+              "hand_over_quantity": "grip_attitude_rad",
+              "unit": "mrad",
+              "predicted_mode": "jammed_in_the_bay",
+              "events": 0,
+              "median_at_hand_over": 53.2039,
+              "verdict": "mode_never_occurred"
+            }
+          }
+        },
+        "section_140x26": {
+          "episodes": 192,
+          "criteria": {
+            "grip": {
+              "hand_over_quantity": "grip_error_m",
+              "unit": "mm",
+              "predicted_mode": "lost_before_delivery",
+              "events": 17,
+              "median_at_hand_over": 12.9838,
+              "retention_auc": 0.4484,
+              "bootstrap_95": [
+                0.2371,
+                0.6702
+              ],
+              "verdict": "erased_by_the_process"
+            },
+            "entry": {
+              "hand_over_quantity": "grip_attitude_rad",
+              "unit": "mrad",
+              "predicted_mode": "jammed_in_the_bay",
+              "events": 0,
+              "median_at_hand_over": 52.6501,
+              "verdict": "mode_never_occurred"
+            }
+          }
+        }
+      }
+    }
+  }
+}

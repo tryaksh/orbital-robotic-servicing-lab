@@ -1,0 +1,118 @@
+{
+  "title": "What breaks the robot-carried chain first",
+  "evidence_type": "simulation_only",
+  "generated_utc": "2026-09-03T14:37:42.515698+00:00",
+  "question": "The chain is certified at one point in a space a real cell varies across. Which variable takes it down soonest?",
+  "method": "scripts/sweep_chain_robustness.sh: one variable moved at a time around the certified configuration, same seed, same checkpoints, same everything else.",
+  "nominal_point": "nominal",
+  "nominal_success_rate": 0.546875,
+  "ranked_by_points_below_nominal": [
+    "rack_lat_6mm",
+    "base_y_+10mm",
+    "base_x_-0.70",
+    "section_140x26",
+    "rack_lat_16mm",
+    "section_120x16"
+  ],
+  "points": {
+    "base_x_-0.70": {
+      "success_rate": 0.328125,
+      "episodes": 64,
+      "wilson_95": {
+        "low": 0.225706,
+        "high": 0.450009
+      },
+      "median_terminal": {
+        "axial_error_m": 0.000498,
+        "lateral_error_m": 0.003241,
+        "orientation_error_rad": 0.008319
+      },
+      "points_below_nominal": 21.88
+    },
+    "base_y_+10mm": {
+      "success_rate": 0.015625,
+      "episodes": 64,
+      "wilson_95": {
+        "low": 0.002764,
+        "high": 0.083341
+      },
+      "median_terminal": {
+        "axial_error_m": 0.45331,
+        "lateral_error_m": 0.249556,
+        "orientation_error_rad": 0.249558
+      },
+      "points_below_nominal": 53.12
+    },
+    "nominal": {
+      "success_rate": 0.546875,
+      "episodes": 64,
+      "wilson_95": {
+        "low": 0.425736,
+        "high": 0.662706
+      },
+      "median_terminal": {
+        "axial_error_m": 0.000544,
+        "lateral_error_m": 0.002199,
+        "orientation_error_rad": 0.00901
+      },
+      "points_below_nominal": 0.0
+    },
+    "rack_lat_16mm": {
+      "success_rate": 0.40625,
+      "episodes": 64,
+      "wilson_95": {
+        "low": 0.294569,
+        "high": 0.528548
+      },
+      "median_terminal": {
+        "axial_error_m": 0.000576,
+        "lateral_error_m": 0.00313,
+        "orientation_error_rad": 0.010196
+      },
+      "points_below_nominal": 14.06
+    },
+    "rack_lat_6mm": {
+      "success_rate": 0.0,
+      "episodes": 64,
+      "wilson_95": {
+        "low": 0.0,
+        "high": 0.056624
+      },
+      "median_terminal": {
+        "axial_error_m": 0.456103,
+        "lateral_error_m": 0.033308,
+        "orientation_error_rad": 0.093245
+      },
+      "points_below_nominal": 54.69
+    },
+    "section_120x16": {
+      "success_rate": 0.5,
+      "episodes": 64,
+      "wilson_95": {
+        "low": 0.381021,
+        "high": 0.618979
+      },
+      "median_terminal": {
+        "axial_error_m": 0.000563,
+        "lateral_error_m": 0.00245,
+        "orientation_error_rad": 0.009919
+      },
+      "points_below_nominal": 4.69
+    },
+    "section_140x26": {
+      "success_rate": 0.359375,
+      "episodes": 64,
+      "wilson_95": {
+        "low": 0.252884,
+        "high": 0.481791
+      },
+      "median_terminal": {
+        "axial_error_m": 0.00055,
+        "lateral_error_m": 0.00282,
+        "orientation_error_rad": 0.010141
+      },
+      "points_below_nominal": 18.75
+    }
+  },
+  "scope_and_limitations": "Sixteen episodes a point on one seed. The Wilson interval on each is about twenty points wide, so this ranks variables and does not measure any of them. Whatever it ranks first is what deserves the 96-episode protocol."
+}

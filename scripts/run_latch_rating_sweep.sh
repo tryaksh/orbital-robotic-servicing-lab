@@ -46,7 +46,8 @@ for rating in $RATINGS; do
       --grip_axis_metrics \
       --report "$OUT/rating_${rating}.json" \
       > "$OUT/rating_${rating}.log" 2>&1
-  echo "[$(date +%H:%M:%S)]   exit=$?"
+  rc=$?
+  echo "[$(date +%H:%M:%S)]   exit=$rc"
 done
 
 echo "[$(date +%H:%M:%S)] LATCH RATING SWEEP DONE"

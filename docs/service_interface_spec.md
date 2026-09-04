@@ -457,6 +457,16 @@ attitude of a module that merely rests in it, and if that attitude is outside th
 one a seated module is accepted at, the rack is specifying a part it will then
 reject.
 
+**This bound is not new here, and it should not be presented as if it were.** It
+is the geometric half of the classical quasi-static peg-in-hole analysis — the
+wedging condition Whitney's jamming/wedging diagrams are drawn from, applied to a
+long flat module in a rectangular channel rather than to a round peg in a round
+hole. What is this project's own is the *use*: `2c/L` is evaluated on the CPU as
+an admissibility gate **before** any policy is trained, against the attitude the
+manipulator was measured to deliver, and the rack requirement falls out of that
+comparison rather than out of a tuning loop. Any write-up of this section must
+cite the classical result and claim the design gate.
+
 > **Requirement.** Channel lateral clearance per side ≤
 > `L × seated_orientation_tolerance / 2`. On this rack, with a 450 mm module and
 > `INSERTION_ORIENTATION_TOLERANCE_RAD` = 52.36 mrad, that is **11.781 mm**.
@@ -701,11 +711,12 @@ Three things this requirement is not:
   is *worse* than its force-blind control, by up to 8.2 points, at roughly twice
   the peak contact force. Under a position-controlled action space a policy has
   no action that yields to a force it can read.
-- **The original camera could not meet it; the replacement can.** The former
-  64x64 view resolved 4 mm as only 0.13 pixels. The current 384x384 RGB-D
-  fiducial system measures 1.682 mm position-error p95 and 99.854% detection at
-  critical rack poses over 1,024 rendered frames. See
-  `evidence/fiducial_rgbd_service_plate.json`.
+- **The original camera could not meet it, and the current flush tag is not yet
+  qualified.** The former 64x64 view resolved 4 mm as only 0.13 pixels. A later
+  passing certificate used a fiducial floating above the module and is
+  retracted. With the physically flush tag, detected-frame position p95 is
+  3.916 mm but critical-rack detection is only 43.27% against a 99% gate. See
+  `evidence/fiducial_rgbd_flush_v2_seed283.json`.
 
 ---
 
@@ -1539,16 +1550,12 @@ Report: `evidence/grapple_insert_v16pin_certification.json`.
 
 These hold for every claim this project makes about the chain.
 
-Measured against them, at the end of the working session of 2026-08-24:
-
-| Gate | Result |
-| --- | --- |
-| Chain pooled with a Wilson interval | **97.92%**, [92.7%, 99.4%], 96 episodes, three held-out seeds — **passes** (was 96.88%) |
-| A learned phase at 95% pooled and worst-stage | grasp 85.69% / 78.68%, extract 87.75% / 84.08% — **both fail** (extract was 74.27% / 60.80%, on a criterion that charged the pin's own load path as a dropped module; see §3.2) |
-| A scripted phase labelled on the controller that ran | passes; pinned by `tests/test_robot_carried_contract.py` |
-| Every geometric requirement derived by a CI check with no simulator | passes; `check_workcell_geometry.py`, `check_service_latch_clearance.py` |
-| Every load-path simplification named in `README.md` and in the report | passes |
-
+Current measurements are intentionally not duplicated in this requirement
+document; [`NOW.md`](NOW.md) is their single source. As of 2026-08-31 the strict
+chain is 17/24 after independent robot-support release, both learned contact
+skills miss 95%, the flush-tag perception gate fails, and the serviceability
+boundary is not qualified. The legacy 97.92% chain result used an earlier
+supported-settle criterion and remains only as a comparator.
 
 | | |
 | --- | --- |

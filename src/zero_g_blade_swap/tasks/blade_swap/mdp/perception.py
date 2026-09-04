@@ -59,6 +59,29 @@ PERCEPTION_DEPLOYMENT = "deployment"
 PERCEPTION_ORACLE = "oracle"
 PERCEPTION_BLIND = "blind"
 PERCEPTION_MODES = frozenset((PERCEPTION_DEPLOYMENT, PERCEPTION_ORACLE, PERCEPTION_BLIND))
+#: Where the module-velocity channel comes from.
+#:
+#: **The camera is never the best available estimate of this quantity, at any
+#: point in the task, and that is measured rather than argued.** Before capture
+#: the module is held by its rails and is not moving, so a finite difference of
+#: consecutive camera poses reports the estimator's own residual -- 17 mm/s at
+#: the deployed filter against a seated module's 0.69 -- as motion. After capture
+#: the module is on the form lock and moves with the wrist, whose velocity the
+#: robot knows from its own encoders to a precision no camera approaches.
+#:
+#: The measurement that makes this worth an option: on an unchanged checkpoint,
+#: noising the pose channels and leaving the velocity exact costs 8.33 points,
+#: noising the velocity and leaving the pose exact costs 10.21, and noising both
+#: costs 41.15. The interaction is larger than the sum of the parts, so restoring
+#: *either* channel recovers most of the loss, and this is the one that can be
+#: restored without a camera.
+#:
+#: ``camera`` is the shipped path and stays the default; every published RGB-D
+#: number was measured on it.
+MODULE_VELOCITY_FROM_CAMERA = "camera"
+MODULE_VELOCITY_FROM_KINEMATICS = "kinematics"
+MODULE_VELOCITY_SOURCES = frozenset((MODULE_VELOCITY_FROM_CAMERA, MODULE_VELOCITY_FROM_KINEMATICS))
+
 PERCEPTION_BACKEND_POSE_HEAD = "pose_head"
 PERCEPTION_BACKEND_FIDUCIAL_PNP = "fiducial_pnp"
 PERCEPTION_BACKENDS = frozenset((PERCEPTION_BACKEND_POSE_HEAD, PERCEPTION_BACKEND_FIDUCIAL_PNP))
@@ -241,7 +264,14 @@ class ModuleStateEstimator:
             else None
         )
         self._sensor_cfg = SceneEntityCfg("camera")
+        self._velocity_source = str(getattr(env.cfg, "module_velocity_source", MODULE_VELOCITY_FROM_CAMERA)).lower()
+        if self._velocity_source not in MODULE_VELOCITY_SOURCES:
+            choices = ", ".join(sorted(MODULE_VELOCITY_SOURCES))
+            raise ValueError(f"module_velocity_source must be one of {choices}; got {self._velocity_source!r}")
         self._filter_time_constant_s = float(getattr(env.cfg, "perception_velocity_filter_time_constant_s", 0.10))
+        self._fiducial_sensor_names = [self._sensor_cfg.name]
+        if "camera_insert" in env.scene.sensors:
+            self._fiducial_sensor_names.append("camera_insert")
         if not math.isfinite(self._filter_time_constant_s) or self._filter_time_constant_s < 0.0:
             raise ValueError("perception_velocity_filter_time_constant_s must be finite and non-negative")
 
@@ -264,7 +294,13 @@ class ModuleStateEstimator:
         self._reprojection_error_px = torch.full((env.num_envs,), float("inf"), device=env.device)
         self._fiducial_detection_valid = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
         self._fiducial_current_detection = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        self._fiducial_detections_by_marker: dict[int, int] = {}
         self._payload_stage_engaged = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        # Encoder propagation is valid only after the robot has physically
+        # captured the module. Before that event the tool moves and the module
+        # does not; treating their transform as rigid turns one missed camera
+        # frame during approach into a moving fictitious target.
+        self._module_tool_attached = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
         self._module_in_tool_position = torch.zeros((env.num_envs, 3), device=env.device)
         self._module_in_tool_orientation = torch.zeros((env.num_envs, 4), device=env.device)
         self._module_in_tool_orientation[:, 0] = 1.0
@@ -292,6 +328,10 @@ class ModuleStateEstimator:
             "failures": self._fiducial_failure_count,
             "detection_rate": self._fiducial_detection_count / attempts if attempts else 0.0,
             "max_consecutive_failures": int(self._fiducial_max_consecutive_failures.max().item()),
+            # Which flush plate carried each detection. The module now has two,
+            # and a run that only ever reads one of them has not exercised the
+            # reason there are two.
+            "detections_by_datum": dict(sorted(self._fiducial_detections_by_marker.items())),
         }
 
     @property
@@ -311,6 +351,28 @@ class ModuleStateEstimator:
         """
 
         self._payload_stage_engaged[env_ids] = True
+        self._module_tool_attached[env_ids] = False
+
+    def mark_robot_capture_established(self, env_ids: Sequence[int] | torch.Tensor) -> None:
+        """Permit tool-kinematic propagation after a verified physical capture.
+
+        The relative pose is frozen from the current camera estimate and robot
+        forward kinematics. No simulator module state enters this handoff.
+        """
+
+        self.estimate()
+        tool_position, tool_orientation = end_effector_pose_world(self._env)
+        module_position_world = self._pose[:, :3] + self._env.scene.env_origins
+        module_orientation_world = _orientation_from_module_pose(self._pose)
+        relative_position, relative_orientation = subtract_frame_transforms(
+            tool_position,
+            tool_orientation,
+            module_position_world,
+            module_orientation_world,
+        )
+        self._module_in_tool_position[env_ids] = relative_position[env_ids]
+        self._module_in_tool_orientation[env_ids] = relative_orientation[env_ids]
+        self._module_tool_attached[env_ids] = True
 
     @property
     def confidence(self) -> torch.Tensor:
@@ -356,6 +418,7 @@ class ModuleStateEstimator:
         self._fiducial_detection_valid[ids] = False
         self._fiducial_current_detection[ids] = False
         self._payload_stage_engaged[ids] = False
+        self._module_tool_attached[ids] = False
         self._velocity[ids] = 0.0
         # A partial reset can happen after this step's observations were cached.
         # Invalidate the whole batch; inference remains one pass on the next read.
@@ -404,7 +467,75 @@ class ModuleStateEstimator:
         self._history_valid.fill_(True)
         self._last_update_step = step
         self._cached_step = step
+        if self._velocity_source == MODULE_VELOCITY_FROM_KINEMATICS:
+            self._velocity.copy_(self._kinematic_velocity())
         return self._pose, self._velocity
+
+    def _kinematic_velocity(self) -> torch.Tensor:
+        """Report the module's velocity from the robot instead of from the camera.
+
+        Two regimes, and neither reads the module's own state:
+
+        * **before capture** the module is held by its rails and is not moving,
+          so its velocity is zero. That is an assumption about the scene rather
+          than a measurement of it, and it is the same assumption the whole
+          workflow already makes when it plans a capture against a bay it
+          believes is holding a module still;
+        * **after capture** the module is on the form lock and moves with the
+          wrist, so the wrist's velocity is the module's. The transit already
+          rests on exactly that assumption and reports what it costs -- 1.05 mm
+          and 3.27 mrad of maximum tool-to-module drift in the continuous
+          episode.
+
+        The wrist's velocity is encoder and forward-kinematics information, which
+        a real servicer has. ``audit_vision_deployment_observations`` forbids a
+        deployed group from reading the *module's* live state and this does not:
+        it reads the robot's, and transports it to where the module is using the
+        estimator's own camera-derived position as the lever arm.
+        """
+
+        robot = self._env.scene["robot"]
+        body_id = self._wrist_body_id(robot)
+        angular = robot.data.body_ang_vel_w[:, body_id]
+
+        # **Transport the velocity to the module, or this introduces an error the
+        # size of the one it removes.** `body_lin_vel_w` is the wrist body's
+        # *centre of mass* velocity, and a rigidly held module sits on a lever
+        # arm from it -- of order 0.3 m here. At the 0.1 rad/s the transit turns
+        # at, omega x r is about 30 mm/s, which is the same order as the camera
+        # noise this channel exists to avoid. So the rigid-body transport is not
+        # a refinement; it is the difference between a fix and a swap.
+        #
+        # The lever arm uses the estimator's own pose, which is camera-derived --
+        # and that is harmless where a camera-differenced *velocity* is not. A
+        # millimetre of position error contributes omega times a millimetre, or
+        # about 0.1 mm/s.
+        wrist_centre = robot.data.body_com_pos_w[:, body_id]
+        module_centre = self._pose[:, :3] + self._env.scene.env_origins
+        lever = module_centre - wrist_centre
+        linear = robot.data.body_lin_vel_w[:, body_id] + torch.linalg.cross(angular, lever, dim=-1)
+
+        velocity = torch.cat((linear, angular), dim=-1)
+        return torch.where(self._module_tool_attached.unsqueeze(-1), velocity, torch.zeros_like(velocity))
+
+    def _wrist_body_id(self, robot) -> int:
+        """Resolve and cache the wrist body index the tool frame hangs off."""
+
+        cached = getattr(self, "_cached_wrist_body_id", None)
+        if cached is not None:
+            return cached
+        # `find_bodies` is the resolution every other wrist lookup in this package
+        # uses -- GrappleLatch, the secured-blade constraint and the tool-frame
+        # observation all call it the same way. Reaching for `body_names` instead
+        # would be a second mechanism for one question.
+        body_ids, body_names = robot.find_bodies(["wrist_3_link"], preserve_order=True)
+        if len(body_ids) != 1:
+            raise RuntimeError(
+                "module_velocity_source='kinematics' needs the wrist body the tool frame is defined "
+                f"from; find_bodies resolved {body_names}"
+            )
+        self._cached_wrist_body_id = int(body_ids[0])
+        return self._cached_wrist_body_id
 
     def _estimate_deployment(self) -> torch.Tensor:
         """Infer pose from one camera frame, without touching live module state."""
@@ -444,19 +575,38 @@ class ModuleStateEstimator:
     def _estimate_fiducial_pnp(self, image: torch.Tensor) -> torch.Tensor:
         """Recover module poses from RGB fiducials and calibrated cameras."""
 
-        camera = self._env.scene.sensors[self._sensor_cfg.name]
-        images = image.detach().cpu().numpy()
-        depth_images = camera.data.output["distance_to_image_plane"].detach().cpu().numpy()
-        intrinsics = camera.data.intrinsic_matrices.detach().cpu().numpy()
-        camera_position = camera.data.pos_w
-        camera_rotation = matrix_from_quat(camera.data.quat_w_ros)
+        camera_candidates = []
+        for sensor_index, sensor_name in enumerate(self._fiducial_sensor_names):
+            camera = self._env.scene.sensors[sensor_name]
+            sensor_image = image if sensor_index == 0 else camera.data.output["rgb"][..., :3]
+            if sensor_image.dtype == torch.uint8:
+                sensor_image = sensor_image.to(dtype=torch.float32).mul_(1.0 / 255.0)
+            else:
+                sensor_image = sensor_image.to(dtype=torch.float32).clamp_(0.0, 1.0)
+            camera_candidates.append(
+                (
+                    sensor_image.detach().cpu().numpy(),
+                    camera.data.output["distance_to_image_plane"].detach().cpu().numpy(),
+                    camera.data.intrinsic_matrices.detach().cpu().numpy(),
+                    camera.data.pos_w,
+                    matrix_from_quat(camera.data.quat_w_ros),
+                )
+            )
         pose = self._pose.new_empty((self._env.num_envs, MODULE_POSE_DIM))
         detected_now = torch.zeros(self._env.num_envs, dtype=torch.bool, device=self._env.device)
 
         for env_index in range(self._env.num_envs):
-            try:
-                estimate = estimate_fiducial_pose(images[env_index], intrinsics[env_index], depth_images[env_index])
-            except (RuntimeError, ValueError):
+            selected = None
+            for images, depth_images, intrinsics, camera_position, camera_rotation in camera_candidates:
+                try:
+                    estimate = estimate_fiducial_pose(
+                        images[env_index], intrinsics[env_index], depth_images[env_index]
+                    )
+                except (RuntimeError, ValueError):
+                    continue
+                selected = (estimate, camera_position[env_index], camera_rotation[env_index])
+                break
+            if selected is None:
                 self._fiducial_failure_count += 1
                 self._fiducial_consecutive_failures[env_index] += 1
                 self._fiducial_max_consecutive_failures[env_index] = torch.maximum(
@@ -478,10 +628,11 @@ class ModuleStateEstimator:
                 self._confidence[env_index] = 0.0
                 self._reprojection_error_px[env_index] = float("inf")
                 continue
+            estimate, selected_camera_position, selected_camera_rotation = selected
             rotation_camera_from_object = self._pose.new_tensor(estimate.rotation_camera_from_object)
             position_camera = self._pose.new_tensor(estimate.position_camera_m)
-            rotation_world_from_object = camera_rotation[env_index] @ rotation_camera_from_object
-            position_world = camera_position[env_index] + camera_rotation[env_index] @ position_camera
+            rotation_world_from_object = selected_camera_rotation @ rotation_camera_from_object
+            position_world = selected_camera_position + selected_camera_rotation @ position_camera
             position_local = position_world - self._env.scene.env_origins[env_index]
             orientation_world = quat_from_matrix(rotation_world_from_object.unsqueeze(0))[0]
             pose[env_index, :3] = position_local
@@ -490,6 +641,9 @@ class ModuleStateEstimator:
             self._reprojection_error_px[env_index] = estimate.reprojection_error_px
             self._fiducial_detection_valid[env_index] = True
             self._fiducial_detection_count += 1
+            self._fiducial_detections_by_marker[int(estimate.marker_id)] = (
+                self._fiducial_detections_by_marker.get(int(estimate.marker_id), 0) + 1
+            )
             self._fiducial_consecutive_failures[env_index] = 0
             detected_now[env_index] = True
 
@@ -506,7 +660,12 @@ class ModuleStateEstimator:
         )
         self._module_in_tool_position[detected_now] = relative_position[detected_now]
         self._module_in_tool_orientation[detected_now] = relative_orientation[detected_now]
-        propagate = ~detected_now & self._fiducial_detection_valid & ~self._payload_stage_engaged
+        propagate = (
+            ~detected_now
+            & self._fiducial_detection_valid
+            & self._module_tool_attached
+            & ~self._payload_stage_engaged
+        )
         if bool(propagate.any()):
             propagated_position, propagated_orientation = combine_frame_transforms(
                 tool_position,
@@ -729,6 +888,9 @@ __all__ = [
     "ModulePoseHead",
     "ModuleStateEstimator",
     "PERCEPTION_BLIND",
+    "MODULE_VELOCITY_FROM_CAMERA",
+    "MODULE_VELOCITY_FROM_KINEMATICS",
+    "MODULE_VELOCITY_SOURCES",
     "PERCEPTION_BACKENDS",
     "PERCEPTION_BACKEND_FIDUCIAL_PNP",
     "PERCEPTION_BACKEND_POSE_HEAD",

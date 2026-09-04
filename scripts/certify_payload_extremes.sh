@@ -29,7 +29,8 @@ for kg in 2 80; do
         --pose_head_checkpoint checkpoints/module_pose_head.pth \
         --module_mass_kg "$kg" \
         --report "${out}_report.json" --episode_metrics "${out}.npz" > "${out}.log" 2>&1
-    echo "[$(date +%H:%M:%S)]   exit=$?"
+    rc=$?
+    echo "[$(date +%H:%M:%S)]   exit=$rc"
     rows+=("${out}.npz")
   done
   "$PYTHON" scripts/aggregate_evaluation.py --episodes "${rows[@]}" \
@@ -40,6 +41,7 @@ for kg in 2 80; do
         "The module is held by pad-against-pin contact throughout, so inertia loads the grip directly." \
         "Compare against the certified 80.38% at the nominal 10 kg module." \
       > "$OUT/aggregate_${kg}.log" 2>&1
-  echo "[$(date +%H:%M:%S)] aggregate ${kg} kg exit=$?"
+  rc=$?
+  echo "[$(date +%H:%M:%S)] aggregate ${kg} kg exit=$rc"
 done
 echo "[$(date +%H:%M:%S)] PAYLOAD CERTIFICATION DONE"

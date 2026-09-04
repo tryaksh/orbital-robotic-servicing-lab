@@ -6,6 +6,15 @@
 # until something says *to what*, so this sweeps one variable at a time around
 # the certified point and reports where the rate falls off.
 #
+# TRACE=1 additionally writes "$OUT/<point>_trace.npz", the phase-transition
+# trace. It is off by default so nothing already measured changes. It exists
+# because the episode archive records each row at the moment of *judgement* --
+# see `_freeze` in run_workflow_demo.py -- so no archive can say whether a
+# deviation at hand-over governed the outcome, and a statistic built on the
+# archive alone reads the success predicate back. The trace carries grip error,
+# attitude, pose and velocity at every phase transition, including the one into
+# the seating phase, which is the value that question needs.
+#
 # Sixteen environments and sixteen episodes per point, one seed. That is a
 # coarse instrument on purpose -- a 16-episode Wilson interval is about twenty
 # points wide -- and it is the right one for the question, which is ranking
@@ -16,6 +25,12 @@
 # robot rides a rail to the destination bay, so a bay that is not where the rail
 # stops and a rail that does not stop where the bay is are the same error, and
 # only one of them is a scene rebuild.
+#
+# SWEEP_EXTRA passes one driver flag to every point, so a sweep can be re-run
+# with one thing changed and compared against itself. It exists for
+# --rack_clearance_scope: the published clearance points moved the side guides
+# and left the entry flares, and re-measuring that needs the same points with
+# the same seed under one changed flag, not a different script.
 
 set -u
 PYTHON="C:/isaac-sim/python.bat"
@@ -31,8 +46,15 @@ ENVS="${ENVS:-16}"
 EPISODES="${EPISODES:-16}"
 SEED="${SEED:-4070}"
 
+# POINTS selects a subset by tag, for the follow-up this script's own header
+# promises: "whatever it ranks first gets the 96-episode treatment". The
+# boundary validator reads five of these points and the nominal, so re-measuring
+# a mismatch does not need the other four.
 point() {
   tag="$1"; shift
+  if [ -n "${POINTS:-}" ] && [[ " ${POINTS} " != *" ${tag} "* ]]; then
+    return
+  fi
   if [ -f "$OUT/${tag}.npz" ] && [ "${RESUME:-1}" = "1" ]; then
     echo "[$(date +%H:%M:%S)] $tag already done, skipping"
     return
@@ -50,10 +72,13 @@ point() {
       --latch_rotation_stiffness_nm_per_rad 20000 \
       --destination_channel_relief_m "${RELIEF:-0.0046125}" \
       --mating_mode compliant --mating_force_cap_n 1000 \
+      ${SWEEP_EXTRA:-} \
       "$@" \
+      ${TRACE:+--handoff_trace "$OUT/${tag}_trace.npz"} \
       --report "$OUT/${tag}_report.json" --episode_metrics "$OUT/${tag}.npz" \
       > "$OUT/${tag}.log" 2>&1
-  echo "[$(date +%H:%M:%S)]   exit=$? $(grep -oE '"success_rate": [0-9.]+' "$OUT/${tag}_report.json" | head -1)"
+  rc=$?
+  echo "[$(date +%H:%M:%S)]   exit=$rc $(grep -oE '"success_rate": [0-9.]+' "$OUT/${tag}_report.json" | head -1)"
 }
 
 point nominal
@@ -76,6 +101,14 @@ point "relief_0mm" --destination_channel_relief_m 0.0
 # Where the robot stands. Along x this is the trade section 6a of the interface
 # specification measures; across y it is the rail's own stopping error.
 point "base_x_-0.70" --robot_base_x -0.70
-point "base_y_+10mm" --robot_base_y 0.010
+# The rail's stopping error, as a ladder rather than as one point. The
+# published sweep measured +10 mm and lost the chain to 1.6%, with 60 of 63
+# failures timing out inside the *learned* phases and the channel untouched.
+# One point cannot separate a geometric bound from a policy trained at one
+# base position; the shape of the curve between 0 and 10 mm can. The default
+# is the single published point, so nothing already measured moves.
+for mm in ${BASE_Y_MM:-10}; do
+  point "base_y_+${mm}mm" --robot_base_y "$(awk -v m="$mm" 'BEGIN{printf "%.6f", m/1000}')"
+done
 
 echo "[$(date +%H:%M:%S)] DONE"

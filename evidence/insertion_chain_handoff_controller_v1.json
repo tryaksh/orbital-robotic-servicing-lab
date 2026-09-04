@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "evidence_type": "paired_conditioned_insertion_controller_comparison",
+  "protocol": {
+    "name": "insertion_condition_v1",
+    "paired_on": [
+      "condition kind",
+      "reset station when applicable",
+      "seed",
+      "initial-state SHA-256"
+    ],
+    "same_success_predicate": true,
+    "same_settling_check": true,
+    "same_phase_budget": true,
+    "certification": false
+  },
+  "source_revision": {
+    "commit": "3e078bcdf1985b69093e2f5f80c99a3b71cd937c",
+    "dirty": false
+  },
+  "learned_policy": {
+    "name": "v24",
+    "checkpoint_sha256": "47AA9EFB60F7794BE5CDD1EBD0AD5EC0E94CE00345BCF975D83AE9418D9A1B9F"
+  },
+  "overall": {
+    "by_controller": {
+      "guarded": {
+        "episodes": 96,
+        "successes": 94,
+        "success_rate": 0.979167,
+        "success_rate_wilson_95": {
+          "low": 0.927193,
+          "high": 0.994268
+        }
+      },
+      "policy": {
+        "episodes": 96,
+        "successes": 0,
+        "success_rate": 0.0,
+        "success_rate_wilson_95": {
+          "low": 0.0,
+          "high": 0.038476
+        }
+      }
+    },
+    "policy_minus_guarded_success_rate": -0.979167
+  },
+  "paired_conditions": [
+    {
+      "condition": {
+        "kind": "chain_handoff",
+        "station": null,
+        "seed": 4070
+      },
+      "initial_state_sha256": "ae73a728fe663a4514655db86a0042d9edbbdd2e8ce92adcf4797c11a510d49f",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\chain_handoff_seed4070_guarded.npz",
+          "raw_file_sha256": "B7B0DA8F91F87A8B1B7AE02B43E7FDF4A53822C6764286C15E1821006F58569A",
+          "episodes": 32,
+          "successes": 30,
+          "success_rate": 0.9375,
+          "success_rate_wilson_95": {
+            "low": 0.798529,
+            "high": 0.982689
+          },
+          "termination_reasons": {
+            "insertion_success": 30,
+            "time_out": 2
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\chain_handoff_seed4070_policy.npz",
+          "raw_file_sha256": "B82257E9D35B9861F07D21EA247FAF478E111F0B8C4609ADC3E7BEC5E841D87A",
+          "episodes": 32,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.107179
+          },
+          "termination_reasons": {
+            "time_out": 32
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": -0.9375,
+      "losing_arm": "policy"
+    },
+    {
+      "condition": {
+        "kind": "chain_handoff",
+        "station": null,
+        "seed": 5070
+      },
+      "initial_state_sha256": "69f7dd5bd64fea0fbb1ab0f65b7006286219f3a7314851637a80003d84c8d851",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\chain_handoff_seed5070_guarded.npz",
+          "raw_file_sha256": "B0319B023FCB1478453C2E458C06DBC661EBCBEDB855E610A766AF85B5FB7A59",
+          "episodes": 32,
+          "successes": 32,
+          "success_rate": 1.0,
+          "success_rate_wilson_95": {
+            "low": 0.892821,
+            "high": 1.0
+          },
+          "termination_reasons": {
+            "insertion_success": 32
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\chain_handoff_seed5070_policy.npz",
+          "raw_file_sha256": "FA080B87BADBBF181B8875AE268F95F17CCBED22D0350B595B8432BDBECEAB3C",
+          "episodes": 32,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.107179
+          },
+          "termination_reasons": {
+            "time_out": 32
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": -1.0,
+      "losing_arm": "policy"
+    },
+    {
+      "condition": {
+        "kind": "chain_handoff",
+        "station": null,
+        "seed": 6070
+      },
+      "initial_state_sha256": "351ee8a391880785fa0f9a11f89b28ee5c00d53b25b330e6374f6aff3fae5710",
+      "arms": {
+        "guarded": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\chain_handoff_seed6070_guarded.npz",
+          "raw_file_sha256": "382399CC931DA071E4E02A0181577FD5E8A51C39DED25A2002613901069B10AA",
+          "episodes": 32,
+          "successes": 32,
+          "success_rate": 1.0,
+          "success_rate_wilson_95": {
+            "low": 0.892821,
+            "high": 1.0
+          },
+          "termination_reasons": {
+            "insertion_success": 32
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        },
+        "policy": {
+          "raw_file": "D:\\6axis-space-robotics\\artifacts\\conditioned-insertion\\v1\\chain_handoff_seed6070_policy.npz",
+          "raw_file_sha256": "EF58E7063481DE37D3B2BDB7F4AE15C777BDDEA3A402CF696F8371D6649F7903",
+          "episodes": 32,
+          "successes": 0,
+          "success_rate": 0.0,
+          "success_rate_wilson_95": {
+            "low": 0.0,
+            "high": 0.107179
+          },
+          "termination_reasons": {
+            "time_out": 32
+          },
+          "instability_terminations": 0,
+          "safety_abort_terminations": 0,
+          "non_finite_metric_episodes": 0
+        }
+      },
+      "policy_minus_guarded_success_rate": -1.0,
+      "losing_arm": "policy"
+    }
+  ],
+  "decision": {
+    "policy_not_worse_on_every_paired_condition_and_pooled": false,
+    "recommended_controller": "guarded",
+    "rule_frozen_before_results": "replace guarded only if policy is not worse at every paired condition and in the pooled rate"
+  },
+  "scope_and_limitations": [
+    "Simulation evidence only; no hardware contact or load qualification.",
+    "Reset-station runs isolate insertion and are not end-to-end chain certificates.",
+    "Chain-handoff pairing is valid only when each batch contains at most one episode per environment.",
+    "Both winning and losing controller arms are retained in paired_conditions."
+  ],
+  "generated_utc": "2026-08-27T06:07:43+00:00"
+}

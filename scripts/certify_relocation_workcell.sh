@@ -111,7 +111,8 @@ case "$stage" in
           --num_envs 64 --episodes "${EPISODES:-192}" --seed 4070 \
           --report "${out}_report.json" --episode_metrics "${out}.npz" $extra \
           > "${out}.log" 2>&1
-      echo "[$(date +%H:%M:%S)] latch=$arm exit=$?"
+      rc=$?
+      echo "[$(date +%H:%M:%S)] latch=$arm exit=$rc"
       grep -E "\[CHAIN\]" "${out}.log" | tail -3
     done
     ;;

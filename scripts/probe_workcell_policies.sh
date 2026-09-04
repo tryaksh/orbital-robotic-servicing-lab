@@ -57,7 +57,8 @@ for skill in "${skills[@]}"; do
         --report "${out}_play.json" \
         --episode_metrics "${out}.npz" \
         > "${out}.log" 2>&1
-    echo "[$(date +%H:%M:%S)] $skill stage=$stage exit=$? -> ${out}_play.json"
+    rc=$?
+    echo "[$(date +%H:%M:%S)] $skill stage=$stage exit=$rc -> ${out}_play.json"
     "$PYTHON" - "${out}_play.json" <<'PY'
 import json, sys
 report = json.loads(open(sys.argv[1], encoding="utf-8").read())

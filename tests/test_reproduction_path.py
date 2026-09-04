@@ -88,3 +88,24 @@ def test_the_extract_default_names_the_file_the_certification_hashed() -> None:
     runner = RUNNER.read_text(encoding="utf-8")
     assert "last_zero_g_blade_insertion_contact_ep_12600_rew_172.70488.pth" in runner
     assert "last_zero_g_blade_insertion_contact_ep_12600_rew__172.70488_.pth" not in runner
+
+
+def test_chain_certification_uses_fixed_cohorts_and_independent_release_recheck() -> None:
+    runner = RUNNER.read_text(encoding="utf-8")
+    certify = runner.split("  certify)", 1)[1].split("  rail)", 1)[0]
+    assert 'CERT_ENVS="${CERT_ENVS:-8}"' in runner
+    assert '--num_envs "$CERT_ENVS" --seed "$seed"' in certify
+    chain_call = certify.split('"$PYTHON" scripts/aggregate_evaluation.py', 1)[0]
+    assert "--episodes" not in chain_call
+    assert '--steps "${STEPS:-1900}"' in certify
+    assert "--robot_rail_on_relocation" in certify
+    assert '--release_sequence "${RELEASE_SEQUENCE:-simultaneous}"' in certify
+    assert "separate 0.70 s free-module recheck" in certify
+
+
+def test_rgbd_stage_uses_the_same_robot_rail_and_release_protocol() -> None:
+    runner = RUNNER.read_text(encoding="utf-8")
+    rgbd = runner.split("  rgbd)", 1)[1].split("  *)", 1)[0]
+    assert "--robot_rail_on_relocation" in rgbd
+    assert '--release_sequence "${RELEASE_SEQUENCE:-simultaneous}"' in rgbd
+    assert "--settle_steps" not in rgbd

@@ -1,9 +1,28 @@
 # Demonstrations
 
-**No recording in this repository shows the certified chain.** That is the
-finding of the 2026-08-25 media audit, and it is written here rather than worked
-around, because publishing a clip that looks like the current system and is not
-would overstate exactly the thing this project is careful about.
+**One recording now shows a complete continuous episode, and it is the only one
+that does.** Everything else on disk predates the changes that produced the
+current results, which was the finding of the 2026-08-25 media audit; that table
+is kept below because publishing a clip that looks like the current system and is
+not would overstate exactly the thing this project is careful about.
+
+## The current clip
+
+| | |
+| --- | --- |
+| File | `artifacts/robotcarried/video_datum_pair_rack_clean_seed6070/rl-video-step-0.mp4` (26 MB, not committed) |
+| Run | [`evidence/rgbd_strict_rack_retention_datum_pair_seed6070.json`](../evidence/rgbd_strict_rack_retention_datum_pair_seed6070.json) |
+| Source | commit `7a82db2`, tracked worktree clean |
+| What it shows | trained capture, trained extraction, robot-carried transit, guarded insertion to the derived seated plane at 0.676 m, both robot-side supports released, and the rack alone holding the module for 0.733 s |
+| Perception | live throughout: 1,772/1,772 detections, zero failures, both flush plates used |
+| What it is not | a rate. One episode at one seed, with visual randomization off for recording. The pooled RGB-D chain certification is T1. |
+
+`seated_conditions_still_held_after_settling` and
+`all_conditions_including_released_gripper` are both true in that report, and
+`destination_rack_retention.observed_per_environment[0]` records
+`full_rack_only_recheck_observed: true`. Those are the three fields that decide
+whether this clip may be published as a completed changeout; check them again
+before publishing any successor.
 
 Videos are **not committed**. `*.mp4` is gitignored and stays that way: git stores
 video as opaque blobs, so every re-render adds a permanent full copy and the cost

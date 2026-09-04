@@ -1,8 +1,73 @@
 # Next work
 
+## Start here -- handoff, 2026-09-04 afternoon
+
+**Deadline: a project ready to submit by early November 2026.** The Frontiers
+collection stays open to 2027-02-28, so the venue is not the constraint.
+
+**Read `docs/paper_position.md` first.** Its top block carries the corrections
+and the sharpened thesis; the manuscript is being drafted in a separate
+repository against it (`docs/manuscript_prompt.md`).
+
+### What landed today
+
+* **The camera-driven gate passed.** 17/24, 70.83%, Wilson [50.8, 85.1] against
+  the published 4/24, three held-out seeds on one commit. Neither single change
+  is distinguishable from the baseline, so the effect is entirely in the
+  combination.
+* **Claim 2 became a different object.** No passive channel satisfies this
+  interface -- 10.350 mm needed to admit the delivered attitude against a
+  2.500 mm lateral gate, and in zero gravity nothing recentres a released
+  module. Two thresholds, three regimes, `interface_regime()`, eight tests.
+* **The shipped rack is 3.897 mm past the tool's own upper bound**, its source
+  bay is on the design point, and the dominant failure is lateral.
+* **Certified skills over-predict the camera chain by at least 72.8 points**
+  while composing correctly under exact state.
+* The extraction retrained on the estimator's error certifies at 85.16%.
+
+### What is running
+
+| supervisor | what it decides |
+| --- | --- |
+| `supervise_factorial.sh` | the five missing cells of the 2x2x2. `scripts/analyse_factorial.py` decomposes all eight into main effects and interactions |
+| `supervise_force_verify.sh` | **whether the paper reports a learned seating phase.** The first policy that can feel contact, on the skill and inside the chain against the scripted advance |
+| `supervise_relief.sh` | whether correcting the rack as the tool prescribes removes the dominant failure. Runs after the factorial |
+| `supervise_training.sh` | capture seed 72, the last of the seed spread |
+| `supervise_envcount_settle.sh` (queued last) | the environment-count risk |
+
+**Two supervisors, not twelve.** The overnight campaign died at 06:25 with
+`fork: retry: Resource temporarily unavailable` because twelve queue scripts
+were each parked in a sleep loop. Stages that must run in order are lines in one
+script now.
+
+**Do not commit while a cohort is in flight.** `aggregate_evaluation.py` refuses
+a cohort whose runs came from different source commits, and a dirty worktree is
+recorded in every report produced during it. This cost 50 minutes of GPU today.
+`supervise_factorial.sh` retries a cell for this reason; the others do not.
+
+### The four things worth doing next, in order
+
+1. **Read the force verification.** If the chain arm beats the scripted guarded
+   advance, claim 1 turns from a negative result into a positive one and the
+   seating section is rewritten. If not, `docs/seating_controller.md` is the
+   defence and it is already written.
+2. **Close the library defect.** `section_verdict` returns `accepted = True` for
+   the relieved destination while `lateral_clearance_window` calls its clearance
+   3.897 mm too wide, because the section check never consults the upper bound.
+   The tool cannot be published able to accept a bay it elsewhere rejects.
+3. **Finish the seed spreads.** Capture seed 72 is training; the noised capture
+   fine-tune was interrupted at epoch 3,429 of 5,100 and finishing it turns the
+   composition bound from "granting a perfect capture" into a real product.
+4. **Record the pipeline flags in the report.** `geometry_arm` names the flags
+   that define a geometry arm; `--module_velocity_source`,
+   `--fiducial_guard_bounds` and `--insert_controller` still appear nowhere, and
+   every arm of claim 4 is defined by one of them.
+
+---
+
 Every known weakness, exposed defect, unverified assumption and scalability
-limit in this repository, as a bounded task. Prioritised: **T0 first** — it is
-about whether any of the other numbers can be checked at all.
+limit in this repository, as a bounded task. Current priority is set by the
+verified gates in [`NOW.md`](NOW.md), not by this legacy numbering.
 
 Each task states the evidence it starts from, the code it touches, how to run
 it, what would count as done, and roughly what it costs. Read
@@ -15,9 +80,24 @@ in what order, and the few things only a submission needs. They do not conflict 
 `P1` *is* `T0`, `P2` *is* `T3` — the paper section only adds sequencing and the
 claims worth making.
 
-**Pick up at T13.** It is first because the rack blocker underneath it is now
-closed and the skill is one condition away from being certifiable, and because
-every number it needs already exists.
+**Current priority: P0 (T16 and T17), then T1's retrain arm (T18), then T13.**
+P0 -- the boundary mismatch -- turned out to be two separable problems and one
+instrument defect, all opened 2026-09-03. See [T16](#t16), [T17](#t17) and
+[T18](#t18). The old ordering below is preserved because the tasks under it
+are unchanged. **T15 is closed 2026-09-02.** T14 is closed with a narrowed claim: the
+current-source no-rack arm reproduces 17/24, visible rack retention raises the
+same fixed cohorts to 22/24, and all 22/22 episodes that reach seating pass the
+rack-only transfer. Two fail upstream, so the unchanged 95% full-chain gate is
+still not met. T15 is closed: the destination bay's own vertical
+lead-in was derived to be a roof over a centred flush datum for 154 mm of the
+529 mm seating stroke, no camera placement can clear it at the unchanged
+resolution, and a derived flush datum *pair* closes the band. One complete
+continuous RGB-D episode now exists with 1,772/1,772 detections, ending in a
+0.733 s rack-only hold. T1 -- the pooled rate over held-out seeds -- is the
+measurement that was blocked behind it.
+T13 remains separate: learned v24 is 0/96 on real handoffs, and more epochs are
+not justified until its reset and caller distributions are identical by
+construction.
 
 **Two rules are non-negotiable, and they are why some of these tasks are shaped
 the way they are.** Never widen a tolerance to make a gate pass; if a criterion
@@ -35,9 +115,16 @@ training runs do not.
 
 | # | Task | Cost | Blocks |
 | --- | --- | --- | --- |
-| **T13** | **Make the insert skill seat.** Depth is the last condition, and it is attitude through `2c/theta` | ~2 h GPU | a learned seating phase |
-| **T0** | No certification is reproducible from committed code | CPU + 1 cert batch | everything; the paper outright |
-| **T1** | Certify the chain on the vision task | hours, 1 batch | the strongest claim about perception |
+| **T14** | Destination load transfer: 22/22 eligible rack-only holds; full chain 22/24 | **done 2026-08-31, claim narrowed** | — |
+| **T16** | The clearance sweep moved the guides and left the mouth; 6 mm/side is 36/64, not 0/64 | one flag + a re-sweep | the whole rack-clearance axis |
+| **T20** | No perception certificate exists for the deployed datum *pair*; the surrogate's sigma comes from a single-datum one | one collection | the perception numbers, and the noise model |
+| **T19** | The solved-IK agreement check fires spuriously and costs a sweep point | <1 h | one ladder rung |
+| **T17** | Score each criterion against the failure it predicts, not the pooled rate | CPU only | the boundary decision |
+| **T18** | Train the skills on the estimator's error; the filter is already ruled out | one fine-tune + one cohort | the RGB chain's 50% gate |
+| **T15** | Restore flush-tag visibility through late guarded insertion; static held-out gate already passes | one bounded camera change + one run | credible perception |
+| **T13** | Learned insertion interface transfer; paused until resets equal real handoffs | no GPU yet | a learned seating phase |
+| **T0** | Ten older source-bound reports are unrecoverable; re-run any result a final claim needs | CPU + certification batches | reproducible claims |
+| **T1** | Certify the strict chain on the vision task after T14 and T15 pass | hours, 1 batch | the strongest claim about perception |
 | **T2** | Insert: attitude is the interface's, not the reward's — **diagnosed, work moved to T9** | done | — |
 | **T3** | Three training seeds, so numbers carry a spread | 4+ training runs | any claim about a *method* |
 | **T4** | Exercise robustness levels 1–4 | evaluation only | a degradation curve |
@@ -48,8 +135,301 @@ training runs do not.
 | **T9** | **The insert blocker.** Give the skill the chain's *mating compliance*, not just "enable the lock" | half a day + ~2 h GPU | a learned seating phase |
 | **T10** | Test-suite portability | **done 2026-08-25** | — |
 | **T11** | No recording shows the certified chain | ~8 min a clip | the media, and any release |
-| **T12** | Grasp and extract are certified on the rack before the clearance was derived | ~45 min a skill | the two skill numbers |
+| **T12** | Grasp and extract re-certified on the derived rack | **done 2026-08-27** | — |
 | **P1–P7** | [Publication track](#publication-track) — the same work on a submission deadline | see section | Frontiers, 2026-11-09 |
+
+---
+
+<a id="t16"></a>
+## T16 -- The clearance sweep moved the guides and left the mouth: re-measure
+
+**Opened and half-closed 2026-09-03.** `--rack_lateral_clearance_mm` selected
+scene attributes whose name contains "guide". Each bay's upper lips and entry
+flares are placed from `GUIDE_CENTER_OFFSET_Y` when `assets.py` is imported, so
+four bodies per rack moved and eight did not. That is not a narrower channel: it
+is a rack whose mouth and walls disagree by exactly the clearance change.
+
+**Measured.** With `--rack_clearance_scope channel`, which translates the lips
+and the flares by the same delta, 6 mm per side scores **36/64 (56.25%)** with
+**zero** jams and a median terminal lateral error of 2.38 mm. The guides-only arm
+on the identical seed and checkpoints scores **0/64**, with 62 of 64 episodes
+stopping in the insert phase short of the seated plane. Nominal is 35/64.
+
+So `NOW.md`'s "6 mm/side confirmed infeasible (0.0%)" was an artifact of the
+instrument, and both clearance points in
+`serviceability_boundary_validation_n64_v1.json` are unsafe -- in both
+directions, because at 16 mm the same defect protrudes the flare *into* the
+channel instead.
+
+**And it moves the analytical model, not just the evidence.** The closed-form
+lower bound says a channel must admit the attitude the transit hands over at,
+0.5 x 46 mrad x 0.45 m = 10.35 mm per side. Six millimetres is well below that
+and the chain does not care. `2c/theta` at 46 mrad and 6 mm of clearance is
+261 mm of engagement, against a 529 mm stroke -- so a module traversing at the
+hand-over attitude would wedge halfway, and none of the 64 did -- terminal axial
+error is 0.5 mm. **So the module is not traversing at the hand-over attitude**,
+and that much is airtight without knowing what squares it.
+
+Two candidates, and they are separable. The entry flare is a 12-degree funnel
+that catches 73.9 mrad and could square the module mechanically on the way in;
+the guarded advance only steps while the estimate is inside the entry envelope
+and could be squaring it by refusing to push. Running the 6 mm channel point
+with the flares removed decides it: if it still seats, the guard is doing the
+work; if it jams, the flare is.
+
+Either way the closed form's error is the same in kind. It charges the *channel*
+with admitting the hand-over attitude, when the hand-over attitude is corrected
+before the channel ever sees it. The bound belongs on whatever does the
+correcting, and the channel's own lower bound is then something else entirely --
+manufacturing and thermal fit, which this model does not carry.
+
+**Both clearance points have landed and the axis is re-derived.** 16 mm scores
+27/64 against the guides-only arm's 26/64, so that point was never the confound;
+6 mm is the whole of it. `evidence/chain_robustness_sweep_n64_channel_v1.json`
+is the corrected sweep, `evidence/serviceability_boundary_validation_n64_channel_v2.json`
+the decision on it, and both guides-only arms are preserved.
+
+**And the correction landed in the library rather than in the bound.** Replacing
+`check_workcell_geometry.py`'s lower bound outright would be wrong: the bound is
+a correct statement about a module that carries its hand-over attitude to the
+seated plane, and no module in this rack does. What the closed form was missing
+is the *gate that says so*, and
+`servicing_design.requires_a_correcting_lead_in` is it: at 46 mrad an 11.065 mm
+channel admits 481 mm of a 529 mm stroke, so this bay needs a funnel, and it has
+one. The same law that is contradicted as a clearance floor is confirmed as a
+lead-in requirement, which is the version a designer can act on.
+
+**Left to do.** Run the 6 mm point with `--remove_entry_flares` to say whether
+the flare or the guard does the squaring; it is queued. Then decide whether
+`check_workcell_geometry.py`'s `lateral_clearance_window` should report its lower
+bound as conditional on the absence of a correcting lead-in, which is a criterion
+change and needs its own before-and-after.
+
+<a id="t20"></a>
+## T20 -- There is no perception certification for the datum layout that is deployed
+
+**Opened 2026-09-03, and it is a gap in a published claim rather than a
+provenance nicety.**
+
+Every fiducial certificate in `evidence/` -- `fiducial_rgbd_flush_v2_seed283`,
+`v3_seed284_overhead`, `v4_seed285_gripper_clear` -- was collected when the
+module carried a **single centred datum**. The chain now carries a **pair**,
+ArUco 23 aft and ArUco 15 forward at module-frame x = -+0.115 m, and that change
+landed after the last collection. `NOW.md` quotes the single-datum numbers for
+detection rate and pose error while describing a system that runs the pair.
+
+**The mismatch is measured, not suspected.** Replaying the preserved v4 dataset
+through the current detector gives a position p95 of **116.08 mm** against the
+published **1.91 mm**, with orientation p95 unchanged at 20.08 mrad against
+20.06. One hundred and sixteen millimetres is the datum offset: the current
+detector resolves a plate 115 mm off centre in frames whose ground truth assumes
+a centred one. So the old datasets cannot be re-certified on current code, and
+the discrepancy is a layout mismatch rather than a detector regression.
+`evidence/fiducial_v4_dataset_replayed_on_the_datum_pair_detector.json` is that
+replay, kept and named for what it is.
+
+**It also matters to the estimator surrogate.** `mdp/estimator_surrogate.py`
+inverts its position sigma from the v4 certificate's p95, so the noise the
+retrained skills were trained against is calibrated from a datum layout the chain
+no longer has. The residual is a property of marker size, resolution and lens,
+none of which changed, so the constant is probably close -- but "probably close"
+is the shape of assumption this repository's rules exist to stop.
+
+**Run it.** Collect 1,024 held-out workflow-envelope frames on the current scene
+and certify them; seed 286 is held out from every previous collection. Queued
+2026-09-03 as `artifacts/campaign/queue_datum_pair_perception.sh`.
+
+```bash
+C:/isaac-sim/python.bat scripts/collect_grapple_vision.py \
+  --task Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Collect-v0 \
+  --output datasets/fiducial_rgbd_datum_pair_seed286.npz \
+  --samples 1024 --num_envs 16 --seed 286 \
+  --rgb_source raw --pose_distribution workflow_envelope
+C:/isaac-sim/python.bat scripts/certify_fiducial_perception.py \
+  --dataset datasets/fiducial_rgbd_datum_pair_seed286.npz \
+  --report <a new versioned path under evidence/>
+```
+
+**Done when** a certificate exists for the deployed datum pair, `NOW.md` quotes
+it instead of the single-datum numbers, and the surrogate either keeps its sigma
+because the new p95 agrees or is re-derived because it does not. Re-running
+`check_estimator_surrogate.py` afterwards is what says which.
+
+**Cost.** One rendering collection and a CPU certification.
+
+<a id="t19"></a>
+## T19 -- The solved-IK agreement check fires spuriously, about one run in fifteen
+
+**Opened 2026-09-03, small, and it costs a sweep point when it happens.**
+
+The `base_y_+1mm` rung of the rail ladder died on
+
+    The closed-form arm kinematics disagree with the simulator's tool frame by
+    108.115 mm and 566.920 mrad, against 0.500 mm and 1.000 mrad.
+
+The check compares `batched_tool_pose(joints)` against the measured tool pose
+**both expressed in the robot root frame**, so a 1 mm base translation cancels
+exactly and cannot produce a 108 mm disagreement. The published `base_y_+10mm`
+point, ten times the offset, did not fire it. What the check does do is take
+`.max()` across every environment at one instant, so a single environment whose
+joints have not yet been written when it runs is enough.
+
+**Do not widen the tolerance.** The tolerance is right and the check has caught
+real defects. Either run it per environment and report which one disagreed, or
+run it after the first reset has been stepped in every environment. Then re-run
+the rung.
+
+**Cost.** Under an hour, plus the one sweep point.
+
+<a id="t17"></a>
+## T17 -- Score each criterion against the failure it predicts
+
+**Opened 2026-09-03. `scripts/report_boundary_failure_modes.py`.**
+
+At the nominal design point, 27 of 29 failures reach the final phase with the
+form lock engaged and miss the 2.5 mm terminal gate. Two episodes in five are
+lost at nominal to a mode no serviceability criterion claims to predict, so a
+pooled-rate comparison asks every boundary point to clear that noise floor before
+a Wilson interval can separate it. That is why five of seven axes came back
+"mismatch" while their mechanisms behaved exactly as the geometry said.
+
+Counting the same episodes by mode recovers the signal. The grip criterion
+predicts an episode that never delivers the module; the entry criterion predicts
+one that jams short of the seated plane; neither predicts one that arrives and
+misses the gate. On that reading `rack_lat_16mm` supports the boundary --
+grip-inadmissible by 2.89 mm, losing 0.219 of its episodes before delivery
+against nominal's 0.031, Wilson-separated -- where the pooled protocol called it
+a mismatch.
+
+**Done when** the boundary decision is published on both protocols, with the
+pooled arm preserved, and every remaining mismatch names its cause.
+
+<a id="t18"></a>
+## T18 -- Put the estimator's error in the skills' training distribution
+
+**Opened 2026-09-03. This is the RGB chain's 50% gate.**
+
+The 67-point perception step is the estimator, measured as a substitution. It is
+not the estimator being inaccurate: across the three vision seeds the *winning*
+episodes carry 1.89, 2.00 and 2.11 mm of mean estimator error and the *losing*
+ones carry 2.29, 5.99 and 1.98 mm. The estimator is no worse on the episodes it
+loses. The policies simply never trained on camera-derived observations.
+
+**Two cheap experiments, one answered.** The velocity-channel filter is not the
+fix: with the arm held still the channel reads 17.02 mm/s at the deployed filter
+against 3.38 mm/s for the identical differencing on the simulator's own pose, so
+the estimator contributes 13.65 mm/s against a seated module's 0.69 mm/s, and no
+time constant helps -- the mean falls to 9.01 mm/s at 1 s while the p95 *rises*
+from 29 to 59, because a first-order filter integrates the random walk of held
+estimates. `evidence/estimator_surrogate_velocity_channel_v1.json`. The
+guard-bounds A/B is the other and has not been run.
+
+**The retrain.** `Isaac-ZeroG-Blade-GrapplePin-{Grasp,Extract,Insert}Noised-v0`
+train against a surrogate whose residual, sample-and-hold and miss rate are read
+from the estimator's own certification. `grapple_extract_l0_seed70_v19noised`
+resumes the certified v18pin checkpoint on the noised task at the same seed, so
+it is one change from a published arm.
+
+**Done when** the pooled RGB-D chain rate over three held-out seeds is published
+beside the 4/24 it replaces, whichever way it goes.
+
+---
+
+## T14 -- Destination load transfer after robot release
+
+**Start from:** `workflow_robot_carried_release_recheck_v2_certification.json`
+(17/24) and the paired losing hand-first arm (12/24). Do not alter the controller,
+seeds, initial states or tolerances.
+
+Add the smallest visible rack-side passive capture whose collision/contact
+geometry can be named and measured. If an idealized joint remains necessary, it
+must connect the module to that rack interface rather than the world, engage
+only after measured seating, carry a reported break rating, and be disclosed.
+Record rack reaction/load transfer and the interval after both robot supports
+are absent. Preserve the no-rack-capture arm.
+
+**Done:** the paired arm uses identical fixed cohorts, reaches at least 95%, and
+the report shows 0.70 s of stable rack-only seating with no hidden carrier,
+teleport, pose write or tolerance change. Otherwise narrow the completion claim.
+
+**Closed 2026-08-31 with the required narrower claim.** The current-source
+no-rack control is 17/24 and the one-change rack-retention arm is 22/24. The
+unchanged predicate fires in 22 episodes; every one engages the visible rack
+capture, releases both robot supports and passes the rack-only recheck with 0.0
+m / 0.0 rad measured relative drift. The other two are upstream failures that
+never engage. Therefore destination load transfer is supported at 22/22, while
+the autonomous full chain remains below its 95% gate at 91.67%.
+
+Evidence: `rack_retention_paired_v1.json`,
+`rack_retention_geometry_v1.json`, and both versioned aggregate arms.
+
+## T15 -- Flush-tag visibility
+
+**Start from:** `fiducial_rgbd_flush_v2_seed283.json`. Detected-frame accuracy
+passes its limits; critical visibility is 43.27% against 99%. Do not widen the
+pose, occupancy or detection gates.
+
+Change one physical variable at a time: first fixed-camera placement/aim, then a
+second flush datum or a larger datum only if it still fits the module geometry.
+Keep the current camera/tag arm as the loser. Collect at least 1,024 held-out
+workflow-envelope frames before promotion:
+
+```powershell
+C:/isaac-sim/python.bat scripts/collect_grapple_vision.py `
+  --task Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Collect-v0 `
+  --output datasets/fiducial_rgbd_flush_v3.npz --samples 1024 --num_envs 16 `
+  --seed 284 --rgb_source raw --pose_distribution workflow_envelope
+C:/isaac-sim/python.bat scripts/certify_fiducial_perception.py `
+  --dataset datasets/fiducial_rgbd_flush_v3.npz `
+  --report <new-versioned-evidence-path>
+```
+
+**Done:** overall detection is at least 90%, critical-bay detection at least
+99%, position p95 below 20 mm, orientation p95 below 0.05 rad and occupancy at
+least 95%, followed by a strict RGB-D chain run.
+
+**Static camera gate passed 2026-09-01.** The one-change overhead placement preserved
+the flush 90 mm datum, 120 mm quiet zone, lens, resolution and all estimator
+gates. On seed 284 it detected 951/1,024 frames overall (**92.87%**) and
+682/683 critical-bay frames (**99.85%**); position p95 was 1.92 mm, orientation
+p95 18.3 mrad and occupancy 100%. The former-camera v2 arm remains canonical as
+the loser. A later 640 px certificate records 937/1,024 overall and 683/683 in
+the critical-bay subset with tighter pose error.
+
+**Continuous gate passed 2026-09-02, by changing the datum rather than the
+camera.** The dual-camera strict run
+`rgbd_strict_rack_retention_dual_camera_full_seed6070.json` is preserved as the
+losing arm: 1,524/1,909 detections, both views lost for the final 385 attempts,
+202 advances then a 1,090-step hold, no completion claim.
+
+`scripts/check_rack_sightlines.py` derived why, on the CPU, and validated the
+derivation against that run's own stopping depth before reporting: the
+destination bay's upper entry ramp is an 80 x 60 x 18 mm plate at 12 degrees
+over the bay centre line, 25 mm above the module's top face, and it covers a
+centred datum for 154 mm of the 529 mm stroke from both cameras. Clearing it
+means looking under an 82 mm span through 25 mm of headroom, which puts the
+marker cell below the estimator's unchanged 8 px requirement, so **no camera
+placement is a fix**. Moving the second camera 370 mm along x had moved the loss
+depth 6.5 mm, which is what a roof does to two cameras both within ten degrees
+of vertical.
+
+The one change: **two flush plates instead of one**, ArUco 23 aft and ArUco 15
+forward at module-frame x = -+0.115 m, separation derived as "more than the
+203 mm shadow, and each plate still in frame", which leaves -+[0.1025, 0.1275] m.
+Marker, quiet zone, plane, camera, lens, resolution and every estimator gate are
+unchanged, and both checks keep `--datum_offsets_m` so the single centred datum
+stays replayable.
+
+Result, seed 6070, commit `7a82db2`, clean worktree
+(`rgbd_strict_rack_retention_datum_pair_seed6070.json`): trained capture,
+trained extraction, robot-carried transit at 1.05 mm and 3.27 mrad maximum
+drift, 563 guarded advances to the derived seated plane at 0.676 m, all seven
+insertion conditions true and still true after settling, both robot supports
+released, and the rack alone holding for 0.733 s at 0.0 m / 0.0 rad drift --
+with **1,772/1,772 detections and no consecutive failures**. Both plates
+carried the episode: 1,232 forward and 540 aft.
+
+**It is one episode.** T1 is the rate.
 
 ---
 
@@ -163,7 +543,7 @@ module when handed the state the chain actually produces is the exact failure
 this repository has paid for most, and `verify_insert_skill.sh` exists to catch
 it. It caught it.
 
-**Two candidate causes, and they are cheap to separate.**
+**The reset-distribution cause is now separated.**
 
 1. **The hand-off station.** The reset bank has nine stations from the mouth
    (x = 0.1468) to nearly seated (x = 0.5829), sampled uniformly, so the skill's
@@ -172,35 +552,50 @@ it. It caught it.
    above says this policy manages about 290 mm. Evaluate the skill *per station*
    before anything else: if success at station 0 is near zero, the pooled number
    was never predictive of the chain and the reset distribution has to be
-   reweighted toward the hand-off.
+   reweighted toward the hand-off. **Measured:** v24 is 0/768 at stations 0–3,
+   then 75/192, 165/192, 174/192, 192/192 and 180/192 at stations 4–8.
 2. **The lock state at hand-over.** The skill's reset writes the module, the arm
    and the fingers together and softens the lock at control step 5. The chain
    arrives having carried the module rigid and softens at the mouth. If the
    policy is being handed a lock state its reset never produces, that is the same
    class of divergence as the load path was, one level finer.
 
-**Do (1) first.** It is one evaluation, it needs no training, and it decides
-whether the skill number means anything for a caller.
+**Station-0-only intervention: measured and not promoted.** v25 resumed v24 for
+400 epochs with only the reset station changed. On the identical station-0 seed,
+median axial/lateral/orientation errors improved
+247.6→230.5 mm, 10.6→8.9 mm and 110.8→104.0 mrad, but success remained 0/64.
+It was also 0/64 on its exact noisy training task. Preserve it in
+evidence/grapple_insert_v25handoff_probe.json.
+
+**Do next:** run scripts/train_insert_handoff_curriculum.sh. It resumes the
+unchanged v24 checkpoint, starts at stations 6–8 where v24 already succeeds,
+samples the active frontier in half the environments, and unlocks one earlier
+station only after 80% success over 256 frontier episodes and 1,600 control
+steps. Rewards, tolerances, load path, observations and phase budget are
+unchanged. Then evaluate the final checkpoint across all nine stations and the
+same three real handoff seeds, keeping v24, v25 and guarded as control/losing
+arms.
 
 **Cost.** ~2 h GPU for a retrain, ~110 min to verify both halves.
 
 ---
 
-## T0 — No certification is reproducible from committed code
+## T0 — Recover source provenance for every result that remains in scope
 
-**Found by this audit, and it outranks everything below it, because it is about
-whether the other numbers can be checked at all.**
+**Partly closed.** Clean-commit provenance is implemented and one current chain
+run recovers. Nine older source-bound reports remain lost.
 
-**Where it stands.** Nine reports record `runtime_source_bindings`: the SHA-256 of
+**Where it stands.** Ten reports record `runtime_source_bindings`: the SHA-256 of
 each source file *as it was on disk when the run happened*. That is a strong
 provenance record, and nothing had ever verified it. Verified now, against 200 of
 this repository's 266 commits:
 
 ```
-9 reports carry source bindings; 9 cannot be fully recovered from git.
+10 reports carry source bindings; 9 cannot be fully recovered from git.
 ```
 
-Every one. Including `robot_carried_full_chain_pin.json`, the single end-to-end
+Nine older reports fail. `robot_carried_full_chain_c11065.json` is the recovered
+exception. The lost set includes `robot_carried_full_chain_pin.json`, an end-to-end
 run of the chain that carries the headline 97.92%. For the pooled certification,
 four of the six recorded bindings — `run_workflow_demo.py` (the chain driver,
 which owns the phase budgets and the settled re-check), `fiducial.py`,
@@ -228,10 +623,9 @@ particular change is very likely irrelevant to the 97.92% — but "very likely
 irrelevant" is an assumption, and this project's rules exist because assumptions
 of that shape have been wrong five times.
 
-**This is systemic, not one lapse.** All nine reports fail, across three sessions.
-The working habit — measure, then write up and commit — guarantees the committed
-bytes differ from the measured bytes every time. The provenance field has been
-recorded faithfully and has never been usable.
+**This was systemic, not one lapse.** Nine older reports fail across three
+sessions. The workflow now records the source commit and tracked dirty state,
+and new evidence generators refuse dirty tracked worktrees.
 
 **Code.** `scripts/check_source_provenance.py` (new, this audit) is the checker.
 It classifies each binding `recovered` / `working` / `lost`, handles the
@@ -246,22 +640,15 @@ python scripts/check_source_provenance.py --depth 200
 
 **Recommended action, in order.**
 
-1. **Change the habit, cheaply.** Commit the code *before* running a
-   certification. Nothing else in this list is worth anything until a number can
-   be tied to a commit.
-2. **Record the anchor in the report.** Have `run_workflow_demo.py` write
-   `git rev-parse HEAD` and the dirty/clean status alongside
-   `runtime_source_bindings`. A hash that matches nothing is a puzzle; a commit
-   SHA plus "working tree dirty" is an answer. This is additive report metadata
-   and cannot move a number — but it edits the chain driver, so it was left as a
-   task rather than done mid-audit without a GPU to test it.
-3. **Re-run the chain certification on committed HEAD** and publish it beside the
+1. **Keep the clean-commit rule.** The driver records commit and dirty status;
+   evidence aggregators fail closed on dirty tracked source.
+2. **Re-run each certification that remains in scope** and publish it beside the
    current one. If it reproduces 97.92% within its Wilson interval, the provenance
    gap is closed and the number is confirmed. If it does not, that is a finding
    and the difference must be published, not reconciled.
 
-**Done when.** `check_source_provenance.py` reports `recovered` for the chain's
-certification, and the driver records a commit SHA so the next one cannot drift.
+**Done when.** `check_source_provenance.py` reports `recovered` for every report
+used by a final claim; lost historical reports remain labelled and preserved.
 
 **Cost.** Steps 1 and 2 are minutes and CPU only. Step 3 is one certification
 batch — the same cost as the run being reproduced, and **naturally combined with
@@ -278,14 +665,19 @@ matter of provenance, not of measurement).
 `Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0`, the *state* task: the module
 pose comes from the simulator, and the guarded advance's "deployed estimate" is
 the deployed code path reading ground truth. Perception is certified separately
-on 1,024 rendered frames. The RGB-D chain has been run end to end at **one seed**
-(`evidence/full_chain_rgbd_service_seed4070.json`) and not since the changes that
-produced the current rate. So the two strongest claims in the repository are
+on 1,024 rendered frames. The RGB-D chain has been run end to end at **one seed** -- originally
+`evidence/full_chain_rgbd_service_seed4070.json`, since retracted, and now
+`evidence/rgbd_strict_rack_retention_datum_pair_seed6070.json` -- and not since
+the changes that produced the current rate. So the two strongest claims in the repository are
 measured on different inputs and have never been combined at scale.
 
 **Evidence.** `evidence/workflow_robot_carried_m130pin_guarded_certification.json`
-(state, pooled), `evidence/fiducial_rgbd_service_plate.json` (perception, frames),
-`evidence/full_chain_rgbd_service_seed4070.json` (both, n=1).
+(state, pooled). The two RGB-D files this entry used to name --
+`fiducial_rgbd_service_plate.json` and `full_chain_rgbd_service_seed4070.json` --
+are **both retracted** and must not be quoted; see `evidence/RETRACTED.md`. Their
+live replacements are `evidence/fiducial_rgbd_flush_v4_seed285_gripper_clear.json`
+for perception and `evidence/rgbd_strict_rack_retention_datum_pair_seed6070.json`
+for the one continuous chain episode.
 
 **Code.** `scripts/run_robot_carried.sh` — the `certify` stage runs `$STATE_TASK`
 and the `rgbd` stage already runs `$VISION_TASK`
@@ -427,6 +819,27 @@ there is no way to say which of those exceed run-to-run noise.
 **Run it.** Retrain grasp and extract at two further seeds each (e.g. 71, 72)
 with everything else identical, then certify each with
 `scripts/certify_grapple_skills.sh` and report mean and range per stage.
+
+**The two skills need different designs, and the reason has to be published
+with the numbers.** Neither promoted checkpoint is a from-scratch run: grasp
+`v7m130` resumed `v6w65` which resumed `v5`, and extract `v18pin` resumed
+`v17m130` at epoch 10,600 for 2,000 epochs on a corrected criterion and rack.
+Reproducing either lineage three times over is not affordable for extract --
+12,600 epochs is about twelve hours a seed.
+
+So, running 2026-09-03:
+
+* **grasp: three from-scratch runs at 3,100 epochs, seeds 70, 71 and 72.**
+  Affordable, and the seed-70 run is also the control that says how much of
+  `v7m130`'s 86.90% came from its lineage rather than from its final stage.
+* **extract: three runs of the *final stage*, seeds 70, 71 and 72**, each
+  resuming `v17m130` at epoch 10,600 for the same 2,000 epochs. Seed 70 of that
+  set *is* `v18pin`. Earlier stages are shared, so this is a spread over the last
+  stage and not over the procedure, and it must be labelled as one.
+
+A spread over one stage is a weaker claim than a spread over the procedure. It is
+the affordable one, and saying which was measured is the difference between a
+qualification and an overstatement.
 
 **Done when.** Each skill's headline number carries a spread across three
 training seeds, and `NOW.md` §2 quotes it that way. If the spread turns out to be
@@ -852,9 +1265,15 @@ publishing the clip.
 
 ---
 
-## T12 — Grasp and extract are certified on the rack before the clearance was derived
+## T12 — Grasp and extract re-certified on the derived rack
 
-**Where it stands.** `GUIDE_CENTER_OFFSET_Y` moved 86.689 → 85.065 mm on
+**Completed 2026-08-27.** The checkpoints did not change. Extraction is 87.64%
+(7,891/9,004) versus 87.75% before; grasp is 86.90% (7,829/9,009) versus 85.69%
+before. The Wilson intervals overlap in both comparisons and neither reaches
+the 95% gate. The narrower channel therefore did not repair the skills, and the
+predicted extraction benefit from the smaller channel corner is refuted.
+
+**Starting point.** `GUIDE_CENTER_OFFSET_Y` moved 86.689 → 85.065 mm on
 2026-08-25, which narrows the channel by 1.624 mm per side in **both** bays —
 the constant places the source bay's guides as well as the destination's. Grasp
 (85.69% pooled) and extract (87.75% pooled) were certified in the wider one.
@@ -877,7 +1296,7 @@ pads cannot follow. If extraction does *not* improve, that is a result: it would
 mean the corner was not the mechanism, and `evidence/extract_attribution.json`
 would need a fifth row.
 
-**Run it.**
+**Reproduce it.**
 
 ```bash
 SKILL=Extract CKPT=logs/rl_games/zero_g_blade_insertion_contact/grapple_extract_l0_seed70_v18pin/nn/last_zero_g_blade_insertion_contact_ep_12600_rew_172.70488.pth \
@@ -887,11 +1306,9 @@ SKILL=Grasp CKPT=logs/rl_games/zero_g_blade_insertion_contact/grapple_grasp_l0_s
   TAG=grasp_v7m130_c11065 scripts/certify_grapple_skills.sh
 ```
 
-**Done when.** Both are re-certified on the derived rack with the **unchanged**
-checkpoints — one variable, the rack — and `docs/NOW.md` §2 quotes the new
-numbers beside the old ones rather than replacing them. If either moves by more
-than its Wilson interval, it belongs in `evidence/extract_attribution.json` as a
-row of its own.
+**Acceptance applied.** Both were re-certified with unchanged checkpoint hashes,
+and `docs/NOW.md` quotes the new numbers beside the old ones. Neither comparison
+has separated Wilson intervals, so no causal attribution row was added.
 
 **Cost.** About 45 minutes a skill: nine runs of 128 environments each.
 
@@ -950,6 +1367,116 @@ The defensible contribution is what this project did that is unusual:
 Claims 2 and 3 are the paper. Claim 1 motivates it. Claim 4 is the deliverable
 that makes it matter to a spacecraft designer. The 97.92% is *evidence for* the
 architecture, reported with its limits — not the headline.
+
+## Reality check against the published literature (2026-09-02)
+
+**The plan above was written from the inside. This section is what a literature
+search says about it, and it moves two of the four claims.** Sources are named so
+the next reader can disagree with the reading rather than with the summary.
+
+### Claim 1 is not a discovery, and has to be reframed
+
+"The binding constraint is the mechanical interface, not the controller" is the
+premise the space-servicing community already builds on. SIROM (EU H2020),
+HOTDOCK and iSSI are standard androgynous interfaces whose stated purpose is that
+geometric guiding structures "autonomously accommodate residual position and
+attitude misalignments", which *by design* relaxes the precision required of the
+arm. A reviewer in this field will read claim 1 as a restatement of their own
+motivation.
+
+**What survives, and it is worth more:** the *direction of derivation*. This
+project computes the interface requirement **from measured manipulation
+performance**, in closed form, on a CPU, **before** any policy is trained — and
+then checks that closed form against what the simulator does. The community
+publishes interfaces; it does not usually publish the requirement-derivation that
+sizes one. Reframe claim 1 from "the interface binds" to "here is how much
+interface a measured manipulator needs, computed rather than chosen".
+
+### Claim 3 has named prior art and cannot be presented as new
+
+Skill-chain hand-off failure is a studied problem with its own vocabulary:
+a preceding skill terminates outside the *initiation set* of the next. Lee et al.,
+*Adversarial Skill Chaining for Long-Horizon Robot Manipulation via Terminal State
+Regularization* (CoRL 2021) and *Value-Informed Skill Chaining* (2023) both attack
+exactly this, and the second states the cascade this project measured: a widened
+initiation set produces an even wider termination set.
+
+**What survives:** the instance is unusually stark and fully instrumented -- a
+skill certifying 36.77% on its own reset distribution and **0.00% on 96 recorded
+predecessor hand-offs**, with eight named interface dimensions differing -- and
+the mitigation is a *simulator-free, source-level agreement test that runs in CI*,
+which is an engineering contribution rather than an algorithmic one. Cite the
+prior art, claim the measurement and the practice, and do not claim the
+phenomenon. If a stronger algorithmic claim is wanted, the hand-off-conditioned
+reset work in T13 has to be measured **against** terminal-state regularization,
+not merely against nothing.
+
+### Claim 2 survives and is the paper
+
+An attitude that does not move when the objective is changed three ways is the
+novel, transferable result. Two conditions on it:
+
+- **Ground it in the classical analysis rather than presenting `2c/L` as new.**
+  Whitney's quasi-static peg-in-hole model and its jamming/wedging diagrams
+  already bound admissible tilt from the clearance ratio. `2c/L` is that bound
+  applied to a long flat module in a rectangular channel. Cite it; the novelty is
+  using it as a *pre-training design gate* in an RL pipeline, not as a
+  post-hoc explanation.
+- **Three objectives at one training seed is three samples of one seed.** P2 is
+  what turns this claim from an anecdote into a result, and it is now the single
+  highest-value GPU spend in the project.
+
+### The comparison a robotics reviewer will demand
+
+NVIDIA SRL's contact-rich assembly line -- Factory, IndustReal, AutoMate, FORGE,
+MatchMaker -- reports **83-99% real-world success over hundreds of trials with
+zero-shot sim-to-real transfer, on the Franka Panda and the UR10e**: the same arm
+this project simulates. Any framing that competes on insertion success rate loses
+to that, in simulation, immediately.
+
+**So do not compete there.** They answer *can a policy insert this part*. This
+project answers *what must the part and the bay be, for any policy to insert it*.
+That is a design-space question sitting underneath theirs, and it is defensible
+next to them if -- and only if -- the paper says so explicitly and cites them as
+the assembly-policy baseline rather than ignoring them.
+
+### Simulation-only is publishable, but not everywhere
+
+Sim-only space-robot learning is an active, published area: the *Space Robotics
+Bench* (arXiv 2509.23328, 2025) is a simulation-only framework with RL baselines,
+and i-SAIRAS, ASTRA and IEEE Aerospace routinely carry simulation studies.
+ICRA/RSS/CoRL/RA-L with no hardware and no algorithmic novelty is not realistic.
+
+**Venue, in order of realism:**
+
+| Venue | Fit | What it needs beyond today |
+| --- | --- | --- |
+| i-SAIRAS / ASTRA / IEEE Aerospace | strong: design-for-serviceability with a simulated demonstrator is exactly their scope | P1, P2, P6 |
+| *Acta Astronautica* or *Frontiers in Robotics and AI* (space robotics) | strong for the journal version | P1-P6, plus the boundary mismatches resolved |
+| *Journal of Field Robotics* / *IEEE T-ASE* | possible as a methods paper | a real baseline comparison, and the CI agreement test evaluated as a method |
+| ICRA / IROS / CoRL / RA-L | not realistic as it stands | hardware, or an algorithmic contribution measured against terminal-state regularization |
+
+### The gap that most threatens the paper, and it is not on the list above
+
+The strongest claim available -- *a closed-form CPU check predicts what the
+simulator does across a swept design space* -- is **currently contradicted by this
+project's own evidence**. `serviceability_boundary_validation_v2.json` reports
+mismatch on three of seven dimensions: rack clearance, module section and robot
+base offset. Only entry attitude is supported.
+
+A paper cannot claim a predictive design tool while its own fail-closed validator
+disagrees with it on three axes. Two honest routes, and they are not equivalent:
+
+1. **Narrow the claim** to the dimension that agrees, and report the other three
+   as measured disagreements with their sample sizes. Cheap, honest, weaker.
+2. **Raise the sample size and find out.** The report already says one module
+   section exclusion "agrees and one contradicts at current sample size". If the
+   disagreement is sampling noise it will close; if it is real, the closed form is
+   wrong somewhere and that is a *better* paper than a quiet narrowing.
+
+**This is now P0.** It outranks P3-P7, and it is cheap next to P2: it is
+evaluation, not training. Sequence it beside the P2 seed batch, which occupies the
+GPU differently.
 
 ## P1 — Close the provenance gap before writing a word
 
@@ -1024,22 +1551,63 @@ Carry the level-4 caveat explicitly: the base compliance is authored and not in
 the load path, so a level-4 number would imply a mount compliance that is not
 being simulated.
 
-## P6 — Say what sim-to-real would take
+## P6 — What sim-to-real would take, written out
 
-Required for a space-robotics venue and currently absent. Not experiments — an
-honest, specific analysis:
+**This section is required for a space-robotics venue, and until now it was a
+task rather than a text. It is written here so the paper can quote it.** It is
+analysis, not experiments: every item is a known property of this simulation,
+and the last subsection says which single hardware experiment would falsify the
+specification most cheaply.
 
-- what the contact model does and does not represent (contact forces are a
-  relative damage proxy, not an absolute budget);
-- the jaws carry no collider, so pad-on-pin contact is not simulated;
-- the base is fixed, so reaction into the servicing spacecraft is not in the load
-  path — a real free-flyer or a compliant mount changes the problem;
-- no connector mating, cabling, thermal or vacuum effects;
-- which hardware experiment would falsify the interface specification most
-  cheaply.
+### What is modelled, and to what standard
 
-Reviewers reward a paper that bounds its own claims. This project already has the
-discipline; it has never written it as a section.
+| Element | Modelled as | What that does and does not license |
+| --- | --- | --- |
+| Gravity | `gravity=(0, 0, 0)` throughout | The load-bearing assumption. A free-floating mass does not settle, and closing pads on a taper ejects it before they grip; that is why capture and extraction are learned and the free-space motion is not. It does not model orbital rate, gravity gradient, or a tumbling client. |
+| Robot base | Fixed to the world | No spacecraft reaction, no attitude control coupling, no compliant mount. A free-flying servicer changes the problem qualitatively: momentum is conserved through the arm, and the arm's own motion moves the base. |
+| Robot rail | Indexes a base already fixed to the world | The carriage's own stiffness, backlash and stopping error are not in the load path. The sweep's `base_y_+10mm` point is the closest thing to a stopping-error measurement and it loses. |
+| Robot-side form lock | Break-rated PhysX fixed joint (rigid) and bounded spring-damper (compliant) between `wrist_3_link` and the module | Disclosed in every report. Geometry is authored and its clearances are checked; the *load path* is idealised. No pad-on-pin contact is simulated: the jaws carry no collider. |
+| Rack-side retention | Two visible 2.5 x 20 x 20 mm pawls with a 600 N / 30 N-m `Rack`-to-module fixed joint, enabled only after the measured seating predicate | Visible geometry without contact colliders. The reaction magnitude is not exposed, so no pawl load can be quoted. |
+| Contact | PhysX rigid contact with authored friction pairs | Forces are a relative damage proxy, not an absolute budget. Friction values are chosen per surface and are not measured from any material pair. |
+| Perception | Rendered RGB-D, 640 px, 45 mm lens, 15 Hz, with a radiation-noise model on RGB | No lens distortion, no motion blur, no exposure control, no specular behaviour of real anodised aluminium, no sun-angle sweep, no eclipse transition. The flush ArUco datum is authored as code-native geometry, not printed and photographed. |
+| Not modelled at all | connector mating, cabling, thermal expansion, vacuum cold-welding, outgassing, plume, dust, radiation-induced sensor upsets | Any of these can dominate a real changeout. |
+
+### The three claims that would move first on hardware
+
+1. **The 2c/L admissibility bound would survive, and the numbers feeding it would
+   not.** The bound is Whitney's classical wedging geometry and does not depend on
+   the simulator. What depends on the simulator is the *delivered* attitude that
+   goes into it -- 20.5 mrad measured here -- and a real UR10e with a real
+   gripper on a real rail will not deliver that. The specification's shape is
+   robust; its constants are not.
+2. **The form lock is the biggest single idealisation.** Everything downstream of
+   capture assumes the module is rigidly attached to the wrist to within 2.5 mm
+   and 52 mrad, and that assumption is enforced by a joint rather than earned by
+   contact. On hardware the lock is a mechanism with backlash, and the transit
+   retention numbers (1.8 mm maximum drift here) are the first thing that would
+   degrade.
+3. **Perception would degrade differently, not uniformly.** The rendered marker
+   has perfect contrast and no blur. The failure the derivation found -- the bay's
+   own lead-in covering the datum -- is *geometric* and would reproduce exactly on
+   hardware; the detection rate on the frames where the datum is visible would not.
+
+### The cheapest falsifying experiment
+
+**Do not start with the arm.** Start with a bench mock-up of one bay and one
+module, on a linear stage, in 1 g, with the flush datum pair and the shipped
+camera calibration:
+
+- push the module in on the stage at a commanded tilt swept through the derived
+  `2c/L` bound and record where it wedges. That falsifies or confirms the
+  admissibility law and the lead-in geometry for the price of a fixture.
+- with the same fixture, record the datum through the full stroke and compare the
+  measured occlusion band against `evidence/rack_sightline_datum_pair_v1.json`.
+  The sight-line derivation makes a specific, falsifiable prediction about where
+  each plate is readable, and it needs no robot at all.
+
+Both are single-afternoon experiments on a stage that costs less than an arm, and
+between them they test the two claims the paper actually rests on. The
+manipulation result is the third experiment, not the first.
 
 ## P7 — Make the artifact citable
 

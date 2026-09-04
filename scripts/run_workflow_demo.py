@@ -54,12 +54,17 @@ assert hasattr(jinja2, "Environment"), "The Jinja2 installation is incomplete."
 TASK = "Isaac-ZeroG-Blade-GrapplePin-Workflow-v0"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_RUNTIME_SOURCES = (
+    Path('src/zero_g_blade_swap/rack_retention.py'),
+    Path('src/zero_g_blade_swap/servicing_camera.py'),
     Path("scripts/run_workflow_demo.py"),
+    Path("src/zero_g_blade_swap/provenance.py"),
     Path("src/zero_g_blade_swap/fiducial.py"),
     Path("src/zero_g_blade_swap/tasks/blade_swap/assets.py"),
     Path("src/zero_g_blade_swap/tasks/blade_swap/mdp/perception.py"),
     Path("src/zero_g_blade_swap/tasks/blade_swap/scene_cfg.py"),
     Path("src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py"),
+    Path("src/zero_g_blade_swap/tasks/blade_swap/insert_reset_bank.py"),
+    Path("src/zero_g_blade_swap/tasks/blade_swap/two_slot_env_cfg.py"),
 )
 #: Control steps between recorded transit waypoints. Four is about 30 mm of pull
 #: at the extraction scale, close enough that the return follows the same arc.
@@ -515,6 +520,31 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--remove_entry_flares",
+        action="store_true",
+        help=(
+            "Diagnostic arm: delete each bay's two lateral entry flares from the scene. It exists "
+            "for one question. At 6 mm of lateral clearance per side the chain seats 36 of 64 "
+            "modules, while 2c/theta at the 46 mrad hand-over attitude says a module should wedge at "
+            "261 mm of a 529 mm stroke -- so something squares the module during the stroke, and "
+            "the two candidates are the 12-degree flare doing it mechanically and the guarded "
+            "advance doing it by refusing to push. Removing the flares separates them. Off by "
+            "default; no published number was measured without them."
+        ),
+    )
+    parser.add_argument(
+        "--rack_clearance_scope",
+        choices=("guides", "channel"),
+        default="guides",
+        help=(
+            "Which bodies --rack_lateral_clearance_mm moves. 'guides' moves the two side guides per "
+            "bay and leaves the upper lips and the entry flares where the nominal guides put them, "
+            "which is what the published clearance sweep did. 'channel' translates the lips and the "
+            "flares by the same delta, so the mouth still funnels the module to the wall it will run "
+            "against. The default reproduces every published clearance number."
+        ),
+    )
+    parser.add_argument(
         "--rack_lateral_clearance_mm",
         type=float,
         default=None,
@@ -561,6 +591,12 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--video", action="store_true")
     parser.add_argument("--video_dir", type=Path, default=Path("artifacts/demo/workflow"))
+    parser.add_argument(
+        "--perception_frame_dir",
+        type=Path,
+        default=None,
+        help="Diagnostic only: save env-0 servicing-camera RGB every 60 control steps.",
+    )
     parser.add_argument("--report", type=Path, default=Path("artifacts/demo/workflow_report.json"))
     parser.add_argument(
         "--latch_on_release",
@@ -641,6 +677,27 @@ def _parser() -> argparse.ArgumentParser:
             "advance that moves only while the deployed estimator says the module is "
             "inside the bay envelope; policy hands the phase to the trained insert "
             "checkpoint. The report labels whichever ran."
+        ),
+    )
+    parser.add_argument(
+        "--release_sequence",
+        choices=("simultaneous", "hand_first"),
+        default="simultaneous",
+        help=(
+            "How the robot transfers a seated module to the rack. simultaneous preserves the "
+            "baseline that opens the hand and releases the compliant form lock together; hand_first "
+            "opens the hand while the form lock still supports the module, releases the lock after "
+            "0.70 s, then applies the same 0.70 s free-module recheck."
+        ),
+    )
+    parser.add_argument(
+        "--start_insert_station",
+        type=int,
+        default=None,
+        help=(
+            "Diagnostic paired-controller protocol: start directly in INSERT at one solved reset-bank "
+            "station. Requires the two-slot relocation task, curriculum stage 0, no latch or rail, and "
+            "uses a deterministic zero-noise reset. This is not a chain certificate."
         ),
     )
     parser.add_argument(
@@ -727,6 +784,39 @@ def _parser() -> argparse.ArgumentParser:
         default=0,
         help="Extra steps to hold still after the workflow finishes, so a recording does not cut on the last frame.",
     )
+    parser.add_argument(
+        '--module_velocity_source',
+        choices=('camera', 'kinematics'),
+        default='camera',
+        help=(
+            "Where the module-velocity channel comes from. 'camera' differences consecutive pose "
+            "estimates and is the shipped path, on which every published RGB-D number was measured. "
+            "'kinematics' reports zero before capture -- the module is held by its rails and is not "
+            "moving -- and the wrist's own velocity after it, which is encoder information a real "
+            "servicer has. Measured on an unchanged checkpoint, noising the pose channels alone costs "
+            "8.33 points and noising both pose and velocity costs 41.15, so restoring this one channel "
+            "recovers most of the loss without a retrain and without a better camera."
+        ),
+    )
+    parser.add_argument(
+        '--fiducial_guard_bounds',
+        choices=('estimator', 'lead_in'),
+        default='estimator',
+        help=(
+            'Which bounds the guarded advance admits on with the fiducial backend. '
+            '"estimator" is the shipped pair, sized above the certified RGB-D p95 errors; '
+            '"lead_in" is the entry flare catch the state path already uses. The default '
+            'reproduces every published number.'
+        ),
+    )
+    parser.add_argument(
+        '--rack_retention',
+        action='store_true',
+        help=(
+            'Fit the destination bay with visible passive pawls and engage a '
+            'break-rated Rack-to-module joint only after measured seating.'
+        ),
+    )
     AppLauncher.add_app_launcher_args(parser)
     return parser
 
@@ -741,6 +831,42 @@ if args.video and args.num_envs > 1:
     parser.error("--video records one workflow; use --num_envs 1")
 if args.insert_controller == "policy" and args.insert_checkpoint is None:
     parser.error("--insert_controller policy needs an --insert_checkpoint to run")
+if args.oracle and args.perception_backend == "fiducial_pnp":
+    # **This used to be a silent deadlock and it cost a control run.** --oracle
+    # puts the estimator in PERCEPTION_ORACLE mode, where _estimate_oracle never
+    # publishes a confidence or a current detection. The relocation preflight
+    # requires confidence > 0 whenever the backend is fiducial_pnp, and the
+    # capture gate requires a current detection, so both wait forever on a
+    # detector that is not running: every environment times out in capture with
+    # the module still in its source bay, which reads as a chain failure rather
+    # than as a configuration error. The control arm belongs on the pose-head
+    # backend, where those interlocks are not in the path.
+    parser.error(
+        "--oracle cannot run on --perception_backend fiducial_pnp: the fiducial "
+        "detection interlocks would wait forever on a detector the oracle does not "
+        "run. Use --perception_backend pose_head --oracle for the control arm."
+    )
+if args.rack_retention and (
+    not args.latch_on_release
+    or args.workflow != 'relocate'
+    or args.base_rail_on_relocation
+):
+    parser.error(
+        '--rack_retention requires robot-carried --workflow relocate with '
+        '--latch_on_release and forbids the world-mounted payload stage'
+    )
+if args.start_insert_station is not None:
+    if args.start_insert_station < 0:
+        parser.error("--start_insert_station must be non-negative")
+    if "TwoSlot" not in args.task or args.workflow != "relocate":
+        parser.error("--start_insert_station requires a TwoSlot task and --workflow relocate")
+    if args.curriculum_stage != 0:
+        parser.error("--start_insert_station requires --curriculum_stage 0")
+    if args.latch_on_release or args.base_rail_on_relocation or args.robot_rail_on_relocation:
+        parser.error(
+            "--start_insert_station uses the insert task's reset load path and forbids "
+            "workflow latch or rail overrides"
+        )
 if args.video or "Vision" in args.task:
     # The vision profile renders a camera and drives Replicator randomizers, and
     # both need the rendering extensions up before the app launches. Without
@@ -754,6 +880,7 @@ import gymnasium as gym
 import numpy as np
 import omni.usd
 import torch
+from PIL import Image
 
 from isaaclab.utils.math import (
     axis_angle_from_quat,
@@ -764,9 +891,10 @@ from isaaclab.utils.math import (
     quat_mul,
 )
 from isaaclab_tasks.utils import parse_env_cfg
-from pxr import Gf, UsdPhysics
+from pxr import Gf, UsdGeom, UsdPhysics
 
 import zero_g_blade_swap.tasks.blade_swap  # noqa: F401
+from zero_g_blade_swap import rack_retention
 from zero_g_blade_swap.evaluation import (
     TERMINAL_METRIC_FIELDS,
     TERMINATION_REASONS,
@@ -796,6 +924,13 @@ from zero_g_blade_swap.tasks.blade_swap.mdp.grapple import (
     soften_grapple_latch,
     grip_drive_torque,
     grip_finger_angle,
+)
+from zero_g_blade_swap.tasks.blade_swap.insert_reset_bank import (
+    INSERT_STROKE_ARM_JOINT_POS,
+    INSERT_STROKE_BLADE_POSE,
+)
+from zero_g_blade_swap.tasks.blade_swap.two_slot_env_cfg import (
+    ZeroGBladeGrapplePinInsertTwoSlotEnvCfg,
 )
 from zero_g_blade_swap.tasks.blade_swap.mdp.insertion import (
     INSERTION_ANGULAR_VELOCITY_LIMIT_RADPS,
@@ -828,6 +963,7 @@ from zero_g_blade_swap.arm_kinematics import (
     batched_tool_pose,
 )
 from zero_g_blade_swap.checkpoint_policy import CheckpointPolicy
+from zero_g_blade_swap.provenance import git_source_revision
 from zero_g_blade_swap.grapple_geometry import (
     BLADE_LENGTH_M,
     EXTRACTED_BLADE_CENTRE_X,
@@ -853,6 +989,8 @@ LATCH_ENGAGED_FAR_DEPTH_M = _LATCH_ENGAGED_DEPTH_M[1]
 from zero_g_blade_swap.grapple_geometry import SLOT_ENTRY_RAMP_CATCH_M
 from zero_g_blade_swap.tasks.blade_swap.assets import (
     BLADE_SIZE,
+    RACK_RETENTION_PAWLS,
+    RACK_RETENTION_PRIM,
     SECOND_SLOT_CENTER_Y,
     SECOND_SLOT_INSERTED_POS,
 )
@@ -913,13 +1051,6 @@ HANDOVER_GRIP_M = WORKFLOW_HANDOVER_GRIP_M
 #: head's sigmoid values are decision scores rather than calibrated confidence,
 #: so this threshold is reported plainly and no uncertainty claim is made.
 OCCUPANCY_PLAN_THRESHOLD = 0.5
-
-#: Drive the last transit leg to the insert policy's *old* single reset pose
-#: instead of leaving the module at the mouth. Off, because the reset is no
-#: longer a single pose; on, it reproduces the hand-off an archived checkpoint
-#: was trained for. An environment variable rather than a flag because it exists
-#: to re-run history, not to configure a workcell.
-LEG_ZERO_AT_POLICY_RESET = os.environ.get("LEG_ZERO_AT_POLICY_RESET", "0") == "1"
 
 #: Fail-closed relocation-to-insert contract.  Position and attitude are the
 #: insert task's full-distance reset displaced to bay 1; tolerances and motion
@@ -986,6 +1117,11 @@ WORKFLOW_METRIC_FIELDS = (
     "grip_attitude_rad",
     "predicate_fired",
     "all_conditions_after_settling",
+    # Per-episode proof that a configured load path actually became the load
+    # path. Configuration alone cannot distinguish an exercised mechanism from
+    # an event that never qualified.
+    "latch_engaged_in_episode",
+    "latch_compliant_in_episode",
     # What the estimator was actually wrong by, averaged and at its worst over
     # the episode. Without this a vision arm can only be diagnosed by inference:
     # the two-bay camera arm collapsed to 25.00% on one seed of three and the
@@ -1091,6 +1227,41 @@ TRANSIT_TRACE_FIELDS = (
 #: measured loss on the passive interface happens inside the first two seconds --
 #: and cheap enough to leave on for a many-environment batch.
 TRANSIT_TRACE_STRIDE = 2
+#: Guarded insertion is slower than transit and its failures live between the
+#: handoff and terminal rows. Sample at 6 Hz so target lead, envelope gating,
+#: module motion and the compliant load path can be separated without a video.
+INSERT_TRACE_STRIDE = 5
+INSERT_TRACE_FIELDS = (
+    "step",
+    "env",
+    "target_x_m",
+    "estimated_blade_x_m",
+    "estimated_blade_y_m",
+    "estimated_blade_z_m",
+    "true_blade_x_m",
+    "true_blade_y_m",
+    "true_blade_z_m",
+    "lateral_error_m",
+    "orientation_error_rad",
+    "clear_to_advance",
+    "following_target",
+    "target_advanced",
+    "grip_error_m",
+    "grip_attitude_rad",
+    "finger_angle_rad",
+    "drive_torque_nm",
+    "latch_engaged",
+    "latch_relative_position_error_m",
+    "latch_relative_orientation_error_rad",
+    "latch_applied_force_n",
+    "latch_applied_torque_nm",
+    "action_x",
+    "action_y",
+    "action_z",
+    "action_rx",
+    "action_ry",
+    "action_rz",
+)
 #: One row per environment per step of the settling window. A pooled terminal
 #: number cannot distinguish a module that was never settled from one that was
 #: settled and then pushed, and those want opposite fixes.
@@ -1103,8 +1274,20 @@ SETTLE_TRACE_FIELDS = (
     "finger_angle_rad",
     "drive_torque_nm",
     "blade_x_m",
+    "blade_y_m",
+    "blade_z_m",
+    "lateral_error_m",
+    "orientation_error_rad",
     "blade_linear_velocity_mps",
     "blade_angular_velocity_radps",
+    "latch_engaged",
+    "hand_released",
+)
+
+
+SETTLE_TRACE_FIELDS += (
+    'rack_retention_engaged',
+    'robot_supports_absent',
 )
 
 
@@ -1160,6 +1343,145 @@ def _workflow_outcome(task, workflow: str) -> tuple[torch.Tensor, torch.Tensor]:
     return seated, everything
 
 
+class RackRetention:
+    def __init__(self, task, enabled: bool) -> None:
+        self.task = task
+        self.enabled = enabled
+        count = task.num_envs
+        device = task.device
+        self.engaged = torch.zeros(count, dtype=torch.bool, device=device)
+        self.ever_engaged = torch.zeros(count, dtype=torch.bool, device=device)
+        self.engaged_at = torch.full((count,), -1, dtype=torch.long, device=device)
+        self.relative_pos = torch.zeros((count, 3), device=device)
+        self.relative_quat = torch.zeros((count, 4), device=device)
+        self.relative_quat[:, 0] = 1.0
+        self.max_position_error_m = torch.zeros(count, device=device)
+        self.max_orientation_error_rad = torch.zeros(count, device=device)
+        self.rack_only_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.max_rack_only_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.joints: list[UsdPhysics.FixedJoint] = []
+        self.pawl_ops: list[tuple[object, object]] = []
+        if not enabled:
+            return
+        stage = omni.usd.get_context().get_stage()
+        for env_path in task.scene.env_prim_paths:
+            joint_prim = stage.GetPrimAtPath(f'{env_path}/RackRetentionJoint/Joint')
+            joint = UsdPhysics.FixedJoint(joint_prim)
+            if not joint or not joint_prim.IsValid():
+                raise RuntimeError(f'Missing rack retention joint at {joint_prim.GetPath()}')
+            self.joints.append(joint)
+            ops = []
+            for pawl_name in RACK_RETENTION_PAWLS:
+                prim = stage.GetPrimAtPath(
+                    f'{env_path}/Rack/{RACK_RETENTION_PRIM}/{pawl_name}'
+                )
+                translate = next(
+                    (
+                        op
+                        for op in UsdGeom.Xformable(prim).GetOrderedXformOps()
+                        if op.GetOpType() == UsdGeom.XformOp.TypeTranslate
+                    ),
+                    None,
+                )
+                if translate is None:
+                    raise RuntimeError(f'Missing translate op on rack pawl {prim.GetPath()}')
+                ops.append(translate)
+            self.pawl_ops.append(tuple(ops))
+
+    def reset(self, env_ids: torch.Tensor) -> None:
+        if not self.enabled:
+            return
+        self.max_rack_only_steps[env_ids] = torch.maximum(
+            self.max_rack_only_steps[env_ids], self.rack_only_steps[env_ids]
+        )
+        for index in env_ids.detach().cpu().tolist():
+            self.joints[index].GetJointEnabledAttr().Set(False)
+        self._set_pawl_pose(env_ids, engaged=False)
+        self.engaged[env_ids] = False
+        self.rack_only_steps[env_ids] = 0
+        self.relative_pos[env_ids] = 0.0
+        self.relative_quat[env_ids] = 0.0
+        self.relative_quat[env_ids, 0] = 1.0
+
+    def _set_pawl_pose(self, env_ids: torch.Tensor, *, engaged: bool) -> None:
+        for index in env_ids.detach().cpu().tolist():
+            for op, sign in zip(self.pawl_ops[index], (1.0, -1.0), strict=True):
+                op.Set(
+                    Gf.Vec3d(
+                        *rack_retention.pawl_translation(engaged=engaged, sign=sign)
+                    )
+                )
+
+    def engage(self, mask: torch.Tensor, step: int) -> None:
+        if not self.enabled:
+            return
+        newly_engaged = mask & ~self.engaged
+        ids = newly_engaged.nonzero(as_tuple=False).flatten()
+        if ids.numel() == 0:
+            return
+        rack = self.task.scene['rack']
+        blade = self.task.scene['spare_blade']
+        inverse_rack = quat_inv(rack.data.root_quat_w)
+        local_position = quat_apply(
+            inverse_rack, blade.data.root_pos_w - rack.data.root_pos_w
+        )
+        local_orientation = quat_mul(inverse_rack, blade.data.root_quat_w)
+        self.relative_pos[ids] = local_position[ids]
+        self.relative_quat[ids] = local_orientation[ids]
+        for index in ids.detach().cpu().tolist():
+            position = local_position[index].detach().cpu().tolist()
+            orientation = local_orientation[index].detach().cpu().tolist()
+            joint = self.joints[index]
+            joint.GetLocalPos0Attr().Set(Gf.Vec3f(*position))
+            joint.GetLocalRot0Attr().Set(
+                Gf.Quatf(orientation[0], Gf.Vec3f(*orientation[1:]))
+            )
+            joint.GetLocalPos1Attr().Set(Gf.Vec3f(0.0, 0.0, 0.0))
+            joint.GetLocalRot1Attr().Set(Gf.Quatf(1.0, Gf.Vec3f(0.0, 0.0, 0.0)))
+            joint.GetJointEnabledAttr().Set(True)
+        self._set_pawl_pose(ids, engaged=True)
+        self.engaged[ids] = True
+        self.ever_engaged[ids] = True
+        first_engagement = newly_engaged & (self.engaged_at < 0)
+        self.engaged_at[first_engagement] = step
+
+    def observe(self, robot_supports_absent: torch.Tensor) -> None:
+        if not self.enabled:
+            return
+        rack = self.task.scene['rack']
+        blade = self.task.scene['spare_blade']
+        desired_position = rack.data.root_pos_w + quat_apply(
+            rack.data.root_quat_w, self.relative_pos
+        )
+        desired_orientation = quat_mul(rack.data.root_quat_w, self.relative_quat)
+        position_error = torch.linalg.vector_norm(
+            blade.data.root_pos_w - desired_position, dim=-1
+        )
+        orientation_error = torch.linalg.vector_norm(
+            axis_angle_from_quat(
+                quat_mul(desired_orientation, quat_inv(blade.data.root_quat_w))
+            ),
+            dim=-1,
+        )
+        position_error = torch.where(
+            self.engaged, position_error, torch.zeros_like(position_error)
+        )
+        orientation_error = torch.where(
+            self.engaged, orientation_error, torch.zeros_like(orientation_error)
+        )
+        self.max_position_error_m = torch.maximum(
+            self.max_position_error_m, position_error
+        )
+        self.max_orientation_error_rad = torch.maximum(
+            self.max_orientation_error_rad, orientation_error
+        )
+        rack_only = self.engaged & robot_supports_absent
+        self.rack_only_steps += rack_only.to(torch.long)
+        self.max_rack_only_steps = torch.maximum(
+            self.max_rack_only_steps, self.rack_only_steps
+        )
+
+
 class WorkflowDriver:
     """The phase machine, per environment.
 
@@ -1183,6 +1505,9 @@ class WorkflowDriver:
         robot_rail_enabled: bool = False,
         robot_rail_step_m: float = 0.001,
         insert_controller: str = "guarded",
+        release_sequence: str = "simultaneous",
+        insert_only: bool = False,
+        rack_retention_enabled: bool = False,
     ) -> None:
         self.task = task
         self.policies = policies
@@ -1196,6 +1521,11 @@ class WorkflowDriver:
         #: Which controller performs the seating. Reported, and the report's
         #: honesty labels are keyed on it rather than on any flag beside it.
         self.insert_controller = insert_controller
+        self.release_sequence = release_sequence
+        #: Evaluation-only start condition. It selects the same controller
+        #: dispatch used after a real relocation but does not claim the omitted
+        #: capture/extract/transit phases ran.
+        self.insert_only = insert_only
         self.base_rail_enabled = base_rail_enabled
         # **The rail carries the robot. It never touches the module.**
         #
@@ -1219,6 +1549,10 @@ class WorkflowDriver:
         self.base_rail_joint_hold = base_rail_arm_mode == "joint_hold"
         device = task.device
         count = task.num_envs
+        self.rack_retention = RackRetention(task, rack_retention_enabled)
+        self.conditioned_insert_pending = torch.full(
+            (count,), insert_only, dtype=torch.bool, device=device
+        )
         self.rail_base_offset_m = torch.zeros(count, device=device)
         self.rail_indexing = torch.zeros(count, dtype=torch.bool, device=device)
         self.rail_travel_m = torch.zeros(count, device=device)
@@ -1391,6 +1725,9 @@ class WorkflowDriver:
         # this accumulator the report would say "never engaged" precisely when
         # the terminal run is the one we need to inspect.
         self.latch_ever_engaged = torch.zeros(count, dtype=torch.bool, device=device)
+        self.latch_ever_softened = torch.zeros(count, dtype=torch.bool, device=device)
+        self.episode_latch_engaged = torch.zeros(count, dtype=torch.bool, device=device)
+        self.episode_latch_softened = torch.zeros(count, dtype=torch.bool, device=device)
         #: Whether the driver commanded the form lock to let go, and when. A
         #: latch that is never released is a weld, and the report has to be able
         #: to tell the two apart.
@@ -1467,6 +1804,7 @@ class WorkflowDriver:
         self.reset_tool_valid = torch.zeros(count, dtype=torch.bool, device=device)
         self.tracing = tracing
         self.handoff_rows: list[np.ndarray] = []
+        self.insert_rows: list[np.ndarray] = []
         self.settle_rows: list[np.ndarray] = []
         self.env_index = torch.arange(count, dtype=torch.float64, device=device)
         # The action term's own joint ids, so the trace records the joints the
@@ -1494,6 +1832,7 @@ class WorkflowDriver:
         self.payload_stage_joints: list[UsdPhysics.Joint] = []
         self.stage_drive_target_attributes: list[tuple[object, object, object]] = []
         self.stage_rotation_drive_target_attributes: list[tuple[object, object, object]] = []
+
         if self.base_rail_enabled:
             stage = omni.usd.get_context().get_stage()
             for index in range(count):
@@ -1525,9 +1864,11 @@ class WorkflowDriver:
     def reset_envs(self, env_ids: torch.Tensor, step: int = 0) -> None:
         """Return the named environments to the start of the workflow."""
 
-        self.phase[env_ids] = CAPTURE
+        self.rack_retention.reset(env_ids)
+        start_phase = INSERT if self.insert_only else CAPTURE
+        self.phase[env_ids] = start_phase
         self.phase_started[env_ids] = step
-        self.furthest[env_ids] = CAPTURE
+        self.furthest[env_ids] = start_phase
         self.timed_out_in[env_ids] = -1
         self.held[env_ids] = 0
         self.seat_until[env_ids] = 0
@@ -1552,10 +1893,13 @@ class WorkflowDriver:
         self.guarded_insert_holds[env_ids] = 0
         self.guarded_insert_stalls[env_ids] = 0
         self.guarded_insert_attitude[env_ids] = 0.0
+        self.conditioned_insert_pending[env_ids] = self.insert_only
         self.latch_released[env_ids] = False
         self.latch_released_at[env_ids] = -1
         self.latch_softened[env_ids] = False
         self.latch_softened_at[env_ids] = -1
+        self.episode_latch_engaged[env_ids] = False
+        self.episode_latch_softened[env_ids] = False
         self.gripper_released[env_ids] = False
         self.gripper_released_at[env_ids] = -1
         self.transit_reference_pos_tool[env_ids] = 0.0
@@ -1612,36 +1956,18 @@ class WorkflowDriver:
                 for attribute in self.stage_rotation_drive_target_attributes[index]:
                     attribute.Set(0.0)
 
-    def _guarded_receiver(self) -> bool:
-        """Whether the guarded advance, not the learned policy, receives the module.
-
-        Read at call time rather than at import, because ``MATING_MODE`` is
-        overwritten from the command line long after this module is imported --
-        a constant computed from it at import time is a constant computed from
-        the default.
-        """
-
-        return self.rigid_transit and self.insert_controller == "guarded" and MATING_MODE == "compliant"
-
     def _apply_scales(self) -> None:
-        """Publish each environment's action scale for the phase it is in.
+        """Publish the action scale certified for each physical phase.
 
-        **The seating phase's scale follows its controller.** ``scales[INSERT]``
-        is the insert policy's certified scale and has to stay that whenever the
-        policy is what runs. The guarded advance is not that policy: it is the
-        same Cartesian follower the transit legs use, on the same payload hanging
-        340 mm in front of the tool, and it needs the same 2 mm and 8 mrad per
-        step. Given the policy's 8 mm and 20 mrad it walks the module out of its
-        own envelope faster than its 1 mm axial step walks it in -- measured, 17
-        mm of advance and then 4,557 control steps held outside the envelope.
+        Guarded insertion once overrode its insertion scale with extraction's
+        8/4 mm Cartesian steps. A source-bound trace showed every module reach
+        seated depth, then limit-cycle laterally at about 4 mm against the
+        unchanged 2.5 mm seating requirement. The insertion controller already
+        defines 4/0.75 mm steps for this contact problem; both learned and
+        guarded insertion use that same physical resolution.
         """
 
-        scales = self.scales[self.phase]
-        if self._guarded_receiver():
-            scales = torch.where(
-                (self.phase == INSERT).unsqueeze(-1), self.scales[TRANSIT].unsqueeze(0), scales
-            )
-        self.arm._scale[:] = scales
+        self.arm._scale[:] = self.scales[self.phase]
 
     def _set_stage_arm_servo(self, env_ids: torch.Tensor, *, strengthened: bool) -> None:
         """Switch the arm gains while it transfers the ORU to the shuttle."""
@@ -1804,6 +2130,7 @@ class WorkflowDriver:
 
     def _record_settle(self, mask: torch.Tensor, step: int) -> None:
         state = self._trace_state()
+        _axial, lateral, orientation = insertion_error_metrics(self.task)
         rows = torch.cat(
             (
                 self._column(float(step)),
@@ -1813,13 +2140,60 @@ class WorkflowDriver:
                 state["grip_attitude_rad"].unsqueeze(-1),
                 state["finger_angle_rad"].unsqueeze(-1),
                 state["drive_torque_nm"].unsqueeze(-1),
-                state["blade_local"][:, :1],
+                state["blade_local"],
+                lateral.to(torch.float64).unsqueeze(-1),
+                orientation.to(torch.float64).unsqueeze(-1),
                 state["blade_linear_velocity_mps"].unsqueeze(-1),
                 state["blade_angular_velocity_radps"].unsqueeze(-1),
+                state["latch_engaged"].unsqueeze(-1),
+                self.gripper_released.to(torch.float64).unsqueeze(-1),
+                self.rack_retention.engaged.to(torch.float64).unsqueeze(-1),
+                (self.gripper_released & self.latch_released)
+                .to(torch.float64)
+                .unsqueeze(-1),
             ),
             dim=-1,
         )
         self.settle_rows.append(rows[mask].cpu().numpy())
+
+    def _record_guarded_insert(
+        self,
+        ids: torch.Tensor,
+        step: int,
+        estimated_module_pos: torch.Tensor,
+        lateral_error: torch.Tensor,
+        orientation_error: torch.Tensor,
+        clear_to_advance: torch.Tensor,
+        following: torch.Tensor,
+        advancing: torch.Tensor,
+    ) -> None:
+        state = self._trace_state()
+        rows = torch.cat(
+            (
+                self._column(float(step))[ids],
+                self.env_index[ids].unsqueeze(-1),
+                self.guarded_insert_target_x[ids].to(torch.float64).unsqueeze(-1),
+                estimated_module_pos.to(torch.float64),
+                state["blade_local"][ids],
+                lateral_error.to(torch.float64).unsqueeze(-1),
+                orientation_error.to(torch.float64).unsqueeze(-1),
+                clear_to_advance.to(torch.float64).unsqueeze(-1),
+                following.to(torch.float64).unsqueeze(-1),
+                advancing.to(torch.float64).unsqueeze(-1),
+                state["grip_error_m"][ids].unsqueeze(-1),
+                state["grip_attitude_rad"][ids].unsqueeze(-1),
+                state["finger_angle_rad"][ids].unsqueeze(-1),
+                state["drive_torque_nm"][ids].unsqueeze(-1),
+                state["latch_engaged"][ids].unsqueeze(-1),
+                state["latch_relative_position_error_m"][ids].unsqueeze(-1),
+                state["latch_relative_orientation_error_rad"][ids].unsqueeze(-1),
+                state["latch_applied_force_n"][ids].unsqueeze(-1),
+                state["latch_applied_torque_nm"][ids].unsqueeze(-1),
+                self.actions[ids, :6].to(torch.float64),
+            ),
+            dim=-1,
+        )
+        self.insert_rows.append(rows.cpu().numpy())
 
     def trace_npz(self) -> dict[str, np.ndarray]:
         def stack(rows: list[np.ndarray], fields: tuple[str, ...]) -> np.ndarray:
@@ -1828,6 +2202,8 @@ class WorkflowDriver:
         return {
             "handoff": stack(self.handoff_rows, HANDOFF_TRACE_FIELDS),
             "handoff_fields": np.asarray(HANDOFF_TRACE_FIELDS),
+            "insert": stack(self.insert_rows, INSERT_TRACE_FIELDS),
+            "insert_fields": np.asarray(INSERT_TRACE_FIELDS),
             "settle": stack(self.settle_rows, SETTLE_TRACE_FIELDS),
             "settle_fields": np.asarray(SETTLE_TRACE_FIELDS),
             "transit": stack(self.transit_rows, TRANSIT_TRACE_FIELDS),
@@ -1858,6 +2234,15 @@ class WorkflowDriver:
             newly_observed
         ]
         self.latch_ever_engaged |= engaged
+        self.episode_latch_engaged |= engaged
+        compliant = latch["compliant"]
+        newly_compliant = compliant & ~self.latch_softened
+        self.latch_softened_at[newly_compliant & (self.latch_softened_at < 0)] = (
+            self.task.episode_length_buf[newly_compliant & (self.latch_softened_at < 0)].to(torch.long)
+        )
+        self.latch_softened |= compliant
+        self.latch_ever_softened |= compliant
+        self.episode_latch_softened |= compliant
         self.latch_seek_travel_m[newly_observed] = latch["seek_travel_m"][newly_observed]
         self.latch_seek_refusals = torch.maximum(self.latch_seek_refusals, latch["seek_refusals"])
         self.latch_max_position_error_m = torch.maximum(self.latch_max_position_error_m, latch["max_position_error_m"])
@@ -2121,12 +2506,18 @@ class WorkflowDriver:
         if bool(capturing.any()):
             command = self.policies["capture"].act(observations["grasp"])
             self.actions[capturing] = command[capturing]
+        learned_insert_selected = not (
+            (self.rigid_transit or self.insert_only) and self.insert_controller == "guarded"
+        )
         for name, group, mask in (
             ("extract", "extract", (phase == EXTRACT) & ~plan_blocked),
             (
                 "insert",
                 "insert",
-                (phase == INSERT) & ~plan_blocked & ~(self.payload_stage_engaged & self.base_rail_enabled),
+                (phase == INSERT)
+                & ~plan_blocked
+                & ~(self.payload_stage_engaged & self.base_rail_enabled)
+                & learned_insert_selected,
             ),
         ):
             if bool(mask.any()):
@@ -2149,6 +2540,12 @@ class WorkflowDriver:
             self.reset_tool_pos[fresh] = tool[fresh]
             self.reset_tool_rot[fresh] = tool_rot[fresh]
             self.reset_tool_valid[fresh] = True
+        conditioned_start = self.conditioned_insert_pending & (self.phase == INSERT)
+        if bool(conditioned_start.any()):
+            self._begin_guarded_insert(conditioned_start, step)
+            self.plan_checked[conditioned_start] = True
+            self.plan_passed[conditioned_start] = True
+            self.conditioned_insert_pending[conditioned_start] = False
 
         # --- capture -> seat ------------------------------------------------
         # Hand over on the *next* skill's precondition, not this one's success
@@ -2171,6 +2568,11 @@ class WorkflowDriver:
             # released in mid-transit. A real servicer does not relax its grip
             # once the part is taken.
             self.gripper.hold_latch[promote] = True
+            estimator = getattr(task, "_module_state_estimator", None)
+            if estimator is not None:
+                estimator.mark_robot_capture_established(
+                    torch.nonzero(promote, as_tuple=False).squeeze(-1)
+                )
             self.phase[promote] = SEAT
             self.seat_until[promote] = step + SEAT_STEPS
 
@@ -2336,10 +2738,25 @@ class WorkflowDriver:
             # pose is a fixed transform from the tool's, so a desired module
             # pose *is* a desired tool pose, and the whole transit is three
             # module waypoints and one servo. See ``_step_rigid_transit``.
+            # Once the form lock has engaged, it is the transit load path. Keep
+            # only the gentle retaining closure on the pin until the insertion
+            # phase begins. The non-rigid branch already did this; the rigid
+            # branch accidentally kept the 10 N-m holding closure throughout.
+            # While the lock was a weld that thrust was hidden in the joint.
+            # The instant the lock softened at the rack it pushed the module the
+            # full 529 mm seating stroke during a phase still labelled transit.
+            # This is the same measured wedge thrust that the removal path's
+            # retain mode was introduced to eliminate.
+            latched_transit = transiting & grapple_latched(task)
+            self.gripper.retain_latch[latched_transit] = True
             arrived = self._step_rigid_transit(transiting, step, tool, tool_rot)
             if bool(arrived.any()):
                 self._begin_guarded_insert(arrived, step)
-            self.gripper.retain_latch[arrived] = False
+            # The softened form lock is the mating load path. Keep only the
+            # gentle pin retention used in rigid transit; restoring the 10 N-m
+            # hold here was measured to advance 158 mm and then rotate every
+            # module outside the guarded entry envelope.
+            self.gripper.retain_latch[arrived] = True
             self.phase[arrived] = INSERT
         elif bool(transiting.any()):
             ids = torch.nonzero(transiting, as_tuple=False).squeeze(-1)
@@ -3073,7 +3490,8 @@ class WorkflowDriver:
 
         # --- insert -> seated --------------------------------------------------
         inserting = self.phase == INSERT
-        if self.rigid_transit and self.insert_controller == "policy" and bool(inserting.any()):
+        direct_insert = self.rigid_transit or self.insert_only
+        if direct_insert and self.insert_controller == "policy" and bool(inserting.any()):
             # **The policy's own action stands.** It was already written into
             # ``self.actions`` above, from the same observation group it was
             # trained on; all this branch does is decline to overwrite it. The
@@ -3081,12 +3499,14 @@ class WorkflowDriver:
             # because a policy trained on a pad-held module cannot be handed a
             # welded one, and the seating predicate is the same predicate.
             fired = self._step_policy_insert(inserting, step)
+            self.rack_retention.engage(fired, step)
             self._finish(fired, step)
             self.predicate_fired[fired] = True
             if SEATED_RETAIN:
                 self.gripper.retain_latch[fired] = True
-        elif self.rigid_transit and bool(inserting.any()):
+        elif direct_insert and bool(inserting.any()):
             fired = self._step_guarded_insert(inserting, step, tool, tool_rot)
+            self.rack_retention.engage(fired, step)
             self._finish(fired, step)
             self.predicate_fired[fired] = True
             if SEATED_RETAIN:
@@ -3187,6 +3607,7 @@ class WorkflowDriver:
             # conditions after physical handoff.
             learned_fired = inserting & ~self.payload_stage_engaged & grapple_insertion_success_mask(task)
             fired = shuttle_fired | learned_fired
+            self.rack_retention.engage(fired, step)
             self._finish(fired, step)
             self.predicate_fired[fired] = True
             # A seated module is a finished job, and the DONE phase below waits
@@ -3203,6 +3624,15 @@ class WorkflowDriver:
         finished = self.phase == DONE
         if bool(finished.any()):
             self.actions[finished, :6] = 0.0
+            # A zero Cartesian action is not a seated hold for a compliant
+            # load path: the remote-centre spring and the rack contacts can
+            # move the module while the arm stays put. Continue the same
+            # guarded module-space correction through the first settling
+            # window. The second window is deliberately passive, after both
+            # robot-side load paths have been released.
+            stabilizing = finished & self.predicate_fired & ~self.gripper_released & ~plan_blocked
+            if self.rigid_transit and self.insert_controller == "guarded" and bool(stabilizing.any()):
+                self._step_guarded_insert(stabilizing, step, tool, tool_rot)
             # A completed manipulation retains the module through the settling
             # re-check. A planning rejection never began manipulation, so it
             # must keep the gripper open instead of turning DONE into a hidden
@@ -3222,19 +3652,72 @@ class WorkflowDriver:
                 # success threshold quietly relaxed.
                 outcome = outcome & self.predicate_fired
                 everything = everything & self.predicate_fired
-                self.outcome[ripe] = outcome[ripe]
-                self.all_conditions[ripe] = everything[ripe]
-                self.judged[ripe] = True
-                self._freeze(ripe, step, grip_error, grip_attitude, blade_x)
-                # **This is the release the acceptance rule is about.** Every
-                # condition has now been re-checked after the settling window,
-                # so the hand may open -- and only now. Recorded, because an
-                # operation that ends with the robot still holding the module
-                # has not finished, and one that lets go early has not
-                # succeeded.
-                verified = ripe & self.outcome & self.all_conditions
-                self.gripper_released |= verified
-                self.gripper_released_at[verified] = step
+                if self.rigid_transit:
+                    # First prove the compliant load path can hold a seated
+                    # module for 0.70 s. The baseline releases both robot-side
+                    # supports together. The hand-first ablation opens the hand
+                    # while the compliant form lock still owns the load, waits
+                    # another 0.70 s, then releases that lock. Both sequences
+                    # finish with the same passive 0.70 s rack-only recheck.
+                    awaiting_first_release = ~self.gripper_released
+                    ready_to_release = ripe & awaiting_first_release & outcome & everything
+                    failed_before_release = ripe & awaiting_first_release & ~ready_to_release
+                    just_released_latch = torch.zeros_like(ripe)
+                    if bool(ready_to_release.any()):
+                        self.actions[ready_to_release, :6] = 0.0
+                        if self.release_sequence == "simultaneous":
+                            release_grapple_latch(task, ready_to_release)
+                            self.latch_released |= ready_to_release
+                            self.latch_released_at[ready_to_release & (self.latch_released_at < 0)] = step
+                            just_released_latch |= ready_to_release
+                        self.gripper_released |= ready_to_release
+                        self.gripper_released_at[ready_to_release] = step
+                        self.done_at[ready_to_release] = step
+
+                    waiting_on_latch = (
+                        ripe
+                        & self.gripper_released
+                        & ~self.latch_released
+                        & ~ready_to_release
+                    )
+                    ready_to_release_latch = waiting_on_latch & outcome
+                    failed_after_hand_release = waiting_on_latch & ~ready_to_release_latch
+                    if bool(ready_to_release_latch.any()):
+                        release_grapple_latch(task, ready_to_release_latch)
+                        self.latch_released |= ready_to_release_latch
+                        self.latch_released_at[ready_to_release_latch] = step
+                        self.done_at[ready_to_release_latch] = step
+                        just_released_latch |= ready_to_release_latch
+
+                    post_release = ripe & self.gripper_released & self.latch_released & ~just_released_latch
+                    latch_clear = ~grapple_latch_diagnostics(task)["engaged"]
+                    rack_carrying = (
+                        self.rack_retention.engaged
+                        if self.rack_retention.enabled
+                        else torch.ones_like(post_release)
+                    )
+                    final_success = post_release & outcome & latch_clear & rack_carrying
+                    self.outcome[post_release] = final_success[post_release]
+                    self.all_conditions[post_release] = final_success[post_release]
+                    self.judged[post_release] = True
+                    self._freeze(post_release, step, grip_error, grip_attitude, blade_x)
+
+                    self.outcome[failed_before_release] = False
+                    self.all_conditions[failed_before_release] = False
+                    self.judged[failed_before_release] = True
+                    self._freeze(failed_before_release, step, grip_error, grip_attitude, blade_x)
+                    self.outcome[failed_after_hand_release] = False
+                    self.all_conditions[failed_after_hand_release] = False
+                    self.judged[failed_after_hand_release] = True
+                    self._freeze(failed_after_hand_release, step, grip_error, grip_attitude, blade_x)
+                else:
+                    self.outcome[ripe] = outcome[ripe]
+                    self.all_conditions[ripe] = everything[ripe]
+                    self.judged[ripe] = True
+                    self._freeze(ripe, step, grip_error, grip_attitude, blade_x)
+                    verified = ripe & self.outcome & self.all_conditions
+                    self.gripper_released |= verified
+                    self.gripper_released_at[verified] = step
             # Held after the judgement as well, so the open persists for the
             # rest of the recording rather than for one frame.
             self.actions[finished & self.gripper_released, 6] = -1.0
@@ -3255,6 +3738,7 @@ class WorkflowDriver:
                 ]
                 self.arm.set_joint_target_override(replay_ids, replay_targets)
 
+        self.rack_retention.observe(self.gripper_released & self.latch_released)
         torch.maximum(self.furthest, self.phase, out=self.furthest)
         if self.tracing:
             # After every transition this step has resolved, so the row records
@@ -4133,10 +4617,6 @@ class WorkflowDriver:
         fired = inserting & seated & (
             torch.ones_like(seated) if MATING_MODE == "rigid" else ~grapple_latch_rigid(task)
         )
-        if bool(fired.any()):
-            release_grapple_latch(task, fired)
-            self.latch_released |= fired
-            self.latch_released_at[fired & (self.latch_released_at < 0)] = step
         return fired
 
     def _step_guarded_insert(self, inserting: torch.Tensor, step: int, tool: torch.Tensor, tool_rot: torch.Tensor) -> torch.Tensor:
@@ -4193,8 +4673,23 @@ class WorkflowDriver:
         sensor_ready = torch.ones_like(ids, dtype=torch.bool)
         estimator = getattr(task, "_module_state_estimator", None)
         if estimator is not None and estimator.backend == "fiducial_pnp":
-            lateral_tolerance = FIDUCIAL_GUARDED_LATERAL_TOLERANCE_M
-            orientation_tolerance = FIDUCIAL_GUARDED_ORIENTATION_TOLERANCE_RAD
+            # **Whether the estimate is trustworthy and whether the module can
+            # enter the bay are different questions.** The shipped bounds answer
+            # the first -- their own derivation is "above the certified RGB-D p95
+            # errors" -- and are then used to decide the second. Measured on the
+            # first pooled RGB-D cohort, three of eight environments arrived with
+            # millimetre lateral error and 18 to 34 mrad of attitude, held for one
+            # to two and a half thousand steps, and never advanced; the entry
+            # flare catches 73.9 mrad and would have taken them.
+            #
+            # This is an option rather than a change because it moves a published
+            # path. The default is the shipped pair; --fiducial_guard_bounds
+            # lead_in runs the same guard on the bay's own catch, and the report
+            # says which applied. The detection interlock is unchanged in both:
+            # a missing datum still fails closed.
+            if args.fiducial_guard_bounds == 'estimator':
+                lateral_tolerance = FIDUCIAL_GUARDED_LATERAL_TOLERANCE_M
+                orientation_tolerance = FIDUCIAL_GUARDED_ORIENTATION_TOLERANCE_RAD
             sensor_ready = estimator.fiducial_current_detection[ids]
         clear_to_advance = sensor_ready & (lateral_error <= lateral_tolerance) & (orientation_error <= orientation_tolerance)
         self.guarded_insert_steps[ids] += clear_to_advance.to(torch.long)
@@ -4234,13 +4729,25 @@ class WorkflowDriver:
             module_pos + task.scene.env_origins[ids],
         )
         self._drive_tool_to(
-            ids, tool, tool_rot, target_tool_pos, target_tool_rot, self.scales[TRANSIT],
+            ids, tool, tool_rot, target_tool_pos, target_tool_rot, self.scales[INSERT],
             RIGID_TRANSIT_ATTITUDE_AUTHORITY,
         )
-        # Hold the module firmly while it is being driven between rails. The
-        # operating rule this project measured is capture gently, hold hard to
-        # move, retain once free; this phase moves.
-        self.gripper.retain_latch[inserting] = False
+        # The compliant form lock, not the wedge pads, carries the mating load.
+        # Full closure adds a persistent axial thrust and rotates the module as
+        # the rack begins to constrain it. Gentle retention keeps the physical
+        # pin captured without fighting the remote-centre compliance.
+        self.gripper.retain_latch[inserting] = True
+        if self.tracing and step % INSERT_TRACE_STRIDE == 0:
+            self._record_guarded_insert(
+                ids,
+                step,
+                module_pos,
+                lateral_error,
+                orientation_error,
+                clear_to_advance,
+                following,
+                advancing,
+            )
 
         # The backstop. The lock is released at the hand-off above, so this can
         # only fire if some future change holds it longer; it is simulator truth
@@ -4257,18 +4764,13 @@ class WorkflowDriver:
             self.latch_released |= due_to_release
             self.latch_released_at[due_to_release & (self.latch_released_at < 0)] = step
 
-        # Seated. The lock lets go completely now, so the 0.70 s re-check that
-        # decides the outcome is taken on a module held by nothing but the pads
-        # and its own rails -- a spring across that window would make the
-        # settling check a statement about the spring.
+        # Seated. Keep the compliant lock and gentle hand through the first
+        # 0.70 s check. DONE releases both only after that proof, then performs
+        # the same check again with the rack carrying the module by itself.
         seated = grapple_insertion_success_mask(task)
         fired = inserting & seated & (
             torch.ones_like(seated) if MATING_MODE == "rigid" else ~grapple_latch_rigid(task)
         )
-        if bool(fired.any()):
-            release_grapple_latch(task, fired)
-            self.latch_released |= fired
-            self.latch_released_at[fired & (self.latch_released_at < 0)] = step
         return fired
 
     def _front_overhang_x(self, ids: torch.Tensor) -> torch.Tensor:
@@ -4465,27 +4967,14 @@ class WorkflowDriver:
             # measured to give some of it back.
             self.module_leg_pos[1, ids] = crossed
             self.module_leg_rot[1, ids] = square_rot
-            # 0: the pose the insertion begins from, and it is now the same
-            # pose for both receivers.
-            #
-            # It was not. The learned insert policy used to reset at one exact
-            # rack pose deep inside the mouth, so handing to it meant driving
-            # there, and aiming this leg at that pose while the *guarded*
-            # controller was receiving is what made the transit perform the
-            # insertion and left the phase labelled "insert" with 0.7 mm of it.
-            #
-            # The insert task's reset now spans the whole stroke -- see
-            # ``mdp.reset_grapple_insert_stroke`` and
-            # ``scripts/solve_insert_reset_bank.py`` -- so the module at the
-            # mouth is inside the policy's distribution as well as being the
-            # guarded advance's own precondition. That makes the last leg a
-            # no-op for both, and the seating stroke belongs to the phase that
-            # guards it whichever controller is guarding.
-            #
-            # ``RELOCATION_INSERT_STAGING_POS`` is kept because the hand-off
-            # contract still states the pose the *policy* was certified from,
-            # and a run of the old checkpoint has to be able to ask for it.
-            self.module_leg_pos[0, ids] = staging if LEG_ZERO_AT_POLICY_RESET else crossed
+            # 0: the physical mouth state both receivers get. Trying to force
+            # the generated head-on reset after softening was measured and
+            # preserved as a losing arm: the passive compliant latch retains
+            # its captured wrist-to-module rest transform, so the wrist stayed
+            # 55 mrad off while the module either self-seated under the full
+            # grip or held 20 mm high under the gentle grip. The receiver must
+            # therefore cover the state the chain can physically supply.
+            self.module_leg_pos[0, ids] = crossed
             self.module_leg_rot[0, ids] = square_rot
             # **The first leg enters now, not at step zero.**
             #
@@ -4683,6 +5172,8 @@ class WorkflowDriver:
             "grip_attitude_rad": grip_attitude.to(torch.float64),
             "predicate_fired": self.predicate_fired.to(torch.float64),
             "all_conditions_after_settling": self.all_conditions.to(torch.float64),
+            "latch_engaged_in_episode": self.episode_latch_engaged.to(torch.float64),
+            "latch_compliant_in_episode": self.episode_latch_softened.to(torch.float64),
             "perceived_error_mean_m": self.perceived_error_sum / self.perceived_error_steps.clamp_min(1.0),
             "perceived_error_max_m": self.perceived_error_max,
         }
@@ -5010,6 +5501,83 @@ def _chain_report(recorder, workflow: str) -> dict[str, object]:
     }
 
 
+def _rack_retention_report(driver: WorkflowDriver, args) -> dict[str, object]:
+    retention = driver.rack_retention
+    return {
+        'enabled': retention.enabled,
+        'mechanism': (
+            'two visible passive rack pawls with a break-rated fixed-joint abstraction'
+            if retention.enabled
+            else 'none'
+        ),
+        'joint_body0': 'Rack' if retention.enabled else None,
+        'joint_body1': 'SpareBlade' if retention.enabled else None,
+        'world_constraint': False,
+        'engagement': (
+            'after the unchanged insertion success predicate fires'
+            if retention.enabled
+            else None
+        ),
+        'module_pose_write': False,
+        'rated_force_n': rack_retention.RATED_FORCE_N if retention.enabled else None,
+        'rated_torque_nm': rack_retention.RATED_TORQUE_NM if retention.enabled else None,
+        'reaction_load_path_modelled': retention.enabled,
+        'reaction_magnitude_exposed': False,
+        'load_measurement': (
+            'break threshold plus measured rack-to-module drift'
+            if retention.enabled
+            else None
+        ),
+        'hardware_geometry': (
+            {
+                'pawls': 2,
+                'face_clearance_mm': 1000.0 * rack_retention.PAWL_FACE_CLEARANCE_M,
+                'rear_face_overlap_mm': 1000.0 * rack_retention.PAWL_OVERLAP_M,
+                'open_inner_half_gap_mm': (
+                    1000.0 * rack_retention.PAWL_OPEN_INNER_HALF_GAP_M
+                ),
+                'close_stroke_mm': 1000.0 * rack_retention.PAWL_CLOSE_STROKE_M,
+                'pawl_section_mm': [
+                    1000.0 * rack_retention.PAWL_AXIAL_THICKNESS_M,
+                    1000.0 * rack_retention.PAWL_LATERAL_THICKNESS_M,
+                    1000.0 * rack_retention.PAWL_HEIGHT_M,
+                ],
+                'collision_geometry': (
+                    'visual pawl surfaces; the disclosed fixed joint carries load'
+                ),
+            }
+            if retention.enabled
+            else None
+        ),
+        'observed_per_environment': [
+            {
+                'env': index,
+                'engaged_after_measured_seating': bool(retention.ever_engaged[index]),
+                'engaged_at_driver_step': (
+                    int(retention.engaged_at[index])
+                    if bool(retention.ever_engaged[index])
+                    else None
+                ),
+                'rack_only_control_steps': int(retention.max_rack_only_steps[index]),
+                'rack_only_interval_s': (
+                    float(retention.max_rack_only_steps[index])
+                    * float(driver.task.step_dt)
+                ),
+                'full_rack_only_recheck_observed': (
+                    int(retention.max_rack_only_steps[index]) >= SETTLE_STEPS
+                ),
+                'max_rack_to_module_position_drift_m': float(
+                    retention.max_position_error_m[index]
+                ),
+                'max_rack_to_module_orientation_drift_rad': float(
+                    retention.max_orientation_error_rad[index]
+                ),
+            }
+            for index in range(driver.task.num_envs)
+        ],
+    }
+
+
 def main() -> dict[str, object]:
     env = None
     try:
@@ -5074,6 +5642,75 @@ def main() -> dict[str, object]:
         globals()["MATING_MODE"] = args.mating_mode
         env_cfg.base_rail_enabled = args.base_rail_on_relocation
         env_cfg.configure_robustness(0)
+        conditioned_state_sha256 = None
+        conditioned_load_path = None
+        if args.start_insert_station is not None:
+            station_count = len(INSERT_STROKE_ARM_JOINT_POS[0])
+            if args.start_insert_station >= station_count:
+                raise ValueError(
+                    f"--start_insert_station must be in [0, {station_count - 1}]"
+                )
+            # Take the reset, destination geometry, and parked robot pose from
+            # the actual task v24 was trained and evaluated in. The workflow
+            # task is retained because it owns both deployed controller paths
+            # and the settled workflow outcome check.
+            insertion_reference = ZeroGBladeGrapplePinInsertTwoSlotEnvCfg()
+            env_cfg.events = insertion_reference.events
+            env_cfg.events.reset_stroke.params["forced_station"] = args.start_insert_station
+            env_cfg.events.reset_stroke.params["noise_rad"] = 0.0
+            if env_cfg.events.grapple_latch is None:
+                raise RuntimeError("the v24 insertion reference has no grapple-latch reset load path")
+            # Fixed release and D6 mating joints are procedurally authored per
+            # environment. Copy both assets and the non-replicated scene mode
+            # from the task rather than merely copying its event term: a latch
+            # flag without its physical joints is not the state v24 saw.
+            env_cfg.scene.replicate_physics = insertion_reference.scene.replicate_physics
+            env_cfg.scene.clone_in_fabric = insertion_reference.scene.clone_in_fabric
+            env_cfg.scene.release_latch_joint = insertion_reference.scene.release_latch_joint
+            env_cfg.scene.mating_compliance_joint = insertion_reference.scene.mating_compliance_joint
+            env_cfg.service_destination_channel_relief_m = (
+                insertion_reference.service_destination_channel_relief_m
+            )
+            env_cfg.configure_service_destination()
+            env_cfg.scene.robot = insertion_reference.scene.robot
+            env_cfg.scene.mount_anchor = insertion_reference.scene.mount_anchor
+            latch_params = env_cfg.events.grapple_latch.params
+            mating_spawn = env_cfg.scene.mating_compliance_joint.spawn
+            conditioned_load_path = {
+                "source": "ZeroGBladeGrapplePinInsertTwoSlotEnvCfg",
+                "joint_mode": latch_params["joint_mode"],
+                "engage_after_steps": latch_params["engage_after_steps"],
+                "soften_on_engage": latch_params["soften_on_engage"],
+                "require_armed": latch_params["require_armed"],
+                "rated_force_n": latch_params["rated_force_n"],
+                "rated_torque_nm": latch_params["rated_torque_nm"],
+                "mating_force_cap_n": latch_params["mating_force_cap_n"],
+                "mating_torque_cap_nm": latch_params["mating_torque_cap_nm"],
+                "mating_translation_stiffness_n_per_m": mating_spawn.translation_stiffness,
+                "mating_rotation_stiffness_nm_per_rad": mating_spawn.rotation_stiffness,
+                "mating_translation_limit_m": mating_spawn.translation_limit,
+                "mating_rotation_limit_deg": mating_spawn.rotation_limit_deg,
+                "scene_replication": env_cfg.scene.replicate_physics,
+                "clone_in_fabric": env_cfg.scene.clone_in_fabric,
+            }
+            conditioned_state = {
+                "protocol": "insertion_condition_v2",
+                "station": args.start_insert_station,
+                "arm_joints": INSERT_STROKE_ARM_JOINT_POS[0][args.start_insert_station],
+                "blade_pose": INSERT_STROKE_BLADE_POSE[0][args.start_insert_station],
+                "noise_rad": 0.0,
+                "robot_root_pos": env_cfg.scene.robot.init_state.pos,
+                "destination_channel_relief_m": env_cfg.service_destination_channel_relief_m,
+                "load_path": conditioned_load_path,
+            }
+            conditioned_state_sha256 = hashlib.sha256(
+                json.dumps(conditioned_state, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest()
+            print(
+                f"[INFO] Conditioned insertion station {args.start_insert_station}/{station_count - 1}; "
+                f"state={conditioned_state_sha256[:12]} controller={args.insert_controller}",
+                flush=True,
+            )
         if args.robot_base_x is not None or args.robot_base_y is not None:
             # **After configure_robustness, because it replaces scene.robot
             # wholesale**, which is the second of the three layers of the
@@ -5118,6 +5755,14 @@ def main() -> dict[str, object]:
                 "[INFO] Destination bay fitted with its vertical lead-in "
                 "(16.6 mm per side, accepting 0.074 rad of delivered attitude error); "
                 f"channel relief {args.destination_channel_relief_m * 1000.0:.2f} mm per side",
+                flush=True,
+            )
+        if args.rack_retention:
+            env_cfg.configure_rack_retention()
+            print(
+                '[INFO] Destination rack fitted with two visible passive pawls; '
+                f'break rating {rack_retention.RATED_FORCE_N} N / '
+                f'{rack_retention.RATED_TORQUE_NM} N-m',
                 flush=True,
             )
         # The full physical stage motion can legitimately outlive the original
@@ -5167,28 +5812,73 @@ def main() -> dict[str, object]:
             # face the module runs against, and reading the centre as the face
             # is the mistake that turns a 0.75 mm channel into a 9.75 mm one.
             half_width = 0.5 * float(tuple(env_cfg.scene.spare_blade.spawn.size)[1])
-            moved = 0
-            for name in dir(env_cfg.scene):
-                if "guide" not in name.lower():
+            # **A bay's lateral wall is not only its guides.** The upper lips
+            # overhang the channel and the entry flares are the funnel that
+            # catches the module at the mouth, and both are placed from
+            # GUIDE_CENTER_OFFSET_Y at import time. Moving the guides alone
+            # therefore does not narrow a channel: it builds a rack whose mouth
+            # and whose walls disagree by exactly the clearance change, which is
+            # a step at the mouth rather than a tighter fit. 'channel'
+            # translates them together. The default is what the published sweep
+            # ran, so both arms stay reproducible and the report says which.
+            lateral_bodies = ("guide",) if args.rack_clearance_scope == "guides" else ("guide", "lip", "flare")
+
+            def _bay_of(position) -> float:
+                # A bay is not at y = 0, and each body is offset from its own
+                # bay's centre line. Keying on the sign of y would move the
+                # second bay's pair to the wrong side of the rack.
+                return min((0.0, SECOND_SLOT_CENTER_Y), key=lambda centre_y: abs(position[1] - centre_y))
+
+            candidates = []
+            for name in sorted(dir(env_cfg.scene)):
+                lowered = name.lower()
+                kind = next((word for word in lateral_bodies if word in lowered), None)
+                if kind is None:
                     continue
                 entity = getattr(env_cfg.scene, name, None)
                 position = getattr(getattr(entity, "init_state", None), "pos", None)
                 if position is None:
                     continue
-                # Each guide belongs to a bay, and a bay is not at y = 0. Its
-                # own bay's centre line is the one it is offset from, so find
-                # that first; keying on the sign of y would move the second
-                # bay's pair to the wrong side of the rack.
-                bay = min((0.0, SECOND_SLOT_CENTER_Y), key=lambda centre_y: abs(position[1] - centre_y))
+                candidates.append((kind, entity, position))
+
+            # **Two passes, because `dir()` is alphabetical and a flare sorts
+            # before a guide.** The guides define where the wall goes; every
+            # other lateral body follows by the same translation, so the
+            # translation has to be known before anything moves.
+            delta = None
+            for kind, entity, position in candidates:
+                if kind != "guide":
+                    continue
                 thickness = float(tuple(entity.spawn.size)[1])
                 offset = half_width + 1.0e-3 * args.rack_lateral_clearance_mm + 0.5 * thickness
+                delta = offset - abs(position[1] - _bay_of(position))
+                break
+            if delta is None:
+                raise RuntimeError("no side guide found in the scene; --rack_lateral_clearance_mm has nothing to move")
+
+            moved: dict[str, int] = {}
+            for kind, entity, position in candidates:
+                bay = _bay_of(position)
                 sign = 1.0 if position[1] > bay else -1.0
+                offset = abs(position[1] - bay) + delta
                 entity.init_state.pos = (position[0], bay + sign * offset, position[2])
-                moved += 1
+                moved[kind] = moved.get(kind, 0) + 1
             print(
-                f"[INFO] Rack guides moved to {args.rack_lateral_clearance_mm:.3f} mm clearance "
-                f"per side; {moved} guide bodies"
+                f"[INFO] Rack channel moved to {args.rack_lateral_clearance_mm:.3f} mm clearance "
+                f"per side, scope={args.rack_clearance_scope}: {moved}"
             )
+        if args.remove_entry_flares:
+            # After the clearance block, so this removes whatever that left --
+            # the flares it moved, or the flares it did not.
+            removed = []
+            for name in sorted(dir(env_cfg.scene)):
+                if "flare" not in name.lower():
+                    continue
+                if getattr(env_cfg.scene, name, None) is None:
+                    continue
+                setattr(env_cfg.scene, name, None)
+                removed.append(name)
+            print(f"[INFO] Entry flares removed: {removed}; this run is a diagnostic arm", flush=True)
         if args.stable_lighting:
             # Recording only, and the report says so, so a clip can never be
             # mistaken for a measurement made under easier conditions.
@@ -5200,6 +5890,13 @@ def main() -> dict[str, object]:
                 if obs is not None and getattr(obs, "rgb", None) is not None:
                     obs.rgb.params["noise_std_range"] = (0.0, 0.002)
             print("[INFO] Visual randomization off for recording; this run is not evidence")
+        if args.module_velocity_source != 'camera':
+            env_cfg.module_velocity_source = args.module_velocity_source
+            print(
+                f"[INFO] Module velocity channel from {args.module_velocity_source}: zero before "
+                "capture, the wrist's own velocity after it. This is not the shipped path.",
+                flush=True,
+            )
         if args.blind:
             env_cfg.pose_head_blind = True
         if args.oracle:
@@ -5212,8 +5909,8 @@ def main() -> dict[str, object]:
         # generous enough to hide an overrun. It is also what makes a many-seed
         # sweep affordable: an install that finishes at 14 s no longer idles to
         # 45 s before its environment resets.
-        phases = [CAPTURE, SEAT]
-        if args.workflow != "install":
+        phases = [INSERT] if args.start_insert_station is not None else [CAPTURE, SEAT]
+        if args.start_insert_station is None and args.workflow != "install":
             phases.append(EXTRACT)
         # Every workflow that flies the module anywhere needs the transit in its
         # episode, and the relocation was missing from this list -- so its
@@ -5235,15 +5932,15 @@ def main() -> dict[str, object]:
         # along the pull axis at 0.24 m/s and 220 mm across it at 0.12 m/s, so
         # the planned path is 734 mm and about 4.0 s of pure travel. The margin
         # is for closed-loop tracking, not for the distance.
-        if args.workflow == "relocate":
+        if args.start_insert_station is None and args.workflow == "relocate":
             phases.append(TRANSIT)
-        if args.workflow != "remove":
+        if args.start_insert_station is None and args.workflow != "remove":
             phases.append(INSERT)
         budget = sum(
             PHASE_BUDGET_S[index] * (args.transit_slowdown if index == TRANSIT and args.workflow != "relocate" else 1)
             for index in phases
         )
-        if args.workflow != "remove":
+        if args.start_insert_station is None and args.workflow != "remove":
             # The scripted realign runs inside the seat phase, so it is not in
             # PHASE_BUDGET_S and has to be added to the episode explicitly.
             budget += ALIGN_STEPS / 30.0
@@ -5324,7 +6021,12 @@ def main() -> dict[str, object]:
             robot_rail_enabled=args.robot_rail_on_relocation,
             robot_rail_step_m=args.robot_rail_step_m,
             insert_controller=args.insert_controller,
+            release_sequence=args.release_sequence,
+            insert_only=args.start_insert_station is not None,
+            rack_retention_enabled=args.rack_retention,
         )
+        if args.start_insert_station is not None:
+            driver.reset_envs(torch.arange(task.num_envs, device=task.device), 0)
         collecting = args.episodes > 0
         recorder = TerminalEpisodeRecorder(WORKFLOW_METRIC_FIELDS) if collecting else None
         clock = {"step": 0}
@@ -5365,6 +6067,8 @@ def main() -> dict[str, object]:
             note("start:capture", 0)
 
         step = 0
+        if args.perception_frame_dir is not None:
+            args.perception_frame_dir.mkdir(parents=True, exist_ok=True)
         # A collecting run has no step budget of its own: it stops on the episode
         # count, and every environment is reset on the task's own timeout.
         budget = args.steps if not collecting else episode_steps * (args.episodes // task.num_envs + 2)
@@ -5375,6 +6079,31 @@ def main() -> dict[str, object]:
             clock["step"] = step
             previous = int(driver.phase[0]) if single else 0
             driver.step(step)
+            # Save the exact camera tensor the estimator just consumed.  Tiled
+            # rendering is asynchronous; after env.step the public sensor
+            # buffer may already be the cleared buffer for the next render.
+            # Sampling there produced all-black diagnostics even while the
+            # immediately preceding estimator call had a valid detection.
+            # Keep a three-frame burst at each sample point.  A single frame at
+            # ``step % 60 == 0`` can alias a periodic render fault and make a
+            # live camera look permanently black (or permanently healthy).
+            # Three consecutive control frames distinguish that acquisition
+            # fault without dumping the complete video stream.
+            if args.perception_frame_dir is not None and step % 60 < 3:
+                phase_name = PHASE_NAMES[int(driver.phase[0])]
+                camera_names = ["camera"]
+                if "camera_insert" in task.scene.sensors:
+                    camera_names.append("camera_insert")
+                for camera_name in camera_names:
+                    sensor_rgb = task.scene.sensors[camera_name].data.output["rgb"][0, ..., :3]
+                    if sensor_rgb.dtype == torch.uint8:
+                        sensor_u8 = sensor_rgb
+                    else:
+                        sensor_u8 = (sensor_rgb.clamp(0.0, 1.0) * 255.0).to(torch.uint8)
+                    suffix = "" if camera_name == "camera" else f"-{camera_name.replace('_', '-')}"
+                    Image.fromarray(sensor_u8.cpu().numpy()).save(
+                        args.perception_frame_dir / f"step-{step:04d}-{phase_name}{suffix}.png"
+                    )
             if single and int(driver.phase[0]) != previous:
                 note(f"{PHASE_NAMES[previous]} -> {PHASE_NAMES[int(driver.phase[0])]}", step)
             if single and int(driver.phase[0]) == TRANSIT and step % 120 == 0:
@@ -5401,20 +6130,43 @@ def main() -> dict[str, object]:
                     note(f"episode ended during {PHASE_NAMES[int(driver.phase[0])]}", step)
                     break
 
+        # Multi-environment diagnostics are already a fixed cohort: each row
+        # starts at the same reset and receives the same bounded control-step
+        # budget. Summarize that cohort directly instead of forcing a simulator
+        # timeout solely to trigger the terminal callback. On this workcell,
+        # enabling timeout collection changes the long-transit physics and has
+        # twice produced a different, non-finite trajectory from the otherwise
+        # identical bounded run. That losing arm is evidence, not a rate.
+        bounded_recorder = None
+        if not collecting and task.num_envs > 1:
+            bounded_recorder = TerminalEpisodeRecorder(WORKFLOW_METRIC_FIELDS)
+            cohort_ids = torch.arange(task.num_envs, device=task.device)
+            bounded_recorder.record(driver.harvest(cohort_ids, step).cpu().numpy())
+
         # Written before anything that formats a report, because it is the
         # expensive half of this run and it must not be hostage to the cheap
         # half. The relocation's first trace cost eleven minutes of simulation
         # and produced no file at all, because a dict literal below was missing
         # a workflow key -- and a diagnostic that is thrown away when something
         # else goes wrong is a diagnostic that is missing when it is needed.
+        chain_handoff_sha256 = None
         if args.handoff_trace is not None:
             args.handoff_trace.parent.mkdir(parents=True, exist_ok=True)
             trace = driver.trace_npz()
             np.savez_compressed(args.handoff_trace, **trace)
+            handoff_fields = tuple(str(name) for name in trace["handoff_fields"])
+            insertion_rows = trace["handoff"][
+                trace["handoff"][:, handoff_fields.index("to_phase")] == INSERT
+            ]
+            if insertion_rows.shape[0]:
+                digest = hashlib.sha256()
+                digest.update(json.dumps(handoff_fields, separators=(",", ":")).encode())
+                digest.update(np.ascontiguousarray(insertion_rows, dtype="<f8").tobytes())
+                chain_handoff_sha256 = digest.hexdigest()
             print(
                 f"[INFO] Wrote {args.handoff_trace}: "
                 f"{trace['handoff'].shape[0]} hand-offs, {trace['transit'].shape[0]} transit samples, "
-                f"{trace['settle'].shape[0]} settling rows",
+                f"{trace['insert'].shape[0]} insertion samples, {trace['settle'].shape[0]} settling rows",
                 flush=True,
             )
 
@@ -5428,21 +6180,132 @@ def main() -> dict[str, object]:
         # The same condition ``WorkflowDriver.rigid_transit`` is built from, and
         # the one that selects ``_step_guarded_insert`` over the learned policy.
         guarded_insert = (
-            args.workflow == "relocate"
-            and args.latch_on_release
-            and not args.base_rail_on_relocation
-            and args.insert_controller == "guarded"
+            args.start_insert_station is not None
+            or (
+                args.workflow == "relocate"
+                and args.latch_on_release
+                and not args.base_rail_on_relocation
+            )
+        ) and args.insert_controller == "guarded"
+        # Which pair of bounds actually decided every advance. The guard swaps
+        # to the estimator's tighter bounds whenever the deployed backend is the
+        # fiducial one, exactly as ``_step_guarded_insert`` selects them.
+        _report_estimator = getattr(task, "_module_state_estimator", None)
+        if (
+            _report_estimator is not None
+            and _report_estimator.backend == "fiducial_pnp"
+            and args.fiducial_guard_bounds == "estimator"
+        ):
+            applied_guarded_lateral_tolerance_m = FIDUCIAL_GUARDED_LATERAL_TOLERANCE_M
+            applied_guarded_orientation_tolerance_rad = FIDUCIAL_GUARDED_ORIENTATION_TOLERANCE_RAD
+            applied_guarded_tolerance_source = "deployed_rgbd_estimator_bounds"
+        else:
+            applied_guarded_lateral_tolerance_m = GUARDED_INSERT_LATERAL_TOLERANCE_M
+            applied_guarded_orientation_tolerance_rad = GUARDED_INSERT_ORIENTATION_TOLERANCE_RAD
+            applied_guarded_tolerance_source = (
+                "entry_flare_catch_on_the_deployed_estimate"
+                if _report_estimator is not None and _report_estimator.backend == "fiducial_pnp"
+                else "entry_flare_catch"
+            )
+        insert_only = args.start_insert_station is not None
+        evaluation_condition = (
+            {
+                "protocol": "insertion_condition_v2",
+                "kind": "reset_station",
+                "station": args.start_insert_station,
+                "initial_state_sha256": conditioned_state_sha256,
+                "load_path": conditioned_load_path,
+                "deterministic_reset": True,
+                "certification": False,
+            }
+            if insert_only
+            else {
+                "protocol": "insertion_condition_v2",
+                "kind": "chain_handoff",
+                "station": None,
+                "initial_state_sha256": chain_handoff_sha256,
+                "load_path": {
+                    "source": "workflow_chain_handoff",
+                    "joint_mode": args.latch_joint_mode if args.latch_on_release else None,
+                    "mating_mode": args.mating_mode if args.latch_on_release else None,
+                    "rated_force_n": args.latch_rated_force_n if args.latch_on_release else None,
+                    "rated_torque_nm": args.latch_rated_torque_nm if args.latch_on_release else None,
+                    "mating_force_cap_n": args.mating_force_cap_n if args.latch_on_release else None,
+                    "position_stiffness_n_per_m": (
+                        args.latch_position_stiffness_n_per_m if args.latch_on_release else None
+                    ),
+                    "rotation_stiffness_nm_per_rad": (
+                        args.latch_rotation_stiffness_nm_per_rad if args.latch_on_release else None
+                    ),
+                },
+                "deterministic_reset": False,
+                "certification": False,
+            }
+            if chain_handoff_sha256 is not None
+            else None
+        )
+        loaded_but_not_executed = []
+        if insert_only:
+            loaded_but_not_executed.extend(name for name in ("capture", "extract") if name in policies)
+        if guarded_insert and "insert" in policies:
+            loaded_but_not_executed.append("insert")
+        learned_phases = (
+            ([] if guarded_insert else ["insert"])
+            if insert_only
+            else {
+                "remove": ["capture", "extract"],
+                "install": ["capture", "insert"],
+                "relocate": (
+                    ["capture", "extract"] if guarded_insert or args.base_rail_on_relocation
+                    else ["capture", "extract", "insert"]
+                ),
+            }[args.workflow]
+        )
+        scripted_phases = (
+            (["guarded_insert"] if guarded_insert else [])
+            if insert_only
+            else ["seat"]
+            + (
+                ["payload_handoff", "shuttle_retreat", "cross_bay", "guarded_insert"]
+                if args.workflow == "relocate" and args.base_rail_on_relocation
+                else ["transit", "guarded_insert"]
+                if guarded_insert
+                else ["transit"]
+                if args.workflow == "relocate"
+                else []
+            )
         )
         result: dict[str, object] = {
+            'destination_rack_retention': _rack_retention_report(driver, args),
             "task": args.task,
+            # Which geometry this run actually used. A boundary arm is defined by
+            # these flags and nothing else, and until 2026-09-03 none of them
+            # reached the report: the lead-in deletion experiment -- the one place
+            # a predicted failure was produced on demand by removing the part that
+            # prevents it -- could be told from its control only by the directory
+            # it was written to. A directory name is not evidence.
+            "geometry_arm": {
+                "remove_entry_flares": bool(args.remove_entry_flares),
+                "rack_lateral_clearance_mm": args.rack_lateral_clearance_mm,
+                "rack_clearance_scope": args.rack_clearance_scope,
+                "module_cross_section_m": (
+                    list(args.module_cross_section_m) if args.module_cross_section_m is not None else None
+                ),
+                "robot_base_x": args.robot_base_x,
+                "robot_base_y": args.robot_base_y,
+                "destination_channel_relief_m": args.destination_channel_relief_m,
+                "module_mass_kg": getattr(args, "module_mass_kg", None),
+            },
             "visual_randomization": "off (recording)" if args.stable_lighting else "on",
             "workflow": args.workflow,
             "seed": args.seed,
             "num_envs": task.num_envs,
             "curriculum_stage": args.curriculum_stage,
+            "evaluation_condition": evaluation_condition,
             "checkpoints": {name: str(policy.path) for name, policy in policies.items()},
             "checkpoint_sha256": {name: policy.sha256 for name, policy in policies.items()},
             "policy_set_sha256": combined,
+            "source_revision": git_source_revision(PROJECT_ROOT),
             "runtime_source_bindings": [
                 {
                     "path": path.as_posix(),
@@ -5463,25 +6326,9 @@ def main() -> dict[str, object]:
             # honesty rests on, and it was reporting a policy certified at
             # 10.50% pooled and 0.00% in its near stage as the thing performing
             # the insertion in the video.
-            "loaded_but_not_executed_policies": (["insert"] if guarded_insert and "insert" in policies else []),
-            "learned_phases": {
-                "remove": ["capture", "extract"],
-                "install": ["capture", "insert"],
-                "relocate": (
-                    ["capture", "extract"] if guarded_insert or args.base_rail_on_relocation
-                    else ["capture", "extract", "insert"]
-                ),
-            }[args.workflow],
-            "scripted_phases": ["seat"]
-            + (
-                ["payload_handoff", "shuttle_retreat", "cross_bay", "guarded_insert"]
-                if args.workflow == "relocate" and args.base_rail_on_relocation
-                else ["transit", "guarded_insert"]
-                if guarded_insert
-                else ["transit"]
-                if args.workflow == "relocate"
-                else []
-            ),
+            "loaded_but_not_executed_policies": loaded_but_not_executed,
+            "learned_phases": learned_phases,
+            "scripted_phases": scripted_phases,
             # Whether the robot carried the module, as a number rather than as
             # a claim. Present on every workflow that has a transit, including
             # the payload-stage baseline, so the two can be read side by side
@@ -5496,11 +6343,25 @@ def main() -> dict[str, object]:
             # it, so a run that stopped short had to be diagnosed from a depth
             # and a tilt.
             "guarded_insertion": {
+                "executed": guarded_insert,
                 "controller": "scripted, bounded axial advance on the deployed estimate",
                 "axial_step_m": GUARDED_INSERT_AXIAL_STEP_M,
-                "lateral_tolerance_m": GUARDED_INSERT_LATERAL_TOLERANCE_M,
-                "orientation_tolerance_rad": GUARDED_INSERT_ORIENTATION_TOLERANCE_RAD,
-                "orientation_tolerance_is_what_the_entry_flare_catches": True,
+                "cartesian_action_scale": [float(value) for value in INSERT_ACTION_SCALE],
+                # **The tolerances the run applied, which are not always the
+                # bay's.** With the fiducial backend the guard runs on the
+                # tighter estimator bounds, and this block used to publish the
+                # lead-in's numbers whatever the run used -- so a report of an
+                # RGB-D run named a 16.6 mm gate while a 2 mm one was deciding
+                # every advance. Both are reported now, and which one applied is
+                # explicit.
+                "lateral_tolerance_m": float(applied_guarded_lateral_tolerance_m),
+                "orientation_tolerance_rad": float(applied_guarded_orientation_tolerance_rad),
+                "tolerance_source": applied_guarded_tolerance_source,
+                "entry_flare_lateral_tolerance_m": GUARDED_INSERT_LATERAL_TOLERANCE_M,
+                "entry_flare_orientation_tolerance_rad": GUARDED_INSERT_ORIENTATION_TOLERANCE_RAD,
+                "orientation_tolerance_is_what_the_entry_flare_catches": (
+                    applied_guarded_tolerance_source == "entry_flare_catch"
+                ),
                 "why_not_depth_dependent": (
                     "2c/l is the law but c changes along the stroke -- 8.00 mm at the nominal "
                     "lead-in surfaces and 12.61 mm in the relieved channel behind them -- and a "
@@ -5532,17 +6393,17 @@ def main() -> dict[str, object]:
                 {
                     "receiver": (
                         "guarded_robot_driven_insertion"
-                        if args.latch_on_release and args.mating_mode == "compliant"
+                        if args.insert_controller == "guarded"
                         else "learned_insert_policy_reset_distribution"
                     ),
                     "axial_tolerance_m": (
                         INSERTION_AXIAL_DEPTH_TOLERANCE_M
-                        if args.latch_on_release and args.mating_mode == "compliant"
+                        if args.insert_controller == "guarded"
                         else INSERT_HANDOFF_POSITION_TOLERANCE_M
                     ),
                     "lateral_tolerance_m": (
                         SLOT_ENTRY_RAMP_CATCH_M
-                        if args.latch_on_release and args.mating_mode == "compliant"
+                        if args.insert_controller == "guarded"
                         else INSERT_HANDOFF_POSITION_TOLERANCE_M
                     ),
                     "orientation_tolerance_rad": INSERTION_ORIENTATION_TOLERANCE_RAD,
@@ -5614,7 +6475,8 @@ def main() -> dict[str, object]:
                 "excluded after physical handoff to the payload shuttle"
                 if args.base_rail_on_relocation
                 else "the workflow's own condition re-checked after a "
-                f"{SETTLE_STEPS / 30.0:.2f} s settling window, not the instant a predicate fired"
+                f"{SETTLE_STEPS / 30.0:.2f} s supported settling window and again after a "
+                f"{SETTLE_STEPS / 30.0:.2f} s free-module window, not the instant a predicate fired"
             ),
             "capture_interface": {
                 "type": (
@@ -5671,6 +6533,7 @@ def main() -> dict[str, object]:
                     else None
                 ),
                 "destination_channel_relief_m": args.destination_channel_relief_m,
+                "release_sequence": args.release_sequence if args.latch_on_release else None,
                 "load_measurement": (
                     "break_threshold_only_reaction_magnitude_not_exposed"
                     if args.latch_on_release and args.latch_joint_mode == "fixed"
@@ -5680,6 +6543,41 @@ def main() -> dict[str, object]:
                 ),
             },
         }
+        if insert_only and conditioned_load_path is not None:
+            # The station protocol owns its load path through the insertion
+            # task, not through --latch_on_release. Report the controller's
+            # actual mechanism rather than falling through to the workflow
+            # flag's "friction only" label.
+            result["capture_interface"].update(
+                {
+                    "type": "task_reset_fixed_to_compliant_form_lock",
+                    "engagement": (
+                        f"after_{conditioned_load_path['engage_after_steps']}_control_steps_"
+                        "then_softened_on_engage"
+                    ),
+                    "rated_force_n": conditioned_load_path["rated_force_n"],
+                    "rated_torque_nm": conditioned_load_path["rated_torque_nm"],
+                    "position_stiffness_n_per_m": conditioned_load_path[
+                        "mating_translation_stiffness_n_per_m"
+                    ],
+                    "rotation_stiffness_nm_per_rad": conditioned_load_path[
+                        "mating_rotation_stiffness_nm_per_rad"
+                    ],
+                    "reaction_wrench_on_robot_modelled": True,
+                    "states": ["delayed_rigid_engagement", "compliant_for_mating"],
+                    "mating_mode": "compliant",
+                    "mating_compliance_n_per_m": conditioned_load_path[
+                        "mating_translation_stiffness_n_per_m"
+                    ],
+                    "mating_compliance_nm_per_rad": conditioned_load_path[
+                        "mating_rotation_stiffness_nm_per_rad"
+                    ],
+                    "mating_stroke_m": conditioned_load_path["mating_translation_limit_m"],
+                    "mating_force_cap_n": conditioned_load_path["mating_force_cap_n"],
+                    "destination_channel_relief_m": env_cfg.service_destination_channel_relief_m,
+                    "load_measurement": "joint_constraint_without_reaction_wrench_telemetry",
+                }
+            )
         result["capture_interface"]["observed_per_environment"] = [
             {
                 "env": index,
@@ -5689,9 +6587,9 @@ def main() -> dict[str, object]:
                     if bool(driver.latch_ever_engaged[index])
                     else None
                 ),
-                "softened_for_mating": bool(driver.latch_softened[index]),
+                "softened_for_mating": bool(driver.latch_ever_softened[index]),
                 "softened_at_driver_step": (
-                    int(driver.latch_softened_at[index]) if bool(driver.latch_softened[index]) else None
+                    int(driver.latch_softened_at[index]) if bool(driver.latch_ever_softened[index]) else None
                 ),
                 "released_after_seating": bool(driver.latch_released[index]),
                 "hand_opened_after_settling_verification": bool(driver.gripper_released[index]),
@@ -5844,33 +6742,47 @@ def main() -> dict[str, object]:
                     "scores_are_calibrated_confidence": False,
                     "used_to_gate_execution": True,
                 }
-        if collecting:
-            result["chain"] = _chain_report(recorder, args.workflow)
+        summary_recorder = recorder if collecting else bounded_recorder
+        if summary_recorder is not None:
+            result["chain"] = _chain_report(summary_recorder, args.workflow)
             print(json.dumps(round_floats(result["chain"]), indent=2)[:3000], flush=True)
             if args.episode_metrics is not None:
                 args.episode_metrics.parent.mkdir(parents=True, exist_ok=True)
                 np.savez_compressed(
                     args.episode_metrics,
-                    rows=np.asarray(recorder.rows, dtype=np.float32),
-                    fields=np.asarray(recorder.fields),
+                    rows=np.asarray(summary_recorder.rows, dtype=np.float32),
+                    fields=np.asarray(summary_recorder.fields),
                     metadata=np.asarray(
                         json.dumps(
                             {
                                 "task": args.task,
                                 "seed": args.seed,
                                 "curriculum_stage": args.curriculum_stage,
+                                "controller": args.insert_controller,
+                                "evaluation_condition": evaluation_condition,
                                 "robustness_level": getattr(env_cfg, "robustness_level", None),
-                                "checkpoint": f"chained {args.workflow}: capture+extract+insert",
+                                "checkpoint": (
+                                    f"conditioned insert: {args.insert_controller}"
+                                    if args.start_insert_station is not None
+                                    else f"chained {args.workflow}: capture+extract+insert"
+                                ),
                                 # One digest over all three policies, so pooling
                                 # runs driven by different checkpoints fails loudly
                                 # in aggregate_evaluation.py exactly as it does for
                                 # a single skill.
                                 "checkpoint_sha256": combined,
                                 "checkpoints": {name: policy.sha256 for name, policy in policies.items()},
+                                "source_revision": git_source_revision(PROJECT_ROOT),
                                 "num_envs": task.num_envs,
                                 "contact_force_limit_n": None,
                                 "workflow": args.workflow,
                                 "stress": {"pose_noise_scale": 1.0, "out_of_distribution": False},
+                                "module_velocity_source": args.module_velocity_source,
+                                "rack_clearance": {
+                                    "per_side_mm": args.rack_lateral_clearance_mm,
+                                    "scope": args.rack_clearance_scope,
+                                    "entry_flares_removed": bool(args.remove_entry_flares),
+                                },
                             }
                         )
                     ),

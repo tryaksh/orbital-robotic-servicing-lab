@@ -8,16 +8,69 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 26,
-    "retracted": 8,
-    "historical": 137
+    "canonical": 64,
+    "retracted": 12,
+    "historical": 167
   },
   "canonical": {
+    "boundary_failure_modes_n192_v1.json": {
+      "title": "Serviceability criteria scored against the failure each one predicts",
+      "evidence_type": "analytical_criteria_against_simulated_failure_modes",
+      "source_revision": {
+        "commit": "3c2bbc7b824b8456cfbf45c4ada8827387504cfb",
+        "dirty": false
+      },
+      "holds_up": "The section axis scored against the failure each criterion predicts, at 192 episodes. This is where the axis separates and the pooled rate does not. The grip criterion is violated at 120x16 by 3.92 mm and that point loses 20.8% of episodes before delivery against nominal's 2.6%, separated, in exactly the mode the criterion names, and 33 of those 40 never achieved a grip at all against nominal's 3, which is the phase the criterion is about. **Do not quote the grip signature column from this report as mechanism**: the episodes that gripped and then lost it sit at 13.11 mm against the successes' 13.13, so the whole signature comes from episodes that never captured, whose offset is the distance the tool stopped at. The entry criterion is violated at 140x26 by 0.74 mm and produces zero jams in 192, so it is not supported. One criterion confirmed and one contradicted, from the same episodes."
+    },
+    "boundary_failure_modes_v1.json": {
+      "title": "Serviceability criteria scored against the failure each one predicts",
+      "evidence_type": "analytical_criteria_against_simulated_failure_modes",
+      "source_revision": {
+        "commit": "9a1c504c6a0f5d1ebbac3dca9224f948e5025e99",
+        "dirty": false
+      },
+      "holds_up": "The same episodes counted a second way: each closed-form criterion against the failure it predicts rather than against the pooled rate. At nominal, 27 of 29 failures reach the final phase and miss the terminal gate, so two episodes in five are lost at the design point to a mode no criterion claims to predict, and a pooled comparison makes every boundary point clear that floor first. Carries the guides-only clearance arm as the preserved comparison."
+    },
+    "boundary_lead_in_deletion_v1.json": {
+      "title": "Serviceability criteria scored against the failure each one predicts",
+      "evidence_type": "analytical_criteria_against_simulated_failure_modes",
+      "source_revision": {
+        "commit": "b3e3871b7140c79ba98744883e6dda86dbdcad08",
+        "dirty": false
+      },
+      "holds_up": "The lead-in criterion tested by removing the part. Two arms at 6 mm of lateral clearance per side with the mouth moving with the walls, differing only in whether the bays keep their entry flares. With the flares: 56.25% and a jam rate of 0.000. Without them: 31.25% and a jam rate of 0.531 -- the failure mode the entry criterion names, absent in one arm and in more than half the episodes of the other, with nothing else changed. At nominal clearance removal changes nothing (59.38% against 54.69%, jam 0.000 in both), so the flare is load-bearing exactly where the criterion says it should be and idle where it says it should be idle. This is the only place in the project where a predicted failure was produced on demand by deleting the geometry that prevents it. The flag is not recorded in the reports; the invocation is artifacts/campaign/queue_flare_removal.sh, which is committed."
+    },
     "chain_robustness_sweep.json": {
       "title": "What breaks the robot-carried chain first",
       "evidence_type": "simulation_only",
       "generated_utc": "2026-08-25T01:23:35.400041+00:00",
       "holds_up": "One variable at a time around the certified point: what breaks the chain first."
+    },
+    "chain_robustness_sweep_n64.json": {
+      "title": "What breaks the robot-carried chain first",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-03T14:37:42.515698+00:00",
+      "holds_up": "Four times the sample: seven boundary points at 64 environments each. Disagrees with the August 16-environment sweep both quantitatively (nominal 54.7% vs 93.8%) and qualitatively (section_120x16 reverses from 0% to 50%, rack_lat_6mm from 93.8% to 0%). The two are not directly comparable."
+    },
+    "chain_robustness_sweep_n64_channel_v1.json": {
+      "title": "What breaks the robot-carried chain first",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-03T20:00:17.086455+00:00",
+      "source_revision": {
+        "commit": "1f0d7f54fe136d46d73558a5b5df74811e5b6c57",
+        "dirty": false
+      },
+      "holds_up": "The same seven points with the two clearance arms re-measured under --rack_clearance_scope channel, which moves each bay's upper lips and entry flares with its side guides. The published arm moved the guides alone, leaving a rack whose mouth and walls disagreed by the clearance change. At 6 mm per side that is the difference between 0/64 with 62 jams and 36/64 with none; at 16 mm it changes nothing. The guides-only arm is preserved in chain_robustness_sweep_n64.json."
+    },
+    "chain_robustness_sweep_section_n192_v1.json": {
+      "title": "What breaks the robot-carried chain first, module-section axis pooled over three seeds",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-04T04:59:47+00:00",
+      "source_revision": {
+        "commit": "3c2bbc7b824b8456cfbf45c4ada8827387504cfb",
+        "dirty": false
+      },
+      "holds_up": "The module-section axis at three held-out seeds, 192 episodes a point, pooled from archives that already existed. Nominal 57.29% [50.2, 64.1], 120x16 45.83% [38.9, 52.9], 140x26 40.62% [33.9, 47.7]. The pooled rates still overlap nominal, which is the point: tripling n narrows the interval from about twenty-four points to fourteen and the *pooled rate* still does not separate this axis. Every other point is unchanged from chain_robustness_sweep_n64_channel_v1 and the report names which is which."
     },
     "destination_channel_geometry.json": {
       "title": "What channel each entry point actually builds for the destination bay",
@@ -25,26 +78,44 @@
       "generated_utc": "2026-08-25T22:12:01.454100+00:00",
       "holds_up": "The destination bay as each entry point actually builds it. Read from the config, not the source."
     },
+    "estimator_surrogate_velocity_channel_v1.json": {
+      "title": "Training-time estimator surrogate, measured against the certificate it reproduces",
+      "task": "Isaac-ZeroG-Blade-GrapplePin-ExtractNoised-v0",
+      "source_revision": {
+        "commit": "71123f3352265e2cccd4f86ffb6ffa41fbf3bd68",
+        "dirty": false
+      },
+      "holds_up": "The training-time estimator surrogate measured against the certificate it reproduces, and the velocity channel's noise floor against a seated module's own speed. Realized position p95 2.00 mm against a certified 1.91. With the arm held still the channel reads 17.02 mm/s at the deployed filter while the identical differencing on the simulator's own pose reads 3.38, so the estimator contributes 13.65 against a seated module's 0.69 -- and no filter time constant helps, because a longer one lowers the mean and raises the p95."
+    },
     "extract_attribution.json": {
       "title": "What each change to the extract task was worth, before any retraining",
       "evidence_type": "simulation_only",
       "generated_utc": "2026-08-24T22:07:21.639279+00:00",
       "holds_up": "One change a row on one unchanged checkpoint: criterion, rack, reset, then epochs."
     },
-    "fiducial_rgbd_service_plate.json": {
+    "extract_channel_attribution_v1.json": {
+      "title": "Which observation channel costs extraction its transfer",
+      "evidence_type": "channel_attribution_on_an_unchanged_checkpoint",
+      "source_revision": {
+        "commit": "ed7fb2b72b0f00ea45186f5a8ba14f0e7c832e8e",
+        "dirty": false
+      },
+      "holds_up": "Which observation channel costs extraction its transfer, on the unchanged v18pin checkpoint: exact state 90.62%, pose channels noised 82.29%, velocity channel noised 80.42%, both 49.48%. The two channels cost 8.33 and 10.21 points apart and 41.15 together, so the interaction is 22.61 points -- larger than the sum of the parts. Neither channel is the problem; having no reliable channel is."
+    },
+    "fiducial_rgbd_flush_v2_seed283.json": {
       "title": "Calibrated RGB-D fiducial perception qualification",
       "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
-      "holds_up": "The perception path the live service runs, certified on rendered frames."
+      "holds_up": "Preserved flush-tag visibility control: 43.27% critical-bay detection against a 99% gate with the former camera placement."
     },
-    "full_chain_rgbd_service_seed4070.json": {
-      "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
-      "policy_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
-      "checkpoints_sha256": {
-        "capture": "D5506848D6C63E00DF2D5A9397109D7913B57542B163E15574C7F0B9D69C4612",
-        "extract": "5391CD416EC900E07872BF758B54F661A2C141ECF3A1E1D920D9A15AF769B300",
-        "insert": "9159DE38F659A2ED47C56D7E873F1C580A98420340B8FB799C080F4D93A173C0"
-      },
-      "holds_up": "The RGB-D chain end to end, one seed. NOT the pooled rate -- see docs/NEXT_WORK.md T1."
+    "fiducial_rgbd_flush_v3_seed284_overhead.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification",
+      "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
+      "holds_up": "Static module-pose overhead-camera arm: 92.87% overall and 99.85% critical-bay detection over 1,024 frames; it did not reproduce continuous robot occlusion."
+    },
+    "fiducial_rgbd_flush_v4_seed285_gripper_clear.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification",
+      "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
+      "holds_up": "Static gripper-clear camera arm: unchanged gates pass over 1,024 held-out module poses, pending the continuous workflow."
     },
     "full_chain_state_16_report.json": {
       "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
@@ -73,6 +144,23 @@
       "policy_sha256": "AFA73BB932C5AD9BCD3C4D3F59AD7862A10076BB31CE6F26D6C162A90FB09AA8",
       "holds_up": "The control that makes the extract comparison a comparison and not a re-baselining."
     },
+    "grapple_extract_v18pin_c11065_certification.json": {
+      "title": "Head-on grapple-pin extraction skill on the derived rack, unchanged v18pin checkpoint",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-28T00:59:25+00:00",
+      "overall": {
+        "episodes": 9004,
+        "successes": 7891,
+        "success_rate": 0.876388,
+        "wilson_95": [
+          0.869429,
+          0.883027
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "ADC247AB0E9403761A3108228019AE7BE4DC408155B414B6BF0226102E5CCA54",
+      "holds_up": "Unchanged extraction checkpoint re-measured on the derived rack: 87.64% over 9,004 episodes; no clearance gain."
+    },
     "grapple_extract_v18pin_certification.json": {
       "title": "Head-on grapple-pin extract skill, v18pin, on the pin-resolved grip criterion",
       "evidence_type": "simulation_only",
@@ -89,6 +177,44 @@
       "gate_passed": false,
       "policy_sha256": "A83D3CAC1CD3388ACD01BB8C00E5B7B6513A131E9AA664B5FE312AB102690571",
       "holds_up": "Extraction skill, the checkpoint the chain runs: 87.75% pooled. Misses the gate."
+    },
+    "grapple_extract_v19noised_noised_certification.json": {
+      "title": "Extraction skill retrained on the estimator's error, scored on the noised task",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-04T18:21:33+00:00",
+      "overall": {
+        "episodes": 4608,
+        "successes": 3924,
+        "success_rate": 0.851562,
+        "wilson_95": [
+          0.841004,
+          0.861535
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "9669a8f9b5848e4edf878269e9f340f2a9d2c8f6",
+        "dirty": false
+      },
+      "policy_sha256": "5971A916C9C7B8F77A2973E25EB504C9B31794BC9C3F2E64EACF83EB7FDC0B95",
+      "holds_up": "The extraction skill retrained on the estimator's certified error, scored on the noised task: 3924/4608, 85.16%, Wilson [84.1, 86.2], against the published v18pin's 87.75% on the clean task. Training on the sensing the robot actually has costs about two and a half points of skill. That is the number that makes the chain-level collapse a composition result rather than a skill one."
+    },
+    "grapple_grasp_v7m130_c11065_certification.json": {
+      "title": "Head-on grapple-pin grasp skill on the derived rack, unchanged v7m130 checkpoint",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-28T01:07:09+00:00",
+      "overall": {
+        "episodes": 9009,
+        "successes": 7829,
+        "success_rate": 0.86902,
+        "wilson_95": [
+          0.861896,
+          0.87583
+        ]
+      },
+      "gate_passed": false,
+      "policy_sha256": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+      "holds_up": "Unchanged capture checkpoint re-measured on the derived rack: 86.90% over 9,009 episodes; still below gate."
     },
     "grapple_grasp_v7m130_on_derived_rack_certification.json": {
       "title": "Control: grasp v7m130 on the derived rack, criterion unchanged",
@@ -157,13 +283,96 @@
       "title": "The insert skill's depth limit is its attitude, through 2c/theta",
       "evidence_type": "simulation_only",
       "generated_utc": "2026-08-26T00:57:39.959428+00:00",
-      "holds_up": "What is left of the insert skill: depth is attitude one layer down, through 2c/theta."
+      "holds_up": "What is left of the insert skill: depth is attitude one layer down, through 2c/theta. **The law gives a bracket, not a point.** This bay has two relieved clearances -- 12.613 mm vertically and 15.678 mm laterally per side -- so 2c/theta at the stalled 96.8 mrad is 260.6 mm against one and 323.9 mm against the other. The observed 261.5 mm sits at the tight end. Quoting only the matching clearance turns a bracket into a one-millimetre prediction, which this report's own limitations warn against; write it as the minimum over the constraining directions and say the looser figure too."
     },
     "insert_reset_bank.json": {
       "title": "Paired arm and module poses along the seating stroke",
       "evidence_type": "geometry_check_no_simulator",
       "generated_utc": "2026-08-25T03:11:20.137349+00:00",
       "holds_up": "The stations an insertion may start from, solved in closed form and gated."
+    },
+    "insertion_conditioned_controller_v3.json": {
+      "evidence_type": "paired_conditioned_insertion_controller_comparison",
+      "generated_utc": "2026-08-28T01:09:15+00:00",
+      "source_revision": {
+        "commit": "daa53d6daae9abbab805cbdf68f834b4f8635f7b",
+        "dirty": false
+      },
+      "holds_up": "Paired v24 and guarded insertion at all nine reset stations and real chain handoffs; every losing arm retained."
+    },
+    "rack_requirement_sweep_v1.json": {
+      "title": "The rack requirement as a function of the manipulator's delivered attitude",
+      "evidence_type": "closed_form_design_sweep",
+      "source_revision": {
+        "commit": "a6656bfe12c546aa978ef27fec5987092159f5e3",
+        "dirty": false
+      },
+      "holds_up": "The design derivation swept: one measured number about the arm -- the attitude it hands the insertion over at -- against the rack it implies. Closed form only. The shipped workcell is the 46 mrad row, and between 35 and 40 mrad the correcting lead-in stops being required at all, which is a part deleted by an arm's measured performance."
+    },
+    "rack_retention_geometry_v1.json": {
+      "title": "Rack-side passive retention geometry and simulator binding",
+      "evidence_type": "geometric_derivation_no_simulator",
+      "holds_up": "Simulator-free rack-pawl geometry, load rating, and source binding check."
+    },
+    "rack_retention_paired_v1.json": {
+      "title": "Paired destination rack-side retention and strict robot-support release",
+      "evidence_type": "paired_fixed_cohort_simulation",
+      "generated_utc": "2026-09-01T05:55:01.798377+00:00",
+      "holds_up": "Paired T14 result: +5/24; rack-only transfer succeeds in all 22/22 episodes that reach measured seating, while two fail upstream."
+    },
+    "rack_sightline_datum_pair_v1.json": {
+      "title": "What stands in the servicing cameras line to the flush datum along the seating stroke",
+      "evidence_type": "geometric_derivation_no_simulator",
+      "generated_utc": "2026-09-03T05:22:06.528315+00:00",
+      "holds_up": "The datum pair closes the blind band: no depth of the seating stroke leaves both plates unreadable, on the primary camera alone."
+    },
+    "rack_sightline_occlusion_v1.json": {
+      "title": "What stands in the servicing cameras line to the flush datum along the seating stroke",
+      "evidence_type": "geometric_derivation_no_simulator",
+      "generated_utc": "2026-09-03T05:22:08.400933+00:00",
+      "holds_up": "Simulator-free sight lines: the destination bay's own vertical lead-in blinds both fixed views over 154 mm of the seating stroke, and the derivation reproduces the recorded loss depth."
+    },
+    "rgbd_strict_capture_gate_v2_seed5070.json": {
+      "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "source_revision": {
+        "commit": "57a61b36f3722cb0bc07b433dad2938daca91563",
+        "dirty": false
+      },
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "checkpoints_sha256": {
+        "capture": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+        "extract": "ADC247AB0E9403761A3108228019AE7BE4DC408155B414B6BF0226102E5CCA54",
+        "insert": "CFBB09E2DDC7AF11E180DD772C42F5D86AB20EA56BD0A00F2FEB2EA378B4EC69"
+      },
+      "holds_up": "One strict RGB-D negative run after capture-gated dropout propagation; it ended during extraction and claims no relocation."
+    },
+    "rgbd_strict_rack_retention_datum_pair_seed6070.json": {
+      "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "source_revision": {
+        "commit": "7a82db205c49ba3f1cee41a7a3853080f5c084a1",
+        "dirty": false
+      },
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "checkpoints_sha256": {
+        "capture": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+        "extract": "ADC247AB0E9403761A3108228019AE7BE4DC408155B414B6BF0226102E5CCA54",
+        "insert": "CFBB09E2DDC7AF11E180DD772C42F5D86AB20EA56BD0A00F2FEB2EA378B4EC69"
+      },
+      "holds_up": "The first complete continuous RGB-D episode: trained capture and extraction, visible robot carry, guarded insertion to the derived seated plane, both robot supports released, and the rack alone holding for 0.733 s, with 1,772/1,772 detections."
+    },
+    "rgbd_strict_rack_retention_gripper_clear_video2_seed4070.json": {
+      "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "source_revision": {
+        "commit": "e16fae4ba2a20a2e633ff55b281a040e8ce39649",
+        "dirty": false
+      },
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "checkpoints_sha256": {
+        "capture": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+        "extract": "ADC247AB0E9403761A3108228019AE7BE4DC408155B414B6BF0226102E5CCA54",
+        "insert": "CFBB09E2DDC7AF11E180DD772C42F5D86AB20EA56BD0A00F2FEB2EA378B4EC69"
+      },
+      "holds_up": "Preserved continuous-workflow failure: learned capture/extraction and carry reach guarded insertion, then the 384-pixel marker detector drops out and the motion fails closed."
     },
     "robot_carried_full_chain_c11065.json": {
       "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
@@ -205,6 +414,51 @@
       "title": "Robot-side service latch clearance, derived from the measured gripper envelope",
       "evidence_type": "geometric_derivation_no_simulator",
       "holds_up": "The form lock's clearances, derived from the measured gripper envelope."
+    },
+    "serviceability_boundary_validation_n64_channel_v2.json": {
+      "title": "Serviceability boundary validation against simulation",
+      "evidence_type": "analytical_boundary_against_simulation",
+      "generated_utc": "2026-09-03T20:00:45.975029+00:00",
+      "source_revision": {
+        "commit": "8a16bc6ac3bd139a416b8a18bec443e9f64fff6a",
+        "dirty": false
+      },
+      "holds_up": "The current boundary decision, on the sweep whose clearance points were re-measured with each bay's mouth moving with its walls. Still not qualified. The rack-clearance axis now fails on its *lower* bound rather than confirming it: 6 mm per side is analytically infeasible and scores 56.25% against nominal's 54.69%, while the upper bound holds at 16 mm. Dimension statuses are derived from their own rows here; in v1 three of them were literals."
+    },
+    "serviceability_boundary_validation_n64_v1.json": {
+      "title": "Serviceability boundary validation against simulation",
+      "evidence_type": "analytical_boundary_against_simulation",
+      "generated_utc": "2026-09-03T15:47:23.400981+00:00",
+      "source_revision": {
+        "commit": "0436ae560bbbc2a949b91ead4f2259adbd14ea28",
+        "dirty": false
+      },
+      "holds_up": "The boundary decision re-derived from the 64-environment sweep. Still not qualified, and now with per-point classifications: rack_lat_6mm confirms its analytical infeasibility, section_120x16, section_140x26 and rack_lat_16mm do not, base_y_+10mm shows a loss the analytical model did not predict."
+    },
+    "serviceability_boundary_validation_v2.json": {
+      "title": "Serviceability boundary validation against simulation",
+      "evidence_type": "analytical_boundary_against_simulation",
+      "generated_utc": "2026-08-28T01:10:58.110603+00:00",
+      "source_revision": {
+        "commit": "291ea8af811efe64681197c6e3df48ed744d8dad",
+        "dirty": false
+      },
+      "holds_up": "The current fail-closed boundary result: entry attitude supported; five dimensions unresolved or contradicted."
+    },
+    "servicing_camera_geometry_v1.json": {
+      "title": "Fixed servicing-camera coverage of the flush fiducial workflow envelope",
+      "evidence_type": "geometric_derivation_no_simulator",
+      "holds_up": "Simulator-free projection check for the one-change overhead servicing-camera placement and unchanged flush datum."
+    },
+    "servicing_camera_geometry_v2_gripper_clear.json": {
+      "title": "Fixed servicing-camera coverage of the flush fiducial workflow envelope",
+      "evidence_type": "geometric_derivation_no_simulator",
+      "holds_up": "Simulator-free projection and measured rear-gripper sightline clearance for the shifted 384-pixel camera arm."
+    },
+    "servicing_camera_geometry_v4_datum_pair.json": {
+      "title": "Fixed servicing-camera coverage of the flush fiducial workflow envelope",
+      "evidence_type": "geometric_derivation_no_simulator",
+      "holds_up": "Unchanged camera, lens and resolution over the workflow envelope with the flush datum pair: 64/64 sampled poses keep one usable plate."
     },
     "workcell_geometry_check.json": {
       "title": "Where the arm stands, what authority it has there, and what the channel admits",
@@ -261,7 +515,7 @@
       },
       "gate_passed": true,
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
-      "holds_up": "The chain on the derived rack: 97.92% pooled, seed for seed identical to the 12.689 mm run."
+      "holds_up": "Legacy supported-settle comparator on the derived rack: 97.92%, seed for seed identical to the 12.689 mm run."
     },
     "workflow_robot_carried_m130pin_guarded_certification.json": {
       "title": "Robot-carried servicing workflow: relocation, on the pin-resolved criterion and the derived rack",
@@ -278,7 +532,133 @@
       },
       "gate_passed": true,
       "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
-      "holds_up": "The chain's headline rate: 97.92% pooled over 96 episodes, three held-out seeds."
+      "holds_up": "Legacy supported-settle baseline: 97.92% over 96 episodes; it predates the independent robot-support release recheck."
+    },
+    "workflow_robot_carried_m130pin_vision_datum_pair_certification.json": {
+      "title": "Robot-carried relocation driven by RGB-D fiducial perception on the flush datum pair",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-03T07:39:34+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 4,
+        "success_rate": 0.166667,
+        "wilson_95": [
+          0.066787,
+          0.358531
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "131e6ac011c8e737fc9610e31c40a25939a0acb9",
+        "dirty": false
+      },
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "The chain driven by camera-derived module state: 4/24, 16.67%, Wilson [6.7%, 35.9%]. Thirteen of twenty-four lose the module in extraction."
+    },
+    "workflow_robot_carried_m130pin_vision_oracle_control_v2_certification.json": {
+      "title": "Vision-task control: the same cohort with the module pose read from the simulator",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-03T07:13:02+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 20,
+        "success_rate": 0.833333,
+        "wilson_95": [
+          0.641469,
+          0.933213
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "131e6ac011c8e737fc9610e31c40a25939a0acb9",
+        "dirty": false
+      },
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "The paired control: the same vision task, seeds, environments and code path with the module pose read from the simulator. 20/24, 83.33%, Wilson [64.1%, 93.3%]. The difference between the two is the estimator."
+    },
+    "workflow_robot_carried_release_hand_first_v3_certification.json": {
+      "title": "Robot-carried servicing workflow: hand-first release ablation",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-31T08:17:01+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 12,
+        "success_rate": 0.5,
+        "wilson_95": [
+          0.314274,
+          0.685726
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "8b31216e4b96eb18e12e9f66d40889a6f3418d6d",
+        "dirty": false
+      },
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "Paired losing load-transfer arm: hand-first release scores 12/24 (50.00%) on identical seeds and states."
+    },
+    "workflow_robot_carried_release_rack_retention_control_v1_certification.json": {
+      "title": "Rack-retention paired control: strict robot-carried release without rack capture",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-01T05:36:29+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 17,
+        "success_rate": 0.708333,
+        "wilson_95": [
+          0.508323,
+          0.850854
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "aef70802ac703739d53db4337744bb3d87036795",
+        "dirty": false
+      },
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "Current-source paired no-rack control: 17/24 (70.83%), exactly reproducing the pre-retention baseline."
+    },
+    "workflow_robot_carried_release_rack_retention_v1_certification.json": {
+      "title": "Rack-side retention: strict robot-carried release and rack-only recheck",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-01T05:48:47+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 22,
+        "success_rate": 0.916667,
+        "wilson_95": [
+          0.741512,
+          0.976841
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "aef70802ac703739d53db4337744bb3d87036795",
+        "dirty": false
+      },
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "Strict chain with visible destination retention: 22/24 (91.67%); below the unchanged 95% full-chain gate."
+    },
+    "workflow_robot_carried_release_recheck_v2_certification.json": {
+      "title": "Robot-carried servicing workflow: independent release recheck",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-08-31T08:16:47+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 17,
+        "success_rate": 0.708333,
+        "wilson_95": [
+          0.508323,
+          0.850854
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "5207cf21494795d881414a7a1c63a4f7968ed541",
+        "dirty": false
+      },
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "Preserved pre-retention strict chain: 17/24 (70.83%) after both robot-side supports release and a 0.70 s free-module recheck."
     },
     "workflow_robot_carried_relocate_certification.json": {
       "title": "Robot-carried servicing workflow: relocation, bay 1 to bay 2",
@@ -296,9 +676,139 @@
       "gate_passed": false,
       "policy_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
       "holds_up": "The before, two sessions back: 31.25%."
+    },
+    "workflow_robot_carried_vision_kinematic_velocity_certification.json": {
+      "title": "RGB-D chain with the module velocity taken from the robot rather than the cameras",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-04T19:28:59+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 2,
+        "success_rate": 0.083333,
+        "wilson_95": [
+          0.023159,
+          0.258488
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "9669a8f9b5848e4edf878269e9f340f2a9d2c8f6",
+        "dirty": false
+      },
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "The kinematic velocity channel alone, no retrain, in the camera-driven chain: 2/24, 8.33%, Wilson [2.3, 25.8]. Indistinguishable from the published 4/24. Removing the manufactured velocity noise is necessary and not sufficient."
+    },
+    "workflow_robot_carried_vision_leadin_guard_v1_certification.json": {
+      "title": "RGB-D chain with the guarded advance admitting on the entry flare's catch",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-03T22:41:19+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 12,
+        "success_rate": 0.5,
+        "wilson_95": [
+          0.314274,
+          0.685726
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "32794ce3b3efcc6eab3a5136704657cf5c71f370",
+        "dirty": false
+      },
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "The RGB-D chain with the guarded advance admitting on the entry flare's catch rather than on the deployed estimator's own noise bound: 12/24, 50.00%, Wilson [31.4%, 68.6%], against the shipped bounds' 4/24. Published checkpoints, nothing retrained, one criterion change, and the detection interlock unchanged in both arms."
+    },
+    "workflow_robot_carried_vision_noised_extract_certification.json": {
+      "title": "RGB-D chain with extraction trained on the estimator's error",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-04T19:08:54+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 3,
+        "success_rate": 0.125,
+        "wilson_95": [
+          0.043443,
+          0.310039
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "9669a8f9b5848e4edf878269e9f340f2a9d2c8f6",
+        "dirty": false
+      },
+      "policy_sha256": "1AFE41D3AFBC8C6B6A26C3A426863F37ADF8C44B3B10849ECF0F4B88FBEFAEA3",
+      "holds_up": "The retrained extraction alone, in the camera-driven chain: 3/24, 12.50%, Wilson [4.3, 31.0]. Indistinguishable from the published 4/24. The skill itself is fine -- it certifies at 85.16% on the noised task -- so this is the arm that shows a good skill does not rescue the chain on its own."
+    },
+    "workflow_robot_carried_vision_noised_extract_kinematic_leadin_certification.json": {
+      "title": "RGB-D chain, best available configuration: trained on the estimator's error, velocity from the robot, guard on the flare's catch",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-04T19:50:25+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 17,
+        "success_rate": 0.708333,
+        "wilson_95": [
+          0.508323,
+          0.850854
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "9669a8f9b5848e4edf878269e9f340f2a9d2c8f6",
+        "dirty": false
+      },
+      "policy_sha256": "1AFE41D3AFBC8C6B6A26C3A426863F37ADF8C44B3B10849ECF0F4B88FBEFAEA3",
+      "holds_up": "**The camera-driven gate, closed.** The best configuration this repository can field -- extraction retrained on the estimator's certified error, module velocity from the robot's encoders, and the guarded advance admitting on the entry flare's catch -- scores 17/24, 70.83%, Wilson [50.8, 85.1], against the published camera cohort's 4/24. The intervals do not overlap. Read beside the two single-change arms it is the chain-scale form of the channel interaction: neither change alone is distinguishable from the published cohort and all three together are."
+    },
+    "workflow_robot_carried_vision_rack_retention_overhead_v1_certification.json": {
+      "title": "Strict camera-guided workflow with visible destination retention",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-01T06:41:23+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 0,
+        "success_rate": 0.0,
+        "wilson_95": [
+          0.0,
+          0.137976
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "b76517b5f647184ec39d757d0b2e85470fc1a9b5",
+        "dirty": false
+      },
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "Preserved full-workflow camera failure: 0/24 on the fixed cohorts after the static overhead-camera corpus passed."
     }
   },
   "retracted": {
+    "criterion_retention_v1.json": {
+      "title": "Does the quantity each criterion bounds still predict the failure it names?",
+      "evidence_type": "criterion_retention_under_closed_loop_correction",
+      "generated_utc": "2026-09-04T05:10:09+00:00",
+      "source_revision": {
+        "commit": "ac48600fec0b4157b55d82dcf189768807e794dc",
+        "dirty": false
+      },
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    },
+    "fiducial_rgbd_service_plate.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification",
+      "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    },
+    "full_chain_rgbd_service_seed4070.json": {
+      "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "policy_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
+      "checkpoints_sha256": {
+        "capture": "D5506848D6C63E00DF2D5A9397109D7913B57542B163E15574C7F0B9D69C4612",
+        "extract": "5391CD416EC900E07872BF758B54F661A2C141ECF3A1E1D920D9A15AF769B300",
+        "insert": "9159DE38F659A2ED47C56D7E873F1C580A98420340B8FB799C080F4D93A173C0"
+      },
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    },
     "grapple_extract_certification.json": {
       "title": "Head-on grapple-pin extract skill",
       "evidence_type": "simulation_only",
@@ -365,6 +875,15 @@
       },
       "gate_passed": false,
       "policy_sha256": "73D4D29BF55A907A2B31367FF2EA4A18FD7AE2E1413A079D462B5A6E9349C56D",
+      "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
+    },
+    "insertion_conditioned_controller_v1.json": {
+      "evidence_type": "paired_conditioned_insertion_controller_comparison",
+      "generated_utc": "2026-08-27T04:18:31+00:00",
+      "source_revision": {
+        "commit": "3e078bcdf1985b69093e2f5f80c99a3b71cd937c",
+        "dirty": false
+      },
       "holds_up": "Nothing. See evidence/RETRACTED.md before quoting."
     },
     "vision_workflow_camera_twoslot_certification.json": {
@@ -449,6 +968,37 @@
     "estimate_stability.json": {
       "title": "Pose estimate stability, with the module held still"
     },
+    "extract_channel_isolation_Extract.json": {
+      "title": "Extraction on an unchanged checkpoint: Extract",
+      "generated_utc": "2026-09-03T21:04:56+00:00"
+    },
+    "extract_channel_isolation_ExtractNoised.json": {
+      "title": "Extraction on an unchanged checkpoint: ExtractNoised",
+      "generated_utc": "2026-09-03T21:18:21+00:00"
+    },
+    "extract_channel_isolation_ExtractPoseNoised.json": {
+      "title": "Extraction on an unchanged checkpoint: ExtractPoseNoised",
+      "generated_utc": "2026-09-03T21:31:38+00:00"
+    },
+    "extract_channel_isolation_ExtractVelocityNoised.json": {
+      "title": "Extraction on an unchanged checkpoint: ExtractVelocityNoised",
+      "generated_utc": "2026-09-03T21:42:14+00:00"
+    },
+    "fiducial_detector_late_approach_replay_v1.json": {
+      "title": "Fiducial decoder replay on continuous late-approach RGB frames"
+    },
+    "fiducial_rgbd_datum_pair_seed286.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification"
+    },
+    "fiducial_rgbd_flush_v5_seed286_640px.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification"
+    },
+    "fiducial_rgbd_flush_v6_seed286_640px_robust_decoder.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification"
+    },
+    "fiducial_v4_dataset_replayed_on_the_datum_pair_detector.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification"
+    },
     "force_feedback_certification.json": {
       "title": "Force-feedback insertion policy, contact force in the observation space, PPO epoch 1800, three curriculum stages x three held-out seeds",
       "generated_utc": "2026-08-09T19:38:02+00:00"
@@ -500,6 +1050,10 @@
     "grapple_extract_v17m130_certification.json": {
       "title": "Head-on grapple-pin extract skill, v17m130, on the 450 x 130 x 20 mm module",
       "generated_utc": "2026-08-24T11:14:14+00:00"
+    },
+    "grapple_extract_v19noised_clean_certification.json": {
+      "title": "Extraction skill retrained on the estimator's error, scored on the clean task",
+      "generated_utc": "2026-09-04T18:51:37+00:00"
     },
     "grapple_extract_v2_certification.json": {
       "title": "Head-on grapple-pin extract skill",
@@ -573,6 +1127,10 @@
       "title": "Head-on grapple-pin insert skill, v16pin: stroke-wide reset, pin-resolved grip",
       "generated_utc": "2026-08-25T02:38:01+00:00"
     },
+    "grapple_insert_v25handoff_probe.json": {
+      "title": "Rack-mouth-only insertion training intervention",
+      "generated_utc": "2026-08-28T04:55:36.672673+00:00"
+    },
     "grapple_insert_v3_certification.json": {
       "title": "Head-on grapple-pin insert skill",
       "generated_utc": "2026-08-10T16:55:37+00:00"
@@ -644,6 +1202,9 @@
       "title": "Insert v6, unchanged, on the chained-insert task (pre-training gate)",
       "generated_utc": "2026-08-16T23:40:53+00:00"
     },
+    "insertion_chain_handoff_controller_v1.json": {
+      "generated_utc": "2026-08-27T06:07:43+00:00"
+    },
     "mating_compliance.json": {
       "title": "Mating compliance for a robot-carried module",
       "generated_utc": "2026-08-23T06:48:28.749990+00:00"
@@ -692,6 +1253,19 @@
     "relocation_rrt_path.json": {
       "generated_utc": "2026-08-21T01:39:23+00:00"
     },
+    "rgbd_strict_rack_retention_640px_burst_full_seed5070.json": {},
+    "rgbd_strict_rack_retention_640px_burst_full_seed6070.json": {},
+    "rgbd_strict_rack_retention_640px_estimator_frames_seed5070.json": {},
+    "rgbd_strict_rack_retention_640px_no_video_seed5070.json": {},
+    "rgbd_strict_rack_retention_640px_rerender3_full_seed6070.json": {},
+    "rgbd_strict_rack_retention_640px_robust_decoder_frames_seed5070.json": {},
+    "rgbd_strict_rack_retention_640px_robust_decoder_video_seed5070.json": {},
+    "rgbd_strict_rack_retention_640px_video_seed4070.json": {},
+    "rgbd_strict_rack_retention_dual_camera_full_seed6070.json": {},
+    "rgbd_strict_rack_retention_gripper_clear_diagnostic_seed4070.json": {},
+    "rgbd_strict_rack_retention_gripper_clear_video_seed4070.json": {},
+    "rgbd_strict_rack_retention_overhead_seed4070.json": {},
+    "rgbd_strict_rack_retention_overhead_seed6070.json": {},
     "rigid_grasp_l0_ep700_certification.json": {
       "title": "Level-0 secured-grasp blade insertion, PPO epoch 700, three curriculum stages x three held-out seeds",
       "generated_utc": "2026-08-08T06:38:19+00:00"
@@ -727,6 +1301,13 @@
     "robot_carried_seating_sweep.json": {
       "title": "Destination-bay clearance sweep: why the robot-carried seating does not close",
       "generated_utc": "2026-08-23T11:25:39.027766+00:00"
+    },
+    "serviceability_boundary_validation_v1.json": {
+      "title": "Serviceability boundary validation against simulation",
+      "generated_utc": "2026-08-27T01:13:24.458530+00:00"
+    },
+    "servicing_camera_geometry_v3_640px.json": {
+      "title": "Fixed servicing-camera coverage of the flush fiducial workflow envelope"
     },
     "uncertain_force_threshold_aware.json": {
       "title": "Commanded contact-force budget, force-aware",
@@ -924,6 +1505,10 @@
       "title": "Chained servicing workflow: remove",
       "generated_utc": "2026-08-20T02:37:27+00:00"
     },
+    "workflow_robot_carried_insert_v33force_chain_policy_certification.json": {
+      "title": "Robot-carried relocation, seating driven by the learned insert policy (insert_v33force)",
+      "generated_utc": "2026-09-04T20:17:08+00:00"
+    },
     "workflow_robot_carried_leadin_check_certification.json": {
       "title": "Robot-carried relocation, one seed, lead-ins derived from the rails",
       "generated_utc": "2026-08-24T22:17:49+00:00"
@@ -931,6 +1516,14 @@
     "workflow_robot_carried_m130pin_check_certification.json": {
       "title": "Robot-carried relocation, one seed, after the criterion and rack changes",
       "generated_utc": "2026-08-24T20:57:19+00:00"
+    },
+    "workflow_robot_carried_vision_factorial_base_000_certification.json": {
+      "title": "RGB-D chain, factorial cell base_000",
+      "generated_utc": "2026-09-04T20:54:38+00:00"
+    },
+    "workflow_robot_carried_vision_rack_retention_640px_v2_certification.json": {
+      "title": "Strict 640-pixel camera-guided workflow with visible destination retention",
+      "generated_utc": "2026-09-01T19:25:25+00:00"
     }
   }
 }

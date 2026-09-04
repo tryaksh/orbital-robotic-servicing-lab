@@ -36,11 +36,11 @@ def _overall(name: str) -> dict:
     return json.loads((EVIDENCE / name).read_text(encoding="utf-8"))["overall"]
 
 
-def test_the_chain_rate_is_quoted_as_measured() -> None:
-    """97.92% over 94 of 96 episodes, with its Wilson interval."""
-    overall = _overall("workflow_robot_carried_m130pin_guarded_certification.json")
+def test_the_strict_chain_rate_is_quoted_as_measured() -> None:
+    """The current rate includes release of both robot supports and a rack-only recheck."""
+    overall = _overall("workflow_robot_carried_release_rack_retention_v1_certification.json")
     rate = f"{overall['success_rate'] * 100:.2f}%"
-    assert overall["successes"] == 94 and overall["episodes"] == 96
+    assert overall["successes"] == 22 and overall["episodes"] == 24
     for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
         assert rate in document, f"{label} does not quote the chain rate {rate}"
 
@@ -48,6 +48,14 @@ def test_the_chain_rate_is_quoted_as_measured() -> None:
     interval = f"[{wilson['low'] * 100:.1f}%, {wilson['high'] * 100:.1f}%]"
     assert interval in README or interval.replace("%", "") in README
     assert interval in NOW or interval.replace("%", "") in NOW
+
+
+def test_the_legacy_supported_settle_rate_is_not_presented_as_current() -> None:
+    overall = _overall("workflow_robot_carried_m130pin_guarded_certification.json")
+    assert overall["successes"] == 94 and overall["episodes"] == 96
+    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+        assert "97.92%" in document, f"{label} loses the preserved legacy comparator"
+        assert "legacy" in document.lower(), f"{label} presents the old criterion as current"
 
 
 @pytest.mark.parametrize(
@@ -73,11 +81,12 @@ def test_the_insert_negative_result_is_quoted_with_its_sample_size() -> None:
 
 
 def test_the_interface_limit_is_quoted_from_its_own_gate() -> None:
-    """6 N held against 66.4 N demanded is the measurement the project rests on."""
+    """The idealized force diagnostic remains visible without becoming a hardware claim."""
     gate = json.loads((EVIDENCE / "grasp_axial_pull_gate.json").read_text(encoding="utf-8"))["gate"]
     required = gate["required_axial_force_n"]
     assert round(required, 1) == 66.4, f"the required axial force moved to {required}"
     assert "66.4 N" in README, "README no longer quotes the axial force the task demands"
+    assert "not a hardware load rating" in README
 
 
 def test_the_insert_diagnosis_is_quoted_against_the_tolerance_it_missed() -> None:
@@ -115,12 +124,19 @@ def test_the_insert_diagnosis_is_quoted_against_the_tolerance_it_missed() -> Non
 
 
 def test_the_provenance_caveat_is_stated_where_the_number_is() -> None:
-    """The chain rate cannot be quoted without saying it is not reproducible yet.
-
-    While T0 is open this is the single most important sentence in either
-    document, and it has to sit next to the figure it qualifies rather than in a
-    footnote somewhere else.
-    """
+    """One source-bound chain run recovers while ten older reports remain lost."""
     for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
         assert "uncommitted" in document, f"{label} drops the provenance caveat (NEXT_WORK T0)"
         assert "T0" in document, f"{label} does not point at the task that closes it"
+        assert "recovered" in document.lower(), f"{label} drops the recovered current run"
+        assert "ten" in document.lower(), f"{label} drops the ten lost source-bound reports"
+
+
+def test_the_boundary_is_not_overstated() -> None:
+    report = json.loads(
+        (EVIDENCE / "serviceability_boundary_validation_v2.json").read_text(encoding="utf-8")
+    )
+    assert report["decision"]["qualified"] is False
+    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+        assert "not qualified" in document.lower(), f"{label} overstates the current boundary"
+        assert "idealized" in document.lower(), f"{label} hides the load-path limitation"

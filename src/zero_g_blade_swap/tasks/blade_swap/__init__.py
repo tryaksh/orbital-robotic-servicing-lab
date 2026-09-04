@@ -234,6 +234,48 @@ for _grapple_id, _grapple_cls in (
         },
     )
 
+# The same three skills, with the module state they see coming from the deployed
+# estimator's measured error distribution instead of from the simulator.
+#
+# The chain scores 20/24 on the vision task when the module pose comes from the
+# simulator and 4/24 when the same code path reads it from the cameras, so the
+# 67-point step is the estimator and nothing else. It is not a perception
+# defect -- the estimator's own error on healthy episodes is about 2 mm -- it is
+# three policies deployed against an error distribution that was never in their
+# training data. These registrations put it there.
+#
+# Separate ids, because the published skill certificates were measured on exact
+# state and both arms have to stay runnable for the difference to mean anything.
+for _noised_id, _noised_cls in (
+    ("Isaac-ZeroG-Blade-GrapplePin-GraspNoised-v0", "ZeroGBladeGrapplePinGraspNoisedEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-GraspNoised-Play-v0", "ZeroGBladeGrapplePinGraspNoisedPlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractNoised-v0", "ZeroGBladeGrapplePinExtractNoisedEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractNoised-Play-v0", "ZeroGBladeGrapplePinExtractNoisedPlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertNoised-v0", "ZeroGBladeGrapplePinInsertNoisedEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertNoised-Play-v0", "ZeroGBladeGrapplePinInsertNoisedPlayEnvCfg"),
+    # The two halves of the channel-isolation experiment. Extraction is where
+    # the camera-driven chain loses thirteen of twenty-four episodes, and the
+    # pose residual and the manufactured velocity are separable causes.
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractPoseNoised-v0", "ZeroGBladeGrapplePinExtractPoseNoisedEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractPoseNoised-Play-v0", "ZeroGBladeGrapplePinExtractPoseNoisedPlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractVelocityNoised-v0", "ZeroGBladeGrapplePinExtractVelocityNoisedEnvCfg"),
+    # The in-loop tail as its own arm: the first arm's constants are inverted
+    # from the still-frame certificate, and this one's are calibrated against
+    # what the estimator records inside a closed loop.
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractNoisedTail-v0", "ZeroGBladeGrapplePinExtractNoisedTailEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractNoisedTail-Play-v0", "ZeroGBladeGrapplePinExtractNoisedTailPlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-ExtractVelocityNoised-Play-v0", "ZeroGBladeGrapplePinExtractVelocityNoisedPlayEnvCfg"),
+):
+    gym.register(
+        id=_noised_id,
+        entry_point=INSERTION_ENTRY_POINT,
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{__name__}.estimator_noise_env_cfg:{_noised_cls}",
+            "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+        },
+    )
+
 # Insert, trained inside the chain. Its own entry point, because the capture
 # phase runs inside the environment: the episode resets the capture scene, steps
 # the frozen capture policy until the chain's hand-off predicate fires, latches
@@ -283,6 +325,96 @@ for _two_slot_id, _two_slot_cls in (
             "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
         },
     )
+
+# The seating task with the policy allowed to feel the contact it is making.
+#
+# The learned seating phase has been doing contact-rich assembly blind for this
+# project's entire history: ten checkpoints and three objectives, and in none of
+# them could the policy observe contact force. `BladeContactWrenchObservation`
+# has existed here since the force-limited insertion work and was never wired to
+# the skill the chain runs. FORGE (arXiv 2408.04587) takes a noisy end-effector
+# force estimate as a policy input and transfers contact-rich insertion while
+# tolerating 5 mm of fixed-part pose error; this estimator is accurate to 2 mm
+# and the chain still collapses, which says the gap is what the policy may sense.
+#
+# One change, and it is the observation. The width changes, so it trains from
+# scratch rather than resuming v24rack.
+for _force_id, _force_cls in (
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertForce-v0", "ZeroGBladeGrapplePinInsertForceEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertForce-Play-v0", "ZeroGBladeGrapplePinInsertForcePlayEnvCfg"),
+    ("Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflowForce-v0", "ZeroGBladeGrapplePinTwoSlotWorkflowForceEnvCfg"),
+):
+    gym.register(
+        id=_force_id,
+        entry_point=INSERTION_ENTRY_POINT,
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{__name__}.force_insert_env_cfg:{_force_cls}",
+            "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+        },
+    )
+
+# The seating task with the wedge law as a terminal condition. One change from
+# the task v24rack trained on, and it is not a reward: three objectives already
+# left the attitude 0.4 mrad apart, so the angle is not the reward's to give.
+# What the scripted guarded advance does and the skill does not is refuse to push
+# a cocked module, and mdp.wedged ends the episode where 2c/theta says the module
+# can go no further. The observation width is unchanged, which is what lets this
+# resume the frozen v24rack weights.
+for _wedge_id, _wedge_cls in (
+    ("Isaac-ZeroG-Blade-GrapplePin-InsertWedgeGated-v0", "ZeroGBladeGrapplePinInsertWedgeGatedEnvCfg"),
+    (
+        "Isaac-ZeroG-Blade-GrapplePin-InsertWedgeGated-Play-v0",
+        "ZeroGBladeGrapplePinInsertWedgeGatedPlayEnvCfg",
+    ),
+):
+    gym.register(
+        id=_wedge_id,
+        entry_point=INSERTION_ENTRY_POINT,
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{__name__}.wedge_insert_env_cfg:{_wedge_cls}",
+            "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+        },
+    )
+
+gym.register(
+    id="Isaac-ZeroG-Blade-GrapplePin-InsertHandoff-v0",
+    entry_point=INSERTION_ENTRY_POINT,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{__name__}.handoff_insert_env_cfg:ZeroGBladeGrapplePinInsertHandoffEnvCfg"
+        ),
+        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+    },
+)
+
+gym.register(
+    id="Isaac-ZeroG-Blade-GrapplePin-InsertTaskSpaceHandoff-v0",
+    entry_point=INSERTION_ENTRY_POINT,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{__name__}.handoff_insert_env_cfg:"
+            "ZeroGBladeGrapplePinInsertTaskSpaceHandoffEnvCfg"
+        ),
+        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+    },
+)
+
+gym.register(
+    id="Isaac-ZeroG-Blade-GrapplePin-InsertHandoffCurriculum-v0",
+    entry_point=INSERTION_ENTRY_POINT,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{__name__}.handoff_curriculum_env_cfg:"
+            "ZeroGBladeGrapplePinInsertHandoffCurriculumEnvCfg"
+        ),
+        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_contact_insertion.yaml",
+    },
+)
 
 # The two-bay rack with a camera on it. A single bay can only ask the camera
 # where the module is; two can ask which bay holds it, which is the question a

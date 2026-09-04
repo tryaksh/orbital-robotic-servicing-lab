@@ -1,0 +1,77 @@
+{
+  "status": "passed",
+  "title": "Fixed servicing-camera coverage of the flush fiducial workflow envelope",
+  "evidence_type": "geometric_derivation_no_simulator",
+  "single_physical_change": "sensor resolution; placement remains the v2 gripper-clear pose",
+  "camera_position_m": [
+    0.52,
+    -0.11,
+    2.15
+  ],
+  "camera_quaternion_wxyz_ros": [
+    0.029590823511594526,
+    0.7064873552753126,
+    -0.7064873552753126,
+    -0.029590823511594526
+  ],
+  "flush_datum": {
+    "tag_size_m": 0.09,
+    "quiet_zone_size_m": 0.12,
+    "centre_in_module_m": [
+      0.0,
+      0.0,
+      0.011
+    ]
+  },
+  "workflow_envelope": {
+    "centre_x_m": [
+      0.0667528907,
+      0.73
+    ],
+    "centre_y_m": [
+      -0.245,
+      0.025
+    ],
+    "centre_z_m": [
+      0.6699999999999999,
+      0.77
+    ],
+    "roll_rad": [
+      -0.25,
+      0.25
+    ],
+    "pitch_rad": [
+      -0.25,
+      0.25
+    ],
+    "yaw_rad": [
+      -0.4,
+      0.4
+    ]
+  },
+  "projection": {
+    "minimum_quiet_zone_frame_margin_px": 29.933372900071106,
+    "minimum_marker_edge_px": 49.74865636502392,
+    "minimum_marker_cell_px": 8.291442727503986,
+    "minimum_marker_cell_requirement_px": 8.0,
+    "marker_cell_requirement_derivation": "four interior samples plus a two-pixel rendered edge transition on each side",
+    "minimum_depth_m": 1.3123946389427763,
+    "maximum_depth_m": 1.5379315124473072,
+    "maximum_incidence_rad": 0.6855163161807237,
+    "maximum_incidence_deg": 39.277191704511175,
+    "optical_axis_target_alignment": 1.0000000000000002,
+    "minimum_rear_gripper_sightline_clearance_m": 0.030918820758818244
+  },
+  "source_bindings": {
+    "scene_uses_shared_position": true,
+    "scene_uses_shared_orientation": true,
+    "certifier_uses_shared_calibration": true,
+    "collector_retains_workflow_envelope": true
+  },
+  "scope_and_limitations": [
+    "Projection proves coverage and front-face incidence, not rendered detection.",
+    "The static rendered corpus holds the robot still; continuous occlusion is exercised only by the strict RGB-D chain.",
+    "Rear-gripper clearance uses its recorded collision envelope co-rotated with the captured module.",
+    "Lens, aperture, flush datum, and estimator gates are unchanged; resolution is the current one-change arm."
+  ]
+}

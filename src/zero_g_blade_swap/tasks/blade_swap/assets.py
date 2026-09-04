@@ -20,12 +20,12 @@ from isaaclab.utils import configclass
 from isaaclab_assets.robots.universal_robots import UR10e_ROBOTIQ_2F_85_CFG
 from pxr import Gf, PhysxSchema, Sdf, Usd, UsdGeom, UsdPhysics
 
-from zero_g_blade_swap import service_latch
+from zero_g_blade_swap import rack_retention, service_latch
 from zero_g_blade_swap.fiducial import (
+    FIDUCIAL_DATUM_BITS,
+    FIDUCIAL_DATUM_CENTRES_M,
     FIDUCIAL_QUIET_ZONE_SIZE_M,
     FIDUCIAL_TAG_BASIS_MODULE,
-    FIDUCIAL_TAG_BITS,
-    FIDUCIAL_TAG_CENTER_M,
     FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
     FIDUCIAL_TAG_SIZE_M,
 )
@@ -1176,69 +1176,80 @@ def spawn_blade_with_grapple_pin(
             roughness=1.0,
         )
         white_material_cfg.func(white_material_path, white_material_cfg)
-        centre_x, centre_y, centre_z = FIDUCIAL_TAG_CENTER_M
         tag_x_axis = tuple(row[0] for row in FIDUCIAL_TAG_BASIS_MODULE)
         tag_y_axis = tuple(row[1] for row in FIDUCIAL_TAG_BASIS_MODULE)
         tag_normal = tuple(row[2] for row in FIDUCIAL_TAG_BASIS_MODULE)
 
         def tag_point(
+            centre: tuple[float, float, float],
             local_x: float,
             local_y: float,
             normal_offset: float,
-            _centre: tuple[float, float, float] = (centre_x, centre_y, centre_z),
-            _x_axis: tuple[float, ...] = tag_x_axis,
-            _y_axis: tuple[float, ...] = tag_y_axis,
-            _normal: tuple[float, ...] = tag_normal,
         ) -> tuple[float, float, float]:
             return tuple(
-                centre + local_x * _x_axis[axis] + local_y * _y_axis[axis] + normal_offset * _normal[axis]
-                for axis, centre in enumerate(_centre)
+                # noqa justified: the three axes are rows of the module-frame
+                # constant FIDUCIAL_TAG_BASIS_MODULE, so they hold the same value
+                # on every iteration and closing over them late cannot differ
+                # from closing over them early.
+                origin + local_x * tag_x_axis[axis] + local_y * tag_y_axis[axis] + normal_offset * tag_normal[axis]  # noqa: B023
+                for axis, origin in enumerate(centre)
             )
 
-        quiet_path = f"{fiducial_root}/QuietZone"
-        quiet = UsdGeom.Cube.Define(stage, quiet_path)
-        quiet.CreateSizeAttr(1.0)
-        sim_utils.standardize_xform_ops(
-            quiet.GetPrim(),
-            translation=tag_point(0.0, 0.0, -0.0004),
-            orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
-            scale=(FIDUCIAL_QUIET_ZONE_SIZE_M, FIDUCIAL_QUIET_ZONE_SIZE_M, 0.0002),
-        )
-        sim_utils.bind_visual_material(quiet_path, white_material_path, stage=stage)
+        # **Two datums, not one, and the pair is a rack requirement rather than
+        # a redundancy.** ``scripts/check_rack_sightlines.py`` derives the
+        # destination bay's vertical lead-in as a roof over the bay centre line
+        # that covers a centred datum for 154 mm of the seating stroke from
+        # every camera that meets the resolution gate. Two plates separated by
+        # more than that shadow leave no depth at which neither is readable.
+        for marker_id, centre in FIDUCIAL_DATUM_CENTRES_M.items():
+            datum_root = f"{fiducial_root}/ArUco{marker_id}"
+            UsdGeom.Xform.Define(stage, datum_root)
+            quiet_path = f"{datum_root}/QuietZone"
+            quiet = UsdGeom.Cube.Define(stage, quiet_path)
+            quiet.CreateSizeAttr(1.0)
+            sim_utils.standardize_xform_ops(
+                quiet.GetPrim(),
+                translation=tag_point(centre, 0.0, 0.0, -0.0004),
+                orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
+                scale=(FIDUCIAL_QUIET_ZONE_SIZE_M, FIDUCIAL_QUIET_ZONE_SIZE_M, 0.0002),
+            )
+            sim_utils.bind_visual_material(quiet_path, white_material_path, stage=stage)
 
-        tag_path = f"{fiducial_root}/ArUco23"
-        tag = UsdGeom.Cube.Define(stage, tag_path)
-        tag.CreateSizeAttr(1.0)
-        sim_utils.standardize_xform_ops(
-            tag.GetPrim(),
-            translation=tag_point(0.0, 0.0, 0.0),
-            orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
-            scale=(FIDUCIAL_TAG_SIZE_M, FIDUCIAL_TAG_SIZE_M, 0.0002),
-        )
-        sim_utils.bind_visual_material(tag_path, black_material_path, stage=stage)
+            tag_path = f"{datum_root}/Marker"
+            tag = UsdGeom.Cube.Define(stage, tag_path)
+            tag.CreateSizeAttr(1.0)
+            sim_utils.standardize_xform_ops(
+                tag.GetPrim(),
+                translation=tag_point(centre, 0.0, 0.0, 0.0),
+                orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
+                scale=(FIDUCIAL_TAG_SIZE_M, FIDUCIAL_TAG_SIZE_M, 0.0002),
+            )
+            sim_utils.bind_visual_material(tag_path, black_material_path, stage=stage)
 
-        cell_size = FIDUCIAL_TAG_SIZE_M / len(FIDUCIAL_TAG_BITS)
-        half_cells = 0.5 * len(FIDUCIAL_TAG_BITS)
-        for row, bits in enumerate(FIDUCIAL_TAG_BITS):
-            for column, bit in enumerate(bits):
-                if not bit:
-                    continue
-                cell_path = f"{fiducial_root}/White_{row}_{column}"
-                cell = UsdGeom.Cube.Define(stage, cell_path)
-                cell.CreateSizeAttr(1.0)
-                cell_x = (column + 0.5 - half_cells) * cell_size
-                # Raster rows grow downward while the right-handed tag frame
-                # uses +y upward.  Negating the row coordinate is required;
-                # omitting it mirrors the ArUco payload and makes the otherwise
-                # crisp square impossible for a standards-compliant decoder.
-                cell_y = -(row + 0.5 - half_cells) * cell_size
-                sim_utils.standardize_xform_ops(
-                    cell.GetPrim(),
-                    translation=tag_point(cell_x, cell_y, 0.0004),
-                    orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
-                    scale=(cell_size, cell_size, 0.0002),
-                )
-                sim_utils.bind_visual_material(cell_path, white_material_path, stage=stage)
+            bits_rows = FIDUCIAL_DATUM_BITS[marker_id]
+            cell_size = FIDUCIAL_TAG_SIZE_M / len(bits_rows)
+            half_cells = 0.5 * len(bits_rows)
+            for row, bits in enumerate(bits_rows):
+                for column, bit in enumerate(bits):
+                    if not bit:
+                        continue
+                    cell_path = f"{datum_root}/White_{row}_{column}"
+                    cell = UsdGeom.Cube.Define(stage, cell_path)
+                    cell.CreateSizeAttr(1.0)
+                    cell_x = (column + 0.5 - half_cells) * cell_size
+                    # Raster rows grow downward while the right-handed tag frame
+                    # uses +y upward.  Negating the row coordinate is required;
+                    # omitting it mirrors the ArUco payload and makes the
+                    # otherwise crisp square impossible for a standards-
+                    # compliant decoder.
+                    cell_y = -(row + 0.5 - half_cells) * cell_size
+                    sim_utils.standardize_xform_ops(
+                        cell.GetPrim(),
+                        translation=tag_point(centre, cell_x, cell_y, 0.0004),
+                        orientation=FIDUCIAL_TAG_ROTATION_MODULE_FROM_TAG_WXYZ,
+                        scale=(cell_size, cell_size, 0.0002),
+                    )
+                    sim_utils.bind_visual_material(cell_path, white_material_path, stage=stage)
     return root
 
 
@@ -1986,6 +1997,93 @@ RACK_CFG = RigidObjectCfg(
     init_state=RigidObjectCfg.InitialStateCfg(pos=(1.005, 0.0, 0.76)),
 )
 
+RACK_RETENTION_PRIM = 'RackRetention'
+RACK_RETENTION_PAWLS = ('PawlLeft', 'PawlRight')
+
+
+@configclass
+class RackRetentionJointCfg(FixedGraspJointCfg):
+    # Disabled until the unchanged seating predicate fires. The workflow writes
+    # the measured rack-to-module frames before enabling it, so engagement
+    # stores no energy and moves neither body.
+    body0_relative_path: str = 'Rack'
+    body1_relative_path: str = 'SpareBlade'
+    local_pos0: tuple[float, float, float] = tuple(
+        SPARE_BLADE_POS[axis] - RACK_CFG.init_state.pos[axis] for axis in range(3)
+    )
+    local_rot0: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
+    local_pos1: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    local_rot1: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
+    enabled: bool = False
+    break_force_n: float = rack_retention.RATED_FORCE_N
+    break_torque_nm: float = rack_retention.RATED_TORQUE_NM
+
+
+def spawn_rack_retention(
+    prim_path: str,
+    cfg,
+    translation=None,
+    orientation=None,
+    **_: object,
+) -> Usd.Prim:
+    '''Author visible pawl hardware under each environment's rack body.'''
+
+    if translation not in (None, (0.0, 0.0, 0.0)) or orientation not in (
+        None,
+        (1.0, 0.0, 0.0, 0.0),
+    ):
+        raise ValueError('RackRetentionHardwareCfg must be spawned at identity.')
+    root_path, leaf = str(prim_path).rsplit('/', 1)
+    is_regex = re.match(r'^[a-zA-Z0-9/_]+$', root_path) is None
+    parent_paths = find_matching_prim_paths(root_path) if is_regex else [root_path]
+    if not parent_paths:
+        raise RuntimeError(f'No environment parents matched rack-retention path {prim_path!r}.')
+    stage = get_current_stage()
+    source_prim: Usd.Prim | None = None
+    for parent_path in parent_paths:
+        rack_path = f'{parent_path}/{cfg.rack_relative_path}'
+        if not stage.GetPrimAtPath(rack_path).IsValid():
+            raise RuntimeError(f'Rack retention expected a rack body at {rack_path!r}.')
+        hardware_path = f'{rack_path}/{leaf}'
+        if stage.GetPrimAtPath(hardware_path).IsValid():
+            source_prim = source_prim or stage.GetPrimAtPath(hardware_path)
+            continue
+        container = UsdGeom.Xform.Define(stage, hardware_path)
+        sim_utils.standardize_xform_ops(container.GetPrim())
+        material_path = f'{hardware_path}/PawlMaterial'
+        material_cfg = sim_utils.PreviewSurfaceCfg(
+            diffuse_color=cfg.diffuse_color, metallic=0.80, roughness=0.30
+        )
+        material_cfg.func(material_path, material_cfg)
+        boxes = rack_retention.pawl_tip_boxes(cfg.seated_module_position)
+        for sign, (name, centre, size) in zip((1.0, -1.0), boxes, strict=True):
+            pawl_path = f'{hardware_path}/{name}'
+            pawl = UsdGeom.Xform.Define(stage, pawl_path)
+            sim_utils.standardize_xform_ops(
+                pawl.GetPrim(),
+                translation=rack_retention.pawl_translation(engaged=False, sign=sign),
+            )
+            tip_path = f'{pawl_path}/Tip'
+            tip = UsdGeom.Cube.Define(stage, tip_path)
+            tip.CreateSizeAttr(1.0)
+            local_centre = tuple(centre[i] - cfg.rack_position[i] for i in range(3))
+            sim_utils.standardize_xform_ops(
+                tip.GetPrim(), translation=local_centre, scale=size
+            )
+            sim_utils.bind_visual_material(tip_path, material_path, stage=stage)
+        source_prim = source_prim or container.GetPrim()
+    assert source_prim is not None
+    return source_prim
+
+
+@configclass
+class RackRetentionHardwareCfg(SpawnerCfg):
+    func: Callable[..., Usd.Prim] = spawn_rack_retention
+    rack_relative_path: str = 'Rack'
+    rack_position: tuple[float, float, float] = RACK_CFG.init_state.pos
+    seated_module_position: tuple[float, float, float] = SECOND_SLOT_INSERTED_POS
+    diffuse_color: tuple[float, float, float] = (0.10, 0.65, 0.90)
+
 
 MOUNT_ANCHOR_CFG = RigidObjectCfg(
     prim_path="{ENV_REGEX_NS}/MountAnchor",
@@ -2020,6 +2118,11 @@ GRAPPLE_MOUNT_ANCHOR_CFG.init_state.pos = GRAPPLE_ROBOT_ROOT_POS
 
 
 __all__ = [
+    'RackRetentionHardwareCfg',
+    'RackRetentionJointCfg',
+    'RACK_RETENTION_PAWLS',
+    'RACK_RETENTION_PRIM',
+    'spawn_rack_retention',
     "BLADE_CFG",
     "BLADE_HANDLE_OFFSET",
     "BLADE_INSERTED_POS",

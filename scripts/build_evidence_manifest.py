@@ -46,7 +46,55 @@ RETRACTED = EVIDENCE / "RETRACTED.md"
 CANONICAL: tuple[tuple[str, str], ...] = (
     (
         "workflow_robot_carried_m130pin_guarded_certification.json",
-        "The chain's headline rate: 97.92% pooled over 96 episodes, three held-out seeds.",
+        "Legacy supported-settle baseline: 97.92% over 96 episodes; it predates the independent robot-support release recheck.",
+    ),
+    (
+        "workflow_robot_carried_release_recheck_v2_certification.json",
+        "Preserved pre-retention strict chain: 17/24 (70.83%) after both robot-side supports release and a 0.70 s free-module recheck.",
+    ),
+    (
+        "workflow_robot_carried_release_rack_retention_control_v1_certification.json",
+        "Current-source paired no-rack control: 17/24 (70.83%), exactly reproducing the pre-retention baseline.",
+    ),
+    (
+        "workflow_robot_carried_release_rack_retention_v1_certification.json",
+        "Strict chain with visible destination retention: 22/24 (91.67%); below the unchanged 95% full-chain gate.",
+    ),
+    (
+        "rack_retention_paired_v1.json",
+        "Paired T14 result: +5/24; rack-only transfer succeeds in all 22/22 episodes that reach measured seating, while two fail upstream.",
+    ),
+    (
+        "workflow_robot_carried_m130pin_vision_datum_pair_certification.json",
+        "The chain driven by camera-derived module state: 4/24, 16.67%, Wilson [6.7%, 35.9%]. Thirteen of twenty-four lose the module in extraction.",
+    ),
+    (
+        "workflow_robot_carried_m130pin_vision_oracle_control_v2_certification.json",
+        "The paired control: the same vision task, seeds, environments and code path with the module pose read from the simulator. 20/24, 83.33%, Wilson [64.1%, 93.3%]. The difference between the two is the estimator.",
+    ),
+    (
+        "rgbd_strict_rack_retention_datum_pair_seed6070.json",
+        "The first complete continuous RGB-D episode: trained capture and extraction, visible robot carry, guarded insertion to the derived seated plane, both robot supports released, and the rack alone holding for 0.733 s, with 1,772/1,772 detections.",
+    ),
+    (
+        "rack_sightline_datum_pair_v1.json",
+        "The datum pair closes the blind band: no depth of the seating stroke leaves both plates unreadable, on the primary camera alone.",
+    ),
+    (
+        "servicing_camera_geometry_v4_datum_pair.json",
+        "Unchanged camera, lens and resolution over the workflow envelope with the flush datum pair: 64/64 sampled poses keep one usable plate.",
+    ),
+    (
+        "rack_sightline_occlusion_v1.json",
+        "Simulator-free sight lines: the destination bay's own vertical lead-in blinds both fixed views over 154 mm of the seating stroke, and the derivation reproduces the recorded loss depth.",
+    ),
+    (
+        "rack_retention_geometry_v1.json",
+        "Simulator-free rack-pawl geometry, load rating, and source binding check.",
+    ),
+    (
+        "workflow_robot_carried_release_hand_first_v3_certification.json",
+        "Paired losing load-transfer arm: hand-first release scores 12/24 (50.00%) on identical seeds and states.",
     ),
     (
         "workflow_robot_carried_m130_guarded_certification.json",
@@ -65,8 +113,16 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "Capture skill on the derived rack: 85.69% pooled. Misses the 95% gate.",
     ),
     (
+        "grapple_grasp_v7m130_c11065_certification.json",
+        "Unchanged capture checkpoint re-measured on the derived rack: 86.90% over 9,009 episodes; still below gate.",
+    ),
+    (
         "grapple_extract_v18pin_certification.json",
         "Extraction skill, the checkpoint the chain runs: 87.75% pooled. Misses the gate.",
+    ),
+    (
+        "grapple_extract_v18pin_c11065_certification.json",
+        "Unchanged extraction checkpoint re-measured on the derived rack: 87.64% over 9,004 episodes; no clearance gain.",
     ),
     (
         "grapple_extract_v17m130_on_pin_criterion_certification.json",
@@ -79,6 +135,162 @@ CANONICAL: tuple[tuple[str, str], ...] = (
     (
         "grapple_insert_v20chain_certification.json",
         "The learned insert skill: 0.00% over 1,536 episodes. Published negative result.",
+    ),
+    (
+        "serviceability_boundary_validation_n64_channel_v2.json",
+        (
+            "The current boundary decision, on the sweep whose clearance points were re-measured with "
+            "each bay's mouth moving with its walls. Still not qualified. The rack-clearance axis now "
+            "fails on its *lower* bound rather than confirming it: 6 mm per side is analytically "
+            "infeasible and scores 56.25% against nominal's 54.69%, while the upper bound holds at "
+            "16 mm. Dimension statuses are derived from their own rows here; in v1 three of them were "
+            "literals."
+        ),
+    ),
+    (
+        "serviceability_boundary_validation_n64_v1.json",
+        "The boundary decision re-derived from the 64-environment sweep. Still not qualified, and now with per-point classifications: rack_lat_6mm confirms its analytical infeasibility, section_120x16, section_140x26 and rack_lat_16mm do not, base_y_+10mm shows a loss the analytical model did not predict.",
+    ),
+    (
+        "workflow_robot_carried_vision_leadin_guard_v1_certification.json",
+        (
+            "The RGB-D chain with the guarded advance admitting on the entry flare's catch rather than "
+            "on the deployed estimator's own noise bound: 12/24, 50.00%, Wilson [31.4%, 68.6%], against "
+            "the shipped bounds' 4/24. Published checkpoints, nothing retrained, one criterion change, "
+            "and the detection interlock unchanged in both arms."
+        ),
+    ),
+    (
+        "extract_channel_attribution_v1.json",
+        (
+            "Which observation channel costs extraction its transfer, on the unchanged v18pin checkpoint: "
+            "exact state 90.62%, pose channels noised 82.29%, velocity channel noised 80.42%, both 49.48%. "
+            "The two channels cost 8.33 and 10.21 points apart and 41.15 together, so the interaction is "
+            "22.61 points -- larger than the sum of the parts. Neither channel is the problem; having no "
+            "reliable channel is."
+        ),
+    ),
+    (
+        "rack_requirement_sweep_v1.json",
+        (
+            "The design derivation swept: one measured number about the arm -- the attitude it hands the "
+            "insertion over at -- against the rack it implies. Closed form only. The shipped workcell is the "
+            "46 mrad row, and between 35 and 40 mrad the correcting lead-in stops being required at all, "
+            "which is a part deleted by an arm's measured performance."
+        ),
+    ),
+    (
+        "chain_robustness_sweep_n64_channel_v1.json",
+        (
+            "The same seven points with the two clearance arms re-measured under "
+            "--rack_clearance_scope channel, which moves each bay's upper lips and entry flares with "
+            "its side guides. The published arm moved the guides alone, leaving a rack whose mouth and "
+            "walls disagreed by the clearance change. At 6 mm per side that is the difference between "
+            "0/64 with 62 jams and 36/64 with none; at 16 mm it changes nothing. The guides-only arm is "
+            "preserved in chain_robustness_sweep_n64.json."
+        ),
+    ),
+    (
+        "workflow_robot_carried_vision_noised_extract_kinematic_leadin_certification.json",
+        (
+            "**The camera-driven gate, closed.** The best configuration this repository can field -- extraction "
+            "retrained on the estimator's certified error, module velocity from the robot's encoders, and the "
+            "guarded advance admitting on the entry flare's catch -- scores 17/24, 70.83%, Wilson "
+            "[50.8, 85.1], against the published camera cohort's 4/24. The intervals do not overlap. Read "
+            "beside the two single-change arms it is the chain-scale form of the channel interaction: neither "
+            "change alone is distinguishable from the published cohort and all three together are."
+        ),
+    ),
+    (
+        "workflow_robot_carried_vision_noised_extract_certification.json",
+        (
+            "The retrained extraction alone, in the camera-driven chain: 3/24, 12.50%, Wilson [4.3, 31.0]. "
+            "Indistinguishable from the published 4/24. The skill itself is fine -- it certifies at 85.16% on "
+            "the noised task -- so this is the arm that shows a good skill does not rescue the chain on its own."
+        ),
+    ),
+    (
+        "workflow_robot_carried_vision_kinematic_velocity_certification.json",
+        (
+            "The kinematic velocity channel alone, no retrain, in the camera-driven chain: 2/24, 8.33%, "
+            "Wilson [2.3, 25.8]. Indistinguishable from the published 4/24. Removing the manufactured velocity "
+            "noise is necessary and not sufficient."
+        ),
+    ),
+    (
+        "grapple_extract_v19noised_noised_certification.json",
+        (
+            "The extraction skill retrained on the estimator's certified error, scored on the noised task: "
+            "3924/4608, 85.16%, Wilson [84.1, 86.2], against the published v18pin's 87.75% on the clean task. "
+            "Training on the sensing the robot actually has costs about two and a half points of skill. That "
+            "is the number that makes the chain-level collapse a composition result rather than a skill one."
+        ),
+    ),
+    (
+        "boundary_lead_in_deletion_v1.json",
+        (
+            "The lead-in criterion tested by removing the part. Two arms at 6 mm of lateral clearance per "
+            "side with the mouth moving with the walls, differing only in whether the bays keep their "
+            "entry flares. With the flares: 56.25% and a jam rate of 0.000. Without them: 31.25% and a jam "
+            "rate of 0.531 -- the failure mode the entry criterion names, absent in one arm and in more "
+            "than half the episodes of the other, with nothing else changed. At nominal clearance removal "
+            "changes nothing (59.38% against 54.69%, jam 0.000 in both), so the flare is load-bearing "
+            "exactly where the criterion says it should be and idle where it says it should be idle. This "
+            "is the only place in the project where a predicted failure was produced on demand by deleting "
+            "the geometry that prevents it. The flag is not recorded in the reports; the invocation is "
+            "artifacts/campaign/queue_flare_removal.sh, which is committed."
+        ),
+    ),
+    (
+        "chain_robustness_sweep_section_n192_v1.json",
+        (
+            "The module-section axis at three held-out seeds, 192 episodes a point, pooled from archives "
+            "that already existed. Nominal 57.29% [50.2, 64.1], 120x16 45.83% [38.9, 52.9], 140x26 40.62% "
+            "[33.9, 47.7]. The pooled rates still overlap nominal, which is the point: tripling n narrows "
+            "the interval from about twenty-four points to fourteen and the *pooled rate* still does not "
+            "separate this axis. Every other point is unchanged from chain_robustness_sweep_n64_channel_v1 "
+            "and the report names which is which."
+        ),
+    ),
+    (
+        "boundary_failure_modes_n192_v1.json",
+        (
+            "The section axis scored against the failure each criterion predicts, at 192 episodes. This is "
+            "where the axis separates and the pooled rate does not. The grip criterion is violated at "
+            "120x16 by 3.92 mm and that point loses 20.8% of episodes before delivery against nominal's "
+            "2.6%, separated, in exactly the mode the criterion names, and 33 of those 40 never achieved a grip "
+            "at all against nominal's 3, which is the phase the criterion is about. **Do not quote the "
+            "grip signature column from this report as mechanism**: the episodes that gripped and then "
+            "lost it sit at 13.11 mm against the successes' 13.13, so the whole signature comes from "
+            "episodes that never captured, whose offset is the distance the tool stopped at. The entry criterion "
+            "is violated at 140x26 by 0.74 mm and produces zero jams in 192, so it is not supported. One "
+            "criterion confirmed and one contradicted, from the same episodes."
+        ),
+    ),
+    (
+        "boundary_failure_modes_v1.json",
+        (
+            "The same episodes counted a second way: each closed-form criterion against the failure it "
+            "predicts rather than against the pooled rate. At nominal, 27 of 29 failures reach the final "
+            "phase and miss the terminal gate, so two episodes in five are lost at the design point to a "
+            "mode no criterion claims to predict, and a pooled comparison makes every boundary point clear "
+            "that floor first. Carries the guides-only clearance arm as the preserved comparison."
+        ),
+    ),
+    (
+        "estimator_surrogate_velocity_channel_v1.json",
+        (
+            "The training-time estimator surrogate measured against the certificate it reproduces, and "
+            "the velocity channel's noise floor against a seated module's own speed. Realized position "
+            "p95 2.00 mm against a certified 1.91. With the arm held still the channel reads 17.02 mm/s "
+            "at the deployed filter while the identical differencing on the simulator's own pose reads "
+            "3.38, so the estimator contributes 13.65 against a seated module's 0.69 -- and no filter "
+            "time constant helps, because a longer one lowers the mean and raises the p95."
+        ),
+    ),
+    (
+        "chain_robustness_sweep_n64.json",
+        "Four times the sample: seven boundary points at 64 environments each. Disagrees with the August 16-environment sweep both quantitatively (nominal 54.7% vs 93.8%) and qualitatively (section_120x16 reverses from 0% to 50%, rack_lat_6mm from 93.8% to 0%). The two are not directly comparable.",
     ),
     (
         "chain_robustness_sweep.json",
@@ -101,12 +313,36 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "The form lock's clearances, derived from the measured gripper envelope.",
     ),
     (
-        "fiducial_rgbd_service_plate.json",
-        "The perception path the live service runs, certified on rendered frames.",
+        "fiducial_rgbd_flush_v2_seed283.json",
+        "Preserved flush-tag visibility control: 43.27% critical-bay detection against a 99% gate with the former camera placement.",
     ),
     (
-        "full_chain_rgbd_service_seed4070.json",
-        "The RGB-D chain end to end, one seed. NOT the pooled rate -- see docs/NEXT_WORK.md T1.",
+        "servicing_camera_geometry_v1.json",
+        "Simulator-free projection check for the one-change overhead servicing-camera placement and unchanged flush datum.",
+    ),
+    (
+        "fiducial_rgbd_flush_v3_seed284_overhead.json",
+        "Static module-pose overhead-camera arm: 92.87% overall and 99.85% critical-bay detection over 1,024 frames; it did not reproduce continuous robot occlusion.",
+    ),
+    (
+        "workflow_robot_carried_vision_rack_retention_overhead_v1_certification.json",
+        "Preserved full-workflow camera failure: 0/24 on the fixed cohorts after the static overhead-camera corpus passed.",
+    ),
+    (
+        "servicing_camera_geometry_v2_gripper_clear.json",
+        "Simulator-free projection and measured rear-gripper sightline clearance for the shifted 384-pixel camera arm.",
+    ),
+    (
+        "fiducial_rgbd_flush_v4_seed285_gripper_clear.json",
+        "Static gripper-clear camera arm: unchanged gates pass over 1,024 held-out module poses, pending the continuous workflow.",
+    ),
+    (
+        "rgbd_strict_rack_retention_gripper_clear_video2_seed4070.json",
+        "Preserved continuous-workflow failure: learned capture/extraction and carry reach guarded insertion, then the 384-pixel marker detector drops out and the motion fails closed.",
+    ),
+    (
+        "rgbd_strict_capture_gate_v2_seed5070.json",
+        "One strict RGB-D negative run after capture-gated dropout propagation; it ended during extraction and claims no relocation.",
     ),
     (
         "full_chain_state_16_report.json",
@@ -126,7 +362,7 @@ CANONICAL: tuple[tuple[str, str], ...] = (
     ),
     (
         "workflow_robot_carried_m130pin_guarded_c11065_certification.json",
-        "The chain on the derived rack: 97.92% pooled, seed for seed identical to the 12.689 mm run.",
+        "Legacy supported-settle comparator on the derived rack: 97.92%, seed for seed identical to the 12.689 mm run.",
     ),
     (
         "grapple_insert_v24rack_certification.json",
@@ -141,12 +377,26 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "Which controller seats the module, decided arithmetically on the same rack and seeds.",
     ),
     (
+        "insertion_conditioned_controller_v3.json",
+        "Paired v24 and guarded insertion at all nine reset stations and real chain handoffs; every losing arm retained.",
+    ),
+    (
         "insert_depth_is_attitude.json",
-        "What is left of the insert skill: depth is attitude one layer down, through 2c/theta.",
+        "What is left of the insert skill: depth is attitude one layer down, through 2c/theta. "
+        "**The law gives a bracket, not a point.** This bay has two relieved clearances -- 12.613 mm "
+        "vertically and 15.678 mm laterally per side -- so 2c/theta at the stalled 96.8 mrad is 260.6 mm "
+        "against one and 323.9 mm against the other. The observed 261.5 mm sits at the tight end. Quoting "
+        "only the matching clearance turns a bracket into a one-millimetre prediction, which this "
+        "report's own limitations warn against; write it as the minimum over the constraining directions "
+        "and say the looser figure too.",
     ),
     (
         "robot_carried_full_chain_c11065.json",
         "One end-to-end run of that chain -- and the first report here whose source bindings all recover from git.",
+    ),
+    (
+        "serviceability_boundary_validation_v2.json",
+        "The current fail-closed boundary result: entry attitude supported; five dimensions unresolved or contradicted.",
     ),
 )
 
@@ -169,6 +419,20 @@ def _summarise(report: dict) -> dict:
     gate = report.get("gate")
     if isinstance(gate, dict) and "passed" in gate:
         out["gate_passed"] = gate["passed"]
+    # Provenance is the one field this index had no business dropping. The
+    # standing rule is to check `source_revision.dirty` in every report, and
+    # ten reports are known not to rebuild from committed code (NEXT_WORK T0).
+    # An index that answers every question except that one cannot be used to
+    # audit it, which is exactly what a reviewer asking whether a number
+    # reproduces will want.
+    revision = report.get("source_revision")
+    if isinstance(revision, dict):
+        out["source_revision"] = {
+            "commit": revision.get("commit"),
+            "dirty": revision.get("dirty"),
+        }
+    elif isinstance(revision, str):
+        out["source_revision"] = {"commit": revision, "dirty": None}
     policy = report.get("policy")
     if isinstance(policy, dict):
         for key in ("policy_set_sha256", "checkpoint_sha256"):

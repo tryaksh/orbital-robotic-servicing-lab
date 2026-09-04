@@ -45,6 +45,7 @@ from .assets import (
     GRAPPLE_HEAD_ON_ARM_JOINT_POS,
     GRAPPLE_HEAD_ON_TOOL_ROT,
     GRAPPLE_TOOL_OFFSET_POS,
+    RACK_RETENTION_PRIM,
     SECOND_SLOT_CFG,
     SECOND_SLOT_ENTRY_LOWER_RAMP_CFG,
     SECOND_SLOT_ENTRY_UPPER_RAMP_CFG,
@@ -55,6 +56,8 @@ from .assets import (
     SERVICE_DESTINATION_DYNAMIC_FRICTION,
     SERVICE_DESTINATION_STATIC_FRICTION,
     CompliantD6JointCfg,
+    RackRetentionHardwareCfg,
+    RackRetentionJointCfg,
     make_grapple_pin_robot_cfg,
 )
 from .contact_insertion_env_cfg import (
@@ -310,6 +313,19 @@ class ZeroGBladeGrapplePinCaptureEnvCfg(ZeroGBladeContactInsertionEnvCfg):
             ) ** 0.5
         self.events.grapple_latch.params["mating_torque_cap_nm"] = self.mating_torque_cap_nm
         self.events.grapple_latch.params["require_armed"] = self.latch_engages_on_release
+
+    def configure_rack_retention(self) -> None:
+        self.scene.rack_retention_hardware = AssetBaseCfg(
+            prim_path='{ENV_REGEX_NS}/' + RACK_RETENTION_PRIM,
+            spawn=RackRetentionHardwareCfg(),
+        )
+        self.scene.rack_retention_joint = AssetBaseCfg(
+            prim_path='{ENV_REGEX_NS}/RackRetentionJoint',
+            spawn=RackRetentionJointCfg(),
+        )
+        # Procedural joint relationships must be authored per environment.
+        self.scene.replicate_physics = False
+        self.scene.clone_in_fabric = False
 
     def configure_service_destination(self) -> None:
         """Install the destination bay's vertical lead-in.
@@ -1335,6 +1351,13 @@ class ZeroGBladeGrapplePinInsertEnvCfg(ZeroGBladeGrapplePinCaptureEnvCfg):
     """
 
     observations: InsertObservationsCfg = InsertObservationsCfg()
+    # Install the insertion controller declared above. Without this override the
+    # class silently inherited GrapplePinActionsCfg from capture, so every
+    # insertion run used the old 1.5 mm/control-step axial scale while this
+    # task's 529 mm stroke, reward balance and 30 s budget were designed around
+    # InsertActionsCfg's 4.0 mm/control-step scale. Extraction explicitly
+    # installs its own action set; insertion must do the same.
+    actions: InsertActionsCfg = InsertActionsCfg()
     events: ExtractEventsCfg = ExtractEventsCfg()
     rewards: InsertRewardsCfg = InsertRewardsCfg()
     terminations: InsertTerminationsCfg = InsertTerminationsCfg()

@@ -1,0 +1,198 @@
+{
+  "status": "failed",
+  "title": "Calibrated RGB-D fiducial perception qualification",
+  "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
+  "dataset": "datasets\\fiducial_rgbd_flush_v4_seed285_gripper_clear.npz",
+  "dataset_sha256": "cb80212f4c0ecb190c13ceaebd7fc5b710e91a2708b75920b6cf9a7538ac5c7d",
+  "frames": 1024,
+  "detected_frames": 946,
+  "detection_rate": 0.923828125,
+  "critical_bay_frames": 683,
+  "critical_bay_detections": 682,
+  "critical_bay_detection_rate": 0.9985358711566618,
+  "position_error_mm": {
+    "mean": 114.94470937888832,
+    "p50": 114.95423582447933,
+    "p95": 116.08185279548914,
+    "max": 117.3635183776555
+  },
+  "orientation_error_rad": {
+    "mean": 0.008018972219843545,
+    "p50": 0.006486936543107606,
+    "p95": 0.020082585968459188,
+    "max": 0.03306974198901675
+  },
+  "reprojection_error_px": {
+    "mean": 0.49127038830814396,
+    "p50": 0.46486886316817566,
+    "p95": 0.86064423430133,
+    "max": 2.591063827463806
+  },
+  "detector_quality_score": {
+    "mean": 0.7860560578955886,
+    "p50": 0.7926017486032553,
+    "p95": 0.8942724915752102,
+    "max": 0.9703236780079872
+  },
+  "occupancy_exact_match": 1.0,
+  "occupancy_exact_match_detected_full_envelope": 0.8847780126849895,
+  "gates": {
+    "critical_bay_detection_rate_min": 0.99,
+    "overall_detection_rate_min": 0.9,
+    "position_p95_limit_mm": 20.0,
+    "orientation_p95_limit_rad": 0.05,
+    "occupancy_exact_min": 0.95
+  },
+  "calibration": {
+    "camera_position_m": [
+      0.52,
+      -0.11,
+      2.15
+    ],
+    "camera_quaternion_wxyz_ros": [
+      0.029590823511594526,
+      0.7064873552753126,
+      -0.7064873552753126,
+      -0.029590823511594526
+    ],
+    "intrinsic_matrix": [
+      [
+        576.0,
+        0.0,
+        191.5
+      ],
+      [
+        0.0,
+        576.0,
+        191.5
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "resolution_px": [
+      384,
+      384
+    ],
+    "source": "scene_cfg.make_tiled_camera_cfg"
+  },
+  "deployment_boundary": {
+    "runtime_inputs": [
+      "rgb",
+      "registered_metric_depth",
+      "camera_intrinsics",
+      "camera_extrinsics",
+      "known_fiducial_geometry"
+    ],
+    "simulator_pose_used_by_estimator": false,
+    "simulator_pose_used_only_for_error_metrics": true,
+    "dropout_behavior": "hold-last before verified robot capture; tool forward-kinematics propagation only after capture; hold-last and guarded-motion pause after handoff",
+    "critical_bay_definition": "source occupancy preflight and destination insertion alignment; the collector holds the robot still, so continuous robot occlusion is exercised only by the strict RGB-D chain"
+  },
+  "runtime_source_bindings": [
+    {
+      "path": "src/zero_g_blade_swap/servicing_camera.py",
+      "sha256": "cbde8ed024a30dddb0e93289ba60168208db40617a1c57d831d0b466f2fb5db0"
+    },
+    {
+      "path": "src/zero_g_blade_swap/fiducial.py",
+      "sha256": "9b3cc8dff252b8836c43eaf02b772f375fead994d2e588517a3e140ddd840ca1"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/assets.py",
+      "sha256": "6b2f0bb36918932eca7210dcb6dd1c14db19888ba7c5553d6ac9601141a723fe"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/mdp/perception.py",
+      "sha256": "6d06b9bb08589598d8049d40cad47ee8ce36cdec1ea4c46f92481875ae1ed17b"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/scene_cfg.py",
+      "sha256": "2a47ff3a965364a0d335ef8dd2de1b83d7ae8b27b62fecf753a77de2540d09b3"
+    }
+  ],
+  "failure_examples": [
+    {
+      "index": 11,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 17,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 74,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 80,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 89,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 104,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 122,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 137,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 155,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 167,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 170,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 197,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 236,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 248,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 254,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 257,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 269,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 281,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 287,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 305,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    }
+  ]
+}

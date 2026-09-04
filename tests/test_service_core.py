@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 from uuid import uuid4
 
@@ -31,6 +33,34 @@ from zero_g_blade_swap.service.runner import CompositeRunner, parse_process_line
 from zero_g_blade_swap.service.store import JobStore, utc_now
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_core_service_import_does_not_require_fastapi() -> None:
+    """The simulator and CPU checks use service core without the HTTP extra."""
+
+    blocker = """
+import importlib.abc
+
+class BlockFastAPI(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == "fastapi" or fullname.startswith("fastapi."):
+            raise ModuleNotFoundError("fastapi intentionally unavailable")
+        return None
+
+import sys
+sys.meta_path.insert(0, BlockFastAPI())
+from zero_g_blade_swap.service import ServiceSettings
+from zero_g_blade_swap.service.config import ServiceSettings as DirectSettings
+assert ServiceSettings is DirectSettings
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", blocker],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
 
 
 def _live_registry(

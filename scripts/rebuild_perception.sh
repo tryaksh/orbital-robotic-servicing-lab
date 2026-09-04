@@ -48,7 +48,8 @@ case "$stage" in
         --task Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Collect-v0 \
         --output "$DATASET" --samples "${SAMPLES:-60000}" --num_envs "${ENVS:-64}" \
         > "$OUT/collect.log" 2>&1
-    echo "[$(date +%H:%M:%S)] collect exit=$? -> $DATASET"
+    rc=$?
+    echo "[$(date +%H:%M:%S)] collect exit=$rc -> $DATASET"
     grep -E "frames|occupancy|bay" "$OUT/collect.log" | tail -6
     ;;
 
@@ -58,7 +59,8 @@ case "$stage" in
         --dataset "$DATASET" --output "$HEAD" \
         --report evidence/module_pose_head_two_slot_w65.json \
         > "$OUT/head.log" 2>&1
-    echo "[$(date +%H:%M:%S)] head exit=$? -> $HEAD"
+    rc=$?
+    echo "[$(date +%H:%M:%S)] head exit=$rc -> $HEAD"
     tail -8 "$OUT/head.log"
     ;;
 

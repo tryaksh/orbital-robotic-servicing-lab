@@ -23,6 +23,11 @@ EVAL_ENVS="${EVAL_ENVS:-128}"
 EVAL_EPISODES="${EVAL_EPISODES:-1000}"
 PLAY="Isaac-ZeroG-Blade-GrapplePin-${SKILL}-Play-v0"
 [ "$SKILL" = "Insert" ] && PLAY="Isaac-ZeroG-Blade-GrapplePin-InsertTwoSlot-Play-v0"
+# PLAY_TASK overrides the default for a checkpoint whose observation width is
+# not the default task's. The force-feedback seating policy is the first of
+# those: certifying it on a task it did not train on hands it an observation of
+# the wrong size, which fails loudly but only after the run has started.
+PLAY="${PLAY_TASK:-$PLAY}"
 
 rows=()
 for seed in 1070 2070 3070; do
@@ -33,7 +38,8 @@ for seed in 1070 2070 3070; do
         --curriculum_stage "$stage" --seed "$seed" --grip_axis_metrics $EXTRA \
         --episode_metrics "${out}.npz" --report "${out}.json" \
         > "${out}.log" 2>&1
-    echo "[$(date +%H:%M:%S)]   $TAG stage=$stage seed=$seed exit=$? $(grep -oE '"success_rate": [0-9.]+' "${out}.json" | head -1)"
+    rc=$?
+    echo "[$(date +%H:%M:%S)]   $TAG stage=$stage seed=$seed exit=$rc $(grep -oE '"success_rate": [0-9.]+' "${out}.json" | head -1)"
     rows+=("${out}.npz")
   done
 done
@@ -46,5 +52,6 @@ done
       "The grasp is physical pad-against-pin contact, not a fixed joint." \
       "One PPO training seed. The evaluation seeds are held out, but training repeatability is untested." \
     > "$OUT/aggregate_${TAG}.log" 2>&1
-echo "[$(date +%H:%M:%S)] aggregate exit=$? -> evidence/grapple_${TAG}_certification.json"
+rc=$?
+echo "[$(date +%H:%M:%S)] aggregate exit=$rc -> evidence/grapple_${TAG}_certification.json"
 tail -4 "$OUT/aggregate_${TAG}.log"
