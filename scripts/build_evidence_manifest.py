@@ -346,7 +346,13 @@ CANONICAL: tuple[tuple[str, str], ...] = (
     ),
     (
         "insert_depth_is_attitude.json",
-        "What is left of the insert skill: depth is attitude one layer down, through 2c/theta.",
+        "What is left of the insert skill: depth is attitude one layer down, through 2c/theta. "
+        "**The law gives a bracket, not a point.** This bay has two relieved clearances -- 12.613 mm "
+        "vertically and 15.678 mm laterally per side -- so 2c/theta at the stalled 96.8 mrad is 260.6 mm "
+        "against one and 323.9 mm against the other. The observed 261.5 mm sits at the tight end. Quoting "
+        "only the matching clearance turns a bracket into a one-millimetre prediction, which this "
+        "report's own limitations warn against; write it as the minimum over the constraining directions "
+        "and say the looser figure too.",
     ),
     (
         "robot_carried_full_chain_c11065.json",

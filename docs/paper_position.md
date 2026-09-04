@@ -223,8 +223,11 @@ rate moves for a dozen reasons, the predicted mechanism moves for one.
 
 1. **A learned manipulator's delivered pose is not a design variable.** Led by
    the mechanism: the stalled population holds 96.8 mrad and travels 261.5 mm,
-   against `2c/theta` = 260.6 mm -- the closed-form bound predicts the achieved
-   depth to within a millimetre. Corroborated by three objectives landing
+   against `2c/theta` = 260.6 mm taken against the *tighter* of the channel's two
+   clearances. Write it as the minimum over the constraining directions, state
+   that the looser clearance gives 323.9 mm, and say the observed travel falls at
+   the tight end of that bracket -- not that the law predicts it to a millimetre.
+   Corroborated by three objectives landing
    0.4 mrad apart, with every losing arm kept and the single-seed limitation
    stated. Motivates everything.
 2. **Therefore the interface must be derived from measured performance, before
@@ -341,10 +344,26 @@ system, and a methods venue will ask for two.
    **The claim has better evidence anyway, and it is one number rather than a
    coincidence of three.** The stalled population holds 96.8 mrad and stops
    174.5 mm short of a 436 mm stroke, so it travels 261.5 mm; `2c/theta` at that
-   attitude in that channel is 260.6 mm. **The law predicts the achieved depth to
-   within a millimetre.** That is a mechanistic agreement between a closed-form
-   bound and a measured population, and it does not depend on how many seeds
-   produced the population.
+   attitude is 260.6 mm against the vertical clearance and 323.9 mm against the
+   lateral one. **The observed travel sits at the tight end of the bracket the
+   law gives.** That is a mechanistic agreement between a closed-form bound and a
+   measured population, and it does not depend on how many seeds produced the
+   population -- but it is a bracket, and the paper must not narrow it to a
+   millimetre by quoting only the clearance that happens to match.
+
+   The channel has two clearances and the law gives two answers.
+Per side the relieved bay is 12.613 mm vertically and 15.678 mm laterally, so
+`2c/theta` at 96.8 mrad is **260.6 mm** against the vertical gap and **323.9 mm**
+against the lateral one. The quoted agreement uses the vertical figure. That is
+the right rule -- a wedge forms at the first constraint reached, so the bound is
+the minimum over the constraining directions -- but it is a rule that has to be
+stated, because choosing the tighter of two numbers after seeing the answer is
+not a prediction. It is also contingent: it holds if the stalled attitude is
+about the axis that closes the vertical gap, which is consistent with the
+geometry and is not separately shown. `insert_depth_is_attitude.json` says the
+same in its own limitations -- the arithmetic brackets the observed travel
+rather than predicting it to a millimetre -- and that sentence, not this
+paragraph, is the one to defend.
 
    So the paper leads claim 1 with the mechanism, uses the three objectives as
    corroboration that the angle does not respond to reward shaping, and states
