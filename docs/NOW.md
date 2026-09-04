@@ -76,6 +76,34 @@ rate.
 | Learned insert v24, real chain handoff | **0.00%**, 0/96 | not selected |
 | Guarded insert, real chain handoff | 94/96 under the legacy supported-settle criterion | selected; strict completion with rack retention is 22/24 |
 
+**The learned seating phase was never given contact force, and the first run
+that has it is not behaving like its predecessors.** There is no force channel in
+`InsertPolicyObsCfg` and the grapple-pin scene had no contact sensor, so ten
+checkpoints of contact-rich assembly were trained without the signal the task is
+about. `BladeContactWrenchObservation` has existed in this repository since the
+force-limited insertion work, calls itself "the missing half of force control",
+cites FORGE, and was never wired to the skill the chain runs.
+
+`Isaac-ZeroG-Blade-GrapplePin-InsertForce-v0` is one change -- the same task,
+the same reward, the same actions, seven added observation values -- and its
+training reward against the blind policy's, on the identical reward function:
+
+| checkpoint | epoch | mean reward |
+| --- | ---: | ---: |
+| `v24rack`, blind, plateaued | 1,900 / 2,000 / 2,100 | 43.3 / 41.7 / 43.9 |
+| `v33force`, with contact | 100 | 45.6 |
+| `v33force`, with contact | 200 | **93.3** |
+
+It passes the blind policy's plateau at epoch 100 and doubles it by 200.
+
+**This is a training reward and not a rate, and it must not be quoted as one.**
+Reward is not success, two hundred epochs is not a trend, and no episode has been
+certified. `verify_insert_skill.sh` is queued on both halves -- the skill on three
+held-out seeds and the same weights inside the chain against the scripted
+advance, which is the arm that decides. Until that runs, the honest claim is that
+the first seating policy able to feel contact is learning much faster than every
+one that could not.
+
 Insertion was not extended blindly. The audit corrected action scaling, matched
 the skill and chain handoff geometry, added handoff-conditioned resets, projected
 the controller onto module-relative assembly state, and tested staged load-path
