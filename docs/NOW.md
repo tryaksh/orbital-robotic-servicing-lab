@@ -332,6 +332,31 @@ checkpoint, and no Wilson interval worth quoting. The pooled cohort over three
 held-out seeds with the finished checkpoint is queued, and it is published beside
 the 4/24 whichever way it lands.
 
+**Those pooled arms ran, and a screening bug threw all three away.** Each arm's
+first seed completed on 2026-09-03 and wrote both its report and its episode
+metrics. The queue then screened each report with `grep -q '"error"'`, which
+tests for the *presence* of the key. A successful report carries `"error":
+null`, so the screen matched every one of them, declared the arm broken after
+one seed, and skipped the other two. The npz files were on disk throughout.
+Corrected in `queue_rgbd_cohorts.sh` to test the value; the two missing seeds
+per arm are running in `queue_rgbd_seeds.sh`.
+
+What the recovered first seeds say, at 8 environments each:
+
+| arm, seed 4070 | successes | changes from the published cohort |
+| --- | ---: | --- |
+| noised extract alone | 0/8 | retrained extraction, camera velocity |
+| kinematic velocity alone | 3/8 | no retrain at all; velocity from the encoders |
+| both, plus the lead-in guard | **7/8** | all three, each measured alone elsewhere |
+
+**One seed each. None of this is a rate and none of it clears anything yet**
+-- the gate is the pooled figure over three held-out seeds, which is what the
+running queue produces. But the ordering is the one the channel attribution
+predicted: restoring a single observation channel does little on its own (0/8
+and 3/8 against the published 2/8 at this seed), and restoring both together
+with a guard that admits on the flare's catch is where the chain comes back.
+The interaction was measured at 22.6 points and it is behaving like a real one.
+
 **This is the expected cost of an untrained transfer, and it is not a perception
 defect.** Capture, extraction and the guard were trained on simulator state and
 are deployed against an estimator with no student training, no distillation and
