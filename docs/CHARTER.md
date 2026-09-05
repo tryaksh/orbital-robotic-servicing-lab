@@ -157,6 +157,46 @@ peak entry swing, which nothing in the geometry checker currently derives.
 `evidence/prescription_factorial_v1.json`,
 `evidence/rack_prescription_retained_paired_n192.json`.
 
+### R1's second test: the module-section axis is a delivery problem, not a seating one
+
+`section_120x16` and `section_140x26` are the two points the "not qualified"
+boundary decision names. Both re-run with the pawls fitted, three seeds, paired
+against the retention-absent arms that already existed:
+
+| cross-section | pass, no pawls | pass, pawls | gained / lost | p |
+| --- | ---: | ---: | ---: | ---: |
+| 120 x 16 mm | 88/192 | **152/192** | 64 / 0 | 1.1e-19 |
+| 140 x 26 mm | 78/192 | **175/192** | 97 / 0 | 1.3e-29 |
+
+**With the fixture fitted, precision given delivery is 1.0000 at every seed of
+both cross-sections.** Every module that reaches the bay seats inside the
+criterion. The whole axis reduces to how often the module is captured and
+delivered at all:
+
+| cross-section | delivery | precision given delivery | pass |
+| --- | ---: | ---: | ---: |
+| nominal | 0.974 | 1.000 | 187/192 |
+| 140 x 26 mm | 0.911 | 1.000 | 175/192 |
+| 120 x 16 mm | 0.792 | 1.000 | 152/192 |
+
+So the boundary decision was reading a capture failure as a clearance failure.
+The cross-section does not degrade seating; it degrades grasping, and the
+clearance analysis built on top of it was answering the wrong question.
+
+**This is also the strongest validation the residual method has produced**, and
+it was a prediction rather than a fit. This morning's delivery/precision split —
+computed on the retention-absent cohorts, before any of these runs existed —
+said `120x16` had no precision deficit (0.579 against nominal's 0.588) and lost
+everything upstream, while `140x26` delivered well and lost precision. It
+therefore predicted that fixing the seating would help `140x26` more. It gained
+97 episodes against `120x16`'s 64. And the delivery rates measured here, 0.792
+and 0.911, are the same numbers to four figures as the retention-absent arms,
+which is the internal consistency check: pawls act after seating and cannot
+change delivery.
+
+`evidence/section_section_120x16_retained_paired_n192.json`,
+`evidence/section_section_140x26_retained_paired_n192.json`.
+
 ### What this obliges, and what it does not
 
 It does **not** retract a number. Every cohort measured what it measured.

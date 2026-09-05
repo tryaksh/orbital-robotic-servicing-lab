@@ -71,6 +71,39 @@ remaining sweep points are roughly eight, so under three hours.
 **Read every point paired** against the retention-absent arm that already
 exists. Same seeds, same checkpoints, one flag.
 
+## R1b — The remaining sweep points (**clearance axis needs seeds first**)
+
+`section_120x16` and `section_140x26` are done and reported in `CHARTER.md`.
+What is left of the sweep:
+
+* `rack_lat_6mm`, `rack_lat_16mm` — **the clearance axis, and the one that most
+  needs re-running**, but each exists at one seed only. Running them with pawls
+  would give an unpaired n = 64 comparison. Measure the retention-absent arms at
+  seeds 5070 and 6070 first, then both arms with pawls. Four points of 64
+  episodes, about 40 minutes.
+* `base_x_-0.70`, `base_y_+10mm`, `mass_20kg`, `mass_40kg` — lower priority. No
+  published verdict rests on them.
+
+**Read the delivery column first on every one.** The section axis turned out to
+be entirely a capture failure once the fixture was fitted, and a clearance point
+may be the same. `scripts/qualify_handoff.py` splits it.
+
+## R1c — Why capture fails on a smaller cross-section
+
+The finding the section axis actually produced. With the pawls fitted, seating
+is perfect at every cross-section — precision given delivery 1.000 — and the
+whole axis is delivery: 0.974 at nominal, 0.911 at 140x26, **0.792 at 120x16**.
+A 120 x 16 mm module is captured four times in five.
+
+That is a grasp problem on a thinner, narrower module, and no clearance or
+seating work will move it. It is also where the chain's remaining headroom is:
+nominal itself delivers 0.974, so five episodes in 192 never leave the source
+bay even at the design point.
+
+**Start from the five nominal failures.** They are identical across every arm
+run today -- 384.6, 216.5, 364.9, 1212.5 and 833.7 mm -- so they are
+deterministic and reproducible, and the capture traces for them already exist.
+
 ## R2 — Re-run the gravity sweep with the pawls fitted
 
 Sixteen cohorts, none with retention. The published reading — 14/48 in orbit and
