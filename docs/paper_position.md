@@ -1,5 +1,112 @@
 # What this paper may claim, after the 2026-09-03 literature check
 
+> ## 2026-09-05: the thesis, rewritten as a method. Read this first.
+>
+> Everything below this block is the previous framing -- a serviceability
+> qualification of one simulated workcell. It is kept because its measurements
+> are the evidence for the new one, and because two of its headline claims were
+> tested this week and did not survive. The framing changed for three reasons,
+> all of them checkable.
+>
+> **The thesis, in one sentence.** *A learned skill's own success rate does not
+> predict whether it works inside the full task, so the handoff between skills
+> must be triggered by the next skill's physical precondition being measurably
+> satisfied rather than by the previous skill reporting success.*
+>
+> **Why this and not the boundary framing.** The old lead claim was that no
+> passive channel satisfies this interface -- 10.350 mm needed against a
+> 2.500 mm gate, a factor of 4.14. That factor rests entirely on a delivered
+> attitude of 46 mrad, and 46 mrad has no recorded measurement anywhere in this
+> repository (T21). Measured from recorded transit traces over 95 environments
+> and three held-out seeds it is **8.19 mrad at the median and 26.07 at the
+> worst**, which needs 1.843 to 5.866 mm and puts the arm in a different
+> interface regime. The claim as written is not supportable.
+>
+> **And the experiment that was going to confirm the design bound refuted it.**
+> The library calls the shipped destination channel 3.897 mm too wide and
+> attributes the dominant failure to that excess. Rebuilding it at the
+> prescribed clearance made the chain worse -- 110/192 (57.29%) at the shipped
+> relief against 64/192 (33.33%) at the design point, with median lateral error
+> rising from 2.186 mm to 3.279 mm. The upper bound does not govern at these
+> clearances. Reported, kept, and it is why the window is no longer the lead.
+>
+> ### The four claims, and what stands behind each
+>
+> | # | Claim | Evidence | Status |
+> | --- | --- | --- | --- |
+> | 1 | A skill's own certification does not predict its behaviour in the chain | seating skill **2977/3001 = 99.20%** [98.81, 99.46] alone; **24/96 = 25.00%** in the chain | **measured, strong** |
+> | 2 | A scripted advance gated on the next skill's precondition matches a learned controller and never fails catastrophically | guarded **23/96** against policy **24/96**; the policy's failures reach 342 mm median axial error, the guard's 0.4 mm | **measured, strong** |
+> | 3 | The gate is what carries the result, not the policy | the ablation -- gate removed, everything else identical | **running 2026-09-05** |
+> | 4 | The precondition must be geometric, because geometry transfers to an environment you cannot test in and behaviour does not | gravity swept from orbit to Earth on the released module | **running 2026-09-05** |
+>
+> ### What is prior art, stated as a difference rather than ignored
+>
+> * **Whitney and the Remote Center Compliance work (Draper, 1970s-80s).** The
+>   quasi-static analysis of a peg entering a chamfered hole -- clearance ratio,
+>   angular and lateral misalignment, jamming and wedging -- is theirs. Ours is
+>   not an insertion analysis: it derives a *requirement* from a measured
+>   closed-loop delivery distribution, and it is about the state *after release*,
+>   which an RCC does not address because the compliance is on the robot side and
+>   stops acting the moment the hand opens.
+> * **Skill chaining and composition failure (2021-2026).** The phenomenon is
+>   documented and there is an active line on it -- adversarial skill chaining
+>   with terminal-state regularization, foresight residual RL for long-horizon
+>   assembly. **Every published remedy retrains the skills.** Ours retrains
+>   nothing: it inserts a measurable precondition between them. In an environment
+>   that cannot be rehearsed, a retrained handoff distribution is a property of
+>   the policy and is exactly what fails to transfer.
+> * **Runtime assurance and Simplex architectures.** The assurance community's
+>   answer to unverifiable learned control is a verified fallback that overrides
+>   the primary. Our chain *is* that architecture, and we supply the measurement
+>   that community lacks for contact-rich assembly: the fallback ties or beats
+>   the learned primary, and the residual failures are geometric rather than
+>   behavioural.
+> * **Standard orbital interfaces.** HOTDOCK tolerates 24 degrees of tilt and
+>   23.5 mm of offset; Orbital Express was specified at 5 degrees and 2 inches.
+>   These buy their way out with capture envelopes, and the compact alternative
+>   (iSSI) is described in the literature as requiring "high control of the
+>   robotic arm, because it has no components that can implement envelope capture
+>   functions". **The trade is acknowledged in industry and never quantified.**
+>   Our contribution binds only where the envelope cannot be bought -- dense
+>   racks, tight mass and volume -- and the paper must say so rather than imply a
+>   general gap.
+>
+> ### What zero gravity is for, and what it is not
+>
+> It is not "the hardest case, so it proves everything". Zero gravity removes
+> gravity's help *and* its hindrance, and the largest difficulty the space
+> robotics literature attributes to orbit -- free-floating base reaction coupling
+> -- **this workcell does not model**, because the robot is fixed to a platform.
+> That must be conceded in the paper before a reviewer finds it.
+>
+> What zero gravity *is* is the limit of a sweep. Gravity is an assumption almost
+> all assembly practice hides: on Earth a sloped edge and a weight quietly close
+> whatever error the robot leaves, so clearance is a soft bound. Remove it and
+> the clearance is the entire budget. Sweeping Earth, Mars, the Moon and orbit
+> turns that from an assertion into a curve, and the curve is the useful object
+> for a designer: how much of the error budget the environment closes for free,
+> and how much the hardware must.
+>
+> ### The instrument, which the paper has to disclose
+>
+> A 24-episode cohort in this workcell carries about three episodes of
+> run-to-run spread on identical inputs -- `base_000` scored 7/24 and then 4/24
+> with the same seeds, the same checkpoints and an empty source diff. Several of
+> the 2x2x2's single-change arms sit inside that spread. The headline contrasts
+> do not. Every comparison the paper makes must be at 48 or 96 episodes, and the
+> variance measurement itself belongs in the methods section: it is the reason to
+> believe the contrasts that survive.
+>
+> ### What is still missing before submission
+>
+> 1. **A second task.** The gate is demonstrated on one workcell. Without a
+>    second, this is a case study rather than a method, and that is the single
+>    largest gap.
+> 2. The camera-driven delivered attitude, so the design rule's input reflects
+>    the sensing the deployed system actually uses. Traced in the 2026-09-05 run.
+> 3. The gate ablation and the gravity sweep, both running.
+
+
 > ## Corrections made overnight on 2026-09-03/04 -- read before writing
 >
 > An audit found six claims stated more strongly than their evidence supports.
