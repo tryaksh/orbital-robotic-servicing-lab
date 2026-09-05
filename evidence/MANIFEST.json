@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 84,
     "retracted": 12,
-    "historical": 190
+    "historical": 192
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -1497,6 +1497,11 @@
       "title": "Whether pre-handoff state predicts the residual the seating step leaves",
       "generated_utc": "2026-09-05T19:40:38.798396+00:00"
     },
+    "prescription_factorial_v1.json": {
+      "title": "The rack prescription crossed with the retention fixture",
+      "generated_utc": "2026-09-05T22:23:17.589520+00:00"
+    },
+    "rack_prescription_retained_paired_n192.json": {},
     "rack_requirement_sweep_v1.json": {
       "title": "The rack requirement as a function of the manipulator's delivered attitude"
     },

@@ -71,6 +71,52 @@ designed.
 `evidence/rack_retention_paired_n192_v2.json`,
 `evidence/release_drift_retention_v1.json`.
 
+### R1's first test: the published refutation, resolved
+
+The only published *refutation* in the boundary set said the design library's
+prescribed channel clearance makes the chain worse — 110/192 to 64/192, 28
+gained against 74 lost, p = 5.9e-06 — and the conclusion drawn was that the
+library's seated-rest upper bound does not govern. Both arms ran without pawls.
+Crossing the two factors settles what each was doing:
+
+| channel relief | retention | pass | precision given delivery | residual median / max |
+| --- | --- | ---: | ---: | ---: |
+| 4.61 mm (shipped) | absent | 110/192 | 0.588 | 2.160 / 5.734 mm |
+| 0.00 mm (prescribed) | absent | 64/192 | 0.342 | 3.192 / 32.928 mm |
+| 4.61 mm (shipped) | **pawls** | **187/192** | 1.000 | 0.731 / 1.874 mm |
+| 0.00 mm (prescribed) | **pawls** | **175/192** | 0.936 | 0.770 / 32.928 mm |
+
+Where the delivered modules come to rest tells the story the rates hide:
+
+| cell | passes | near miss 2.5–6 mm | 6–10 mm | gross 10–50 mm |
+| --- | ---: | ---: | ---: | ---: |
+| shipped, no pawls | 110 | 77 | 0 | 0 |
+| prescribed, no pawls | 64 | 109 | 2 | **12** |
+| shipped, pawls | 187 | 0 | 0 | 0 |
+| prescribed, pawls | 175 | 0 | 0 | **12** |
+
+**The refutation survives at a quarter of its size, and its mechanism is now
+named.** With the fixture fitted the prescription costs 12 episodes in 192 —
+0 gained, 12 lost, two-sided p = 4.9e-04 — not 46. The other 62 episodes the
+original comparison attributed to the prescription were the missing fixture.
+
+The 12 are not near-misses pushed across a line. They are a gross mis-seating
+mode that the shipped relief does not produce at all, clustered tightly at 32.0
+to 32.9 mm, and they are **the same environments with the same residuals in both
+relief-0 arms** — env 3, 8 and 42 at seed 4070 read 32.763, 32.901 and 32.052 mm
+with and without pawls. Deterministic geometry, not scatter. A pawl engages
+after the insertion predicate fires, so it preserves whatever seating it is
+given and locks the bad ones in as faithfully as the good ones.
+
+So the library's upper bound is not refuted by a rate. Narrowing the channel to
+its design point removes the clearance the module needs to find centre, and in
+about one delivered episode in sixteen it comes to rest a long way off and stays
+there. Naming the 32.5 mm resting position against the workcell geometry is a
+bounded follow-up and is not yet done.
+
+`evidence/prescription_factorial_v1.json`,
+`evidence/rack_prescription_retained_paired_n192.json`.
+
 ### What this obliges, and what it does not
 
 It does **not** retract a number. Every cohort measured what it measured.

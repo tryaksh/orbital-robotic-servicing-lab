@@ -46,10 +46,17 @@ axis, the "not qualified" decision, and the rack-prescription refutation at
 cannot be quoted as properties of the workcell that was designed until the same
 points are run with the fixture that workcell has.
 
-**Cost.** The nominal point is 23 minutes for three seeds. The full sweep is
-roughly ten points, so under four hours, and the rack-prescription arm is the
-one to run first because it is the only published *refutation* in the set and it
-may not survive.
+**The prescription arm is done, 2026-09-05.** With the pawls fitted it costs 12
+episodes in 192 — 0 gained, 12 lost, p = 4.9e-04 — against 46 without them. The
+refutation survives at a quarter of its size and its mechanism is a gross
+mis-seating tail at 32.0-32.9 mm that the shipped relief never produces and no
+fixture can rescue, in the same environments with the same residuals both ways.
+See `CHARTER.md`. **Remaining: name the 32.5 mm resting position against the
+workcell geometry** -- it is deterministic, so it should be derivable without a
+simulator.
+
+**Cost of the rest.** The nominal point is 23 minutes for three seeds. The
+remaining sweep points are roughly eight, so under three hours.
 
 **Read every point paired** against the retention-absent arm that already
 exists. Same seeds, same checkpoints, one flag.
