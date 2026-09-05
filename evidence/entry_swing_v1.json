@@ -1,0 +1,87 @@
+{
+  "title": "The destination channel's relief bounds the entry swing",
+  "evidence_type": "second_reading_of_recorded_traces",
+  "generated_utc": "2026-09-05T22:40:32.531325+00:00",
+  "question": "Removing the channel relief, as the design library prescribes, costs 12 episodes in 192 once the pawls are fitted, and those episodes never seat. What does the relief do that its absence undoes?",
+  "source_revision": {
+    "available": true,
+    "commit": "cc93edf8b619051aaa3f65f4b2e499cb9cc15c27",
+    "branch": "research/correction-aware-handoffs",
+    "dirty": false,
+    "code_dirty": false,
+    "tracked_changes": [],
+    "error": null
+  },
+  "seated_plane_x_m": 0.676,
+  "stroke_complete_threshold_x_m": 0.6,
+  "seeds": [
+    4070,
+    5070,
+    6070
+  ],
+  "arms": {
+    "relief 4.61 mm (shipped), pawls": {
+      "episodes": 187,
+      "peak_swing_median_rad": 0.07570869475603104,
+      "peak_swing_p95_rad": 0.07706583738327026,
+      "peak_swing_max_rad": 0.08000651001930237,
+      "stopped_short_of_seated_plane": 0,
+      "stopped_at_x_m": [],
+      "peak_swing_of_stopped_rad": [],
+      "final_x_median_m": 0.6764271259307861
+    },
+    "relief 0.00 mm (prescribed), pawls": {
+      "episodes": 187,
+      "peak_swing_median_rad": 0.07576495409011841,
+      "peak_swing_p95_rad": 0.08734372407197952,
+      "peak_swing_max_rad": 0.09507839381694794,
+      "stopped_short_of_seated_plane": 12,
+      "stopped_at_x_m": [
+        0.22,
+        0.22,
+        0.22,
+        0.22,
+        0.22,
+        0.2201,
+        0.2201,
+        0.2201,
+        0.2202,
+        0.2202,
+        0.2202,
+        0.2203
+      ],
+      "peak_swing_of_stopped_rad": [
+        0.08362,
+        0.08625,
+        0.08682,
+        0.08686,
+        0.08755,
+        0.0878,
+        0.08823,
+        0.09009,
+        0.09064,
+        0.09064,
+        0.09065,
+        0.09082
+      ],
+      "final_x_median_m": 0.6747727394104004
+    },
+    "relief 4.61 mm (shipped), no pawls": {
+      "episodes": 187,
+      "peak_swing_median_rad": 0.07570869475603104,
+      "peak_swing_p95_rad": 0.07706583738327026,
+      "peak_swing_max_rad": 0.08000651001930237,
+      "stopped_short_of_seated_plane": 0,
+      "stopped_at_x_m": [],
+      "peak_swing_of_stopped_rad": [],
+      "final_x_median_m": 0.6766133308410645
+    }
+  },
+  "scope_and_limitations": [
+    "Simulation only. No result here was produced on real hardware.",
+    "This is a second reading of existing episodes, not a new measurement.",
+    "The peak swing is the maximum orientation error recorded during the insert phase at the trace's 6 Hz sampling, so a briefer excursion between samples would not appear. It is a lower bound on the true peak.",
+    "Every episode in both configurations exceeds the angle sometimes quoted as the channel's corner-to-corner limit. That figure describes where a seated module may rest, not what the stroke passes through, and nothing here should be read as contradicting it.",
+    "One point of the sweep -- nominal -- at three seeds, with one frozen checkpoint set. The wedge angle is not measured as a threshold; it is observed that the episodes which stop short are the ones with the largest swing."
+  ]
+}

@@ -121,8 +121,38 @@ library's entry criterion exists to forecast.
 So the upper bound is not refuted by a rate, and the two halves of the window
 are doing different jobs: the seated-rest upper bound was never what governed
 those 62 episodes — the missing fixture was — while the entry bound is visibly
-load-bearing in the tightening direction. Naming the 32.5 mm resting position
-against the workcell geometry is a bounded follow-up and is not yet done.
+load-bearing in the tightening direction.
+
+### What the relief is actually for, and it is not lateral
+
+The insert traces name the mechanism, and the 32.5 mm lateral is a consequence
+rather than a cause.
+
+**Every insertion swings.** In both configurations the module's orientation
+error peaks around 76 mrad partway along the stroke — median **75.71 mrad** with
+the relief and **75.76 mrad** without. The swing is the normal motion of this
+interface and the channel accommodates it. The relief does not change the
+typical swing at all. It bounds the **tail**:
+
+| arm | median | p95 | max | stopped short |
+| --- | ---: | ---: | ---: | ---: |
+| relief 4.61 mm (shipped) | 75.71 mrad | 77.07 | **80.01** | **0 of 187** |
+| relief 0.00 mm (prescribed) | 75.76 mrad | 87.34 | **95.08** | **12 of 187** |
+
+The separation is clean. Across 187 episodes the shipped relief never exceeds
+80.01 mrad; every one of the 12 that wedge exceeds 83.6 mrad. And they stop in
+the same place — x = 0.220 to 0.2203 m against a seated plane at 0.676 m, about
+ninety millimetres into a half-metre stroke — with the guard reading
+`clear_to_advance = 0` and holding, which is the guard working rather than
+forcing a jammed module.
+
+So the relief is not slack to be designed out. **It is what keeps the entry
+swing below the angle at which the module wedges**, and the library's upper
+bound — derived from where a *seated* module may rest — cannot see that function
+because it is not about the stroke. The design rule this implies is a bound on
+peak entry swing, which nothing in the geometry checker currently derives.
+
+`evidence/entry_swing_v1.json`, `scripts/report_entry_swing.py`.
 
 `evidence/prescription_factorial_v1.json`,
 `evidence/rack_prescription_retained_paired_n192.json`.

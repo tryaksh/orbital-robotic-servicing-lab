@@ -53,9 +53,17 @@ episodes that **never seat**, stopping 32.0-32.9 mm off centre with
 `predicate_fired = 0` and the pawls never in the path. That is
 `jammed_in_the_bay`, whose count at the shipped relief is zero, and it is the
 mode the library's **entry** criterion predicts.
-See `CHARTER.md`. **Remaining: name the 32.5 mm resting position against the
-workcell geometry** -- it is deterministic, so it should be derivable without a
-simulator.
+See `CHARTER.md`. **The mechanism is now named and it is angular, not lateral.**
+Every insertion swings to ~76 mrad in both configurations; the relief does not
+change that median at all, it bounds the tail. Shipped relief never exceeds
+80.01 mrad in 187 episodes; all 12 wedges exceed 83.6 mrad and stop at
+x = 0.220 m against a seated plane at 0.676 m. `evidence/entry_swing_v1.json`.
+
+**R1a — derive a peak-entry-swing bound.** The geometry checker derives what a
+seated module may rest at and says nothing about what the stroke passes through,
+which is the quantity that actually governs here. Deriving it belongs in
+`servicing_design.py` beside the existing bounds, validated against these
+traces. No simulator; the traces exist.
 
 **Cost of the rest.** The nominal point is 23 minutes for three seeds. The
 remaining sweep points are roughly eight, so under three hours.
