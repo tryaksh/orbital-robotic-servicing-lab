@@ -170,6 +170,29 @@ CANONICAL: tuple[tuple[str, str], ...] = (
             "reliable channel is."
         ),
     ),
+    # -- what the instrument can and cannot resolve --------------------------
+    # These two are a *pair* and neither supersedes the other. They are the same
+    # cell run twice: same three held-out seeds, same three checkpoints, same
+    # flags, and `git diff` over src/ and scripts/ between the two commits is
+    # empty. Quoting either alone is quoting a number this repository knows it
+    # cannot reproduce to better than about three episodes in twenty-four.
+    (
+        "workflow_robot_carried_vision_factorial_base_000_certification.json",
+        (
+            "The camera-driven baseline cell, 4/24, and the second of two runs of it. Reproduces the "
+            "published 4/24 exactly. Read beside the first run below: the pair is this project's only "
+            "measurement of its own run-to-run spread."
+        ),
+    ),
+    (
+        "workflow_robot_carried_vision_factorial_base_000_first_run_certification.json",
+        (
+            "The first run of the same cell, 7/24, by seed 3/2/2 against the re-run's 2/0/2. Identical "
+            "seeds, checkpoints and source; two of three seeds moved. About three episodes of spread "
+            "at n=24, which is wide enough to swallow the single-change arms of the 2x2x2 and not the "
+            "headline contrasts. Preserved so that statement is checkable rather than remembered."
+        ),
+    ),
     # -- the seating decision, 2026-09-04/05 ---------------------------------
     (
         "grapple_insert_v33force_c11065_certification.json",

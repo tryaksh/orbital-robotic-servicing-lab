@@ -8,9 +8,9 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 76,
+    "canonical": 78,
     "retracted": 12,
-    "historical": 179
+    "historical": 177
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -770,6 +770,48 @@
       "gate_passed": false,
       "policy_sha256": "3493C9D86BF2C6C534B86FC57F239A1F768E213C299C3791D743797B8A0E1421",
       "holds_up": "The before, two sessions back: 31.25%."
+    },
+    "workflow_robot_carried_vision_factorial_base_000_certification.json": {
+      "title": "RGB-D chain, factorial cell base_000",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-05T00:45:43+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 4,
+        "success_rate": 0.166667,
+        "wilson_95": [
+          0.066787,
+          0.358531
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "cbe4c79f86bff0a571c112166aa5417556e56ef0",
+        "dirty": false
+      },
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "The camera-driven baseline cell, 4/24, and the second of two runs of it. Reproduces the published 4/24 exactly. Read beside the first run below: the pair is this project's only measurement of its own run-to-run spread."
+    },
+    "workflow_robot_carried_vision_factorial_base_000_first_run_certification.json": {
+      "title": "RGB-D chain, factorial cell base_000",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-04T20:54:38+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 7,
+        "success_rate": 0.291667,
+        "wilson_95": [
+          0.149146,
+          0.491677
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "031c70d9ead57d7137ed75329430b11568a6a221",
+        "dirty": false
+      },
+      "policy_sha256": "3D299D01AEDC8ED2770FFA29DF5F3659C3132423A28B53E4D516B4513072CD95",
+      "holds_up": "The first run of the same cell, 7/24, by seed 3/2/2 against the re-run's 2/0/2. Identical seeds, checkpoints and source; two of three seeds moved. About three episodes of spread at n=24, which is wide enough to swallow the single-change arms of the 2x2x2 and not the headline contrasts. Preserved so that statement is checkable rather than remembered."
     },
     "workflow_robot_carried_vision_kinematic_velocity_certification.json": {
       "title": "RGB-D chain with the module velocity taken from the robot rather than the cameras",
@@ -1653,14 +1695,6 @@
     "workflow_robot_carried_m130pin_check_certification.json": {
       "title": "Robot-carried relocation, one seed, after the criterion and rack changes",
       "generated_utc": "2026-08-24T20:57:19+00:00"
-    },
-    "workflow_robot_carried_vision_factorial_base_000_certification.json": {
-      "title": "RGB-D chain, factorial cell base_000",
-      "generated_utc": "2026-09-05T00:45:43+00:00"
-    },
-    "workflow_robot_carried_vision_factorial_base_000_first_run_certification.json": {
-      "title": "RGB-D chain, factorial cell base_000",
-      "generated_utc": "2026-09-04T20:54:38+00:00"
     },
     "workflow_robot_carried_vision_factorial_bothchannels_NK0_certification.json": {
       "title": "RGB-D chain, factorial cell bothchannels_NK0",
