@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 84,
     "retracted": 12,
-    "historical": 183
+    "historical": 184
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -1444,7 +1444,7 @@
     },
     "handoff_qualification_residual_v1.json": {
       "title": "Handoff qualification read from the residual distribution",
-      "generated_utc": "2026-09-05T19:03:33.543371+00:00"
+      "generated_utc": "2026-09-05T19:11:48.630433+00:00"
     },
     "inference_budget.json": {
       "title": "Onboard compute budget of the learned components"
@@ -1509,6 +1509,10 @@
     },
     "relocation_rrt_path.json": {
       "generated_utc": "2026-08-21T01:39:23+00:00"
+    },
+    "residual_transfer_v1.json": {
+      "title": "Criterion-curve reliability within a configuration, and ordering across three",
+      "generated_utc": "2026-09-05T19:10:57.440600+00:00"
     },
     "residual_vs_counted_power_v1.json": {
       "title": "Reading the residual against counting successes, at matched episode cost",

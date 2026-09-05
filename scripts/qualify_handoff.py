@@ -51,7 +51,7 @@ from handoff_qualification.records import (  # noqa: E402
     CATASTROPHIC_RESIDUAL_M,
     DEFAULT_LATERAL_CRITERION_M,
 )
-from handoff_qualification.residual import empirical_pass_rate  # noqa: E402
+from handoff_qualification.residual import empirical_pass_rate, wilson  # noqa: E402
 
 #: Criteria to report the curve at, in metres.
 CURVE_M = (0.0015, 0.002, 0.0025, 0.003, 0.004, 0.005, 0.0075, 0.010, 0.015)
@@ -91,11 +91,27 @@ def describe(path: Path, criterion_m: float, required: float) -> dict:
                 "wilson_95": [round(point_interval[0], 4), round(point_interval[1], 4)],
             }
         )
+    # The decomposition the counted rate cannot make. Two configurations can
+    # lose the same number of episodes for opposite reasons: one never delivers
+    # the module, the other delivers it imprecisely. They want opposite fixes,
+    # and a pooled rate reports them identically.
+    delivered = int(arrived.sum())
+    delivered_and_passed = int((residuals[arrived] < criterion_m).sum())
+    precision = delivered_and_passed / delivered if delivered else None
+    precision_interval = wilson(delivered_and_passed, delivered) if delivered else None
+
     return {
         "cohort": path.as_posix(),
         "episodes": len(records),
-        "arrived": int(arrived.sum()),
+        "arrived": delivered,
         "never_arrived": int((~arrived).sum()),
+        "delivery_rate": delivered / len(records) if len(records) else None,
+        "precision_given_delivery": precision,
+        "precision_wilson_95": (
+            [round(precision_interval[0], 4), round(precision_interval[1], 4)]
+            if precision_interval
+            else None
+        ),
         "criterion_m": criterion_m,
         "pass_rate": rate,
         "wilson_95": [round(interval[0], 4), round(interval[1], 4)],
@@ -131,6 +147,12 @@ def main() -> int:
             f"  at {entry['criterion_m'] * 1000:.2f} mm: {entry['pass_rate']:.4f} "
             f"[{entry['wilson_95'][0]:.3f}, {entry['wilson_95'][1]:.3f}]"
         )
+        if entry["precision_given_delivery"] is not None:
+            print(
+                f"  delivery {entry['delivery_rate']:.4f}  x  "
+                f"precision-given-delivery {entry['precision_given_delivery']:.4f} "
+                f"[{entry['precision_wilson_95'][0]:.3f}, {entry['precision_wilson_95'][1]:.3f}]"
+            )
         if entry["residual_median_m"] is not None:
             print(
                 f"  residual (arrived): median {entry['residual_median_m'] * 1000:.2f} mm, "
@@ -152,8 +174,18 @@ def main() -> int:
 
     if len(entries) > 1:
         print("Between cohorts, at the shipped criterion:")
+        print(f"  {'overall':>9} {'delivery':>9} {'precision':>10}  cohort")
         for entry in entries:
-            print(f"  {entry['pass_rate']:.4f}  {Path(entry['cohort']).name}")
+            precision = entry["precision_given_delivery"]
+            print(
+                f"  {entry['pass_rate']:>9.4f} {entry['delivery_rate']:>9.4f} "
+                f"{precision if precision is not None else float('nan'):>10.4f}  "
+                f"{Path(entry['cohort']).name}"
+            )
+        print(
+            "  A configuration that loses episodes in the delivery column and one that "
+            "loses them in the precision column want opposite fixes."
+        )
 
     if args.report:
         document = {

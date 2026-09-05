@@ -148,3 +148,37 @@ def test_lognormal_fit_is_reported_with_its_distance():
     assert 0.0 <= result.fit_distance <= 1.0
     if result.supported:
         assert result.modelled_interval[0] <= result.modelled_rate <= result.modelled_interval[1]
+
+
+def test_delivery_and_precision_are_separated():
+    """Two configurations can lose the same episodes for opposite reasons.
+
+    `section_120x16` and `section_140x26` both score worse than nominal. The
+    first loses almost nothing to precision (0.579 against nominal's 0.588) and
+    everything to delivery (0.79 against 0.97); the second delivers well and
+    loses precision. A pooled rate reports the two identically and they want
+    opposite fixes.
+    """
+
+    # Synthetic stand-ins with the same structure, so the test needs no
+    # gitignored archive: the same overall pass rate, reached two ways.
+    # 58 of 140 pass either way; in the first cohort 40 never arrive.
+    delivery_problem = [0.002] * 58 + [0.003] * 42 + [0.5] * 40
+    precision_problem = [0.002] * 58 + [0.003] * 82
+    assert len(delivery_problem) == len(precision_problem) == 140
+
+    def split(values):
+        residuals = np.array(values)
+        arrived = residuals < CATASTROPHIC_RESIDUAL_M
+        return (
+            float(arrived.mean()),
+            float((residuals[arrived] < 0.0025).mean()),
+        )
+
+    delivery_rate_a, precision_a = split(delivery_problem)
+    delivery_rate_b, precision_b = split(precision_problem)
+
+    # Same overall rate, opposite causes.
+    assert delivery_rate_a * precision_a == pytest.approx(delivery_rate_b * precision_b, abs=0.02)
+    assert delivery_rate_a < 0.8 < delivery_rate_b
+    assert precision_a > precision_b

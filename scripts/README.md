@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-109 scripts. Grouped by the verb their filename starts with.
+110 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -87,6 +87,7 @@ These read `.npz` episode metrics and write `evidence/*.json`.
 | `report_insert_distribution_intervention.py` | Preserve a targeted insertion-training intervention and its losing control. |
 | `report_mating_compliance.py` | Pool the mating-compliance runs into one table, and one specification number. |
 | `report_rack_retention.py` | Pair strict no-rack and rack-retention cohorts and report load transfer. |
+| `report_residual_transfer.py` | Does the criterion curve hold up, within a configuration and across three? |
 | `report_robot_carried_interface.py` | Pool the robot-carried transit runs into one interface result. |
 | `report_seating_head_to_head.py` | Which seating controller does the chain keep, decided arithmetically. |
 

@@ -1,7 +1,7 @@
 {
   "title": "Handoff qualification read from the residual distribution",
   "evidence_type": "second_reading_of_existing_episodes",
-  "generated_utc": "2026-09-05T19:03:33.543371+00:00",
+  "generated_utc": "2026-09-05T19:11:48.630433+00:00",
   "criterion_m": 0.0025,
   "required_rate": 0.95,
   "cohorts": [
@@ -10,6 +10,12 @@
       "episodes": 192,
       "arrived": 187,
       "never_arrived": 5,
+      "delivery_rate": 0.9739583333333334,
+      "precision_given_delivery": 0.5882352941176471,
+      "precision_wilson_95": [
+        0.5166,
+        0.6563
+      ],
       "criterion_m": 0.0025,
       "pass_rate": 0.5729166666666666,
       "wilson_95": [
@@ -98,10 +104,212 @@
       ]
     },
     {
+      "cohort": "artifacts/robustness192_section/section_120x16.npz",
+      "episodes": 192,
+      "arrived": 152,
+      "never_arrived": 40,
+      "delivery_rate": 0.7916666666666666,
+      "precision_given_delivery": 0.5789473684210527,
+      "precision_wilson_95": [
+        0.4995,
+        0.6545
+      ],
+      "criterion_m": 0.0025,
+      "pass_rate": 0.4583333333333333,
+      "wilson_95": [
+        0.3894,
+        0.5289
+      ],
+      "residual_median_m": 0.0021770932944491506,
+      "residual_p95_m": 0.0038896031561307595,
+      "residual_max_arrived_m": 0.0050828424282372,
+      "criterion_for_required_rate_m": null,
+      "required_rate": 0.95,
+      "margin_factor": null,
+      "curve": [
+        {
+          "criterion_m": 0.0015,
+          "pass_rate": 0.2760416666666667,
+          "wilson_95": [
+            0.2177,
+            0.3432
+          ]
+        },
+        {
+          "criterion_m": 0.002,
+          "pass_rate": 0.3697916666666667,
+          "wilson_95": [
+            0.3047,
+            0.44
+          ]
+        },
+        {
+          "criterion_m": 0.0025,
+          "pass_rate": 0.4583333333333333,
+          "wilson_95": [
+            0.3894,
+            0.5289
+          ]
+        },
+        {
+          "criterion_m": 0.003,
+          "pass_rate": 0.5729166666666666,
+          "wilson_95": [
+            0.5022,
+            0.6408
+          ]
+        },
+        {
+          "criterion_m": 0.004,
+          "pass_rate": 0.7552083333333334,
+          "wilson_95": [
+            0.6898,
+            0.8106
+          ]
+        },
+        {
+          "criterion_m": 0.005,
+          "pass_rate": 0.7864583333333334,
+          "wilson_95": [
+            0.7232,
+            0.8385
+          ]
+        },
+        {
+          "criterion_m": 0.0075,
+          "pass_rate": 0.7916666666666666,
+          "wilson_95": [
+            0.7288,
+            0.8431
+          ]
+        },
+        {
+          "criterion_m": 0.01,
+          "pass_rate": 0.7916666666666666,
+          "wilson_95": [
+            0.7288,
+            0.8431
+          ]
+        },
+        {
+          "criterion_m": 0.015,
+          "pass_rate": 0.7916666666666666,
+          "wilson_95": [
+            0.7288,
+            0.8431
+          ]
+        }
+      ]
+    },
+    {
+      "cohort": "artifacts/robustness192_section/section_140x26.npz",
+      "episodes": 192,
+      "arrived": 175,
+      "never_arrived": 17,
+      "delivery_rate": 0.9114583333333334,
+      "precision_given_delivery": 0.44571428571428573,
+      "precision_wilson_95": [
+        0.374,
+        0.5197
+      ],
+      "criterion_m": 0.0025,
+      "pass_rate": 0.40625,
+      "wilson_95": [
+        0.3393,
+        0.4769
+      ],
+      "residual_median_m": 0.00263146311044693,
+      "residual_p95_m": 0.004544661426916715,
+      "residual_max_arrived_m": 0.006175398826599121,
+      "criterion_for_required_rate_m": null,
+      "required_rate": 0.95,
+      "margin_factor": null,
+      "curve": [
+        {
+          "criterion_m": 0.0015,
+          "pass_rate": 0.22395833333333334,
+          "wilson_95": [
+            0.1707,
+            0.288
+          ]
+        },
+        {
+          "criterion_m": 0.002,
+          "pass_rate": 0.3385416666666667,
+          "wilson_95": [
+            0.2754,
+            0.4081
+          ]
+        },
+        {
+          "criterion_m": 0.0025,
+          "pass_rate": 0.40625,
+          "wilson_95": [
+            0.3393,
+            0.4769
+          ]
+        },
+        {
+          "criterion_m": 0.003,
+          "pass_rate": 0.5677083333333334,
+          "wilson_95": [
+            0.497,
+            0.6358
+          ]
+        },
+        {
+          "criterion_m": 0.004,
+          "pass_rate": 0.8229166666666666,
+          "wilson_95": [
+            0.7627,
+            0.8704
+          ]
+        },
+        {
+          "criterion_m": 0.005,
+          "pass_rate": 0.8802083333333334,
+          "wilson_95": [
+            0.8267,
+            0.9188
+          ]
+        },
+        {
+          "criterion_m": 0.0075,
+          "pass_rate": 0.9114583333333334,
+          "wilson_95": [
+            0.8628,
+            0.944
+          ]
+        },
+        {
+          "criterion_m": 0.01,
+          "pass_rate": 0.9114583333333334,
+          "wilson_95": [
+            0.8628,
+            0.944
+          ]
+        },
+        {
+          "criterion_m": 0.015,
+          "pass_rate": 0.9114583333333334,
+          "wilson_95": [
+            0.8628,
+            0.944
+          ]
+        }
+      ]
+    },
+    {
       "cohort": "artifacts/campaign/secondtask/install_lead_in_seed4070.npz",
       "episodes": 16,
       "arrived": 16,
       "never_arrived": 0,
+      "delivery_rate": 1.0,
+      "precision_given_delivery": 0.0,
+      "precision_wilson_95": [
+        0.0,
+        0.1936
+      ],
       "criterion_m": 0.0025,
       "pass_rate": 0.0,
       "wilson_95": [
