@@ -62,6 +62,43 @@
 > | 3 | **The gate's threshold is what carries the result. Whether the gate exists is worth little** | ablation 32/48 vs 28/48, p = 0.424; bound geometric vs estimator-trust 17/24 vs 3/24, +14/-0, p = 1.22e-04 | **measured, and it corrected the claim** |
 > | 4 | The precondition must be geometric, because geometry transfers to an environment you cannot test in and behaviour does not | gravity swept from orbit to Earth on the released module | **running 2026-09-05** |
 >
+> ### The dose-response question is already answered, and backwards
+>
+> The hypothesis behind the base-offset experiment was that the gate buys more
+> when the manipulator is worse -- so a team with a good arm could skip it and a
+> team with a poor one could not. That experiment failed for an unrelated reason
+> (a 200 mm base move stops the chain rather than degrading it; the rail ladder
+> in the manuscript's Table 6 already said the cliff is between 4 and 6 mm). But
+> the question does not need it. The factorial answers it, at three seeds a cell:
+>
+> | guard admits on | perception channels | rate |
+> | --- | --- | ---: |
+> | the estimator's trust bound | unfixed | 4/24 |
+> | the bay's geometry | unfixed | 6/24 |
+> | the estimator's trust bound | both fixed | 3/24 |
+> | the bay's geometry | both fixed | **17/24** |
+>
+> The guard-bound effect, paired, at each level of delivery quality:
+>
+> * poor delivery: **+5 / -3, p = 0.73** -- nothing
+> * good delivery: **+14 / -0, p = 1.22e-04** -- everything
+>
+> **The gate's value rises with delivery quality, not with delivery error.** That
+> is the reverse of the hypothesis, and it is the more useful direction. A gate
+> can only pay when the precondition is *satisfiable*; with a poor estimate the
+> module rarely lands inside the envelope, so gating just holds the stroke and
+> buys nothing. Gating is not a remedy for a bad estimate.
+>
+> Note also that the channel fixes alone are worth nothing -- 4/24 against 3/24
+> with the estimator bound still in place, which is slightly *negative*. Neither
+> term does anything alone and together they are worth thirteen episodes. Any
+> write-up that reports a main effect for either is reporting an artifact of
+> averaging over the other.
+>
+> **What a designer takes from this**: fix the estimate first, then size the
+> gate. Doing them in the other order, or doing only one, measures as no effect
+> and would reasonably be abandoned.
+>
 > ### The gravity sweep: the failure *mode* changes, not just the rate
 >
 > Four levels on the module alone, three held-out seeds each, sixteen
