@@ -69,7 +69,14 @@ pawls too, which is a real and much stronger interface result.
 Two cohorts, no retention, and only one of three seeds ever completed. Its 0/16
 and the "needs a 10.41 mm tolerance" figure derived from it are both
 retention-absent numbers. Re-run all three seeds with `--rack_retention` and
-`TRACE=1`.
+`TRACE=1`, and verify by the artifact rather than the log line -- seeds 5070 and
+6070 died in Isaac startup when the session closed on 2026-09-05 and
+`supervise_secondtask.sh` printed `exit=0` for one of them anyway.
+
+**Why it still matters more than a public second task.** Same frozen controller,
+same bay, a different approach path. That is a two-configuration result on
+machinery that exists, where a Franka port would cost a baseline training
+campaign to reach the same point.
 
 ## H1 — Join pre-handoff state to outcomes that vary (**done 2026-09-05**)
 
@@ -133,22 +140,6 @@ read.
 interval fails to cover.
 
 This needs no new GPU. The three cohorts exist.
-
-## H4 — Finish the second workflow
-
-`install` is the second system and it is two thirds unrun. Seed 4070 scored
-0/16 with residuals 4.05–10.41 mm; seeds 5070 and 6070 died in Isaac startup
-when the session closed at 12:34 on 2026-09-05, and
-`supervise_secondtask.sh` logged `exit=0` for one of them anyway — the log line
-was written for a process that had produced no `.npz`.
-
-**Do not restart it until H1 is off the GPU.** Then re-run both seeds with
-`TRACE=1`, and verify by the artifact rather than the log line.
-
-**Why it matters more than a Franka port.** Same frozen controller, same bay,
-different approach path, and the residual moves by a factor of 2.4 in required
-tolerance. That is a two-configuration result already; a Franka port would cost
-a baseline training campaign to reach the same point.
 
 ## H5 — Why a run exits 0 having written nothing (**diagnosed, mostly closed**)
 
