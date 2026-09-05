@@ -98,15 +98,26 @@ different approach path, and the residual moves by a factor of 2.4 in required
 tolerance. That is a two-configuration result already; a Franka port would cost
 a baseline training campaign to reach the same point.
 
-## H5 — Audit the supervisor exit-status reporting, again
+## H5 — Why a run exits 0 having written nothing (**diagnosed, mostly closed**)
 
-`supervise_secondtask.sh` reported `exit=0` for a run that wrote nothing. The
-2026-09-03 rule — capture `rc=$?` before anything else expands — is in
-`tests/test_shell_status_reporting.py`, and this script was written after it, so
-either the rule has a hole or the script is exempt and should not be.
+`supervise_secondtask.sh` reported `exit=0` for two runs that wrote no episodes.
+Audited 2026-09-05: **the `rc=$?` rule is intact and there is no hole in it.**
+The script captures the status correctly and, more importantly, builds its
+aggregation list from `[ -f "${out}.npz" ]` and refuses to aggregate below three
+seeds. No certification was ever at risk. The log was the only thing that lied,
+and it now names a missing artifact instead of printing a bare `exit=0`.
 
-**Done when** the cause is named and the test covers it. Small, and it protects
-every campaign that follows.
+What remains open is the smaller and stranger half: **`run_workflow_demo.py`
+exited 0 after 36 seconds having written no `.npz`.** Both logs truncate at the
+same byte, 13.7 s into scene setup, and both carry `Disabling key-value database
+because another kit process is locking it` — a second Isaac process was running.
+The session closed at 12:33 and took them with it, so the likely story is a kill
+that surfaced as a zero status through Git-Bash. That is a guess.
+
+**Done when** either the driver is shown to return non-zero on a scene-setup
+abort, or the story above is confirmed and the exemption written down. Low
+priority: the artifact check above already prevents it from producing a wrong
+number.
 
 ## T0 — Source provenance for results that remain in scope (carried over)
 

@@ -88,8 +88,18 @@ for arm in lead_in none; do
     out="$OUT/install_${arm}_seed${seed}"
     run_install "$out" "$arm" 16 1900 "$seed"
     rc=$?
-    say "  install guard=$arm seed $seed exit=$rc"
-    [ -f "${out}.npz" ] && rows+=("${out}.npz")
+    # Verify by the artifact, never by the status. On 2026-09-05 seeds 5070 and
+    # 6070 exited 0 after 36 seconds having written no episodes -- the session
+    # was closing and both Isaac processes died in scene setup -- and the line
+    # below said "exit=0" for a run that produced nothing. The aggregation was
+    # never at risk, because `rows` is built from the file and the arm refuses
+    # to aggregate below three seeds. The log was the only thing that lied.
+    if [ -f "${out}.npz" ]; then
+      say "  install guard=$arm seed $seed exit=$rc, episodes written"
+      rows+=("${out}.npz")
+    else
+      say "  install guard=$arm seed $seed exit=$rc but NO EPISODES WRITTEN -- not a run"
+    fi
   done
   if [ "${#rows[@]}" -eq 3 ]; then
     ./.venv/Scripts/python.exe scripts/aggregate_evaluation.py --episodes "${rows[@]}" \
