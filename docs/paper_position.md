@@ -62,64 +62,52 @@
 > | 3 | **The gate's threshold is what carries the result. Whether the gate exists is worth little** | ablation 32/48 vs 28/48, p = 0.424; bound geometric vs estimator-trust 17/24 vs 3/24, +14/-0, p = 1.22e-04 | **measured, and it corrected the claim** |
 > | 4 | The precondition must be geometric, because geometry transfers to an environment you cannot test in and behaviour does not | gravity swept from orbit to Earth on the released module | **running 2026-09-05** |
 >
-> ### A third subsystem, the same shape of error: the grip bound
+> ### The gravity sweep: the failure *mode* changes, not just the rate
 >
-> The gravity sweep was built to test whether the environment closes part of the
-> error budget. It answered a different and better question, because the chain
-> does not survive long enough to reach the interface.
+> Four levels on the module alone, three held-out seeds each, sixteen
+> environments, rack retention off so a released module is genuinely unheld.
+> **Read this table by the module's position, not by its grip error** -- the
+> mistake made twice while reading it live was to treat terminal tool-to-module
+> distance as evidence the gripper held on.
 >
-> At lunar gravity on the module alone, the pooled result is **0/48 against
-> 14/48 in orbit**, and the mechanism is upstream of everything the sweep was
-> about. A traced diagnostic puts the loss in the **extraction** phase: the
-> module's height goes from 0.716 m at the seat-to-extract transition to
-> -120.7 m by the end, the transit block of the trace has **zero samples**, and
-> terminal grip error is 120 to 170 m. The chain never reaches transit. Nothing
-> here is about seating, settling, or rack retention -- the module is dropped
-> while being pulled out of the source bay.
+> | gravity | seated | module centre x | axial error | what happened |
+> | ---: | ---: | ---: | ---: | --- |
+> | 0.00, orbit | **14/48** | 0.676 | 0.001 m | reaches the seated plane |
+> | -1.62, Moon | 0/48 | -3.931 | 4.607 m | lost during extraction, 4.6 m away |
+> | -3.71, Mars | 0/48 | -2.420 | 3.096 m | lost, 3.1 m away |
+> | -9.81, Earth | 0/32 so far | **0.720** | **0.044 m** | **never leaves the source bay** |
 >
-> **The gripper is sized for a weightless module.** Pads closing on the capture
-> pin hold a module that has no weight; give it weight and the module, gripped
-> near one end, levers itself out about the grip point.
+> At Earth gravity every environment across two seeds ends with the module within
+> 7 cm of where it started, range 0.705 to 0.748. It is not being held by the
+> gripper; it is pinned in the bay by its own weight, extraction cannot move it,
+> and tool-to-module distance stays small because *nothing moved*. Terminal grip
+> error read alone says "grip retained" at both 0 g and 1 g and reads as a U
+> shape across the sweep. That reading is wrong, and the module's position is
+> what disambiguates it.
 >
-> **And this is the paper's recurring error a third time, in a third subsystem.**
-> Section 5's grip criterion is `pad_half_bearing_offset_m`, a bound on a *static
-> offset* -- how far a pad may slide off the pin. Under gravity the binding
-> quantity is a *moment*, and the geometric bound says nothing about it. That is
-> the same shape as the clearance bound that sized an entering module the process
-> corrects, and as the guard tolerance that bounded estimator trust while
-> deciding entry. Three subsystems, three correct quantities, three wrong
-> decisions.
+> **The quantity that varies monotonically is how hard the module is to move.**
+> Too light to stay put at lunar gravity and it is lost; too heavy to pull free
+> at Earth gravity and the extraction stalls. Zero gravity is the only level at
+> which the module both stays where it is put and can be moved -- which is not a
+> coincidence, because the workcell was designed there.
 >
-> **The monotone test was set and it failed, so the claim is not made.** The
-> criterion written here before Mars ran was: if the loss stays in extraction as
-> gravity rises, the mechanism is confirmed at three levels; if it moves, it
-> cannot be claimed. It moved.
+> **The claim, and it needs no mechanism.** A workcell validated at zero gravity
+> does not fail *more* as gravity rises; it fails *differently* at every level,
+> and the mode at 1 g is the opposite of the mode at 1/6 g. Extrapolating a
+> zero-gravity design toward any gravity is therefore not conservative in either
+> direction. That rests on ordering and on position, both of which survive the
+> pad contact model being an idealisation, and it is the useful sentence for a
+> designer.
 >
-> | gravity | seated | median grip error | distribution |
-> | ---: | ---: | ---: | --- |
-> | 0.00 | 6/16 | 12.74 mm | all gripped |
-> | -1.62 | 0/16 | 151.7 m | all lost, 57 to 173 m |
-> | -3.71 | 0/16 | 17.3 m | **bimodal** -- four environments at 7.5 to 14 mm, the rest 3.3 to 130 m |
->
-> At Mars gravity four of sixteen environments *retained* the grip at an error
-> comparable to orbit, where at lunar gravity none did. More gravity, better grip
-> retention. Whatever is happening is not "weight exceeds what the pads hold",
-> because that would be monotone. A plausible alternative is that at higher
-> gravity the module is pressed onto the bay's rails hard enough to stay put --
-> which would mean the two levels fail for different reasons and the sweep is
-> measuring at least two mechanisms. That is a guess and is written here as one.
->
-> **What survives.** Gravity on the module takes this chain from 6/16 to 0/16 at
-> both levels tested, and at lunar gravity a traced diagnostic puts the loss in
-> extraction. Both of those are measurements. The generalisation from them is
-> not, and the grip-bound paragraph above should be read as a hypothesis the
-> sweep was built to test and did not confirm.
->
-> **Other limits, unchanged.** The pad contact model is a disclosed idealisation,
-> so only orderings are trustworthy and this sweep does not produce a clean one.
-> Gravity acts on the module alone; the arm is still weightless. Earth is still
-> running and will either support the pressed-onto-the-rails guess or leave the
-> sweep with three levels and no mechanism.
+> **What it still does not support.** Gravity acts on the module alone, so this
+> is not a lunar or terrestrial workcell -- the arm is weightless throughout.
+> Nothing here says the seating interface would behave this way with a
+> gravity-appropriate gripper and a retuned controller; the sweep says this
+> workcell does not transfer, not that no workcell would. And the earlier
+> reading of it -- that the grip bound is a static offset where the binding
+> quantity is a moment, the paper's recurring error a third time -- was
+> withdrawn when Mars broke its monotone test and is not restored by the Earth
+> point. It remains a hypothesis with one traced diagnostic behind it.
 >
 > ### Claim 3 came back different from the way it was written
 >
