@@ -1261,6 +1261,16 @@ INSERT_TRACE_FIELDS = (
     "true_blade_x_m",
     "true_blade_y_m",
     "true_blade_z_m",
+    # The full orientation, not just its magnitude. `orientation_error_rad` is
+    # an axis-angle *norm*, so it cannot say which way the module is cocked, and
+    # a jam that is a yaw between the side guides and one that is a pitch under
+    # the lead-in read identically through it. The quaternion is already
+    # computed in `_trace_state` for the hand-over rows; this writes it here too
+    # and adds no work to the step.
+    "blade_qw",
+    "blade_qx",
+    "blade_qy",
+    "blade_qz",
     "lateral_error_m",
     "orientation_error_rad",
     "clear_to_advance",
@@ -2195,6 +2205,7 @@ class WorkflowDriver:
                 self.guarded_insert_target_x[ids].to(torch.float64).unsqueeze(-1),
                 estimated_module_pos.to(torch.float64),
                 state["blade_local"][ids],
+                state["blade_quat"][ids],
                 lateral_error.to(torch.float64).unsqueeze(-1),
                 orientation_error.to(torch.float64).unsqueeze(-1),
                 clear_to_advance.to(torch.float64).unsqueeze(-1),
