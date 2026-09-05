@@ -39,6 +39,7 @@ predicate fires; see ``_workflow_outcome``.
 from __future__ import annotations
 
 import argparse
+import copy
 import os
 import hashlib
 import json
@@ -5621,7 +5622,13 @@ def main() -> dict[str, object]:
             # manipulator and the rack stay weightless and the single thing that
             # changes is whether a released part settles.
             env_cfg.sim.gravity = (0.0, 0.0, float(args.module_gravity_z))
-            env_cfg.scene.spare_blade.spawn.rigid_props.disable_gravity = False
+            # Deep-copied rather than mutated in place, for the reason
+            # `force_insert_env_cfg.py` gives about the same object: every
+            # published grapple-pin task reads `GRAPPLE_PIN_BLADE_CFG`, and none
+            # of them should acquire weight by side effect.
+            _blade = copy.deepcopy(env_cfg.scene.spare_blade)
+            _blade.spawn.rigid_props.disable_gravity = False
+            env_cfg.scene.spare_blade = _blade
         if args.latch_on_release:
             # **Set before configure_robustness, not after, and that ordering is
             # the whole of it.** configure_robustness rebuilds the event set and
