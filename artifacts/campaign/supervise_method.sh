@@ -127,7 +127,10 @@ OUT2=artifacts/campaign/gravity
 mkdir -p "$OUT2"
 if wait_for_memory; then
   for g in 0.0 -1.62 -3.71 -9.81; do
-    tag=$(echo "$g" | tr -d '-.' )
+    # `tr -d '-.'` reads '-.' as an option and fails, leaving tag empty, which
+    # lands every level of the sweep on one filename. `--` ends option parsing.
+    tag=$(echo "$g" | tr -d -- '-.')
+    [ -n "$tag" ] || { say "empty tag for gravity $g; refusing to run a sweep whose points would collide"; exit 1; }
     rows=()
     for seed in 4070 5070 6070; do
       out="$OUT2/g${tag}_seed${seed}"

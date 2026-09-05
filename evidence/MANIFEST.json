@@ -8,9 +8,9 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 80,
+    "canonical": 84,
     "retracted": 12,
-    "historical": 179
+    "historical": 180
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -523,6 +523,90 @@
       "evidence_type": "geometry_check_no_simulator",
       "generated_utc": "2026-09-04T22:16:19.182584+00:00",
       "holds_up": "Simulator-free: where the arm stands, what the channel admits, which sections fit."
+    },
+    "workflow_robot_carried_gravity_00_n48_certification.json": {
+      "title": "Robot-carried relocation, module gravity 0.0 m/s^2, released unheld, 48 episodes",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-05T12:32:09+00:00",
+      "overall": {
+        "episodes": 48,
+        "successes": 14,
+        "success_rate": 0.291667,
+        "wilson_95": [
+          0.182416,
+          0.431793
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "91785782d8901471d5627dcdf303c9a58ad47d72",
+        "dirty": false
+      },
+      "policy_sha256": "1AFE41D3AFBC8C6B6A26C3A426863F37ADF8C44B3B10849ECF0F4B88FBEFAEA3",
+      "holds_up": "Orbit, the control: 14/48 with the module released unheld, terminal module centre at x = 0.676 and 0.001 m of axial error. The only level of the sweep at which the module both stays where it is put and can be moved."
+    },
+    "workflow_robot_carried_gravity_162_n48_certification.json": {
+      "title": "Robot-carried relocation, module gravity -1.62 m/s^2, released unheld, 48 episodes",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-05T12:43:12+00:00",
+      "overall": {
+        "episodes": 48,
+        "successes": 0,
+        "success_rate": 0.0,
+        "wilson_95": [
+          0.0,
+          0.0741
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "91785782d8901471d5627dcdf303c9a58ad47d72",
+        "dirty": false
+      },
+      "policy_sha256": "1AFE41D3AFBC8C6B6A26C3A426863F37ADF8C44B3B10849ECF0F4B88FBEFAEA3",
+      "holds_up": "Lunar gravity on the module: 0/48, terminal module centre 4.6 m from the seated plane. Lost during extraction in all 48 environments; a traced diagnostic puts the loss between the seat-to-extract transition and the end, with the trace's transit block empty."
+    },
+    "workflow_robot_carried_gravity_371_n48_certification.json": {
+      "title": "Robot-carried relocation, module gravity -3.71 m/s^2, released unheld, 48 episodes",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-05T12:54:45+00:00",
+      "overall": {
+        "episodes": 48,
+        "successes": 0,
+        "success_rate": 0.0,
+        "wilson_95": [
+          0.0,
+          0.0741
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "91785782d8901471d5627dcdf303c9a58ad47d72",
+        "dirty": false
+      },
+      "policy_sha256": "1AFE41D3AFBC8C6B6A26C3A426863F37ADF8C44B3B10849ECF0F4B88FBEFAEA3",
+      "holds_up": "Mars gravity: 0/48, terminal module centre 3.1 m away. Lost, less far than at lunar gravity."
+    },
+    "workflow_robot_carried_gravity_981_n48_certification.json": {
+      "title": "Robot-carried relocation, module gravity -9.81 m/s^2, released unheld, 48 episodes",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-05T13:06:18+00:00",
+      "overall": {
+        "episodes": 48,
+        "successes": 0,
+        "success_rate": 0.0,
+        "wilson_95": [
+          0.0,
+          0.0741
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "91785782d8901471d5627dcdf303c9a58ad47d72",
+        "dirty": false
+      },
+      "policy_sha256": "1AFE41D3AFBC8C6B6A26C3A426863F37ADF8C44B3B10849ECF0F4B88FBEFAEA3",
+      "holds_up": "Earth gravity: 0/48, and the failure mode inverts. Terminal module centre is x = 0.720 against a start near 0.676 -- every environment across three seeds ends within 7 cm of where it began. The module is not carried and lost; it is pinned in the source bay by its own weight and the extraction cannot move it. Read beside the lunar report: a workcell validated at zero gravity does not fail more as gravity rises, it fails differently at every level, and the mode at 1 g is the opposite of the mode at 1/6 g."
     },
     "workflow_robot_carried_insert_v24rack_chain_policy_certification.json": {
       "title": "Robot-carried relocation, seating driven by the learned insert policy, v24rack",
@@ -1681,6 +1765,10 @@
     "workflow_remove_w65_certification.json": {
       "title": "Chained servicing workflow: remove",
       "generated_utc": "2026-08-20T02:37:27+00:00"
+    },
+    "workflow_robot_carried_gravity__n48_certification.json": {
+      "title": "Robot-carried relocation, module gravity -9.81 m/s^2, released unheld, 48 episodes",
+      "generated_utc": "2026-09-05T13:06:18+00:00"
     },
     "workflow_robot_carried_insert_v33force_c11065_chain_guarded_certification.json": {
       "title": "Robot-carried relocation, scripted guarded advance, force task, channel throat 11.065 mm per side",

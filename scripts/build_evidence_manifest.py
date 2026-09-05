@@ -193,6 +193,43 @@ CANONICAL: tuple[tuple[str, str], ...] = (
             "headline contrasts. Preserved so that statement is checkable rather than remembered."
         ),
     ),
+    # -- gravity swept on the module, 2026-09-05 -----------------------------
+    # Four levels, three held-out seeds each, rack retention off. **Read these by
+    # the module's terminal position, not by its grip error.** Terminal
+    # tool-to-module distance is small at both 0 g and 1 g and traces a U shape
+    # across the sweep, which is an artifact: at 1 g it is small because nothing
+    # moved. Position says the module never leaves the source bay.
+    (
+        "workflow_robot_carried_gravity_00_n48_certification.json",
+        (
+            "Orbit, the control: 14/48 with the module released unheld, terminal module centre at "
+            "x = 0.676 and 0.001 m of axial error. The only level of the sweep at which the module both "
+            "stays where it is put and can be moved."
+        ),
+    ),
+    (
+        "workflow_robot_carried_gravity_162_n48_certification.json",
+        (
+            "Lunar gravity on the module: 0/48, terminal module centre 4.6 m from the seated plane. "
+            "Lost during extraction in all 48 environments; a traced diagnostic puts the loss between "
+            "the seat-to-extract transition and the end, with the trace's transit block empty."
+        ),
+    ),
+    (
+        "workflow_robot_carried_gravity_371_n48_certification.json",
+        "Mars gravity: 0/48, terminal module centre 3.1 m away. Lost, less far than at lunar gravity.",
+    ),
+    (
+        "workflow_robot_carried_gravity_981_n48_certification.json",
+        (
+            "Earth gravity: 0/48, and the failure mode inverts. Terminal module centre is x = 0.720 "
+            "against a start near 0.676 -- every environment across three seeds ends within 7 cm of "
+            "where it began. The module is not carried and lost; it is pinned in the source bay by its "
+            "own weight and the extraction cannot move it. Read beside the lunar report: a workcell "
+            "validated at zero gravity does not fail more as gravity rises, it fails differently at "
+            "every level, and the mode at 1 g is the opposite of the mode at 1/6 g."
+        ),
+    ),
     # -- what the handoff gate is actually worth, 2026-09-05 -----------------
     (
         "handoff_gate_ablation_paired_n48.json",
