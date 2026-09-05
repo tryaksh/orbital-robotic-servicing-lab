@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-117 scripts. Grouped by the verb their filename starts with.
+118 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -88,6 +88,7 @@ These read `.npz` episode metrics and write `evidence/*.json`.
 | `report_insert_attitude.py` | Why the insert skill does not seat: attitude it cannot deliver, not creep. |
 | `report_insert_depth_limit.py` | Why the insert skill stops short: it is attitude again, one layer down. |
 | `report_insert_distribution_intervention.py` | Preserve a targeted insertion-training intervention and its losing control. |
+| `report_jam_mechanism.py` | Which way is the module cocked when it wedges: yaw, pitch, or roll? |
 | `report_mating_compliance.py` | Pool the mating-compliance runs into one table, and one specification number. |
 | `report_pre_handoff_predictability.py` | Does the state handed to the seating step predict what the seating step leaves? |
 | `report_prescription_factorial.py` | The rack prescription, read as the 2x2 it needed to be all along. |
