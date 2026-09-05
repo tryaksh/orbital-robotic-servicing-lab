@@ -32,8 +32,32 @@ def _driver() -> str:
 def test_the_default_arm_is_the_shipped_one() -> None:
     source = _driver()
     declaration = source.split("'--fiducial_guard_bounds'", 1)[1].split("parser.add_argument", 1)[0]
-    assert "choices=('estimator', 'lead_in')" in declaration
+    # The two published arms must both still be offered, and the default must
+    # stay the shipped one, or every number measured before today silently
+    # changes meaning. `none` joined them on 2026-09-05 as the *ablation* -- the
+    # arm that removes the envelope test so the gate's contribution can be
+    # measured -- and it is listed here so adding a fourth option has to be
+    # deliberate.
+    assert "'estimator'" in declaration
+    assert "'lead_in'" in declaration
+    assert "'none'" in declaration
     assert "default='estimator'" in declaration
+
+
+def test_the_ablation_keeps_the_detection_interlock() -> None:
+    """`none` must remove the envelope test and nothing else.
+
+    The handoff claim is that gating on the downstream skill's precondition beats
+    handing off on the upstream skill finishing. That comparison is only clean if
+    the ablated arm still stops when the datum is lost: an arm that also pushes
+    blind would be measuring two changes and the result would mean neither.
+    """
+
+    source = _driver()
+    body = source.split("if args.fiducial_guard_bounds == 'none':", 1)[1]
+    body = body.split("clear_to_advance = sensor_ready", 1)
+    assert len(body) == 2, "the ablation no longer assigns clear_to_advance = sensor_ready"
+    assert "lateral_tolerance" not in body[1].split("self.guarded_insert_steps", 1)[0]
 
 
 def test_only_the_admissibility_test_is_inside_the_switch() -> None:

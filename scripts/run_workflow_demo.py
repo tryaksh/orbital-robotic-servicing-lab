@@ -800,13 +800,32 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         '--fiducial_guard_bounds',
-        choices=('estimator', 'lead_in'),
+        choices=('estimator', 'lead_in', 'none'),
         default='estimator',
         help=(
             'Which bounds the guarded advance admits on with the fiducial backend. '
             '"estimator" is the shipped pair, sized above the certified RGB-D p95 errors; '
-            '"lead_in" is the entry flare catch the state path already uses. The default '
+            '"lead_in" is the entry flare catch the state path already uses. "none" removes '
+            'the envelope test entirely and is the ablation, not a configuration: the advance '
+            'then proceeds on the upstream skill having finished rather than on the downstream '
+            "skill's precondition being met, which is the comparison the handoff claim rests on. "
+            'The detection interlock is unchanged in all three -- a missing datum still fails '
+            'closed -- so "none" isolates the geometric gate and not the sensing. The default '
             'reproduces every published number.'
+        ),
+    )
+    parser.add_argument(
+        '--module_gravity_z',
+        type=float,
+        default=0.0,
+        help=(
+            'Gravitational acceleration on the *module*, m/s^2, signed. Default 0.0 is the '
+            'orbital case every published number was measured under. Earth is -9.81, Mars '
+            '-3.71, the Moon -1.62. Gravity is applied to the module alone and not to the '
+            'manipulator, deliberately: the question is what a released part does, and giving '
+            'the arm weight as well would change its dynamics and confound the answer. This '
+            'turns gravity from a property of the setting into a swept parameter, which is what '
+            'lets the interface requirement be reported as a curve rather than as one point.'
         ),
     )
     parser.add_argument(
@@ -4692,6 +4711,16 @@ class WorkflowDriver:
                 orientation_tolerance = FIDUCIAL_GUARDED_ORIENTATION_TOLERANCE_RAD
             sensor_ready = estimator.fiducial_current_detection[ids]
         clear_to_advance = sensor_ready & (lateral_error <= lateral_tolerance) & (orientation_error <= orientation_tolerance)
+        if args.fiducial_guard_bounds == 'none':
+            # **The ablation.** Everything above still runs and is still recorded,
+            # so the report says exactly how far outside its envelope each
+            # advance was; what changes is that being outside no longer holds
+            # the stroke. This is the arm that answers what the gate buys, and
+            # it is the one comparison the handoff argument cannot be made
+            # without. `sensor_ready` is kept: losing the datum must still stop
+            # the insertion, or this measures blind pushing rather than ungated
+            # pushing.
+            clear_to_advance = sensor_ready
         self.guarded_insert_steps[ids] += clear_to_advance.to(torch.long)
         self.guarded_insert_holds[ids] += (~clear_to_advance).to(torch.long)
 
@@ -5583,6 +5612,16 @@ def main() -> dict[str, object]:
     try:
         device = args.device or "cuda:0"
         env_cfg = parse_env_cfg(args.task, device=device, num_envs=args.num_envs)
+        if args.module_gravity_z != 0.0:
+            # **Both halves are needed and neither alone does anything.** The
+            # scene sets `disable_gravity=True` on every rigid body, so setting
+            # the simulation's gravity vector by itself changes nothing; and
+            # clearing the flag on the module by itself leaves it in a world with
+            # no gravity to feel. Only the module's flag is cleared, so the
+            # manipulator and the rack stay weightless and the single thing that
+            # changes is whether a released part settles.
+            env_cfg.sim.gravity = (0.0, 0.0, float(args.module_gravity_z))
+            env_cfg.scene.spare_blade.spawn.rigid_props.disable_gravity = False
         if args.latch_on_release:
             # **Set before configure_robustness, not after, and that ordering is
             # the whole of it.** configure_robustness rebuilds the event set and
@@ -6207,6 +6246,10 @@ def main() -> dict[str, object]:
                 if _report_estimator is not None and _report_estimator.backend == "fiducial_pnp"
                 else "entry_flare_catch"
             )
+        if args.fiducial_guard_bounds == "none":
+            # The bounds above were still computed and are still reported, so a
+            # reader can see what would have held. Nothing held.
+            applied_guarded_tolerance_source = "ablated_no_envelope_gate"
         insert_only = args.start_insert_station is not None
         evaluation_condition = (
             {
@@ -6295,6 +6338,7 @@ def main() -> dict[str, object]:
                 "robot_base_y": args.robot_base_y,
                 "destination_channel_relief_m": args.destination_channel_relief_m,
                 "module_mass_kg": getattr(args, "module_mass_kg", None),
+                "module_gravity_z_m_per_s2": getattr(args, "module_gravity_z", 0.0),
             },
             # The same reasoning as `geometry_arm` above, for the arms that are
             # defined by a controller or a channel rather than by geometry. Every
@@ -6812,6 +6856,7 @@ def main() -> dict[str, object]:
                                     "destination_channel_relief_m": getattr(
                                         args, "destination_channel_relief_m", None
                                     ),
+                                    "module_gravity_z_m_per_s2": getattr(args, "module_gravity_z", 0.0),
                                 },
                                 "rack_clearance": {
                                     "per_side_mm": args.rack_lateral_clearance_mm,
