@@ -90,13 +90,36 @@
 > deciding entry. Three subsystems, three correct quantities, three wrong
 > decisions.
 >
-> **What it does not support.** The pad contact model is a disclosed
-> idealisation, so the *threshold* at which the grip fails is not trustworthy --
-> only the ordering. Gravity acts on the module alone, so this is not a lunar
-> workcell; the arm is still weightless. And it is one 4-environment diagnostic
-> plus two 16-environment seeds at one gravity level, with Mars and Earth still
-> running. If the loss stays in extraction as gravity rises, that is a monotone
-> confirmation at three levels and the claim can be made; if it moves, it cannot.
+> **The monotone test was set and it failed, so the claim is not made.** The
+> criterion written here before Mars ran was: if the loss stays in extraction as
+> gravity rises, the mechanism is confirmed at three levels; if it moves, it
+> cannot be claimed. It moved.
+>
+> | gravity | seated | median grip error | distribution |
+> | ---: | ---: | ---: | --- |
+> | 0.00 | 6/16 | 12.74 mm | all gripped |
+> | -1.62 | 0/16 | 151.7 m | all lost, 57 to 173 m |
+> | -3.71 | 0/16 | 17.3 m | **bimodal** -- four environments at 7.5 to 14 mm, the rest 3.3 to 130 m |
+>
+> At Mars gravity four of sixteen environments *retained* the grip at an error
+> comparable to orbit, where at lunar gravity none did. More gravity, better grip
+> retention. Whatever is happening is not "weight exceeds what the pads hold",
+> because that would be monotone. A plausible alternative is that at higher
+> gravity the module is pressed onto the bay's rails hard enough to stay put --
+> which would mean the two levels fail for different reasons and the sweep is
+> measuring at least two mechanisms. That is a guess and is written here as one.
+>
+> **What survives.** Gravity on the module takes this chain from 6/16 to 0/16 at
+> both levels tested, and at lunar gravity a traced diagnostic puts the loss in
+> extraction. Both of those are measurements. The generalisation from them is
+> not, and the grip-bound paragraph above should be read as a hypothesis the
+> sweep was built to test and did not confirm.
+>
+> **Other limits, unchanged.** The pad contact model is a disclosed idealisation,
+> so only orderings are trustworthy and this sweep does not produce a clean one.
+> Gravity acts on the module alone; the arm is still weightless. Earth is still
+> running and will either support the pressed-onto-the-rails guess or leave the
+> sweep with three levels and no mechanism.
 >
 > ### Claim 3 came back different from the way it was written
 >
