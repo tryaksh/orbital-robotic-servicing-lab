@@ -48,6 +48,41 @@
 >   closed-loop delivery distribution, and it is about the state *after release*,
 >   which an RCC does not address because the compliance is on the robot side and
 >   stops acting the moment the hand opens.
+> * **Sequential composition of controllers (Burridge, Rizzi and Koditschek,
+>   IJRR 1999).** This is the closest prior art and the paper must open its
+>   related work with it. Their structure is ours: compose controllers so that
+>   "the goal point of each controller lies within the domain of attraction
+>   induced by the next-lower controller". Handing off when the next controller's
+>   precondition holds is a 1999 idea and we may not present it as new.
+>
+>   **What has changed is that the funnels are no longer computable.** Their
+>   method assumes each controller has an analytically characterised domain of
+>   attraction -- provable for a paddle batting a ball, unavailable for a policy
+>   trained by PPO on a contact-rich task with a rendered perception stack. The
+>   modern answer is to *learn* the certificate: neural Lyapunov and barrier
+>   functions, contraction metrics, Zubov-style domain estimation, differentiable
+>   reachability. That line is active and it does not yet reach contact-rich
+>   manipulation with perception in the loop.
+>
+>   **So the contribution is a third option, and it is the one the deadline
+>   forces:** do not characterise the policy's domain at all. Derive the
+>   precondition from the *task geometry*, which is knowable in closed form, and
+>   gate on whether the deployed estimator says it is satisfied. Two consequences
+>   are worth stating as claims in their own right. The precondition is a
+>   property of the parts rather than of the controller, so **it survives a
+>   policy change** -- retrain the skill on new data and the guarantee stands,
+>   where a learned certificate must be recomputed. And it is measurable at run
+>   time by the sensing that is already deployed, which a domain of attraction is
+>   not.
+>
+>   The honest cost of the third option is that it guarantees less. A funnel says
+>   the controller will converge; a geometric precondition says only that the
+>   part is somewhere the next skill was trained to accept. The paper should say
+>   so plainly, and then point at the measurement: the skill's own success rate
+>   is not its domain of attraction either -- 99.20% alone, 25.00% composed --
+>   so the weaker guarantee is being compared against no guarantee, not against a
+>   real one.
+>
 > * **Skill chaining and composition failure (2021-2026).** The phenomenon is
 >   documented and there is an active line on it -- adversarial skill chaining
 >   with terminal-state regularization, foresight residual RL for long-horizon
