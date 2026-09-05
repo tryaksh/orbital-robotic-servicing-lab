@@ -27,8 +27,19 @@
 > attributes the dominant failure to that excess. Rebuilding it at the
 > prescribed clearance made the chain worse -- 110/192 (57.29%) at the shipped
 > relief against 64/192 (33.33%) at the design point, with median lateral error
-> rising from 2.186 mm to 3.279 mm. The upper bound does not govern at these
-> clearances. Reported, kept, and it is why the window is no longer the lead.
+> rising from 2.186 mm to 3.279 mm. Read as the paired design it is: **28
+> episodes gained, 74 lost, McNemar two-sided p = 5.9e-06**. That is not an
+> inconclusive test, it is a clean refutation.
+> `evidence/rack_prescription_paired_n192.json`.
+>
+> **What that costs, and what it leaves.** The library's two-sided window is
+> half wrong: the seated-rest upper bound does not govern at these clearances,
+> and the paper may not present the window as validated. The entry bound
+> survives -- and it is the one the handoff gate actually uses, because the guard
+> admits on the entry-flare catch rather than on the seated-rest criterion. So
+> the geometric contribution shrinks to the bound that survived, it shrinks in
+> the direction the thesis needs rather than against it, and it is the clearest
+> reason the geometry is a component of this paper and not its headline.
 >
 > ### The four claims, and what stands behind each
 >
