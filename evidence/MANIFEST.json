@@ -1444,7 +1444,7 @@
     },
     "handoff_qualification_residual_v1.json": {
       "title": "Handoff qualification read from the residual distribution",
-      "generated_utc": "2026-09-05T19:11:48.630433+00:00"
+      "generated_utc": "2026-09-05T19:38:35.184374+00:00"
     },
     "inference_budget.json": {
       "title": "Onboard compute budget of the learned components"
@@ -1495,7 +1495,7 @@
     },
     "pre_handoff_predictability_v1.json": {
       "title": "Whether pre-handoff state predicts the residual the seating step leaves",
-      "generated_utc": "2026-09-05T19:30:04.025578+00:00"
+      "generated_utc": "2026-09-05T19:38:34.958039+00:00"
     },
     "rack_requirement_sweep_v1.json": {
       "title": "The rack requirement as a function of the manipulator's delivered attitude"
@@ -1516,11 +1516,11 @@
     },
     "residual_transfer_v1.json": {
       "title": "Criterion-curve reliability within a configuration, and ordering across three",
-      "generated_utc": "2026-09-05T19:10:57.440600+00:00"
+      "generated_utc": "2026-09-05T19:38:35.967447+00:00"
     },
     "residual_vs_counted_power_v1.json": {
       "title": "Reading the residual against counting successes, at matched episode cost",
-      "generated_utc": "2026-09-05T19:02:02.495361+00:00"
+      "generated_utc": "2026-09-05T19:38:37.135033+00:00"
     },
     "rgbd_strict_rack_retention_640px_burst_full_seed5070.json": {},
     "rgbd_strict_rack_retention_640px_burst_full_seed6070.json": {},
@@ -1584,7 +1584,7 @@
     },
     "trace_non_perturbing_v1.json": {
       "title": "Whether recording the handoff trace changes the run",
-      "generated_utc": "2026-09-05T19:29:57.315683+00:00"
+      "generated_utc": "2026-09-05T19:38:33.709355+00:00"
     },
     "uncertain_force_threshold_aware.json": {
       "title": "Commanded contact-force budget, force-aware",

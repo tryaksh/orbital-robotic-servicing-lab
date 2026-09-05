@@ -1,9 +1,20 @@
 {
   "title": "Handoff qualification read from the residual distribution",
   "evidence_type": "second_reading_of_existing_episodes",
-  "generated_utc": "2026-09-05T19:11:48.630433+00:00",
+  "generated_utc": "2026-09-05T19:38:35.184374+00:00",
   "criterion_m": 0.0025,
   "required_rate": 0.95,
+  "source_revision": {
+    "available": true,
+    "commit": "47b6b95b4e6ee080ad276a5122469e3a706724eb",
+    "branch": "research/correction-aware-handoffs",
+    "dirty": true,
+    "tracked_changes": [
+      " M evidence/pre_handoff_predictability_v1.json",
+      " M evidence/trace_non_perturbing_v1.json"
+    ],
+    "error": null
+  },
   "cohorts": [
     {
       "cohort": "artifacts/robustness192_section/nominal.npz",

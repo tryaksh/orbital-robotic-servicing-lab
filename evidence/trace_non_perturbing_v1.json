@@ -1,10 +1,18 @@
 {
   "title": "Whether recording the handoff trace changes the run",
   "evidence_type": "simulation_only",
-  "generated_utc": "2026-09-05T19:29:57.315683+00:00",
+  "generated_utc": "2026-09-05T19:38:33.709355+00:00",
   "question": "The cohort whose outcomes vary was run without --handoff_trace. Before its pre-handoff state can be joined to those outcomes, the traced re-run has to be the same run.",
   "criterion_m": 0.0025,
   "tolerance_m": 1e-09,
+  "source_revision": {
+    "available": true,
+    "commit": "47b6b95b4e6ee080ad276a5122469e3a706724eb",
+    "branch": "research/correction-aware-handoffs",
+    "dirty": false,
+    "tracked_changes": [],
+    "error": null
+  },
   "pairs": [
     {
       "original": "artifacts/robustness64_corrected/nominal.npz",

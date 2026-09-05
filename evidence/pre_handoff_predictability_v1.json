@@ -1,7 +1,7 @@
 {
   "title": "Whether pre-handoff state predicts the residual the seating step leaves",
   "evidence_type": "simulation_only",
-  "generated_utc": "2026-09-05T19:30:04.025578+00:00",
+  "generated_utc": "2026-09-05T19:38:34.958039+00:00",
   "question": "The pivot brief asks which incoming errors get corrected and which stay dangerous. This asks the measurable form: does the state handed to the seating step carry any information about the residual it leaves?",
   "cohorts": [
     "artifacts/traced_nominal/seed4070/nominal.npz",
@@ -9,6 +9,16 @@
     "artifacts/traced_nominal/seed6070/nominal.npz"
   ],
   "criterion_m": 0.0025,
+  "source_revision": {
+    "available": true,
+    "commit": "47b6b95b4e6ee080ad276a5122469e3a706724eb",
+    "branch": "research/correction-aware-handoffs",
+    "dirty": true,
+    "tracked_changes": [
+      " M evidence/trace_non_perturbing_v1.json"
+    ],
+    "error": null
+  },
   "episodes_with_pre_handoff_row": 187,
   "arrived": 187,
   "base_rate": 0.5882352941176471,
