@@ -87,6 +87,23 @@ the existing cohort scored 110/192, and if the traced run reproduces that, the
 trace is non-perturbing and its pre-handoff state may be joined to outcomes
 already published. If it does not reproduce, that is the more important result.
 
+**Seed 4070, 2026-09-05 13:14: the control passes exactly.** 35/64 against
+35/64, all 64 episodes agreeing individually, and a maximum per-episode residual
+difference of 0.000000 mm. Recording the trace changes nothing, and at this
+seed, environment count, commit and machine the chain is bit-reproducible —
+measured rather than assumed, and claimed no further than that.
+`scripts/check_trace_is_non_perturbing.py`, and it exits non-zero when the two
+runs are not the same run.
+
+**And the first read of the joined data goes against H2.** On seed 4070's 62
+arrived episodes, the largest of 24 pre-handoff feature correlations with the
+terminal residual is **0.181**, against a null in which the largest of 24 noise
+correlations at n = 62 has a median of **0.285**. The strongest apparent signal
+is weaker than chance typically produces. That is one seed and the remaining two
+are running; if it holds at 192 episodes, the fixture is not merely correcting
+the incoming error but erasing it, and there is nothing for a pre-handoff
+predictor to learn.
+
 ## Day-14 decision, with the margin declared before the data
 
 The primary endpoint is **held-out criterion-curve accuracy**: fit on two

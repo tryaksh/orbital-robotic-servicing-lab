@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-110 scripts. Grouped by the verb their filename starts with.
+112 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -32,6 +32,7 @@ These are the ones to run first and the ones that run in CI. A requirement only 
 | `check_service_latch_clearance.py` | Prove the robot-side service latch fits, from measurements and no simulator. |
 | `check_servicing_camera_geometry.py` | Project the flush datum through the shipped camera over the workflow envelope. |
 | `check_source_provenance.py` | Can the source that produced a report still be recovered from git? |
+| `check_trace_is_non_perturbing.py` | Did turning the trace on change the run it was measuring? |
 | `check_workcell_geometry.py` | Answer the workcell's geometry questions before anything starts a simulator. |
 
 ## Runners — drive a workflow or a training job
@@ -86,6 +87,7 @@ These read `.npz` episode metrics and write `evidence/*.json`.
 | `report_insert_depth_limit.py` | Why the insert skill stops short: it is attitude again, one layer down. |
 | `report_insert_distribution_intervention.py` | Preserve a targeted insertion-training intervention and its losing control. |
 | `report_mating_compliance.py` | Pool the mating-compliance runs into one table, and one specification number. |
+| `report_pre_handoff_predictability.py` | Does the state handed to the seating step predict what the seating step leaves? |
 | `report_rack_retention.py` | Pair strict no-rack and rack-retention cohorts and report load transfer. |
 | `report_residual_transfer.py` | Does the criterion curve hold up, within a configuration and across three? |
 | `report_robot_carried_interface.py` | Pool the robot-carried transit runs into one interface result. |
