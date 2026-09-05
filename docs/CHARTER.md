@@ -100,19 +100,29 @@ named.** With the fixture fitted the prescription costs 12 episodes in 192 —
 0 gained, 12 lost, two-sided p = 4.9e-04 — not 46. The other 62 episodes the
 original comparison attributed to the prescription were the missing fixture.
 
-The 12 are not near-misses pushed across a line. They are a gross mis-seating
-mode that the shipped relief does not produce at all, clustered tightly at 32.0
-to 32.9 mm, and they are **the same environments with the same residuals in both
-relief-0 arms** — env 3, 8 and 42 at seed 4070 read 32.763, 32.901 and 32.052 mm
-with and without pawls. Deterministic geometry, not scatter. A pawl engages
-after the insertion predicate fires, so it preserves whatever seating it is
-given and locks the bad ones in as faithfully as the good ones.
+The 12 are not near-misses pushed across a line, and they are not bad seatings
+that the pawls lock in. **They never seat at all.** Checked per episode: they
+reach the insert phase, do not time out, and the insertion success predicate
+never fires — `predicate_fired = 0`, no settle rows written, retention never
+engaged. The module stops 32.0 to 32.9 mm off centre during insertion and the
+episode ends there. They are the same environments with the same residuals in
+both relief-0 arms — env 3, 8 and 42 at seed 4070 read 32.763, 32.901 and
+32.052 mm with and without pawls, because the pawls are never in the path.
+Deterministic geometry, not scatter.
 
-So the library's upper bound is not refuted by a rate. Narrowing the channel to
-its design point removes the clearance the module needs to find centre, and in
-about one delivered episode in sixteen it comes to rest a long way off and stays
-there. Naming the 32.5 mm resting position against the workcell geometry is a
-bounded follow-up and is not yet done.
+That mode has a name in this repository, and its count at the shipped relief is
+zero. `jammed_in_the_bay` — reached insert and stopped short of the seated plane
+— is the mode the **entry** criterion predicts, and the entry bound is the half
+of the library's window that survived the original analysis. Narrowing the
+channel to the design point takes away the clearance the module uses to find
+centre and produces, in about one episode in sixteen, exactly the failure the
+library's entry criterion exists to forecast.
+
+So the upper bound is not refuted by a rate, and the two halves of the window
+are doing different jobs: the seated-rest upper bound was never what governed
+those 62 episodes — the missing fixture was — while the entry bound is visibly
+load-bearing in the tightening direction. Naming the 32.5 mm resting position
+against the workcell geometry is a bounded follow-up and is not yet done.
 
 `evidence/prescription_factorial_v1.json`,
 `evidence/rack_prescription_retained_paired_n192.json`.

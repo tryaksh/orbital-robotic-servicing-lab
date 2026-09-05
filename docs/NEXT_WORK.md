@@ -48,9 +48,11 @@ points are run with the fixture that workcell has.
 
 **The prescription arm is done, 2026-09-05.** With the pawls fitted it costs 12
 episodes in 192 — 0 gained, 12 lost, p = 4.9e-04 — against 46 without them. The
-refutation survives at a quarter of its size and its mechanism is a gross
-mis-seating tail at 32.0-32.9 mm that the shipped relief never produces and no
-fixture can rescue, in the same environments with the same residuals both ways.
+refutation survives at a quarter of its size and its mechanism is named: 12
+episodes that **never seat**, stopping 32.0-32.9 mm off centre with
+`predicate_fired = 0` and the pawls never in the path. That is
+`jammed_in_the_bay`, whose count at the shipped relief is zero, and it is the
+mode the library's **entry** criterion predicts.
 See `CHARTER.md`. **Remaining: name the 32.5 mm resting position against the
 workcell geometry** -- it is deterministic, so it should be derivable without a
 simulator.
