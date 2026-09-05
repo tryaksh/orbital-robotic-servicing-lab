@@ -4,6 +4,41 @@ Branch `research/correction-aware-handoffs`, opened 2026-09-05 from
 `paper/serviceability-qualification` at `3dced19`. One charter, one experiment
 plan. When this disagrees with an older plan, this wins and the older text goes.
 
+## The scoping fact underneath all of it, found 2026-09-05
+
+Every workflow report carries a `destination_rack_retention` block. Nothing had
+ever read it across cohorts, and reading it splits this repository's evidence
+into two families that measure physically different workcells:
+
+| family | cohorts with pawls | without |
+| --- | ---: | ---: |
+| `robustness64*` sweeps, `relief0*`, `envcount*` — the boundary evidence | **0** | **30** |
+| `campaign/gravity` — the whole gravity sweep | **0** | **16** |
+| `campaign/secondtask` — the `install` second workflow | **0** | **2** |
+| `campaign/factorial`, `rgbdcohorts`, `dose`, `gate_ablation`, `guardbounds`, `noisedchain` | **49** | 0 |
+
+142 reports carry the block; 69 have the destination bay's retention pawls
+fitted and **73 do not**. The split is not random — it is the sweep family
+against the certification family, and the two have been quoted side by side.
+
+This matters because the success definition re-checks the module after a
+**0.70 s free-module window**. With no pawls, in zero gravity, a module released
+with any residual velocity coasts and nothing brings it back. Where the pawls
+are fitted and engage, the worst recorded module drift while the rack alone
+holds is **0.001 mm**.
+
+So the boundary verdicts — the module-section points, the clearance axis, "not
+qualified", and the rack-prescription refutation at 110/192 against 64/192 —
+were all measured on a destination bay with no retention mechanism at all. That
+does not make any of those numbers wrong. It makes their scope much narrower
+than the prose citing them has assumed, and it is the most likely reason the
+sweep family and the certification family have never cohered.
+
+**The paired arm is running.** Same point, same three seeds, same checkpoints,
+`--rack_retention` and nothing else changed, against `artifacts/traced_nominal`
+episode for episode. Until it lands, the sentence above is a scoping fact and
+not yet a claim about what retention is worth.
+
 ## The finding that reframes the project, 2026-09-05
 
 Every framing this project has tried — a handoff gate, a correction model, a

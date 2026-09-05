@@ -24,6 +24,7 @@ property of the controller rather than of that constant.
 | Item | Verified state |
 | --- | --- |
 | Evidence | 84 canonical, 12 retracted, 183 historical; quote only canonical |
+| Retention scope | **73 of 142 reports were run with the destination bay's retention pawls absent** (`enabled: false, mechanism: "none"`), including every `robustness64*` boundary cohort and the whole gravity sweep. Where fitted and engaged, worst rack-only drift is 0.001 mm. Check the block before quoting a sweep as a property of the workcell |
 | Failure mode at nominal | 0/192 jammed in the bay; 77/192 seated and missed the terminal gate, predicted by no criterion. The failure is residual magnitude, not correction |
 | Tolerance a configuration needs | relocation chain **4.41 mm** for 95%; `install` workflow **10.41 mm** from a cohort that scored 0/16. Both quoted against the unchanged 2.5 mm criterion, and neither is permission to move it |
 | Paired direction | `one_sided_p` was direction-blind and is replaced by `improvement_p`/`deterioration_p`. `rack_prescription_paired_n192` lost 74 to 28 and had been written with a p of 2.95e-06 |

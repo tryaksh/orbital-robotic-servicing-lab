@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 84,
     "retracted": 12,
-    "historical": 187
+    "historical": 188
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -1525,6 +1525,10 @@
     "residual_vs_counted_power_v1.json": {
       "title": "Reading the residual against counting successes, at matched episode cost",
       "generated_utc": "2026-09-05T19:40:40.193776+00:00"
+    },
+    "retention_configuration_v1.json": {
+      "title": "Which cohorts had the destination rack's retention fitted",
+      "generated_utc": "2026-09-05T21:13:00.430189+00:00"
     },
     "rgbd_strict_rack_retention_640px_burst_full_seed5070.json": {},
     "rgbd_strict_rack_retention_640px_burst_full_seed6070.json": {},
