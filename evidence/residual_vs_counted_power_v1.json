@@ -1,15 +1,16 @@
 {
   "title": "Reading the residual against counting successes, at matched episode cost",
   "evidence_type": "resampling_from_existing_episodes",
-  "generated_utc": "2026-09-05T19:38:37.135033+00:00",
+  "generated_utc": "2026-09-05T19:40:40.193776+00:00",
   "question": "Every comparison in this repository dichotomises a continuous terminal lateral error at 2.5 mm and compares rates. What does that cost in episodes, on this system?",
   "method": "Subsample both 192-episode cohorts without replacement at matched size, test the same episodes two ways (two-proportion on the dichotomised outcome, Mann-Whitney on the residual), and count rejections at alpha = 0.05. Identical episodes reach both arms.",
   "criterion_m": 0.0025,
   "source_revision": {
     "available": true,
-    "commit": "47b6b95b4e6ee080ad276a5122469e3a706724eb",
+    "commit": "4488123f7d9db142e01af85e33d9b3bc754c5f3f",
     "branch": "research/correction-aware-handoffs",
     "dirty": true,
+    "code_dirty": false,
     "tracked_changes": [
       " M evidence/handoff_qualification_residual_v1.json",
       " M evidence/pre_handoff_predictability_v1.json",
