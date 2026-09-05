@@ -1,6 +1,52 @@
 # What this paper may claim, after the 2026-09-03 literature check
 
-> ## 2026-09-05: the thesis, rewritten as a method. Read this first.
+> ## 2026-09-05, later: the handoff-gate thesis is withdrawn. Read this first.
+>
+> The block below rewrote the thesis as *gate the handoff on the next skill's
+> physical precondition*. Reading the existing episodes by failure mode the same
+> afternoon withdrew it, and the reason is not a weaker result — it is that the
+> phenomenon the thesis is about does not occur here.
+>
+> **In 192 episodes at nominal the module jammed in the bay zero times.** Every
+> episode reached the final phase. The `jammed_in_the_bay` mode — the one the
+> entry criterion predicts and the one a handoff gate exists to prevent — has a
+> count of 0. Seventy-seven of the 82 failures seated and then missed the
+> terminal gate, a mode no criterion in this repository claims to predict.
+> `evidence/boundary_failure_modes_n192_v1.json`, which has said so since
+> 2026-09-04.
+>
+> A gate cannot be shown to prevent a failure that never happens. That is also
+> the cleanest explanation of the gate ablation the block below calls
+> unresolved: removing the gate entirely cost 4 episodes in 48 at p = 0.42
+> because the gate was guarding against nothing.
+>
+> **What the episodes are actually about.** Success is exactly
+> `lateral_error_m < INSERTION_LATERAL_TOLERANCE_M`, and the threshold reproduces
+> the recorded label for **192 of 192** episodes. The failures are not correction
+> failures; they are a continuous residual distribution cut by a 2.5 mm constant,
+> with 77 of 82 landing between 2.51 mm and 5.73 mm.
+>
+> **And the incoming error does not predict the residual.** On the traced
+> cohort, the largest of 24 pre-handoff feature correlations with the terminal
+> residual is 0.181, against a null whose largest-of-24 has a median of 0.285.
+> The fixture does not merely correct the error it is handed — within this
+> measurement it erases it.
+>
+> **What may still be claimed**, and it is an engineering claim rather than a
+> method: reading the residual distribution rather than the pass rate separates
+> two failure causes a rate cannot. `section_120x16` and `section_140x26` both
+> score worse than nominal; the first seats as precisely as nominal (0.579
+> against 0.588) and loses 40 modules before delivery, the second delivers well
+> and loses precision. Those want opposite fixes. And a configuration that scores
+> 0 of 16 still yields a distance to qualification: the `install` workflow needs
+> a 10.41 mm tolerance against the relocation chain's 4.41 mm.
+>
+> Read [`CHARTER.md`](CHARTER.md) for the question, the day-14 decision and the
+> two claims that were tested and did not survive. **Everything below this block
+> is superseded framing**, kept because its measurements are the evidence for
+> what replaced it.
+
+> ## 2026-09-05: the thesis, rewritten as a method. Superseded by the block above.
 >
 > Everything below this block is the previous framing -- a serviceability
 > qualification of one simulated workcell. It is kept because its measurements
