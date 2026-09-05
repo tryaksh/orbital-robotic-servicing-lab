@@ -62,6 +62,42 @@
 > | 3 | **The gate's threshold is what carries the result. Whether the gate exists is worth little** | ablation 32/48 vs 28/48, p = 0.424; bound geometric vs estimator-trust 17/24 vs 3/24, +14/-0, p = 1.22e-04 | **measured, and it corrected the claim** |
 > | 4 | The precondition must be geometric, because geometry transfers to an environment you cannot test in and behaviour does not | gravity swept from orbit to Earth on the released module | **running 2026-09-05** |
 >
+> ### A third subsystem, the same shape of error: the grip bound
+>
+> The gravity sweep was built to test whether the environment closes part of the
+> error budget. It answered a different and better question, because the chain
+> does not survive long enough to reach the interface.
+>
+> At lunar gravity on the module alone, the pooled result is **0/48 against
+> 14/48 in orbit**, and the mechanism is upstream of everything the sweep was
+> about. A traced diagnostic puts the loss in the **extraction** phase: the
+> module's height goes from 0.716 m at the seat-to-extract transition to
+> -120.7 m by the end, the transit block of the trace has **zero samples**, and
+> terminal grip error is 120 to 170 m. The chain never reaches transit. Nothing
+> here is about seating, settling, or rack retention -- the module is dropped
+> while being pulled out of the source bay.
+>
+> **The gripper is sized for a weightless module.** Pads closing on the capture
+> pin hold a module that has no weight; give it weight and the module, gripped
+> near one end, levers itself out about the grip point.
+>
+> **And this is the paper's recurring error a third time, in a third subsystem.**
+> Section 5's grip criterion is `pad_half_bearing_offset_m`, a bound on a *static
+> offset* -- how far a pad may slide off the pin. Under gravity the binding
+> quantity is a *moment*, and the geometric bound says nothing about it. That is
+> the same shape as the clearance bound that sized an entering module the process
+> corrects, and as the guard tolerance that bounded estimator trust while
+> deciding entry. Three subsystems, three correct quantities, three wrong
+> decisions.
+>
+> **What it does not support.** The pad contact model is a disclosed
+> idealisation, so the *threshold* at which the grip fails is not trustworthy --
+> only the ordering. Gravity acts on the module alone, so this is not a lunar
+> workcell; the arm is still weightless. And it is one 4-environment diagnostic
+> plus two 16-environment seeds at one gravity level, with Mars and Earth still
+> running. If the loss stays in extraction as gravity rises, that is a monotone
+> confirmation at three levels and the claim can be made; if it moves, it cannot.
+>
 > ### Claim 3 came back different from the way it was written
 >
 > The thesis at the top of this block says the handoff must gate on the next
