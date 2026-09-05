@@ -88,17 +88,19 @@ What is left of the sweep:
 be entirely a capture failure once the fixture was fitted, and a clearance point
 may be the same. `scripts/qualify_handoff.py` splits it.
 
-## R1c — Why capture fails on a smaller cross-section
+## R1c — Why the module never arrives (**capture *and* extract**)
 
 The finding the section axis actually produced. With the pawls fitted, seating
 is perfect at every cross-section — precision given delivery 1.000 — and the
 whole axis is delivery: 0.974 at nominal, 0.911 at 140x26, **0.792 at 120x16**.
 A 120 x 16 mm module is captured four times in five.
 
-That is a grasp problem on a thinner, narrower module, and no clearance or
-seating work will move it. It is also where the chain's remaining headroom is:
-nominal itself delivers 0.974, so five episodes in 192 never leave the source
-bay even at the design point.
+**It is not one failure mode and calling it "capture" was wrong.** The phase
+breakdown: nominal loses 3 to capture and 2 to extract; 120 x 16 mm loses 33 to
+capture and 7 to extract; 140 x 26 mm inverts to 1 and 16. A thinner module is
+hard to grasp, a thicker one hard to pull clear, and no clearance or seating
+work moves either. This is where the chain's remaining headroom is: nominal
+itself delivers 0.974.
 
 **Start from the five nominal failures.** They are identical across every arm
 run today -- 384.6, 216.5, 364.9, 1212.5 and 833.7 mm -- so they are

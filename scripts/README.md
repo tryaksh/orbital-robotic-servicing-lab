@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-116 scripts. Grouped by the verb their filename starts with.
+117 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -79,6 +79,7 @@ These read `.npz` episode metrics and write `evidence/*.json`.
 | --- | --- |
 | `report_attitude_wall_move.py` | Does the insert skill's attitude floor move with the channel throat? |
 | `report_boundary_failure_modes.py` | Score each analytical criterion against the failure it predicts, not the pooled rate. |
+| `report_capture_attrition.py` | What is left once the destination bay holds the module, and what records it. |
 | `report_chain_robustness.py` | Rank what breaks the chain, from the sweep's own per-episode rows. |
 | `report_channel_isolation.py` | Which observation channel costs extraction its transfer, on an unchanged checkpoint. |
 | `report_conditioned_insertion.py` | Compare learned and guarded insertion on exactly paired initial conditions. |

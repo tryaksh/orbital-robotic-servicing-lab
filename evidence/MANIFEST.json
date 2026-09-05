@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 84,
     "retracted": 12,
-    "historical": 195
+    "historical": 196
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -1211,6 +1211,10 @@
     },
     "camera_scale_grapple_w65.json": {
       "title": "Servicing camera scale and framing, measured by rendering"
+    },
+    "capture_attrition_v1.json": {
+      "title": "What remains once the bay holds the module, and what records it",
+      "generated_utc": "2026-09-05T23:43:49.322380+00:00"
     },
     "entry_swing_v1.json": {
       "title": "The destination channel's relief bounds the entry swing",
