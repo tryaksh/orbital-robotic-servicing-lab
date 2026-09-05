@@ -1,67 +1,70 @@
 # Next work
 
-## Start here -- handoff, 2026-09-04 afternoon
+## Start here -- handoff, 2026-09-05 overnight
 
-**Deadline: a project ready to submit by early November 2026.** The Frontiers
-collection stays open to 2027-02-28, so the venue is not the constraint.
+**The project has a thesis now, and it is not the boundary result.** Read
+[`docs/paper_position.md`](paper_position.md) top block first; it carries the
+rewrite, the prior art stated as a difference, and what the paper may not claim.
 
-**Read `docs/paper_position.md` first.** Its top block carries the corrections
-and the sharpened thesis; the manuscript is being drafted in a separate
-repository against it (`docs/manuscript_prompt.md`).
+> A learned skill's own success rate does not predict whether it works inside
+> the full task, so the handoff between skills must be triggered by the next
+> skill's physical precondition being measurably satisfied rather than by the
+> previous skill reporting success.
 
-### What landed today
+### What changed, and why
 
-* **The camera-driven gate passed.** 17/24, 70.83%, Wilson [50.8, 85.1] against
-  the published 4/24, three held-out seeds on one commit. Neither single change
-  is distinguishable from the baseline, so the effect is entirely in the
-  combination.
-* **Claim 2 became a different object.** No passive channel satisfies this
-  interface -- 10.350 mm needed to admit the delivered attitude against a
-  2.500 mm lateral gate, and in zero gravity nothing recentres a released
-  module. Two thresholds, three regimes, `interface_regime()`, eight tests.
-* **The shipped rack is 3.897 mm past the tool's own upper bound**, its source
-  bay is on the design point, and the dominant failure is lateral.
-* **Certified skills over-predict the camera chain by at least 72.8 points**
-  while composing correctly under exact state.
-* The extraction retrained on the estimator's error certifies at 85.16%.
+Two of the old headline claims were tested this week and did not survive.
+
+* **The boundary claim rests on a number nobody measured.** `DELIVERED_ATTITUDE_RAD
+  = 0.046` sets the clearance window, derives the guide offset and puts the arm
+  in the third interface regime. Its docstring cited a report field that has
+  never been written by anything. Measured from recorded traces over 95
+  environments and three seeds: **8.19 mrad median, 26.07 worst**. See T21.
+* **The experiment that was to confirm the design bound refuted it.** Rebuilding
+  the bay at the prescribed clearance took the chain from 110/192 (57.29%) to
+  64/192 (33.33%) and made lateral error *worse*, 2.186 mm to 3.279 mm. The
+  upper bound does not govern at these clearances.
+
+And one new claim is measured and strong: the seating skill certifies at
+**2977/3001 = 99.20%** alone and delivers **24/96 = 25.00%** in the chain, where
+a scripted advance gated on the next skill's envelope scores 23/96 and never
+fails catastrophically -- 0.4 mm of median terminal axial error against the
+policy's 342 mm.
 
 ### What is running
 
-| supervisor | what it decides |
-| --- | --- |
-| `supervise_factorial.sh` | the five missing cells of the 2x2x2. `scripts/analyse_factorial.py` decomposes all eight into main effects and interactions |
-| `supervise_force_verify.sh` | **whether the paper reports a learned seating phase.** The first policy that can feel contact, on the skill and inside the chain against the scripted advance |
-| `supervise_relief.sh` | whether correcting the rack as the tool prescribes removes the dominant failure. Runs after the factorial |
-| `supervise_training.sh` | capture seed 72, the last of the seed spread |
-| `supervise_envcount_settle.sh` (queued last) | the environment-count risk |
+| supervisor | what it decides | lands |
+| --- | --- | --- |
+| `supervise_method.sh` | **the ablation the thesis needs**: the handoff gate on and off, camera-driven, 48 episodes an arm, both traced. Then gravity swept over orbit, the Moon, Mars and Earth on the released module | ~06:30 |
+| `supervise_dose.sh` | whether the gate's value scales with the manipulator's imprecision. Smoke-tested first, because nothing has run this chain from x=-0.85 | ~10:00 |
+| `supervise_training2.sh` | the seating policy's third seed | ~03:00 |
+| `supervise_training3.sh` | extraction's third seed | after that |
 
-**Two supervisors, not twelve.** The overnight campaign died at 06:25 with
-`fork: retry: Resource temporarily unavailable` because twelve queue scripts
-were each parked in a sleep loop. Stages that must run in order are lines in one
-script now.
+The traces from the first supervisor also produce the **camera-driven** delivered
+attitude, which is the number the design rule actually needs; the 8.19 mrad
+figure is from the exact-state chain.
 
-**Do not commit while a cohort is in flight.** `aggregate_evaluation.py` refuses
-a cohort whose runs came from different source commits, and a dirty worktree is
-recorded in every report produced during it. This cost 50 minutes of GPU today.
-`supervise_factorial.sh` retries a cell for this reason; the others do not.
+### What to decide in the morning
 
-### The four things worth doing next, in order
+1. **Whether to re-derive the rack on the measured attitude.** It invalidates
+   everything computed from 46 mrad and it is a workcell rebuild. T21 has the
+   evidence. Not an edit to make in passing.
+2. **Whether the second task is worth the weeks it costs.** The gate is
+   demonstrated on one workcell. Without a second it is a case study rather than
+   a method, and that is the largest gap between here and a strong paper.
+3. Whether to stop `supervise_factorial.sh`-style queues re-running every cell.
+   `aggregate_evaluation.py` exits 2 on a failed gate and 1 on a refused cohort;
+   branching on `rc -eq 0` doubled the whole 2x2x2. AGENTS.md carries the rule.
 
-1. **Read the force verification.** If the chain arm beats the scripted guarded
-   advance, claim 1 turns from a negative result into a positive one and the
-   seating section is rewritten. If not, `docs/seating_controller.md` is the
-   defence and it is already written.
-2. **Close the library defect.** `section_verdict` returns `accepted = True` for
-   the relieved destination while `lateral_clearance_window` calls its clearance
-   3.897 mm too wide, because the section check never consults the upper bound.
-   The tool cannot be published able to accept a bay it elsewhere rejects.
-3. **Finish the seed spreads.** Capture seed 72 is training; the noised capture
-   fine-tune was interrupted at epoch 3,429 of 5,100 and finishing it turns the
-   composition bound from "granting a perfect capture" into a real product.
-4. **Record the pipeline flags in the report.** `geometry_arm` names the flags
-   that define a geometry arm; `--module_velocity_source`,
-   `--fiducial_guard_bounds` and `--insert_controller` still appear nowhere, and
-   every arm of claim 4 is defined by one of them.
+### What the paper still lacks
+
+* **A second task.** The single largest gap.
+* The camera-driven delivered attitude -- traced tonight, needs analysing.
+* The gate ablation and the gravity sweep -- both running.
+* Every comparison at 48 or 96 episodes. A 24-episode cohort here carries about
+  three episodes of run-to-run spread on identical inputs (`base_000` scored
+  7/24 then 4/24 with an empty source diff), which is wide enough to swallow
+  several of the 2x2x2's single-change arms.
 
 ---
 
