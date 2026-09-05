@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 65,
     "retracted": 12,
-    "historical": 177
+    "historical": 183
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -1322,6 +1322,10 @@
       "title": "Destination-bay clearance sweep: why the robot-carried seating does not close",
       "generated_utc": "2026-08-23T11:25:39.027766+00:00"
     },
+    "seating_controller_head_to_head_n96.json": {
+      "title": "Which controller seats the module: the guarded advance or the learned policy",
+      "generated_utc": "2026-09-05T02:30:19.575272+00:00"
+    },
     "serviceability_boundary_validation_v1.json": {
       "title": "Serviceability boundary validation against simulation",
       "generated_utc": "2026-08-27T01:13:24.458530+00:00"
@@ -1533,9 +1537,17 @@
       "title": "Robot-carried relocation, scripted guarded advance, force task, channel throat 11.065 mm per side",
       "generated_utc": "2026-09-04T23:01:03+00:00"
     },
+    "workflow_robot_carried_insert_v33force_c11065_chain_guarded_n96_certification.json": {
+      "title": "Robot-carried relocation, scripted guarded advance, force task, 11.065 mm channel, 32 environments",
+      "generated_utc": "2026-09-05T02:07:38+00:00"
+    },
     "workflow_robot_carried_insert_v33force_c11065_chain_policy_certification.json": {
       "title": "Robot-carried relocation, seating driven by the learned insert policy (insert_v33force_c11065)",
       "generated_utc": "2026-09-04T23:47:47+00:00"
+    },
+    "workflow_robot_carried_insert_v33force_c11065_chain_policy_n96_certification.json": {
+      "title": "Robot-carried relocation, learned force-feedback seating, force task, 11.065 mm channel, 32 environments",
+      "generated_utc": "2026-09-05T02:30:19+00:00"
     },
     "workflow_robot_carried_insert_v33force_chain_policy_certification.json": {
       "title": "Robot-carried relocation, seating driven by the learned insert policy (insert_v33force)",
@@ -1557,9 +1569,17 @@
       "title": "RGB-D chain, factorial cell base_000",
       "generated_utc": "2026-09-04T20:54:38+00:00"
     },
+    "workflow_robot_carried_vision_factorial_bothchannels_NK0_certification.json": {
+      "title": "RGB-D chain, factorial cell bothchannels_NK0",
+      "generated_utc": "2026-09-05T05:21:55+00:00"
+    },
     "workflow_robot_carried_vision_factorial_guard_00L_certification.json": {
       "title": "RGB-D chain, factorial cell guard_00L",
       "generated_utc": "2026-09-04T23:45:31+00:00"
+    },
+    "workflow_robot_carried_vision_factorial_noisedguard_N0L_certification.json": {
+      "title": "RGB-D chain, factorial cell noisedguard_N0L",
+      "generated_utc": "2026-09-05T03:44:55+00:00"
     },
     "workflow_robot_carried_vision_factorial_velguard_0KL_certification.json": {
       "title": "RGB-D chain, factorial cell velguard_0KL",
@@ -1568,6 +1588,10 @@
     "workflow_robot_carried_vision_noised_capture_extract_kinematic_leadin_certification.json": {
       "title": "RGB-D chain, both skills trained on the estimator's error, kinematic velocity, lead-in guard",
       "generated_utc": "2026-09-05T01:43:38+00:00"
+    },
+    "workflow_robot_carried_vision_noised_capture_extract_kinematic_leadin_n48_certification.json": {
+      "title": "RGB-D chain, both skills trained on the estimator's error, 16 environments, 48 episodes",
+      "generated_utc": "2026-09-05T04:08:32+00:00"
     },
     "workflow_robot_carried_vision_rack_retention_640px_v2_certification.json": {
       "title": "Strict 640-pixel camera-guided workflow with visible destination retention",
