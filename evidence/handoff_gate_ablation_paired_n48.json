@@ -1,0 +1,28 @@
+{
+  "episodes": 48,
+  "baseline": {
+    "successes": 28,
+    "rate": 0.583333,
+    "wilson_95": [
+      0.4428,
+      0.7115
+    ]
+  },
+  "treatment": {
+    "successes": 32,
+    "rate": 0.666667,
+    "wilson_95": [
+      0.5254,
+      0.7832
+    ]
+  },
+  "paired": {
+    "gained": 9,
+    "lost": 5,
+    "discordant": 14,
+    "one_sided_p": 0.21197509765625,
+    "two_sided_p": 0.4239501953125
+  },
+  "wilson_intervals_overlap": true,
+  "label": "the handoff gate against no gate, camera-driven, 48 paired episodes"
+}

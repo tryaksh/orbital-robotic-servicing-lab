@@ -8,9 +8,9 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 78,
+    "canonical": 80,
     "retracted": 12,
-    "historical": 177
+    "historical": 179
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -312,6 +312,12 @@
       },
       "policy_sha256": "86599FC204C2FEE8A36E077BBA8F6C12AFDFB9C878D650E743C82FB074DADFBD",
       "holds_up": "The first certification the seating skill has ever had: 2977/3001, 99.20%, Wilson [98.81, 99.46], three held-out seeds on the force task it trained on. The task raised TypeError at construction until 2026-09-05, which is why the three earlier attempts each exited in ten seconds and wrote nothing. Read it beside the chain arms below, not alone."
+    },
+    "guard_bounds_axis_paired_n24.json": {
+      "holds_up": "The same gate, admitting on the bay's geometry rather than on the estimator's trust bound, with both perception channel fixes present: 17/24 against 3/24, 14 gained and **none lost**, McNemar two-sided p = 1.22e-04. Read beside the ablation above, these two settle what the gate is for: its threshold is what matters and mis-specifying it is far worse than omitting it. The same contrast without the channel fixes is 6/24 against 4/24 at p = 0.727, so the bound only binds once the estimate is good enough to be inside the wide envelope in the first place."
+    },
+    "handoff_gate_ablation_paired_n48.json": {
+      "holds_up": "The gate removed entirely, against the gate admitting on the bay's entry catch, camera-driven on three held-out seeds: 32/48 against 28/48, 9 gained and 5 lost, McNemar two-sided p = 0.424. **Not significant.** Whether the envelope test exists is worth about four episodes in forty-eight and cannot be distinguished from noise at this sample."
     },
     "insert_attitude_diagnosis.json": {
       "title": "Why the insert skill does not seat: attitude, not creep",
@@ -1711,6 +1717,14 @@
     "workflow_robot_carried_vision_factorial_velguard_0KL_certification.json": {
       "title": "RGB-D chain, factorial cell velguard_0KL",
       "generated_utc": "2026-09-05T01:43:59+00:00"
+    },
+    "workflow_robot_carried_vision_gate_lead_in_n48_certification.json": {
+      "title": "RGB-D chain, handoff gate = lead_in, 16 environments, 48 episodes",
+      "generated_utc": "2026-09-05T11:11:14+00:00"
+    },
+    "workflow_robot_carried_vision_gate_none_n48_certification.json": {
+      "title": "RGB-D chain, handoff gate = none, 16 environments, 48 episodes",
+      "generated_utc": "2026-09-05T12:10:41+00:00"
     },
     "workflow_robot_carried_vision_noised_capture_extract_kinematic_leadin_certification.json": {
       "title": "RGB-D chain, both skills trained on the estimator's error, kinematic velocity, lead-in guard",

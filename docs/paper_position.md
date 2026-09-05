@@ -59,8 +59,42 @@
 > axial error against 342 mm. `evidence/seating_controller_paired_n96.json`.
 > `scripts/report_seating_head_to_head.py` still decides on "wins pooled and on
 > every seed", which is cruder than this and should adopt it.
-> | 3 | The gate is what carries the result, not the policy | the ablation -- gate removed, everything else identical | **running 2026-09-05** |
+> | 3 | **The gate's threshold is what carries the result. Whether the gate exists is worth little** | ablation 32/48 vs 28/48, p = 0.424; bound geometric vs estimator-trust 17/24 vs 3/24, +14/-0, p = 1.22e-04 | **measured, and it corrected the claim** |
 > | 4 | The precondition must be geometric, because geometry transfers to an environment you cannot test in and behaviour does not | gravity swept from orbit to Earth on the released module | **running 2026-09-05** |
+>
+> ### Claim 3 came back different from the way it was written
+>
+> The thesis at the top of this block says the handoff must gate on the next
+> skill's precondition. The ablation that was to prove it -- the envelope test
+> removed, everything else identical, camera-driven, three held-out seeds -- came
+> back **32/48 against 28/48, 9 gained and 5 lost, McNemar two-sided p = 0.424.**
+> Removing the gate entirely costs about four episodes in forty-eight and cannot
+> be told from noise. **Gating does not beat not gating**, and the claim may not
+> be written that way.
+>
+> What does move is the *threshold*. With both perception channel fixes present,
+> the same gate admitting on the bay's geometry rather than on the estimator's
+> trust bound scores **17/24 against 3/24, 14 gained and none lost, p = 1.22e-04**.
+> Without the channel fixes the same contrast is 6/24 against 4/24 at p = 0.727,
+> so the bound binds only once the estimate is good enough to be inside the wide
+> envelope at all.
+>
+> Three conditions, one axis:
+>
+> | the gate admits on | rate | against no gate |
+> | --- | ---: | --- |
+> | the estimator's trust bound (15 mrad) | 3/24 | **far worse** |
+> | nothing -- envelope test removed | 28/48 | the reference |
+> | the bay's entry catch (73.9 mrad) | 32/48 | slightly better, n.s. |
+>
+> **A wrongly sized precondition is much worse than no precondition; a correctly
+> sized one is only slightly better.** That is a more useful statement than the
+> one it replaces, because the failure it warns about is the one that actually
+> happened here, and it is what Section 8.1 of the manuscript has said all along:
+> a correct quantity attached to the wrong decision. The manuscript's existing
+> framing was right and the reframing proposed on 2026-09-05 had the emphasis
+> wrong. Claim 3 is rewritten above; the thesis sentence needs the same
+> treatment before anything is drafted from it.
 >
 > ### The factorial, read paired: the gate's *bounds* are the binding term
 >

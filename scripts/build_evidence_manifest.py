@@ -193,6 +193,28 @@ CANONICAL: tuple[tuple[str, str], ...] = (
             "headline contrasts. Preserved so that statement is checkable rather than remembered."
         ),
     ),
+    # -- what the handoff gate is actually worth, 2026-09-05 -----------------
+    (
+        "handoff_gate_ablation_paired_n48.json",
+        (
+            "The gate removed entirely, against the gate admitting on the bay's entry catch, "
+            "camera-driven on three held-out seeds: 32/48 against 28/48, 9 gained and 5 lost, McNemar "
+            "two-sided p = 0.424. **Not significant.** Whether the envelope test exists is worth about "
+            "four episodes in forty-eight and cannot be distinguished from noise at this sample."
+        ),
+    ),
+    (
+        "guard_bounds_axis_paired_n24.json",
+        (
+            "The same gate, admitting on the bay's geometry rather than on the estimator's trust "
+            "bound, with both perception channel fixes present: 17/24 against 3/24, 14 gained and "
+            "**none lost**, McNemar two-sided p = 1.22e-04. Read beside the ablation above, these two "
+            "settle what the gate is for: its threshold is what matters and mis-specifying it is far "
+            "worse than omitting it. The same contrast without the channel fixes is 6/24 against 4/24 "
+            "at p = 0.727, so the bound only binds once the estimate is good enough to be inside the "
+            "wide envelope in the first place."
+        ),
+    ),
     # -- the seating decision, 2026-09-04/05 ---------------------------------
     (
         "grapple_insert_v33force_c11065_certification.json",
