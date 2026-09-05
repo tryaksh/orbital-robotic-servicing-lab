@@ -1,70 +1,87 @@
 # Next work
 
-## Start here -- handoff, 2026-09-05 overnight
+## Start here -- handoff, 2026-09-05 midday, session closed for a pivot
 
-**The project has a thesis now, and it is not the boundary result.** Read
-[`docs/paper_position.md`](paper_position.md) top block first; it carries the
-rewrite, the prior art stated as a difference, and what the paper may not claim.
+**Read [`docs/paper_position.md`](paper_position.md) top block first.** It carries
+the thesis, what was refuted this week, and the prior art stated as a difference.
 
-> A learned skill's own success rate does not predict whether it works inside
-> the full task, so the handoff between skills must be triggered by the next
-> skill's physical precondition being measurably satisfied rather than by the
-> previous skill reporting success.
+### The claim, in the form the evidence supports
 
-### What changed, and why
+Not "gate the handoff on the next skill's precondition" -- that was tested and
+does not hold. The ablation removed the gate entirely and cost 4 episodes in 48,
+p = 0.42. What the evidence supports is narrower and more useful:
 
-Two of the old headline claims were tested this week and did not survive.
+> **A wrongly sized precondition is much worse than no precondition, and a
+> correctly sized one is only slightly better. And the gate only pays once the
+> estimate is good enough for its precondition to be satisfiable.**
 
-* **The boundary claim rests on a number nobody measured.** `DELIVERED_ATTITUDE_RAD
-  = 0.046` sets the clearance window, derives the guide offset and puts the arm
-  in the third interface regime. Its docstring cited a report field that has
-  never been written by anything. Measured from recorded traces over 95
-  environments and three seeds: **8.19 mrad median, 26.07 worst**. See T21.
-* **The experiment that was to confirm the design bound refuted it.** Rebuilding
-  the bay at the prescribed clearance took the chain from 110/192 (57.29%) to
-  64/192 (33.33%) and made lateral error *worse*, 2.186 mm to 3.279 mm. The
-  upper bound does not govern at these clearances.
+Both halves are measured. Moving the guard's admission bound from the
+estimator's trust bound to the bay's geometry is worth +14/-0 (p = 1.22e-04)
+when the perception channels are fixed and +5/-3 (p = 0.73) when they are not.
+Fixing the channels while leaving the bound wrong is 4/24 against 3/24 -- nothing.
+Neither term does anything alone; together they are worth thirteen episodes.
 
-And one new claim is measured and strong: the seating skill certifies at
-**2977/3001 = 99.20%** alone and delivers **24/96 = 25.00%** in the chain, where
-a scripted advance gated on the next skill's envelope scores 23/96 and never
-fails catastrophically -- 0.4 mm of median terminal axial error against the
-policy's 342 mm.
+This is the manuscript's Section 8.1 -- a correct quantity attached to the wrong
+decision -- and **the open decision is whether to promote 8.1 from discussion to
+thesis.** If promoted, only the title, abstract, one paragraph of Section 1 and a
+forward reference change; Sections 4 through 7 do not move.
 
-### What is running
+### What was refuted this week, and must not be restated
 
-| supervisor | what it decides | lands |
-| --- | --- | --- |
-| `supervise_method.sh` | **the ablation the thesis needs**: the handoff gate on and off, camera-driven, 48 episodes an arm, both traced. Then gravity swept over orbit, the Moon, Mars and Earth on the released module | ~06:30 |
-| `supervise_dose.sh` | whether the gate's value scales with the manipulator's imprecision. Smoke-tested first, because nothing has run this chain from x=-0.85 | ~10:00 |
-| `supervise_training2.sh` | the seating policy's third seed | ~03:00 |
-| `supervise_training3.sh` | extraction's third seed | after that |
+* **The rack prescription.** Rebuilding the bay at the clearance the design
+  library prescribes took the chain from 110/192 to 64/192: 28 gained, 74 lost,
+  McNemar p = 5.9e-06. The two-sided clearance window may not be presented as
+  validated. The entry bound survives; the seated-rest upper bound does not.
+* **The 46 mrad delivered attitude.** The constant the whole rack is derived from
+  has no recorded measurement -- its docstring cited a report field nothing has
+  ever written. Measured from transit traces: 8.19 mrad median over 95
+  environments, 4.09 mrad on the camera-driven path. See T21. Changing it
+  re-derives the rack, so it is a decision, not an edit.
+* **A learned seating phase.** The force-feedback policy certifies at 99.20%
+  (2,977/3,001) alone and seats 24/96 in the chain against the scripted
+  advance's 23/96 -- paired, 16 gained and 15 lost, p = 1.0. Its failures reach
+  534 mm of median terminal axial error against the guarded advance's 0.44 mm.
 
-The traces from the first supervisor also produce the **camera-driven** delivered
-attitude, which is the number the design rule actually needs; the 8.19 mrad
-figure is from the exact-state chain.
+### What is measured and new
 
-### What to decide in the morning
+* The gravity sweep: 14/48 in orbit, 0/48 at lunar, Mars and Earth, with the
+  failure **mode** inverting -- too light to stay put at 1/6 g, too heavy to pull
+  free at 1 g. A design validated at zero gravity is not conservative in either
+  direction. **A terminal lateral error near 220 mm means the module never left
+  the source bay**; it is exactly the bay separation, not a displacement.
+* The instrument's resolution: the same cell twice, same seeds and source, is
+  7/24 then 4/24. About three episodes at n=24. Every comparison is read paired.
+* 84 canonical evidence reports. `evidence/MANIFEST.json` is authoritative.
 
-1. **Whether to re-derive the rack on the measured attitude.** It invalidates
-   everything computed from 46 mrad and it is a workcell rebuild. T21 has the
-   evidence. Not an edit to make in passing.
-2. **Whether the second task is worth the weeks it costs.** The gate is
-   demonstrated on one workcell. Without a second it is a case study rather than
-   a method, and that is the largest gap between here and a strong paper.
-3. Whether to stop `supervise_factorial.sh`-style queues re-running every cell.
-   `aggregate_evaluation.py` exits 2 on a failed gate and 1 on a refused cohort;
-   branching on `rc -eq 0` doubled the whole 2x2x2. AGENTS.md carries the rule.
+### What was running when this session closed
 
-### What the paper still lacks
+| what | state |
+| --- | --- |
+| extraction seed 72 training | **epoch 12,000 of 12,600**, the last gap in the seed spreads. Resumed from 10,600. If it was stopped, restart it or accept ep_12000 and say so -- seeds 70 and 71 went to 12,600 |
+| `supervise_secondtask.sh` | the gate on the `install` workflow, smoke passed 4/4, three seeds an arm. **This is the experiment that would move the paper from a case study to a method** and it had just started |
 
-* **A second task.** The single largest gap.
-* The camera-driven delivered attitude -- traced tonight, needs analysing.
-* The gate ablation and the gravity sweep -- both running.
-* Every comparison at 48 or 96 episodes. A 24-episode cohort here carries about
-  three episodes of run-to-run spread on identical inputs (`base_000` scored
-  7/24 then 4/24 with an empty source diff), which is wide enough to swallow
-  several of the 2x2x2's single-change arms.
+Everything else finished. The dose-response campaign was a design error of mine
+(a 200 mm base move stops the chain rather than degrading it; the rail ladder in
+the manuscript's Table 6 already said the cliff is between 4 and 6 mm) and its
+question was answered from the factorial instead, above.
+
+### The manuscript
+
+`D:\orbital-servicing-paper` is current with all of the above and clean. Five
+TODOs remain, indexed in a review block at the top of `MANUSCRIPT.md`. Only the
+framing decision is a judgement call; the rest is submission housekeeping --
+seven cohorts to publish as evidence, a word and table re-count, two unverified
+references, two pending figure renders.
+
+### Three habits this week paid for
+
+1. **Write the falsifying test down before the run.** Three claims were made and
+   contradicted by the next measurement; all three were caught within the hour
+   because the test was recorded first.
+2. **Read A/B arms paired.** `compare_paired_arms.py` existed and was not being
+   used. Three conclusions changed when it was.
+3. **Do not commit while a cohort is in flight** -- including between the two
+   arms of one paired experiment, which is one experiment and not two cohorts.
 
 ---
 
