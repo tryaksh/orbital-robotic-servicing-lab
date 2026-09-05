@@ -1,15 +1,17 @@
 {
   "title": "The destination channel's relief bounds the entry swing",
   "evidence_type": "second_reading_of_recorded_traces",
-  "generated_utc": "2026-09-05T22:40:32.531325+00:00",
+  "generated_utc": "2026-09-05T22:57:46.644537+00:00",
   "question": "Removing the channel relief, as the design library prescribes, costs 12 episodes in 192 once the pawls are fitted, and those episodes never seat. What does the relief do that its absence undoes?",
   "source_revision": {
     "available": true,
-    "commit": "cc93edf8b619051aaa3f65f4b2e499cb9cc15c27",
+    "commit": "0b6100351096ec4d4d41eb7e2db5e40758f0dbb0",
     "branch": "research/correction-aware-handoffs",
-    "dirty": false,
-    "code_dirty": false,
-    "tracked_changes": [],
+    "dirty": true,
+    "code_dirty": true,
+    "tracked_changes": [
+      " M scripts/report_entry_swing.py"
+    ],
     "error": null
   },
   "seated_plane_x_m": 0.676,
@@ -77,11 +79,68 @@
       "final_x_median_m": 0.6766133308410645
     }
   },
+  "stroke_start_x_m": 0.132,
+  "clearance_unrelieved_m": 0.011065,
+  "against_the_existing_wedging_gate": {
+    "gate": "engagement_depth_limit_m, 2c/theta, Whitney quasi-static wedging",
+    "per_stopped_episode": [
+      {
+        "swing_rad": 0.08362,
+        "whitney_depth_limit_m": 0.26464960535757
+      },
+      {
+        "swing_rad": 0.08625,
+        "whitney_depth_limit_m": 0.2565797101449276
+      },
+      {
+        "swing_rad": 0.08682,
+        "whitney_depth_limit_m": 0.2548951854411426
+      },
+      {
+        "swing_rad": 0.08686,
+        "whitney_depth_limit_m": 0.2547778033617315
+      },
+      {
+        "swing_rad": 0.08755,
+        "whitney_depth_limit_m": 0.25276984580239864
+      },
+      {
+        "swing_rad": 0.0878,
+        "whitney_depth_limit_m": 0.2520501138952164
+      },
+      {
+        "swing_rad": 0.08823,
+        "whitney_depth_limit_m": 0.2508217159696248
+      },
+      {
+        "swing_rad": 0.09009,
+        "whitney_depth_limit_m": 0.24564324564324563
+      },
+      {
+        "swing_rad": 0.09064,
+        "whitney_depth_limit_m": 0.24415269196822595
+      },
+      {
+        "swing_rad": 0.09064,
+        "whitney_depth_limit_m": 0.24415269196822595
+      },
+      {
+        "swing_rad": 0.09065,
+        "whitney_depth_limit_m": 0.24412575841147272
+      },
+      {
+        "swing_rad": 0.09082,
+        "whitney_depth_limit_m": 0.24366879541951114
+      }
+    ],
+    "observed_engagement_depth_m": 0.088
+  },
   "scope_and_limitations": [
     "Simulation only. No result here was produced on real hardware.",
     "This is a second reading of existing episodes, not a new measurement.",
     "The peak swing is the maximum orientation error recorded during the insert phase at the trace's 6 Hz sampling, so a briefer excursion between samples would not appear. It is a lower bound on the true peak.",
     "Every episode in both configurations exceeds the angle sometimes quoted as the channel's corner-to-corner limit. That figure describes where a seated module may rest, not what the stroke passes through, and nothing here should be read as contradicting it.",
+    "The module wedges at roughly a third of the engagement depth the library's 2c/theta gate allows at the same angle and clearance. That means either the governing clearance is not the lateral one this comparison uses, or the mechanism is not quasi-static channel wedging. The insert trace records orientation error as a scalar, so which plane the swing lies in cannot be recovered from these runs and no bound is proposed here on the strength of the discrepancy.",
     "One point of the sweep -- nominal -- at three seeds, with one frozen checkpoint set. The wedge angle is not measured as a threshold; it is observed that the episodes which stop short are the ones with the largest swing."
   ]
 }
