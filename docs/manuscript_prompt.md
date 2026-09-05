@@ -107,4 +107,4 @@ drafting rather than trusting this list.
   policy that can feel contact is training, and its verification decides which
   way that section is written;
 - a perception certificate for the datum layout actually deployed
-  ([T20](NEXT_WORK.md#t20)).
+  ([T20](archive/NEXT_WORK_pre_pivot_2026-09-05.md#t20)).

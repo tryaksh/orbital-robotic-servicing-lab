@@ -1,8 +1,9 @@
 # Agent instructions
 
 The repository instructions are in [`AGENTS.md`](AGENTS.md). Read them, then
-[`docs/NOW.md`](docs/NOW.md), whose current gates determine priority. Bounded
-legacy task detail is in [`docs/NEXT_WORK.md`](docs/NEXT_WORK.md).
+[`docs/CHARTER.md`](docs/CHARTER.md), which carries the research question and
+the day-14 decision, then [`docs/NOW.md`](docs/NOW.md) for verified state.
+Bounded tasks are in [`docs/NEXT_WORK.md`](docs/NEXT_WORK.md).
 
 Three rules prevent the most expensive silent failures:
 

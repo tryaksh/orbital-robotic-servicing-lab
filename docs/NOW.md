@@ -1,17 +1,32 @@
 # Now
 
 Verified repository state. Evidence status is mechanical in
-[`evidence/MANIFEST.json`](../evidence/MANIFEST.json); bounded tasks are in
-[`NEXT_WORK.md`](NEXT_WORK.md). Last verified: 2026-09-03 on
-`paper/serviceability-qualification`, based on `main` at `bccce6d`.
+[`evidence/MANIFEST.json`](../evidence/MANIFEST.json); the research question and
+the day-14 decision are in [`CHARTER.md`](CHARTER.md); bounded tasks are in
+[`NEXT_WORK.md`](NEXT_WORK.md). Last verified: 2026-09-05 on
+`research/correction-aware-handoffs`, based on `main` at `bccce6d`.
 
 Everything is simulated. Nothing has run on hardware.
+
+**The project pivoted on 2026-09-05.** The handoff-gate framing was replaced by
+a residual one after reading the existing episodes by failure mode: in the
+192-episode nominal cohort the module jammed in the bay **zero** times, every
+episode reached the final phase, and 77 of the 82 failures came to rest between
+2.51 mm and 5.73 mm against a 2.5 mm criterion. Contact correction into the bay
+does not fail here. What fails is where in a continuous residual band the module
+stops — and the threshold reproduces the recorded success label for 192 of 192
+episodes, so the binary outcome *is* the residual, dichotomised. Read
+[`CHARTER.md`](CHARTER.md) before quoting any rate in this file as if it were a
+property of the controller rather than of that constant.
 
 ## Trust snapshot
 
 | Item | Verified state |
 | --- | --- |
-| Evidence | 53 canonical, 11 retracted, 159 historical; quote only canonical |
+| Evidence | 84 canonical, 12 retracted, 183 historical; quote only canonical |
+| Failure mode at nominal | 0/192 jammed in the bay; 77/192 seated and missed the terminal gate, predicted by no criterion. The failure is residual magnitude, not correction |
+| Tolerance a configuration needs | relocation chain **4.41 mm** for 95%; `install` workflow **10.41 mm** from a cohort that scored 0/16. Both quoted against the unchanged 2.5 mm criterion, and neither is permission to move it |
+| Paired direction | `one_sided_p` was direction-blind and is replaced by `improvement_p`/`deterioration_p`. `rack_prescription_paired_n192` lost 74 to 28 and had been written with a p of 2.95e-06 |
 | Source provenance | 13 reports carry runtime source bindings; two match the working source, one is mechanically recovered, and ten older reports remain lost because they used uncommitted code |
 | Current completion result | 22/24, **91.67%**, after visible rack retention engages, both robot-side supports release, and the rack alone holds for at least 0.70 s |
 | Boundary decision | **not qualified**; only entry attitude is supported. The rack-clearance axis was re-measured after a sweep defect: `--rack_lateral_clearance_mm` moved each bay's guides and left its lips and entry flares behind, and 6 mm per side goes from 0/64 to 36/64 once the mouth moves with the walls |
