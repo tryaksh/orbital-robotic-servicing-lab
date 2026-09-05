@@ -170,6 +170,91 @@ CANONICAL: tuple[tuple[str, str], ...] = (
             "reliable channel is."
         ),
     ),
+    # -- the seating decision, 2026-09-04/05 ---------------------------------
+    (
+        "grapple_insert_v33force_c11065_certification.json",
+        (
+            "The first certification the seating skill has ever had: 2977/3001, 99.20%, Wilson "
+            "[98.81, 99.46], three held-out seeds on the force task it trained on. The task raised "
+            "TypeError at construction until 2026-09-05, which is why the three earlier attempts each "
+            "exited in ten seconds and wrote nothing. Read it beside the chain arms below, not alone."
+        ),
+    ),
+    (
+        "workflow_robot_carried_insert_v33force_c11065_chain_guarded_n96_certification.json",
+        (
+            "The scripted guarded advance inside the chain, 23/96, at 32 environments on three "
+            "held-out seeds in the unrelieved bay. The paired control for the arm below: same task, "
+            "same three checkpoints, same seeds, one flag apart."
+        ),
+    ),
+    (
+        "workflow_robot_carried_insert_v33force_c11065_chain_policy_n96_certification.json",
+        (
+            "The same three checkpoints with the seating driven by the learned force-feedback policy, "
+            "24/96. A skill that certifies at 99.20% alone delivers 25.00% composed."
+        ),
+    ),
+    (
+        "seating_controller_paired_n96.json",
+        (
+            "The decision, read as the paired design it is rather than as two Wilson intervals: 16 "
+            "episodes gained, 15 lost, McNemar two-sided p = 1.0. The learned controller changes the "
+            "outcome on a third of the cohort and the changes cancel; its failures reach 342 mm of "
+            "median terminal axial error against the guarded advance's 0.4 mm. The chain keeps the "
+            "scripted advance."
+        ),
+    ),
+    # -- the rack prescription, refuted --------------------------------------
+    (
+        "rack_prescription_paired_n192.json",
+        (
+            "Rebuilding the destination bay at the clearance the design library prescribes, against "
+            "the shipped relief the library calls 3.897 mm too wide: 28 episodes gained, 74 lost, "
+            "McNemar two-sided p = 5.9e-06. The seated-rest upper bound does not govern at these "
+            "clearances and may not be presented as validated. The entry bound survives."
+        ),
+    ),
+    # -- the perception factorial, read paired -------------------------------
+    (
+        "factorial_paired_noisedguard_N0L.json",
+        (
+            "The strongest single arm of the 2x2x2: the retrained extraction with the guard admitting "
+            "on the bay's geometry rather than the estimator's noise bound, 20/24, +16 / -0, "
+            "p = 3.05e-05. Sixteen episodes flipped to success and none the other way."
+        ),
+    ),
+    (
+        "factorial_paired_velguard_0KL.json",
+        "The kinematic velocity channel with the geometric guard bound: 15/24, +12 / -1, p = 0.0034.",
+    ),
+    (
+        "factorial_paired_guard_00L.json",
+        (
+            "The guard bound changed alone, with neither channel fix: 6/24, +5 / -3, p = 0.727. "
+            "Necessary and not sufficient, and the cell that says so."
+        ),
+    ),
+    (
+        "factorial_paired_bothchannels_NK0.json",
+        (
+            "Both channel fixes with the guard still admitting on the estimator's trust bound: 3/24, "
+            "+3 / -4, p = 1.0 -- the worst cell of the eight. Gating on how far the estimate is "
+            "trusted rather than on what the bay accepts costs more than either channel fix buys."
+        ),
+    ),
+    (
+        "factorial_paired_NKL.json",
+        "All three changes together: 17/24, +15 / -2, p = 0.0024.",
+    ),
+    (
+        "workflow_robot_carried_vision_noised_capture_extract_kinematic_leadin_n48_certification.json",
+        (
+            "The camera-driven chain with both skills trained on the estimator's error, at 16 "
+            "environments: 37/48, 77.08%. The 24-episode arm of the same configuration scored 17/24; "
+            "this is the version with an interval narrow enough to quote."
+        ),
+    ),
     (
         "delivered_attitude_from_traces_v1.json",
         (
