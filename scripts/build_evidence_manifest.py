@@ -222,12 +222,14 @@ CANONICAL: tuple[tuple[str, str], ...] = (
     (
         "workflow_robot_carried_gravity_981_n48_certification.json",
         (
-            "Earth gravity: 0/48, and the failure mode inverts. Terminal module centre is x = 0.720 "
-            "against a start near 0.676 -- every environment across three seeds ends within 7 cm of "
-            "where it began. The module is not carried and lost; it is pinned in the source bay by its "
-            "own weight and the extraction cannot move it. Read beside the lunar report: a workcell "
-            "validated at zero gravity does not fail more as gravity rises, it fails differently at "
-            "every level, and the mode at 1 g is the opposite of the mode at 1/6 g."
+            "Earth gravity: 0/48, and the failure mode inverts. Terminal lateral error is 220.0 mm, "
+            "which is not a displacement -- it is exactly SECOND_SLOT_CENTER_Y, the 220 mm between "
+            "the two bays. The module is sitting in the *source* bay at the right depth, pinned by "
+            "its own weight, and the extraction never moves it. Read beside the lunar report: a "
+            "workcell validated at zero gravity does not fail more as gravity rises, it fails "
+            "differently at every level, and the mode at 1 g is the opposite of the mode at 1/6 g. "
+            "**A terminal lateral error near 220 mm in any report from this workcell means the module "
+            "stayed where it started, not that it moved 220 mm.**"
         ),
     ),
     # -- what the handoff gate is actually worth, 2026-09-05 -----------------
