@@ -44,6 +44,7 @@ for candidate in (ROOT, ROOT / "src"):
 
 from handoff_qualification import load_cohort  # noqa: E402
 from handoff_qualification.records import DEFAULT_LATERAL_CRITERION_M  # noqa: E402
+from zero_g_blade_swap.provenance import git_source_revision  # noqa: E402
 
 ALPHA = 0.05
 Z_ALPHA = 1.959963985
@@ -194,6 +195,7 @@ def main() -> int:
             "alpha = 0.05. Identical episodes reach both arms."
         ),
         "criterion_m": args.criterion_m,
+        "source_revision": git_source_revision(ROOT),
         "cohorts": {
             "baseline": {"path": args.baseline.as_posix(), "episodes": len(residuals_a), "rate": rate_a},
             "treatment": {"path": args.treatment.as_posix(), "episodes": len(residuals_b), "rate": rate_b},

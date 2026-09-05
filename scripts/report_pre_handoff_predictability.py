@@ -56,6 +56,7 @@ from handoff_qualification.records import (  # noqa: E402
     CATASTROPHIC_RESIDUAL_M,
     DEFAULT_LATERAL_CRITERION_M,
 )
+from zero_g_blade_swap.provenance import git_source_revision  # noqa: E402
 
 #: The charter's declared margin: a predictor must beat the base rate by this
 #: much, absolute, in held-out Brier score, or H2 is falsified.
@@ -298,6 +299,7 @@ def main() -> int:
         ),
         "cohorts": [p.as_posix() for p in args.cohort],
         "criterion_m": args.criterion_m,
+        "source_revision": git_source_revision(ROOT),
         "episodes_with_pre_handoff_row": len(records),
         "arrived": int(arrived.sum()),
         "base_rate": float(passed.mean()),

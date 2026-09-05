@@ -43,6 +43,7 @@ from handoff_qualification.records import (  # noqa: E402
     CATASTROPHIC_RESIDUAL_M,
     DEFAULT_LATERAL_CRITERION_M,
 )
+from zero_g_blade_swap.provenance import git_source_revision  # noqa: E402
 
 #: Criteria to test the held-out prediction at, in metres.
 HELD_OUT_CRITERIA = (0.002, 0.003, 0.004)
@@ -173,6 +174,7 @@ def main() -> int:
             "the way their geometry does?"
         ),
         "default_criterion_m": DEFAULT_LATERAL_CRITERION_M,
+        "source_revision": git_source_revision(ROOT),
         "configurations": descriptions,
         "within_configuration": within,
         "across_configurations": {

@@ -52,6 +52,7 @@ from handoff_qualification.records import (  # noqa: E402
     DEFAULT_LATERAL_CRITERION_M,
 )
 from handoff_qualification.residual import empirical_pass_rate, wilson  # noqa: E402
+from zero_g_blade_swap.provenance import git_source_revision  # noqa: E402
 
 #: Criteria to report the curve at, in metres.
 CURVE_M = (0.0015, 0.002, 0.0025, 0.003, 0.004, 0.005, 0.0075, 0.010, 0.015)
@@ -194,6 +195,7 @@ def main() -> int:
             "generated_utc": datetime.now(UTC).isoformat(),
             "criterion_m": args.criterion_m,
             "required_rate": args.required_rate,
+        "source_revision": git_source_revision(ROOT),
             "cohorts": entries,
             "scope_and_limitations": [
                 "Simulation only. No result here was produced on real hardware.",
