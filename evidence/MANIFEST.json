@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 65,
     "retracted": 12,
-    "historical": 174
+    "historical": 176
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -1551,11 +1551,19 @@
     },
     "workflow_robot_carried_vision_factorial_base_000_certification.json": {
       "title": "RGB-D chain, factorial cell base_000",
+      "generated_utc": "2026-09-05T00:45:43+00:00"
+    },
+    "workflow_robot_carried_vision_factorial_base_000_first_run_certification.json": {
+      "title": "RGB-D chain, factorial cell base_000",
       "generated_utc": "2026-09-04T20:54:38+00:00"
     },
     "workflow_robot_carried_vision_factorial_guard_00L_certification.json": {
       "title": "RGB-D chain, factorial cell guard_00L",
       "generated_utc": "2026-09-04T23:45:31+00:00"
+    },
+    "workflow_robot_carried_vision_factorial_velguard_0KL_certification.json": {
+      "title": "RGB-D chain, factorial cell velguard_0KL",
+      "generated_utc": "2026-09-05T00:42:39+00:00"
     },
     "workflow_robot_carried_vision_rack_retention_640px_v2_certification.json": {
       "title": "Strict 640-pixel camera-guided workflow with visible destination retention",
