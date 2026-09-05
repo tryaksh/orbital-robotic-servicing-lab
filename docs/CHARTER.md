@@ -34,10 +34,60 @@ does not make any of those numbers wrong. It makes their scope much narrower
 than the prose citing them has assumed, and it is the most likely reason the
 sweep family and the certification family have never cohered.
 
-**The paired arm is running.** Same point, same three seeds, same checkpoints,
-`--rack_retention` and nothing else changed, against `artifacts/traced_nominal`
-episode for episode. Until it lands, the sentence above is a scoping fact and
-not yet a claim about what retention is worth.
+### The paired arm landed, and it is the whole failure mode
+
+Same point, same three seeds, same checkpoints, `--rack_retention` and nothing
+else changed. The success definition is byte-identical between the two arms, so
+this is one variable, not a criterion change wearing a policy change's clothes.
+
+| | retention absent | pawls fitted |
+| --- | ---: | ---: |
+| pass rate | 110/192 = **0.5729** | 187/192 = **0.9740** |
+| module delivered to the bay | 187/192 | 187/192 |
+| precision given delivery | 110/187 = 0.588 | **187/187 = 1.000** |
+| residual median / p95 / max | 2.160 / 4.275 / 5.734 mm | **0.731 / 0.977 / 1.874 mm** |
+| drift after release | median +1.187 mm, max +5.234 | **zero, at every episode** |
+
+**77 gained, 0 lost, McNemar two-sided p = 1.3e-23.** The 77 is not a
+coincidence: it is exactly the count of `missed_the_terminal_gate` failures
+found at the start of the day. Every one of them was the absent fixture. The
+five remaining failures are byte-identical across both arms — 384.6, 216.5,
+364.9, 1212.5 and 833.7 mm — modules that never left the source bay, which
+retention at the destination cannot and should not touch.
+
+The mechanism is confirmed, not inferred. With pawls the lateral error is the
+same number at the last held sample, at release and at the terminal check:
+0.731 mm median, 1.874 mm worst. Release velocity is 0.000 mm/s. Retention
+engaged in 187 of 187.
+
+**This inverts the day's earlier headline.** The criterion curve read on the
+retention-absent cohort said the chain needs 4.41 mm to reach 95%. Read on the
+cohort with its actual fixture it needs **0.95 to 1.87 mm** depending on seed —
+the chain has between 1.3x and 2.6x margin against the unchanged 2.5 mm
+criterion, rather than a 1.76x deficit. Both numbers are correct about the
+configuration they measured. Only one of them is about the workcell that was
+designed.
+
+`evidence/rack_retention_paired_n192_v2.json`,
+`evidence/release_drift_retention_v1.json`.
+
+### What this obliges, and what it does not
+
+It does **not** retract a number. Every cohort measured what it measured.
+
+It does oblige rescoping, and three published lines need re-running before they
+can be quoted as properties of the workcell rather than of a bay with no pawls:
+
+* the **boundary verdicts** — module-section points, clearance axis, "not
+  qualified" — all from the `robustness64*` family, 30 cohorts, none with pawls;
+* the **gravity sweep**, 16 cohorts, none with pawls. A module released free
+  under gravity with nothing holding it falls out of the bay, so the reported
+  0/48 at lunar, Mars and Earth is not yet evidence about the interface;
+* the **`install` second workflow** at 0/16, and with it this morning's
+  "needs a 10.41 mm tolerance" figure.
+
+The residual reading built this morning is unaffected as a method and was right
+about where to look. It was applied to a configuration missing its fixture.
 
 ## The finding that reframes the project, 2026-09-05
 

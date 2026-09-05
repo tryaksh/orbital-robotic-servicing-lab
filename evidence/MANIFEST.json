@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 84,
     "retracted": 12,
-    "historical": 188
+    "historical": 190
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -1502,6 +1502,11 @@
     },
     "rack_requirement_sweep_v1_before_the_seating_criterion.json": {
       "title": "The rack requirement as a function of the manipulator's delivered attitude"
+    },
+    "rack_retention_paired_n192_v2.json": {},
+    "release_drift_retention_v1.json": {
+      "title": "The error that fails the task appears after the hand lets go",
+      "generated_utc": "2026-09-05T21:39:00.130314+00:00"
     },
     "release_drift_v1.json": {
       "title": "The error that fails the task appears after the hand lets go",

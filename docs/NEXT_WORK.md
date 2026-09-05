@@ -19,44 +19,57 @@ rest are archived.
 
 ---
 
-## H0 — Release the module when it is not moving (**the practical next step**)
+## H0 — Release the module when it is not moving (**answered 2026-09-05: fit the pawls**)
 
-Ahead of everything else on this list, because it is one condition, one cohort,
-and it addresses where the failures actually are.
+Superseded by its own answer, and kept because the route to it is the point.
 
-**What was measured.** All 186 episodes with a settle trace are inside the
-2.5 mm criterion at their worst sample while the robot holds the module — worst
-case 1.909 mm — and 110 are inside at the end. The error appears entirely after
-release, by translation at about 2.4 mm/s, with rack retention never engaging.
-Ballistic prediction against observed drift: rho = +0.84.
-`evidence/release_drift_v1.json`.
+The settle traces said the module is placed correctly and drifts out after
+release, with drift tracking release velocity at rho = +0.84. The proposed fix
+was to condition the release on velocity. The actual cause was one level down:
+**the cohort had no retention mechanism at all**. Fitting it —
+`--rack_retention`, same point, same three seeds, nothing else changed — takes
+the nominal point from **110/192 to 187/192**, 77 gained and 0 lost,
+p = 1.3e-23, with drift going to zero and release velocity to 0.000 mm/s.
 
-**The change.** Condition the hand release on the module's measured speed
-instead of on the settle timer alone: hold while the estimated speed exceeds a
-threshold, up to a bounded extra wait, then release. The interlock already
-exists in `src/zero_g_blade_swap/service_latch.py`; this adds a velocity term to
-it.
+No velocity-conditioned release is needed. The 77 gained is exactly the count of
+`missed_the_terminal_gate` failures, so the fixture accounts for all of them.
 
-**The run.** The nominal point, three seeds, 64 environments, with and without
-the condition — read paired, because the arms share seeds and checkpoints. The
-traced cohort took 23 minutes for all three seeds, so both arms are under an
-hour.
+## R1 — Re-run the boundary family with the pawls fitted (**now the priority**)
 
-**What would falsify it.** If the pass rate does not move, the residual velocity
-is not something the controller can wait out — the module is oscillating in the
-compliant mount rather than decaying — and the answer is damping or retention
-geometry instead of timing. Either result is worth the hour, and the second one
-points at the rack rather than the controller.
+Thirty `robustness64*` cohorts, `relief0*` and `envcount*` were run with
+`destination_rack_retention.enabled = false`. Every boundary verdict this
+project has published rests on them: the module-section points, the clearance
+axis, the "not qualified" decision, and the rack-prescription refutation at
+110/192 against 64/192.
 
-**Do not read the selection table as the expected result.** Selecting episodes
-that already had a low release velocity is not the same intervention as waiting
-for one. In 104 of 186 episodes a slower moment existed while held; in the other
-82 it did not, so a velocity condition alone cannot reach 100%.
+**None of those numbers is wrong.** Each measured a bay with no pawls. They
+cannot be quoted as properties of the workcell that was designed until the same
+points are run with the fixture that workcell has.
 
-**Second arm, same hour.** This configuration never engages rack retention,
-while the strict chain that scores 91.67% does. Run that comparison explicitly
-rather than inferring it: it may be that retention already solves this and the
-sweep configuration has been measuring a fixture that was never switched on.
+**Cost.** The nominal point is 23 minutes for three seeds. The full sweep is
+roughly ten points, so under four hours, and the rack-prescription arm is the
+one to run first because it is the only published *refutation* in the set and it
+may not survive.
+
+**Read every point paired** against the retention-absent arm that already
+exists. Same seeds, same checkpoints, one flag.
+
+## R2 — Re-run the gravity sweep with the pawls fitted
+
+Sixteen cohorts, none with retention. The published reading — 14/48 in orbit and
+0/48 at lunar, Mars and Earth, with the failure mode inverting — was measured on
+a bay that holds nothing. A module released free under gravity with no pawls
+falls out, so the sweep has not yet tested the interface it claims to test.
+
+**Falsified if** the rates do not move: that would mean gravity defeats the
+pawls too, which is a real and much stronger interface result.
+
+## R3 — Re-run the `install` second workflow with the pawls fitted
+
+Two cohorts, no retention, and only one of three seeds ever completed. Its 0/16
+and the "needs a 10.41 mm tolerance" figure derived from it are both
+retention-absent numbers. Re-run all three seeds with `--rack_retention` and
+`TRACE=1`.
 
 ## H1 — Join pre-handoff state to outcomes that vary (**done 2026-09-05**)
 
