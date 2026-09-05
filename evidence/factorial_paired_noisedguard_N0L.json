@@ -1,0 +1,28 @@
+{
+  "episodes": 24,
+  "baseline": {
+    "successes": 4,
+    "rate": 0.166667,
+    "wilson_95": [
+      0.0668,
+      0.3585
+    ]
+  },
+  "treatment": {
+    "successes": 20,
+    "rate": 0.833333,
+    "wilson_95": [
+      0.6415,
+      0.9332
+    ]
+  },
+  "paired": {
+    "gained": 16,
+    "lost": 0,
+    "discordant": 16,
+    "one_sided_p": 1.52587890625e-05,
+    "two_sided_p": 3.0517578125e-05
+  },
+  "wilson_intervals_overlap": false,
+  "label": "factorial cell noisedguard_N0L against base_000, 24 paired episodes"
+}

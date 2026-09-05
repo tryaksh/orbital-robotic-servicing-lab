@@ -1,0 +1,28 @@
+{
+  "episodes": 24,
+  "baseline": {
+    "successes": 4,
+    "rate": 0.166667,
+    "wilson_95": [
+      0.0668,
+      0.3585
+    ]
+  },
+  "treatment": {
+    "successes": 3,
+    "rate": 0.125,
+    "wilson_95": [
+      0.0434,
+      0.31
+    ]
+  },
+  "paired": {
+    "gained": 3,
+    "lost": 4,
+    "discordant": 7,
+    "one_sided_p": 0.5,
+    "two_sided_p": 1.0
+  },
+  "wilson_intervals_overlap": true,
+  "label": "factorial cell bothchannels_NK0 against base_000, 24 paired episodes"
+}

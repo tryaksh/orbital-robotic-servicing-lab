@@ -62,6 +62,39 @@
 > | 3 | The gate is what carries the result, not the policy | the ablation -- gate removed, everything else identical | **running 2026-09-05** |
 > | 4 | The precondition must be geometric, because geometry transfers to an environment you cannot test in and behaviour does not | gravity swept from orbit to Earth on the released module | **running 2026-09-05** |
 >
+> ### The factorial, read paired: the gate's *bounds* are the binding term
+>
+> The 2x2x2 was reported as five overlapping Wilson intervals and summarised as
+> "the effect is entirely in the combination". Read as the paired design it is,
+> against the same `base_000` cohort, it is far sharper -- and it is direct
+> evidence for claim 3 from data that already existed:
+>
+> | cell | what changes | rate | paired | p |
+> | --- | --- | ---: | --- | ---: |
+> | `guard_00L` | guard bounds only | 6/24 | +5 / -3 | 0.727 |
+> | `bothchannels_NK0` | both channel fixes, **estimator bounds** | 3/24 | +3 / -4 | 1.0 |
+> | `velguard_0KL` | velocity channel + **lead-in bounds** | 15/24 | +12 / -1 | **0.0034** |
+> | `noisedguard_N0L` | retrained extraction + **lead-in bounds** | 20/24 | **+16 / -0** | **3.05e-05** |
+> | `NKL` | all three | 17/24 | +15 / -2 | **0.0024** |
+>
+> **Read the L axis correctly and this is the thesis, measured.** `L` is not
+> "guard on or off" -- the guard runs in every cell. It is *which bounds the
+> guard admits on*: the estimator's noise-derived pair, or the entry flare's
+> geometric catch. Every cell that admits on the sensor's trust bound fails
+> (4/24 baseline, 3/24 with both channel fixes -- the worst cell of the eight).
+> Every cell that admits on the bay's geometry works (15/24, 20/24, 17/24).
+>
+> So the precondition a handoff gates on **must describe what the next skill can
+> physically accept, not how far the estimate is trusted**. Those are different
+> questions and the cell that conflates them is the one that never seats
+> anything. `noisedguard_N0L` is the strongest single result in the project:
+> sixteen episodes flipped to success and **not one flipped the other way**.
+>
+> This does not replace tonight's `--fiducial_guard_bounds none` ablation, which
+> is the true off and answers a different question -- whether gating at all
+> beats not gating. It does mean claim 3 already has support that does not
+> depend on it.
+>
 > ### What is prior art, stated as a difference rather than ignored
 >
 > * **Whitney and the Remote Center Compliance work (Draper, 1970s-80s).** The

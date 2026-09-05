@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 65,
     "retracted": 12,
-    "historical": 185
+    "historical": 190
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -994,6 +994,11 @@
       "title": "Extraction on an unchanged checkpoint: ExtractVelocityNoised",
       "generated_utc": "2026-09-03T21:42:14+00:00"
     },
+    "factorial_paired_bothchannels_NK0.json": {},
+    "factorial_paired_guard_00L.json": {},
+    "factorial_paired_NKL.json": {},
+    "factorial_paired_noisedguard_N0L.json": {},
+    "factorial_paired_velguard_0KL.json": {},
     "fiducial_detector_late_approach_replay_v1.json": {
       "title": "Fiducial decoder replay on continuous late-approach RGB frames"
     },

@@ -1,0 +1,28 @@
+{
+  "episodes": 24,
+  "baseline": {
+    "successes": 4,
+    "rate": 0.166667,
+    "wilson_95": [
+      0.0668,
+      0.3585
+    ]
+  },
+  "treatment": {
+    "successes": 15,
+    "rate": 0.625,
+    "wilson_95": [
+      0.4271,
+      0.7884
+    ]
+  },
+  "paired": {
+    "gained": 12,
+    "lost": 1,
+    "discordant": 13,
+    "one_sided_p": 0.001708984375,
+    "two_sided_p": 0.00341796875
+  },
+  "wilson_intervals_overlap": false,
+  "label": "factorial cell velguard_0KL against base_000, 24 paired episodes"
+}
