@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 65,
     "retracted": 12,
-    "historical": 183
+    "historical": 184
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -1326,6 +1326,7 @@
       "title": "Which controller seats the module: the guarded advance or the learned policy",
       "generated_utc": "2026-09-05T02:30:19.575272+00:00"
     },
+    "seating_controller_paired_n96.json": {},
     "serviceability_boundary_validation_v1.json": {
       "title": "Serviceability boundary validation against simulation",
       "generated_utc": "2026-08-27T01:13:24.458530+00:00"

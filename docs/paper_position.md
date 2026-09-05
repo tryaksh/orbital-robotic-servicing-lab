@@ -35,7 +35,19 @@
 > | # | Claim | Evidence | Status |
 > | --- | --- | --- | --- |
 > | 1 | A skill's own certification does not predict its behaviour in the chain | seating skill **2977/3001 = 99.20%** [98.81, 99.46] alone; **24/96 = 25.00%** in the chain | **measured, strong** |
-> | 2 | A scripted advance gated on the next skill's precondition matches a learned controller and never fails catastrophically | guarded **23/96** against policy **24/96**; the policy's failures reach 342 mm median axial error, the guard's 0.4 mm | **measured, strong** |
+> | 2 | A scripted advance gated on the next skill's precondition matches a learned controller and never fails catastrophically | guarded **23/96** against policy **24/96**; **paired: 16 gained, 15 lost, McNemar two-sided p = 1.0**; the policy's failures reach 342 mm median axial error, the guard's 0.4 mm | **measured, strong** |
+>
+> **Claim 2 is stronger read as the paired design it is, and the pooled rates
+> hid the interesting part.** Two overlapping Wilson intervals say
+> "inconclusive". McNemar on the same 96 episodes says the learned controller
+> *changed the outcome on 31 of them* -- sixteen episodes it won and fifteen it
+> lost -- and the changes cancel exactly. So it is not a small improvement on the
+> guarded advance. It is a substantially different controller acting on a third
+> of the cohort and netting nothing, and the terminal metrics say what it trades:
+> near-misses for catastrophes at roughly even odds, 0.4 mm of median terminal
+> axial error against 342 mm. `evidence/seating_controller_paired_n96.json`.
+> `scripts/report_seating_head_to_head.py` still decides on "wins pooled and on
+> every seed", which is cruder than this and should adopt it.
 > | 3 | The gate is what carries the result, not the policy | the ablation -- gate removed, everything else identical | **running 2026-09-05** |
 > | 4 | The precondition must be geometric, because geometry transfers to an environment you cannot test in and behaviour does not | gravity swept from orbit to Earth on the released module | **running 2026-09-05** |
 >
