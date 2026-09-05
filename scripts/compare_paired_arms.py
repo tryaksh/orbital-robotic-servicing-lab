@@ -10,9 +10,14 @@ way, which two overlapping Wilson intervals report as inconclusive.
 
 The right reading is McNemar's exact test on the discordant pairs: of the
 episodes whose outcome changed, how lopsided is the change? Five-for-nothing is
-one-sided p = 0.031. It is the same twenty-four episodes either way, so the
-question "did the flag help" does not need the two arms to be separated as if
-they were different populations.
+two-sided p = 0.063, directional improvement p = 0.031. It is the same
+twenty-four episodes either way, so the question "did the flag help" does not
+need the two arms to be separated as if they were different populations.
+
+Two-sided is the default and the number to quote. The directional values are
+reported separately and named for the direction they test, because a p-value
+that does not know which arm won is worse than no p-value: it was published
+once, for the rack prescription, on a comparison the treatment lost 74 to 28.
 
 **This assumes the pairing is real** -- that episode *i* of one arm and episode
 *i* of the other started from the same state. Here that follows from identical
@@ -54,20 +59,48 @@ def _successes(paths: list[Path]) -> np.ndarray:
 
 
 def mcnemar_exact(gained: int, lost: int) -> dict:
-    """Exact binomial test on the discordant pairs."""
+    """Exact binomial test on the discordant pairs.
+
+    ``improvement_p`` is directional: the probability, under the null that a
+    discordant pair falls either way with equal chance, of gaining *at least*
+    as many episodes as were gained. Fourteen gained and none lost gives
+    6.1e-05; none gained and fourteen lost gives 1.0. That asymmetry is the
+    whole point of a one-sided test and the previous implementation did not
+    have it -- it summed the tail below ``min(gained, lost)``, which is the
+    *smaller* tail whichever direction the effect ran, so a treatment that lost
+    every discordant episode was reported with the same small "one-sided" p as
+    one that won every discordant episode. ``rack_prescription_paired_n192``
+    is the case that exposed it: 28 gained against 74 lost was published with
+    one_sided_p = 2.95e-06, which reads as a decisive improvement and is in
+    fact a decisive loss (the correct directional value is 0.999999).
+
+    ``two_sided_p`` was and remains correct -- the binomial at p = 0.5 is
+    symmetric, so twice the smaller tail is right regardless of direction --
+    and it is the default this project reports. The directional value is only
+    meaningful where the direction was named in advance.
+    """
 
     n = gained + lost
     if n == 0:
-        return {"discordant": 0, "one_sided_p": None, "two_sided_p": None}
-    tail = sum(math.comb(n, k) for k in range(0, min(gained, lost) + 1)) / 2**n
+        return {
+            "discordant": 0,
+            "improvement_p": None,
+            "deterioration_p": None,
+            "two_sided_p": None,
+        }
     # Stored at full precision and rounded only when printed. Thirty-six
     # discordant pairs all in one direction give 2**-36; rounded to five decimal
     # places that prints 0.0, which claims the result is impossible rather than
     # very unlikely. Rounding belongs in the presentation, not in the data.
+    improvement = sum(math.comb(n, k) for k in range(gained, n + 1)) / 2**n
+    deterioration = sum(math.comb(n, k) for k in range(lost, n + 1)) / 2**n
+    smaller_tail = sum(math.comb(n, k) for k in range(0, min(gained, lost) + 1)) / 2**n
     return {
         "discordant": n,
-        "one_sided_p": tail,
-        "two_sided_p": min(1.0, 2 * tail),
+        "improvement_p": improvement,
+        "deterioration_p": deterioration,
+        "two_sided_p": min(1.0, 2 * smaller_tail),
+        "direction": "gained" if gained > lost else ("lost" if lost > gained else "tied"),
     }
 
 
@@ -118,12 +151,23 @@ def main() -> int:
     print(f"  baseline  {base['successes']:3d}  {base['rate']:.4f}  Wilson {base['wilson_95']}")
     print(f"  treatment {treat['successes']:3d}  {treat['rate']:.4f}  Wilson {treat['wilson_95']}")
     print(f"  discordant: gained {paired['gained']}, lost {paired['lost']}")
-    if paired["one_sided_p"] is not None:
+    if paired["two_sided_p"] is not None:
         print(
-            f"  McNemar exact: one-sided p = {paired['one_sided_p']:.3g}, "
-            f"two-sided p = {paired['two_sided_p']:.3g}"
+            f"  McNemar exact: two-sided p = {paired['two_sided_p']:.3g} "
+            f"(improvement p = {paired['improvement_p']:.3g}, "
+            f"deterioration p = {paired['deterioration_p']:.3g})"
         )
-    if result["wilson_intervals_overlap"] and paired["one_sided_p"] is not None and paired["one_sided_p"] < 0.05:
+        if paired["direction"] == "lost":
+            print(
+                f"  The treatment LOST: {paired['lost']} discordant episodes went against it "
+                f"and {paired['gained']} for it."
+            )
+    if (
+        result["wilson_intervals_overlap"]
+        and paired["two_sided_p"] is not None
+        and paired["two_sided_p"] < 0.05
+        and paired["direction"] == "gained"
+    ):
         print("  The unpaired intervals overlap and the paired test does not. The pairing is")
         print("  carrying the result, so report it as paired and say the cohorts are fixed.")
 

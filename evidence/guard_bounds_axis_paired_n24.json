@@ -20,8 +20,12 @@
     "gained": 14,
     "lost": 0,
     "discordant": 14,
-    "one_sided_p": 6.103515625e-05,
-    "two_sided_p": 0.0001220703125
+    "two_sided_p": 0.0001220703125,
+    "one_sided_p_direction_blind": 6.103515625e-05,
+    "one_sided_p_note": "Computed from the smaller discordant tail, so it did not depend on which arm won. Kept as a record of what was published; read improvement_p or deterioration_p instead. See tests/test_paired_comparison_direction.py.",
+    "improvement_p": 6.103515625e-05,
+    "deterioration_p": 1.0,
+    "direction": "gained"
   },
   "wilson_intervals_overlap": false,
   "label": "guard admission bounds: the bay's geometry against the estimator's trust bound, both channel fixes present, 24 paired episodes"

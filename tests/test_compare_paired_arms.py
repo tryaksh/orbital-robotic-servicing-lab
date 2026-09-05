@@ -30,7 +30,7 @@ def test_five_for_nothing_matches_the_hand_computation() -> None:
 
     result = paired.mcnemar_exact(gained=5, lost=0)
     assert result["discordant"] == 5
-    assert result["one_sided_p"] == pytest.approx(0.03125)
+    assert result["improvement_p"] == pytest.approx(0.03125)
     assert result["two_sided_p"] == pytest.approx(0.0625)
 
 
@@ -43,7 +43,7 @@ def test_a_balanced_flip_is_not_a_result() -> None:
 
 def test_no_discordant_pairs_yields_no_test() -> None:
     result = paired.mcnemar_exact(gained=0, lost=0)
-    assert result["one_sided_p"] is None
+    assert result["improvement_p"] is None
 
 
 def test_the_paired_reading_can_beat_the_unpaired_one() -> None:
@@ -61,7 +61,7 @@ def test_the_paired_reading_can_beat_the_unpaired_one() -> None:
     assert result["paired"]["gained"] == 5
     assert result["paired"]["lost"] == 0
     assert result["wilson_intervals_overlap"]
-    assert result["paired"]["one_sided_p"] < 0.05
+    assert result["paired"]["improvement_p"] < 0.05
 
 
 def test_arms_of_different_length_are_refused() -> None:

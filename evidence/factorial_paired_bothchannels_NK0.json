@@ -20,8 +20,12 @@
     "gained": 3,
     "lost": 4,
     "discordant": 7,
-    "one_sided_p": 0.5,
-    "two_sided_p": 1.0
+    "two_sided_p": 1.0,
+    "one_sided_p_direction_blind": 0.5,
+    "one_sided_p_note": "Computed from the smaller discordant tail, so it did not depend on which arm won. Kept as a record of what was published; read improvement_p or deterioration_p instead. See tests/test_paired_comparison_direction.py.",
+    "improvement_p": 0.7734375,
+    "deterioration_p": 0.5,
+    "direction": "lost"
   },
   "wilson_intervals_overlap": true,
   "label": "factorial cell bothchannels_NK0 against base_000, 24 paired episodes"

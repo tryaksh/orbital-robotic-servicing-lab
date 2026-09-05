@@ -20,8 +20,12 @@
     "gained": 12,
     "lost": 1,
     "discordant": 13,
-    "one_sided_p": 0.001708984375,
-    "two_sided_p": 0.00341796875
+    "two_sided_p": 0.00341796875,
+    "one_sided_p_direction_blind": 0.001708984375,
+    "one_sided_p_note": "Computed from the smaller discordant tail, so it did not depend on which arm won. Kept as a record of what was published; read improvement_p or deterioration_p instead. See tests/test_paired_comparison_direction.py.",
+    "improvement_p": 0.001708984375,
+    "deterioration_p": 0.9998779296875,
+    "direction": "gained"
   },
   "wilson_intervals_overlap": false,
   "label": "factorial cell velguard_0KL against base_000, 24 paired episodes"

@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 84,
     "retracted": 12,
-    "historical": 181
+    "historical": 183
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -1442,6 +1442,10 @@
     "gripper_collision_envelope.json": {
       "title": "Robotiq 2F-85 collision envelope in the wrist_3_link frame"
     },
+    "handoff_qualification_residual_v1.json": {
+      "title": "Handoff qualification read from the residual distribution",
+      "generated_utc": "2026-09-05T19:03:33.543371+00:00"
+    },
     "inference_budget.json": {
       "title": "Onboard compute budget of the learned components"
     },
@@ -1505,6 +1509,10 @@
     },
     "relocation_rrt_path.json": {
       "generated_utc": "2026-08-21T01:39:23+00:00"
+    },
+    "residual_vs_counted_power_v1.json": {
+      "title": "Reading the residual against counting successes, at matched episode cost",
+      "generated_utc": "2026-09-05T19:02:02.495361+00:00"
     },
     "rgbd_strict_rack_retention_640px_burst_full_seed5070.json": {},
     "rgbd_strict_rack_retention_640px_burst_full_seed6070.json": {},

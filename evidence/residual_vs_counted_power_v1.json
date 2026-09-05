@@ -1,0 +1,82 @@
+{
+  "title": "Reading the residual against counting successes, at matched episode cost",
+  "evidence_type": "resampling_from_existing_episodes",
+  "generated_utc": "2026-09-05T19:02:02.495361+00:00",
+  "question": "Every comparison in this repository dichotomises a continuous terminal lateral error at 2.5 mm and compares rates. What does that cost in episodes, on this system?",
+  "method": "Subsample both 192-episode cohorts without replacement at matched size, test the same episodes two ways (two-proportion on the dichotomised outcome, Mann-Whitney on the residual), and count rejections at alpha = 0.05. Identical episodes reach both arms.",
+  "criterion_m": 0.0025,
+  "cohorts": {
+    "baseline": {
+      "path": "artifacts\\robustness192_section\\nominal.npz",
+      "episodes": 192,
+      "rate": 0.5729166666666666
+    },
+    "treatment": {
+      "path": "artifacts\\robustness192_section\\section_120x16.npz",
+      "episodes": 192,
+      "rate": 0.4583333333333333
+    }
+  },
+  "alpha": 0.05,
+  "power": [
+    {
+      "episodes_per_arm": 8,
+      "counted_power": 0.09775,
+      "residual_power": 0.0595,
+      "repeats": 4000
+    },
+    {
+      "episodes_per_arm": 12,
+      "counted_power": 0.10125,
+      "residual_power": 0.08825,
+      "repeats": 4000
+    },
+    {
+      "episodes_per_arm": 16,
+      "counted_power": 0.09575,
+      "residual_power": 0.1025,
+      "repeats": 4000
+    },
+    {
+      "episodes_per_arm": 24,
+      "counted_power": 0.12175,
+      "residual_power": 0.13225,
+      "repeats": 4000
+    },
+    {
+      "episodes_per_arm": 32,
+      "counted_power": 0.139,
+      "residual_power": 0.14225,
+      "repeats": 4000
+    },
+    {
+      "episodes_per_arm": 48,
+      "counted_power": 0.169,
+      "residual_power": 0.20525,
+      "repeats": 4000
+    },
+    {
+      "episodes_per_arm": 64,
+      "counted_power": 0.196,
+      "residual_power": 0.29075,
+      "repeats": 4000
+    },
+    {
+      "episodes_per_arm": 96,
+      "counted_power": 0.30575,
+      "residual_power": 0.41925,
+      "repeats": 4000
+    }
+  ],
+  "episodes_for_80_percent_power": {
+    "counted": null,
+    "residual": null
+  },
+  "scope_and_limitations": [
+    "Simulation only. No result here was produced on real hardware.",
+    "This is a second reading of existing episodes, not a new measurement.",
+    "Power is estimated against the full-cohort difference between these two specific configurations. It is not a general statement about every comparison this repository makes.",
+    "Subsamples from a 192-episode pool are not independent of one another, so the curve is a fair comparison between the two readings and not an absolute power calculation for a fresh campaign.",
+    "The rank test detects a shift in the residual distribution. A shift that stays entirely on one side of the criterion changes no success rate and is not, by itself, an engineering result."
+  ]
+}
