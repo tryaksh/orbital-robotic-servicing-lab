@@ -19,6 +19,45 @@ rest are archived.
 
 ---
 
+## H0 — Release the module when it is not moving (**the practical next step**)
+
+Ahead of everything else on this list, because it is one condition, one cohort,
+and it addresses where the failures actually are.
+
+**What was measured.** All 186 episodes with a settle trace are inside the
+2.5 mm criterion at their worst sample while the robot holds the module — worst
+case 1.909 mm — and 110 are inside at the end. The error appears entirely after
+release, by translation at about 2.4 mm/s, with rack retention never engaging.
+Ballistic prediction against observed drift: rho = +0.84.
+`evidence/release_drift_v1.json`.
+
+**The change.** Condition the hand release on the module's measured speed
+instead of on the settle timer alone: hold while the estimated speed exceeds a
+threshold, up to a bounded extra wait, then release. The interlock already
+exists in `src/zero_g_blade_swap/service_latch.py`; this adds a velocity term to
+it.
+
+**The run.** The nominal point, three seeds, 64 environments, with and without
+the condition — read paired, because the arms share seeds and checkpoints. The
+traced cohort took 23 minutes for all three seeds, so both arms are under an
+hour.
+
+**What would falsify it.** If the pass rate does not move, the residual velocity
+is not something the controller can wait out — the module is oscillating in the
+compliant mount rather than decaying — and the answer is damping or retention
+geometry instead of timing. Either result is worth the hour, and the second one
+points at the rack rather than the controller.
+
+**Do not read the selection table as the expected result.** Selecting episodes
+that already had a low release velocity is not the same intervention as waiting
+for one. In 104 of 186 episodes a slower moment existed while held; in the other
+82 it did not, so a velocity condition alone cannot reach 100%.
+
+**Second arm, same hour.** This configuration never engages rack retention,
+while the strict chain that scores 91.67% does. Run that comparison explicitly
+rather than inferring it: it may be that retention already solves this and the
+sweep configuration has been measuring a fixture that was never switched on.
+
 ## H1 — Join pre-handoff state to outcomes that vary (**done 2026-09-05**)
 
 The traced nominal cohort landed at 13:29, three seeds, 23 minutes of GPU.

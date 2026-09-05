@@ -4,6 +4,45 @@ Branch `research/correction-aware-handoffs`, opened 2026-09-05 from
 `paper/serviceability-qualification` at `3dced19`. One charter, one experiment
 plan. When this disagrees with an older plan, this wins and the older text goes.
 
+## The finding that reframes the project, 2026-09-05
+
+Every framing this project has tried — a handoff gate, a correction model, a
+tolerance prescription, a learned seating policy — asked which *upstream*
+variable explains the terminal pose. None of them asked *when* the failing error
+appears. The settle trace answers that directly, because it records lateral
+error on both sides of the hand release.
+
+**The module is placed correctly in every episode. It is released while still
+moving, and drifts out of tolerance with nothing holding it.**
+
+| stage | median lateral error | worst | inside the 2.5 mm criterion |
+| --- | ---: | ---: | ---: |
+| worst sample while the robot holds it | 1.058 mm | 1.909 mm | **186/186** |
+| at the instant of release | 0.902 mm | 1.941 mm | **186/186** |
+| terminal | 2.144 mm | 5.734 mm | **110/186** |
+
+The guarded advance does its job. The error that fails the task is created
+entirely in the unsupported settling window, and it is created by translation:
+the module leaves the gripper carrying about 2.4 mm/s and coasts. Drift
+predicted as velocity times free-window duration tracks observed drift at
+**rho = +0.84**, and `rack_retention_engaged` is false for all 186 episodes in
+this configuration, so nothing arrests it. This is Newton's first law, measured.
+
+Selecting episodes by release velocity recovers the whole pass rate — at
+2.0 mm/s every admitted episode passes — and in 104 of 186 episodes a slower
+release moment was available while the robot was still holding on. That is a
+selection over recorded episodes, not proof that waiting would work, and the
+report says so; but it locates the entire 41% failure rate in one controllable
+decision.
+
+It also explains the noise that has dogged every comparison here. If the outcome
+depends on the phase of a residual oscillation at the moment of release, then
+the same cell run twice scoring 7/24 and then 4/24 is not an instrument problem
+to be averaged away — it is the release phase, and it is fixable rather than
+irreducible.
+
+`evidence/release_drift_v1.json`, `scripts/report_release_drift.py`.
+
 ## The question, after the evidence moved it
 
 The pivot brief proposed: *can we predict which errors at the start of an
