@@ -87,22 +87,54 @@ the existing cohort scored 110/192, and if the traced run reproduces that, the
 trace is non-perturbing and its pre-handoff state may be joined to outcomes
 already published. If it does not reproduce, that is the more important result.
 
-**Seed 4070, 2026-09-05 13:14: the control passes exactly.** 35/64 against
-35/64, all 64 episodes agreeing individually, and a maximum per-episode residual
-difference of 0.000000 mm. Recording the trace changes nothing, and at this
-seed, environment count, commit and machine the chain is bit-reproducible —
-measured rather than assumed, and claimed no further than that.
-`scripts/check_trace_is_non_perturbing.py`, and it exits non-zero when the two
-runs are not the same run.
+**Resolved 2026-09-05 13:29: the control passes exactly, on all three seeds.**
+35/64, 36/64 and 39/64 — **110/192, the published number to the episode** — with
+all 192 episodes agreeing individually and a maximum per-episode residual
+difference of 0.000000 mm. Recording the trace changes nothing, and at these
+seeds, this environment count, commit and machine the chain is bit-reproducible.
+Measured rather than assumed, and claimed no further than measured.
+`scripts/check_trace_is_non_perturbing.py` exits non-zero when the two runs are
+not the same run. 187 of 192 episodes carry a pre-handoff row.
 
-**And the first read of the joined data goes against H2.** On seed 4070's 62
-arrived episodes, the largest of 24 pre-handoff feature correlations with the
-terminal residual is **0.181**, against a null in which the largest of 24 noise
-correlations at n = 62 has a median of **0.285**. The strongest apparent signal
-is weaker than chance typically produces. That is one seed and the remaining two
-are running; if it holds at 192 episodes, the fixture is not merely correcting
-the incoming error but erasing it, and there is nothing for a pre-handoff
-predictor to learn.
+## H2 is falsified, and the reason matters more than the verdict
+
+On 187 arrived episodes with pre-handoff state joined to outcomes:
+
+* the largest of 24 feature correlations with the terminal residual is **0.135**,
+  against a null in which the largest of 24 *noise* correlations at n = 187 has a
+  median of **0.159** and a 95th percentile of 0.220. The strongest apparent
+  signal is weaker than chance typically produces;
+* leave-one-seed-out, the fitted model scores a Brier of **0.2407** against the
+  base rate's **0.2427**. A gain of +0.002 where the declared margin was +0.10.
+
+So no pre-handoff predictor exists at this sample size, and the charter's
+NARROW condition is met rather than GO.
+
+**But the null has two possible causes and they call for opposite next steps**,
+and this is the finding to carry forward. Either the contact interval destroys
+the information the incoming state carried, or the incoming state never varied
+enough to carry any. The delivered spread says it is closer to the second:
+
+| quantity | p5–p95 spread |
+| --- | ---: |
+| module lateral position at handoff | 2.131 mm |
+| grip error at handoff | 2.029 mm |
+| latch relative position error at handoff | 0.124 mm |
+| **terminal lateral residual** | **3.931 mm** |
+
+The transit delivers the seating step a narrow, self-similar distribution, and
+the residual that decides the outcome is roughly twice as variable as the widest
+thing handed in. **The variance that determines success is generated during the
+contact interval, not inherited from the handoff.** A correction model has
+nothing to condition on because the conditioning variable barely moves.
+
+That is not the same as "correction-aware qualification cannot work". It is
+"this experiment never tested it". The experiment that would is to widen the
+handoff distribution deliberately — inject lateral and attitude offsets at the
+transit-to-insert boundary and find where the fixture stops absorbing them —
+which has never been run here and which `solve_insert_reset_bank.py` already has
+the machinery for. That is the single recommended next experiment, and it is
+cheap: the cohort above took 23 minutes of GPU for all three seeds.
 
 ## Day-14 decision, with the margin declared before the data
 
@@ -113,13 +145,32 @@ third was not run at, and compare against the two named alternatives.
 | | practical margin, declared 2026-09-05 |
 | --- | --- |
 | **GO** | The traced cohort reproduces 110/192 within its interval; a pre-handoff predictor beats the cohort's base rate by **≥ 0.10 absolute** in held-out Brier score; and the criterion curve fitted on two configurations predicts the third's rate within **± 0.10 absolute** with its interval covering the truth. |
-| **NARROW** | The measurement path is trustworthy and the criterion curve transfers, but no pre-handoff predictor beats the base rate. Ship the descriptive tool and the two-workflow tolerance result as an engineering study. **This is the current default.** |
+| **NARROW** | The measurement path is trustworthy and the criterion curve transfers, but no pre-handoff predictor beats the base rate. Ship the descriptive tool and the two-workflow tolerance result as an engineering study. |
 | **STOP** | The traced cohort does not reproduce 110/192, or the criterion curve fails to transfer between configurations. |
 
-NARROW is the default rather than a fallback, because the two negatives above
-have already removed the data-efficiency claim, and what remains — criterion
-transfer — is useful engineering rather than a new method. Promoting it to GO
-requires the pre-handoff predictor to work, which nothing yet shows.
+### The decision, reached on day 1 rather than day 14: **NARROW**
+
+Every clause resolved on 2026-09-05, against margins declared before the data
+existed:
+
+| clause | result |
+| --- | --- |
+| traced cohort reproduces 110/192 | **yes**, to the episode, 0.000000 mm residual difference |
+| pre-handoff predictor beats base rate by ≥ 0.10 Brier | **no**: +0.002 |
+| criterion curve is unbiased within a configuration | **yes**: \|bias\| < 0.002, coverage 0.86–0.99 |
+| curve orders three configurations consistently | yes, and the scope block says why that is near-arithmetic |
+
+The measurement path is trustworthy and the descriptive tool works. The method
+claim does not survive: neither of its two halves — data efficiency, and a
+pre-handoff predictor — beat the alternatives they were declared against.
+
+**What NARROW means here, concretely.** Ship the residual reading as an
+engineering contribution: the delivery-against-precision decomposition, the
+criterion curve, and the two-workflow tolerance result. Do not spend the
+remaining six weeks on a correction-aware method paper. Spend one bounded
+experiment — the widened handoff distribution described above — on the question
+of whether the method *could* work, because the day-1 answer is that it was
+never tested, not that it failed.
 
 Two held-out configurations remain two independent transfer cases regardless of
 how many episodes are rolled out. No number of episodes converts them into a

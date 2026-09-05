@@ -19,53 +19,53 @@ rest are archived.
 
 ---
 
-## H1 — Join pre-handoff state to outcomes that vary
+## H1 — Join pre-handoff state to outcomes that vary (**done 2026-09-05**)
 
-**The blocker.** The cohort that varies has no trace; the cohorts with traces do
-not vary. `artifacts/robustness192_section/nominal.npz` is 192 episodes at
-110 successes and was run without `--handoff_trace`. Pooled over all eighteen
-trace-bearing cohorts, four have both outcomes present and hold six failures
-between them.
+The traced nominal cohort landed at 13:29, three seeds, 23 minutes of GPU.
+**The control passes exactly**: 35/64, 36/64, 39/64 — 110/192, the published
+number to the episode — with all 192 episodes agreeing individually and a
+maximum per-episode residual difference of 0.000000 mm. The trace is
+non-perturbing and 187 of 192 episodes carry a pre-handoff row.
+`evidence/trace_non_perturbing_v1.json`.
 
-**Running.** `artifacts/campaign/supervise_traced_nominal.sh`, launched
-2026-09-05 13:06. Three seeds, 64 environments, `TRACE=1`, nothing else changed.
+## H2 — Fit the pre-handoff predictor (**falsified 2026-09-05**)
 
-**Its own control.** The existing cohort scored 110/192. If the traced run
-reproduces that within its interval, the trace is non-perturbing and its
-pre-handoff state may be joined to outcomes already published. If it does not,
-that is the more important result and it is reported before anything is fitted.
+Largest of 24 feature correlations with the terminal residual: **0.135**,
+against a null whose largest-of-24 at n = 187 has a median of 0.159. Held out by
+seed, the model's Brier is 0.2407 against the base rate's 0.2427 — a gain of
++0.002 where the declared margin was +0.10.
+`evidence/pre_handoff_predictability_v1.json`, verdict `falsifies_h2`.
 
-**Done when** 192 traced episodes exist whose handoff rows join to their
-outcomes by environment index, and the reproduction check is written as
-evidence either way.
+**Do not read this as "the fixture erases incoming error".** The delivered
+distribution is narrow — 2.131 mm of lateral spread at handoff, 0.124 mm of
+latch relative position error — against a 3.931 mm terminal residual spread. The
+variance that decides the outcome is generated *during* the contact interval,
+not inherited. A correction model has nothing to condition on because the
+conditioning variable barely moves.
 
-**Cost.** ~18–31 minutes a seed measured on the untraced runs, so roughly one to
-one and a half hours — but wall clock on this machine is not stable and the
-schedule is planned in seeds, not hours.
+## H2b — Widen the handoff distribution on purpose (**the one experiment worth running**)
 
-## H2 — Fit the pre-handoff predictor, and try to fail
+The single recommended next experiment, and the only way to learn whether a
+correction model could work at all. Inject lateral and attitude offsets at the
+transit-to-insert boundary, well beyond the 2 mm the transit naturally delivers,
+and find where the fixture stops absorbing them.
 
-Once H1 lands. Predict the terminal residual from state available *before* the
-contact interval, and the pass/fail that thresholds it.
+**Why it is the right next step.** H2 did not show that incoming error is
+uninformative; it showed that this cohort never varied it. The boundary the
+whole pivot is about has never been sampled.
 
-**Admissible features only.** The handoff row at `to_phase == INSERT`. Never a
-terminal variable: `lateral_error_m` at judgement time defines the failure and
-using it to predict that failure is the trap `_freeze` exists to make visible.
+**Machinery that already exists.** `scripts/solve_insert_reset_bank.py` solves
+paired arm and module poses along the seating stroke in closed form, and
+`play.py --legacy_unbounded_reset` widens a reset distribution.
 
-**The named alternatives, at matched budget:**
+**Falsified if** the pass rate stays flat across the full injected range — which
+would mean the fixture's acceptance region is wider than anything reachable, and
+the qualification question is answered trivially — or if it collapses the moment
+any offset is injected, which would mean the delivered distribution is already at
+the boundary and the margin is zero.
 
-| alternative | question it answers |
-| --- | --- |
-| the cohort base rate | does any feature beat guessing? |
-| nominal geometry / clearance rule | does measured state add anything beyond arithmetic? |
-| direct binary predictor on the same features | does modelling the residual beat predicting the outcome? |
-| residual regression, thresholded | the candidate |
-
-**Falsified if** no predictor beats the base rate by ≥ 0.10 absolute in held-out
-Brier score. At n = 64 the best pre-handoff correlate with terminal residual in
-the gate-ablation cohort was ρ = +0.32 across 29 features, which is what the
-largest of 29 correlations looks like under the null. Expect this to fail; run
-it because the traced cohort is the first sample where it *can* succeed.
+**Cost.** The traced cohort was 23 minutes for 192 episodes. A five-point
+injection sweep at three seeds is under two hours.
 
 ## H3 — Transfer the criterion curve between configurations
 

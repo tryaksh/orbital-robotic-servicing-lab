@@ -1,0 +1,179 @@
+{
+  "title": "Whether pre-handoff state predicts the residual the seating step leaves",
+  "evidence_type": "simulation_only",
+  "generated_utc": "2026-09-05T19:30:04.025578+00:00",
+  "question": "The pivot brief asks which incoming errors get corrected and which stay dangerous. This asks the measurable form: does the state handed to the seating step carry any information about the residual it leaves?",
+  "cohorts": [
+    "artifacts/traced_nominal/seed4070/nominal.npz",
+    "artifacts/traced_nominal/seed5070/nominal.npz",
+    "artifacts/traced_nominal/seed6070/nominal.npz"
+  ],
+  "criterion_m": 0.0025,
+  "episodes_with_pre_handoff_row": 187,
+  "arrived": 187,
+  "base_rate": 0.5882352941176471,
+  "features_varying": [
+    "arm_joint_0",
+    "arm_joint_1",
+    "arm_joint_2",
+    "arm_joint_3",
+    "arm_joint_4",
+    "arm_joint_5",
+    "blade_angular_velocity_radps",
+    "blade_linear_velocity_mps",
+    "blade_qw",
+    "blade_qx",
+    "blade_qy",
+    "blade_qz",
+    "blade_x_m",
+    "blade_y_m",
+    "blade_z_m",
+    "drive_torque_nm",
+    "finger_angle_rad",
+    "grip_attitude_rad",
+    "grip_error_m",
+    "latch_relative_orientation_error_rad",
+    "latch_relative_position_error_m",
+    "tool_x_m",
+    "tool_y_m",
+    "tool_z_m"
+  ],
+  "univariate": {
+    "correlations": [
+      {
+        "feature": "blade_y_m",
+        "spearman_rho": 0.1351928180019746
+      },
+      {
+        "feature": "blade_qz",
+        "spearman_rho": 0.12974062152470647
+      },
+      {
+        "feature": "tool_z_m",
+        "spearman_rho": 0.12695121100789478
+      },
+      {
+        "feature": "finger_angle_rad",
+        "spearman_rho": 0.12529408094428887
+      },
+      {
+        "feature": "latch_relative_orientation_error_rad",
+        "spearman_rho": -0.12520415915789165
+      },
+      {
+        "feature": "arm_joint_3",
+        "spearman_rho": -0.10710235301458201
+      },
+      {
+        "feature": "grip_error_m",
+        "spearman_rho": 0.10199883285191533
+      },
+      {
+        "feature": "arm_joint_1",
+        "spearman_rho": 0.09984438025537787
+      },
+      {
+        "feature": "latch_relative_position_error_m",
+        "spearman_rho": 0.09720728623389208
+      },
+      {
+        "feature": "arm_joint_4",
+        "spearman_rho": -0.0942985917147167
+      },
+      {
+        "feature": "arm_joint_5",
+        "spearman_rho": 0.09055674431749364
+      },
+      {
+        "feature": "arm_joint_0",
+        "spearman_rho": 0.09023559508036072
+      },
+      {
+        "feature": "tool_x_m",
+        "spearman_rho": 0.09011631107799706
+      },
+      {
+        "feature": "blade_qy",
+        "spearman_rho": -0.08974377796292286
+      },
+      {
+        "feature": "blade_z_m",
+        "spearman_rho": 0.08555415677221159
+      },
+      {
+        "feature": "tool_y_m",
+        "spearman_rho": 0.08433745994810228
+      },
+      {
+        "feature": "blade_angular_velocity_radps",
+        "spearman_rho": -0.0826197703140656
+      },
+      {
+        "feature": "blade_x_m",
+        "spearman_rho": 0.08032584719168756
+      },
+      {
+        "feature": "grip_attitude_rad",
+        "spearman_rho": -0.07687945709262678
+      },
+      {
+        "feature": "blade_linear_velocity_mps",
+        "spearman_rho": -0.04305418429928907
+      },
+      {
+        "feature": "blade_qw",
+        "spearman_rho": -0.014084687971401201
+      },
+      {
+        "feature": "blade_qx",
+        "spearman_rho": -0.014013117569983007
+      },
+      {
+        "feature": "drive_torque_nm",
+        "spearman_rho": -0.009551895881582183
+      },
+      {
+        "feature": "arm_joint_2",
+        "spearman_rho": -0.0061477139679731625
+      }
+    ],
+    "observed_max_abs_rho": 0.1351928180019746,
+    "null_max_abs_rho": {
+      "draws": 2000,
+      "median": 0.15938361368132453,
+      "percentile_95": 0.22049179876605285
+    },
+    "exceeds_noise_95th": false
+  },
+  "delivered_distribution": {
+    "incoming_p5_p95_spread_m": {
+      "blade_x_m": 0.001475524902343761,
+      "blade_y_m": 0.0021314859390258734,
+      "blade_z_m": 0.0009809672832489236,
+      "grip_error_m": 0.0020285490900278074,
+      "latch_relative_position_error_m": 0.0001235217776411446,
+      "tool_x_m": 0.0012927651405334473,
+      "tool_y_m": 0.012376666069030762,
+      "tool_z_m": 0.0009595870971679243
+    },
+    "residual_p5_p95_spread_m": 0.003930701795616187
+  },
+  "held_out": {
+    "folds": 3,
+    "brier_model": 0.24070410338121492,
+    "brier_base_rate": 0.24268182382727832,
+    "brier_gain": 0.001977720446063397,
+    "residual_mse_model": 1.4677077115564668e-06,
+    "residual_mse_mean": 1.5055382758249087e-06
+  },
+  "required_brier_gain": 0.1,
+  "verdict": "falsifies_h2",
+  "scope_and_limitations": [
+    "Simulation only. No result here was produced on real hardware.",
+    "Only pre-handoff columns are used as inputs. The terminal pose is the target and never an input, because it defines the outcome.",
+    "Folds are grouped by seed; episodes within a seed share a checkpoint and a reset stream, so a random split would leak.",
+    "One fixed checkpoint set. This says nothing about whether a differently trained controller would leave a predictable residual.",
+    "A null univariate result does not prove no predictor exists. It bounds how strong a simple one can be at this sample size, which is the question the day-14 decision needs answered.",
+    "A null result here is not by itself evidence that the fixture destroys incoming error. Read it beside delivered_distribution: if the handoff delivers a distribution far narrower than the residual it leaves, then the incoming variation was never wide enough to be predictive and the experiment that would settle it -- widening the handoff distribution on purpose -- has not been run."
+  ]
+}

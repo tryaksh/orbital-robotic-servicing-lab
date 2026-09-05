@@ -162,6 +162,32 @@ def grouped_scores(
     }
 
 
+def incoming_spread(x: np.ndarray, names: list[str], residual: np.ndarray) -> dict:
+    """How wide is the distribution the handoff actually delivers?
+
+    A null predictive result has two possible causes and they call for opposite
+    next steps. Either the contact interval genuinely destroys the information
+    the incoming state carried, or the incoming state never varied enough to
+    carry any -- in which case nothing has been tested and the experiment that
+    would test it is to widen the handoff distribution on purpose.
+
+    Reporting the spread of each incoming length beside the spread of the
+    residual is the cheapest way to tell those apart.
+    """
+
+    lengths = [n for n in names if n.endswith("_m")]
+    spreads = {}
+    for name in lengths:
+        column = x[:, names.index(name)]
+        spreads[name] = float(np.percentile(column, 95) - np.percentile(column, 5))
+    return {
+        "incoming_p5_p95_spread_m": spreads,
+        "residual_p5_p95_spread_m": float(
+            np.percentile(residual, 95) - np.percentile(residual, 5)
+        ),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -233,6 +259,13 @@ def main() -> int:
         )
     )
 
+    spread = incoming_spread(x, varying_names, y)
+    print()
+    print("spread the handoff delivers, against the spread the seating step leaves (mm):")
+    for name, value in sorted(spread["incoming_p5_p95_spread_m"].items(), key=lambda kv: -kv[1]):
+        print(f"   {name:>42}  {value * 1000:>8.3f}")
+    print(f"   {'TERMINAL lateral_error_m':>42}  {spread['residual_p5_p95_spread_m'] * 1000:>8.3f}")
+
     scores = grouped_scores(x, y, passed, group, args.criterion_m, args.penalty)
     print()
     print(f"leave-one-seed-out, {scores['folds']} folds:")
@@ -277,6 +310,7 @@ def main() -> int:
             "null_max_abs_rho": null,
             "exceeds_noise_95th": bool(beats_noise),
         },
+        "delivered_distribution": spread,
         "held_out": scores,
         "required_brier_gain": REQUIRED_BRIER_GAIN,
         "verdict": verdict,
@@ -291,6 +325,12 @@ def main() -> int:
             "A null univariate result does not prove no predictor exists. It bounds "
             "how strong a simple one can be at this sample size, which is the "
             "question the day-14 decision needs answered.",
+            "A null result here is not by itself evidence that the fixture destroys "
+            "incoming error. Read it beside delivered_distribution: if the handoff "
+            "delivers a distribution far narrower than the residual it leaves, then "
+            "the incoming variation was never wide enough to be predictive and the "
+            "experiment that would settle it -- widening the handoff distribution on "
+            "purpose -- has not been run.",
         ],
     }
     if args.report:
