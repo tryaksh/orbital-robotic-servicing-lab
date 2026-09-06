@@ -149,3 +149,48 @@ contribution rather than my reading of this rack.
 Either outcome is worth the run. The one that would be least informative is P3
 holding *and* the tool being unable to say why, which is why the corpus
 diagnostic is reported alongside the prediction rather than after it.
+
+---
+
+## Second addendum: the tool's formal predictions, on the real corpus
+
+Run through `scripts/predict_configuration_change.py` against
+`configs/predict_wider_140x20.json` and `configs/predict_thicker_130x26.json`,
+with `artifacts/jam_prediction/` still absent. Reference is the shipped-relief
+cohort with pawls; both queued runs are at relief 0.00, so both move lateral
+clearance against that reference as well as their own dimension.
+
+| phase | reference | tool: `140x20` | tool: `130x26` |
+| --- | ---: | ---: | ---: |
+| capture | 0.0156 | 0.0156 unchanged | 0.0156 unchanged |
+| extract | 0.0104 | 0.0104 unchanged | **0.0104 unchanged** |
+| insert | 0.0000 | **rises to 0.1302** | **rises to 0.0625** |
+| terminal gate | 0.0000 | 0.0000 unchanged | 0.0000 unchanged |
+
+Both are driven by `lateral_clearance` alone; thickness stays confounded and
+contributes nothing, which is the refusal folded into the answer rather than
+printed beside it.
+
+The reasoning is visible in the numbers. `140x20` halves the clearance and the
+jam rate roughly doubles against the prescribed-relief baseline of 0.0625.
+`130x26` has the *same* lateral clearance as the prescribed 130 x 20, so the
+tool predicts the same jam rate, 0.0625, and no change anywhere else.
+
+### The three-way comparison this sets up
+
+| | `140x20` | `130x26` |
+| --- | --- | --- |
+| existing clearance rule (`2c/theta`) | worse | unchanged from prescribed |
+| **tool** | insert 0.1302, extract unchanged | insert 0.0625, **extract unchanged** |
+| **my hand prediction** | insert >= 25% of delivered | **delivery falls to 0.85-0.92 via extract** |
+
+On `130x26` the tool and I now predict *opposite things about extract*. The tool
+says 0.0104, unchanged. I said delivery drops to 0.85-0.92 because thickness
+should hurt extraction. One of those is wrong and the run decides which.
+
+That is the cleanest form this test could have taken: the procedure, run by
+someone with no knowledge of this rack, disagrees with the person who has spent
+a day inside it. If the tool is right, the accumulated knowledge was worth less
+than the corpus. If I am right, the procedure is discarding a real signal
+because its corpus confounds thickness, and the fix is to run a cohort that
+varies thickness alone -- which is what `130x26` is.

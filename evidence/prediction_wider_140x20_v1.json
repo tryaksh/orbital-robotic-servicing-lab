@@ -1,0 +1,165 @@
+{
+  "title": "Predicted phase response to a proposed configuration change",
+  "evidence_type": "prediction_from_existing_episodes",
+  "generated_utc": "2026-09-06T00:43:31.486931+00:00",
+  "source_revision": {
+    "available": true,
+    "commit": "ff8e8973d3b72263bd946dd432fee1991b4ea9e3",
+    "branch": "research/correction-aware-handoffs",
+    "dirty": false,
+    "code_dirty": false,
+    "tracked_changes": [],
+    "error": null
+  },
+  "corpus_file": "configs/predict_wider_140x20.json",
+  "criterion_m": 0.0025,
+  "reference": {
+    "label": "nominal 130x20, shipped relief, pawls",
+    "episodes": 192,
+    "dimensions": {
+      "width": 0.13,
+      "thickness": 0.02,
+      "lateral_clearance": 0.015678
+    },
+    "delivery_rate": 0.9739583333333334,
+    "precision_given_delivery": 1.0
+  },
+  "corpus_coverage": {
+    "lateral_clearance": {
+      "cohorts_varying_it": [
+        "section 120x16",
+        "section 140x26",
+        "prescribed relief 0.00"
+      ],
+      "cohorts_varying_it_alone": [
+        "prescribed relief 0.00"
+      ],
+      "confounded_with": [
+        "thickness",
+        "width"
+      ],
+      "usable": true
+    },
+    "thickness": {
+      "cohorts_varying_it": [
+        "section 120x16",
+        "section 140x26"
+      ],
+      "cohorts_varying_it_alone": [],
+      "confounded_with": [
+        "lateral_clearance",
+        "width"
+      ],
+      "usable": false
+    },
+    "width": {
+      "cohorts_varying_it": [
+        "section 120x16",
+        "section 140x26"
+      ],
+      "cohorts_varying_it_alone": [],
+      "confounded_with": [
+        "lateral_clearance",
+        "thickness"
+      ],
+      "usable": false
+    }
+  },
+  "proposed_change": {
+    "width": 0.14,
+    "thickness": 0.02,
+    "lateral_clearance": 0.006065
+  },
+  "predictions": {
+    "capture": {
+      "direction": "unchanged",
+      "rate": 0.015625,
+      "rate_interval": [
+        0.015625,
+        0.015625
+      ],
+      "reference_rate": 0.015625,
+      "refused": null,
+      "driven_by": [
+        "lateral_clearance"
+      ],
+      "confounded_with": []
+    },
+    "seat": {
+      "direction": "unchanged",
+      "rate": 0.0,
+      "rate_interval": [
+        0.0,
+        0.0
+      ],
+      "reference_rate": 0.0,
+      "refused": null,
+      "driven_by": [
+        "lateral_clearance"
+      ],
+      "confounded_with": []
+    },
+    "extract": {
+      "direction": "unchanged",
+      "rate": 0.010416666666666666,
+      "rate_interval": [
+        0.010416666666666666,
+        0.010416666666666666
+      ],
+      "reference_rate": 0.010416666666666666,
+      "refused": null,
+      "driven_by": [
+        "lateral_clearance"
+      ],
+      "confounded_with": []
+    },
+    "transit": {
+      "direction": "unchanged",
+      "rate": 0.0,
+      "rate_interval": [
+        0.0,
+        0.0
+      ],
+      "reference_rate": 0.0,
+      "refused": null,
+      "driven_by": [
+        "lateral_clearance"
+      ],
+      "confounded_with": []
+    },
+    "insert": {
+      "direction": "rises",
+      "rate": 0.1302433340559289,
+      "rate_interval": [
+        0.1302433340559289,
+        0.1302433340559289
+      ],
+      "reference_rate": 0.0,
+      "refused": null,
+      "driven_by": [
+        "lateral_clearance"
+      ],
+      "confounded_with": []
+    },
+    "terminal_gate": {
+      "direction": "unchanged",
+      "rate": 0.0,
+      "rate_interval": [
+        0.0,
+        0.0
+      ],
+      "reference_rate": 0.0,
+      "refused": null,
+      "driven_by": [
+        "lateral_clearance"
+      ],
+      "confounded_with": []
+    }
+  },
+  "scope_and_limitations": [
+    "A prediction, made before the proposed configuration was run. If any episode of it already exists, this is a diagnosis and must be labelled as one.",
+    "The projection is linear from the cohorts that varied a dimension alone. That is the least the evidence allows and not a model of the physics; the interval is wide because the evidence is thin.",
+    "The procedure is only as wide as its corpus. A dimension no cohort varied, or varied only alongside another, gets a refusal rather than a number.",
+    "Phase names and the success criterion come from the corpus file. Nothing here is specific to a workcell."
+  ]
+}

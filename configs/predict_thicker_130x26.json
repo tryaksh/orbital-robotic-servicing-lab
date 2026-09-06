@@ -1,0 +1,55 @@
+{
+  "_what_this_is": "Prediction corpus for the queued thicker_130x26 run. Identical to rack_corpus.json except for the proposed change, which is the configuration actually queued.",
+  "phase_names": [
+    "capture",
+    "seat",
+    "extract",
+    "transit",
+    "insert",
+    "done"
+  ],
+  "criterion_m": 0.0025,
+  "reference": {
+    "label": "nominal 130x20, shipped relief, pawls",
+    "episodes": "artifacts/retention_nominal/seed*/nominal.npz",
+    "dimensions": {
+      "width": 0.13,
+      "thickness": 0.02,
+      "lateral_clearance": 0.015678
+    }
+  },
+  "cohorts": [
+    {
+      "label": "section 120x16",
+      "episodes": "artifacts/section_retained/seed*/section_120x16.npz",
+      "dimensions": {
+        "width": 0.12,
+        "thickness": 0.016,
+        "lateral_clearance": 0.020678
+      }
+    },
+    {
+      "label": "section 140x26",
+      "episodes": "artifacts/section_retained/seed*/section_140x26.npz",
+      "dimensions": {
+        "width": 0.14,
+        "thickness": 0.026,
+        "lateral_clearance": 0.010678
+      }
+    },
+    {
+      "label": "prescribed relief 0.00",
+      "episodes": "artifacts/prescription_retained/seed*/nominal.npz",
+      "dimensions": {
+        "width": 0.13,
+        "thickness": 0.02,
+        "lateral_clearance": 0.011065
+      }
+    }
+  ],
+  "change": {
+    "width": 0.13,
+    "thickness": 0.026,
+    "lateral_clearance": 0.011065
+  }
+}
