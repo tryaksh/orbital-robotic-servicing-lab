@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 84,
     "retracted": 12,
-    "historical": 199
+    "historical": 200
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -1463,6 +1463,10 @@
     },
     "insertion_chain_handoff_controller_v1.json": {
       "generated_utc": "2026-08-27T06:07:43+00:00"
+    },
+    "jam_mechanism_v1.json": {
+      "title": "Which axis the module rotates about when the prescribed channel jams it",
+      "generated_utc": "2026-09-06T00:54:51.933791+00:00"
     },
     "mating_compliance.json": {
       "title": "Mating compliance for a robot-carried module",

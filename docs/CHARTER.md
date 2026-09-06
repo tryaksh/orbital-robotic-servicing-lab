@@ -197,6 +197,39 @@ change delivery.
 `evidence/section_section_120x16_retained_paired_n192.json`,
 `evidence/section_section_140x26_retained_paired_n192.json`.
 
+### The jam is a yaw, and the reference workcell reproduces exactly
+
+Instrumented re-run of three arms on one fixed configuration, with the module's
+full quaternion recorded during insertion rather than only the magnitude of its
+orientation error.
+
+**The reference reproduces to the episode.** 62/64, 61/64, 64/64 — 187/192,
+every episode agreeing individually, maximum residual difference 0.000000 mm
+against the established arm. Adding the four quaternion columns perturbed
+nothing, so the reference workcell is genuinely fixed.
+`evidence/reference_workcell_reproduction_v1.json`.
+
+**The mechanism, at rest, median Euler components in mrad:**
+
+| arm | group | n | roll | pitch | yaw |
+| --- | --- | ---: | ---: | ---: | ---: |
+| reference (relief 4.61 mm) | seated | 187 | 0.02 | 2.18 | 0.71 |
+| prescribed (relief 0.00 mm) | seated | 175 | −0.27 | 2.59 | 1.46 |
+| prescribed (relief 0.00 mm) | **jammed** | **12** | −0.81 | −6.57 | **−87.76** |
+
+The separation is total. All twelve jams rest near 88 mrad of yaw; all 362
+seated episodes rest within 3 mrad. Roll and pitch are unremarkable in both
+groups and do not distinguish them.
+
+So the wedge is a **rotation about the vertical axis, between the side guides**.
+Lateral clearance governs it; vertical clearance does not. That kills the
+lead-in explanation and makes the discrepancy with the library's own `2c/theta`
+bound sharper rather than softer: the bound is about lateral clearance, it is
+the right bound for this failure, and it permits 250.7 mm of engagement where
+the module wedges at 88.0.
+
+`evidence/jam_mechanism_v1.json`, `scripts/report_jam_mechanism.py`.
+
 ### What this obliges, and what it does not
 
 It does **not** retract a number. Every cohort measured what it measured.
