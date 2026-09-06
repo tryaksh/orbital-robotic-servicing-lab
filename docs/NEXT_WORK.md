@@ -77,16 +77,33 @@ exists. Same seeds, same checkpoints, one flag.
 What is left of the sweep:
 
 * `rack_lat_6mm`, `rack_lat_16mm` — **the clearance axis, and the one that most
-  needs re-running**, but each exists at one seed only. Running them with pawls
-  would give an unpaired n = 64 comparison. Measure the retention-absent arms at
-  seeds 5070 and 6070 first, then both arms with pawls. Four points of 64
-  episodes, about 40 minutes.
+  needs re-running**. A 2x2 was started on 2026-09-05 and **stopped seven runs
+  of twelve in**, leaving `artifacts/clearance_factorial/` partial: the
+  retention-absent arm at three seeds, the fitted arm at one, so nothing in it
+  is paired. Finish from there rather than pairing against `robustness64*` —
+  every run in it states `--rack_clearance_scope channel` explicitly, which the
+  historical cohorts do not record. Five runs, about 45 minutes.
 * `base_x_-0.70`, `base_y_+10mm`, `mass_20kg`, `mass_40kg` — lower priority. No
   published verdict rests on them.
 
 **Read the delivery column first on every one.** The section axis turned out to
 be entirely a capture failure once the fixture was fitted, and a clearance point
 may be the same. `scripts/qualify_handoff.py` splits it.
+
+**A process note that cost two hours of GPU throughput.** That supervisor was
+believed stopped on 2026-09-05 and was not: `pkill -f
+supervise_clearance_factorial` did not kill it, it survived as PID 1870, and it
+kept launching cells alongside `supervise_jam_mechanism.sh` from 17:47 to 18:50.
+Both campaigns shared one GPU for that window and runs took about 11 minutes
+where the same work alone takes 8. No episode is wrong — contention costs wall
+clock, not physics — but **any timing read from either campaign's logs in that
+window is not a clean measurement**, and a run described at the time as
+time-boxed was quietly executing at two-thirds speed.
+
+The rule this repository already has for runs applies to kills: verify by the
+artifact, not by the claim. A kill is confirmed by matching each surviving
+process to its `--episode_metrics` path, not by the absence of an error from
+`pkill`.
 
 ## R1c — Why the module never arrives (**capture *and* extract**)
 
