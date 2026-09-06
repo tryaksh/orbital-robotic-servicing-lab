@@ -71,6 +71,34 @@ remaining sweep points are roughly eight, so under three hours.
 **Read every point paired** against the retention-absent arm that already
 exists. Same seeds, same checkpoints, one flag.
 
+## P0 — Process: verify a job by its process, not by its log
+
+Two process-management errors in one session, both from trusting a signal
+instead of checking the thing itself.
+
+**A `pkill` that did not kill.** `pkill -f supervise_clearance_factorial`
+returned without error and the supervisor kept running for seventy minutes,
+sharing the GPU with a campaign described at the time as time-boxed.
+
+**A chained job checked too early.** The waiter for the prediction test *had*
+fired, but its log was still empty when I looked, so I concluded the chain was
+broken and launched the run directly. For six seconds two Isaac processes were
+writing the same `--episode_metrics` path — the pre-registered experiment I had
+spent an hour protecting was moments from being written twice into one file.
+
+Both have the same fix, and it is a rule this repository already applies to
+runs:
+
+* confirm a kill by enumerating processes and matching each survivor to its
+  **output path**, not by the absence of an error;
+* confirm a chained job started by finding its **process**, not by reading its
+  log — a log can be empty because the job just started;
+* never launch a job whose output path another live process is already writing.
+
+`Get-CimInstance Win32_Process` with a `--episode_metrics` regex is how both
+were finally established, and it is the check to run before and after any kill
+or launch.
+
 ## R1b — The remaining sweep points (**clearance axis needs seeds first**)
 
 `section_120x16` and `section_140x26` are done and reported in `CHARTER.md`.

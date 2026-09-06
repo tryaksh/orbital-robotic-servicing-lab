@@ -230,6 +230,34 @@ the module wedges at 88.0.
 
 `evidence/jam_mechanism_v1.json`, `scripts/report_jam_mechanism.py`.
 
+### The conclusion does not depend on the idealised fixture
+
+The pawls are an idealisation — a break-rated fixed joint between rack and
+module with `hardware_geometry: null` — so a result that leaned on them would be
+leaning on a modelling convenience. The third arm ran the prescribed clearance
+with retention absent, everything else identical.
+
+**The jams are bit-identical both ways, at all three seeds:**
+
+| seed | jammed environments | residuals, mm |
+| --- | --- | --- |
+| 4070 | 3, 8, 42 | 32.763, 32.902, 32.052 |
+| 5070 | 4, 16, 63 | 31.323, 32.211, 32.356 |
+| 6070 | 5, 41, 43, 47, 50, 54 | 32.928, 32.880, 32.047, 32.269, 31.912, 32.890 |
+
+Same environments, same residuals to five decimal places, with and without the
+fixture — while the cohort's overall rate moves from 175/192 to 64/192. The
+fixture changes everything about the cohort and nothing about the jam, because
+the wedge happens before seating and retention never enters its path.
+
+The retention-absent arm also reproduces the historical `relief0` result exactly
+at 64/192, which is a third independent reproduction of a published number from
+this branch.
+
+So the mechanism finding carries no dependence on the idealisation. Anything
+said about the *rate* of the reference workcell does depend on it, and that
+distinction is now measured rather than argued.
+
 ### What this obliges, and what it does not
 
 It does **not** retract a number. Every cohort measured what it measured.
