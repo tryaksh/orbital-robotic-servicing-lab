@@ -1,0 +1,62 @@
+{
+  "_what_this_is": "The three predictors' claims, in machine-readable form, so scoring is mechanical and auditable rather than assembled by hand afterwards. Every number here was committed before the corresponding cohort existed; see docs/PREREGISTRATION_jam_prediction.md and its git history.",
+  "reference": {
+    "cohort": "artifacts/jam_mechanism/reference/seed*/nominal.npz",
+    "note": "shipped relief 4.61 mm with pawls, 187/192"
+  },
+  "configurations": {
+    "wider_140x20": {
+      "cohort": "artifacts/jam_prediction/wider_140x20/seed*/nominal.npz",
+      "predictors": {
+        "clearance_rule_2c_over_theta": {
+          "produces": ["direction"],
+          "phase": "insert",
+          "direction": "rises",
+          "rate": null,
+          "reasoning": "lateral clearance falls 11.065 -> 6.065 mm per side; depth limit falls 245.9 -> 134.8 mm"
+        },
+        "tool": {
+          "produces": ["phase", "direction", "rate"],
+          "phase": "insert",
+          "direction": "rises",
+          "rate": 0.1302,
+          "other_phases_unchanged": {"capture": 0.0156, "extract": 0.0104, "terminal_gate": 0.0}
+        },
+        "hand": {
+          "produces": ["phase", "direction", "rate"],
+          "phase": "insert",
+          "direction": "rises",
+          "rate_among_delivered": 0.25,
+          "rate_is_a_floor": true
+        }
+      }
+    },
+    "thicker_130x26": {
+      "cohort": "artifacts/jam_prediction/thicker_130x26/seed*/nominal.npz",
+      "predictors": {
+        "clearance_rule_2c_over_theta": {
+          "produces": ["direction"],
+          "phase": "insert",
+          "direction": "unchanged",
+          "rate": null,
+          "reasoning": "lateral clearance unchanged against the prescribed-relief configuration"
+        },
+        "tool": {
+          "produces": ["phase", "direction", "rate"],
+          "phase": "insert",
+          "direction": "rises",
+          "rate": 0.0625,
+          "other_phases_unchanged": {"capture": 0.0156, "extract": 0.0104, "terminal_gate": 0.0},
+          "note": "thickness refused as confounded; this prediction rests on lateral clearance alone"
+        },
+        "hand": {
+          "produces": ["phase", "direction", "rate"],
+          "phase": "extract",
+          "direction": "rises",
+          "delivery_rate": 0.885,
+          "delivery_rate_range": [0.85, 0.92]
+        }
+      }
+    }
+  }
+}
