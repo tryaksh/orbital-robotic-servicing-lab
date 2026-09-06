@@ -1,9 +1,11 @@
 # Agent instructions
 
-The repository instructions are in [`AGENTS.md`](AGENTS.md). Read them, then
-[`docs/CHARTER.md`](docs/CHARTER.md), which carries the research question and
-the day-14 decision, then [`docs/NOW.md`](docs/NOW.md) for verified state.
-Bounded tasks are in [`docs/NEXT_WORK.md`](docs/NEXT_WORK.md).
+Start with [`docs/HANDOFF.md`](docs/HANDOFF.md) — where the project is and the
+single next action. Then [`AGENTS.md`](AGENTS.md) for the working rules,
+[`docs/METHOD.md`](docs/METHOD.md) for what the project is building, and
+[`docs/NOW.md`](docs/NOW.md) for verified state. Bounded tasks are in
+[`docs/NEXT_WORK.md`](docs/NEXT_WORK.md); `docs/CHARTER.md` holds the
+investigation that produced the method.
 
 Three rules prevent the most expensive silent failures:
 
