@@ -55,6 +55,54 @@ cohort that scores 0 of 16 has a rate interval of [0, 0.194] and says nothing;
 its residuals say it needs a 10.41 mm tolerance against the reference chain's
 4.41 mm.
 
+### What is available when — prediction is not diagnosis
+
+The paper can accidentally claim the second while demonstrating only the first,
+so the stages are separated here and every result must say which one it is.
+
+| stage | what exists | what may be claimed |
+| --- | --- | --- |
+| **Prediction** | reference cohorts, cohorts that varied *some* dimensions, the proposed change as deltas. **No episode of the changed configuration.** | which phase will fail, delivery or precision, direction and a bounded magnitude |
+| **Verification** | the above, plus the changed configuration's episodes, read once against a prediction recorded beforehand | whether the prediction held |
+| **Diagnosis** | the changed configuration's failed runs, read freely | what happened, and why — a mechanism |
+
+Diagnosis is where the yaw finding came from and it is genuinely useful, but it
+is retrospective: the twelve jams had already happened. A result that reads a
+changed configuration's failures and explains them is a diagnosis however
+sharp it is, and may not be presented as prediction. The pre-registration file
+exists to make that distinction checkable in git rather than asserted.
+
+### The procedure, written so it does not need this rack
+
+The contribution is not the four checks — those are good practice. It is that
+they compose into a repeatable procedure taking **existing measurements plus a
+proposed geometry change** and returning a phase-level prediction. An engineer
+follows it without knowing anything about this workcell.
+
+1. **Audit the reference cohort.** Read every fixture and mechanism flag its
+   report records and confirm they are the workcell you intend to deploy. Half
+   this repository's evidence failed this check.
+2. **Attribute the reference's own failures by phase.** That is the baseline
+   phase budget the change will perturb.
+3. **Split each phase's failures into delivery and precision** — did the part
+   never arrive, or arrive out of tolerance. They take opposite fixes.
+4. **Build the dimension–phase sensitivity table from cohorts that already
+   varied a dimension.** This is the step that removes the need for local
+   knowledge: it is read from data, not from an engineer's memory of the cell.
+   On this rack, from three existing cohorts — thickness up drives *extract*
+   failures, width and thickness down drive *capture* failures, lateral
+   clearance down drives *insert* jams.
+5. **Project the proposed change through that table**, one dimension at a time,
+   and emit direction plus a bounded magnitude per affected phase.
+6. **Refuse where no cohort has varied the relevant dimension.** The procedure
+   is only as wide as its sensitivity corpus, and saying so is the difference
+   between a tool and a guess.
+
+Step 4 is what a clearance rule cannot do. `2c/theta` knows about lateral
+clearance and insertion; it has no representation of a grasp or an extraction,
+so it is structurally silent on the phases that carry most of this workcell's
+remaining failures.
+
 ### The advantage claim, stated so it can fail
 
 Not data efficiency — that was tested and did not survive (a rank test on
@@ -111,6 +159,12 @@ insertion controller on the Forge task. The method qualifies a controller's
 response to a changed part; it does not care how the controller was obtained,
 and the rack's own guarded advance — the controller all of today's results are
 about — is scripted too. Train a policy only if a result depends on the
-controller being learned. The limitation this imposes is stated wherever the
-second-system result is quoted: it demonstrates the method's portability across
-tasks, not across learned policies.
+controller being learned.
+
+**The scope sentence this obliges, to be carried wherever the second-system
+result appears:** demonstrating the procedure on the rack and on Forge shows it
+applies across **two controller–fixture systems**. It says nothing about
+learned skills in general. Any broader claim — that the procedure transfers
+across policies, across training runs, or to controllers obtained differently —
+needs evidence this project does not have and will not have from these two
+systems.

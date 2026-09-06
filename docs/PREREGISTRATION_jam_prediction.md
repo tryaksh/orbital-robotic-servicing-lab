@@ -99,3 +99,53 @@ harmless. This method says it is harmful in a phase the rule cannot see.
 Simulation only. One point of the sweep, three seeds, one frozen checkpoint set,
 one workcell. A correct prediction here is the second this method has made, not
 a validated capability, and the manuscript may not describe it as one.
+
+---
+
+## Addendum, same session, still before any prediction data exists
+
+Building the procedure as a tool changed what is being tested, and the change
+matters more than the original prediction did.
+
+`src/handoff_qualification/change_prediction.py` runs the procedure from the
+corpus alone, with no knowledge of this rack. Given the reference cohort and the
+three cohorts that varied something, it returns:
+
+* **`wider_140x20`** — insert failures **rise**, driven by `lateral_clearance`,
+  to 0.068 of all episodes against a 0.0 reference, with every other phase
+  unchanged. Direction agrees with the hand prediction above. **Magnitude does
+  not**: the tool projects 6.8% of all episodes where the hand prediction said
+  ">= 25% of delivered". The tool extrapolates linearly from the one cohort that
+  moved clearance alone; the hand prediction extrapolated the yaw mechanism
+  further than the corpus supports. Both are recorded; they are separately
+  falsifiable.
+
+* **`thicker_130x26`** — **refused, on every phase.** "thickness was only ever
+  varied together with lateral_clearance, width; the phase response cannot be
+  attributed between them." The corpus's two section cohorts are 120 x 16 and
+  140 x 26, so thickness never moves alone, and the procedure declines rather
+  than guessing.
+
+**That refusal is the procedure working, and it puts my own hand prediction on
+trial.** The extract-failure prediction for `130x26` above came from reading the
+confounded `140x26` cohort and attributing its 16 extract losses to thickness —
+exactly the accumulated local knowledge the procedure is meant to replace. The
+tool says the corpus does not support that attribution.
+
+So the run now tests three things, and they can come apart:
+
+| | claim | falsified if |
+| --- | --- | --- |
+| **P1** | tool: `140x20` insert failures rise | they do not rise |
+| **P2** | tool: `140x20` rises to about 0.068 of episodes, other phases unchanged | the rate lands far outside, or another phase moves |
+| **P3** | hand: `130x26` loses delivery via extract, 0.85-0.92 | delivery holds above 0.95 |
+
+If **P3 holds while the tool refused**, the confounded corpus carries usable
+signal the procedure is throwing away, and the refusal rule is too strict — a
+concrete, fixable finding. If **P3 fails**, the refusal was right, the hand
+prediction was local knowledge dressed as method, and the procedure is the
+contribution rather than my reading of this rack.
+
+Either outcome is worth the run. The one that would be least informative is P3
+holding *and* the tool being unable to say why, which is why the corpus
+diagnostic is reported alongside the prediction rather than after it.

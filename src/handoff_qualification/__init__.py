@@ -43,3 +43,12 @@ __all__ = [
     "fit_residual_model",
     "qualify",
 ]
+
+from handoff_qualification.change_prediction import (  # noqa: E402
+    Cohort,
+    Prediction,
+    predict,
+    sensitivity_corpus,
+)
+
+__all__ += ["Cohort", "Prediction", "predict", "sensitivity_corpus"]
