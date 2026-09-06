@@ -96,6 +96,31 @@ def biggest_riser(observed: dict, reference: dict) -> str | None:
     return phase if delta > 0 else None
 
 
+def rise_is_fragile(observed: dict, reference: dict, phase: str | None) -> dict | None:
+    """How many episodes the "phase that rose most" verdict actually rests on.
+
+    S1 credit for naming a phase means little when the phase rose by one episode
+    in 192 and sits inside the reference's own interval. A scorecard that prints
+    "yes" without this is overstating, so the count travels with the verdict.
+    """
+
+    if phase is None:
+        return None
+    observed_count = observed["phase_counts"].get(phase, 0)
+    reference_count = reference["phase_counts"].get(phase, 0)
+    extra = observed_count - reference_count * observed["episodes"] / reference["episodes"]
+    return {
+        "phase": phase,
+        "observed_episodes": observed_count,
+        "episodes_above_reference": round(extra, 2),
+        "inside_reference_interval": unchanged_ok(
+            observed["phase_rates"].get(phase, 0.0), reference, phase
+        ),
+        "fragile": abs(extra) <= 3
+        or unchanged_ok(observed["phase_rates"].get(phase, 0.0), reference, phase),
+    }
+
+
 def unchanged_ok(observed_rate: float, reference: dict, phase: str) -> bool:
     """Is an 'unchanged' call defensible against the reference's own interval?"""
 
@@ -182,7 +207,15 @@ def main() -> int:
             f"phase rates { {k: round(v, 4) for k, v in observed['phase_rates'].items() if v} or 'no failures'}"
         )
         risen = biggest_riser(observed, reference)
+        fragility = rise_is_fragile(observed, reference, risen)
         print(f"   phase that actually rose most: {risen or 'none - nothing rose'}")
+        if fragility and fragility["fragile"]:
+            print(
+                f"   *** that verdict rests on {fragility['observed_episodes']} episode(s), "
+                f"{fragility['episodes_above_reference']} above the reference"
+                + (", inside the reference's own 95% interval" if fragility["inside_reference_interval"] else "")
+            )
+            print("   *** S1 credit here is not credit. Read S2 and S3 instead.")
         rows = {
             name: score(name, claim, observed, reference)
             for name, claim in entry["predictors"].items()
@@ -194,7 +227,7 @@ def main() -> int:
             s3 = "-" if row["s3_absolute_error"] is None else f"{row['s3_absolute_error']:.4f}"
             print(f"   {name:>30} {s1:>10} {s2:>8} {s3:>10}")
         print()
-        scored[label] = {"observed": observed, "phase_that_rose": risen, "predictors": rows}
+        scored[label] = {"observed": observed, "phase_that_rose": risen, "rise_fragility": fragility, "predictors": rows}
 
     document = {
         "title": "Three predictors scored against configurations none had seen",
