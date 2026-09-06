@@ -139,6 +139,43 @@ effort.
 | **D. Second system** | One standard ground-based assembly task | Evidence, manuscript |
 | **E. Manuscript** | Only once C and D have produced predictions that could have failed | Manuscript |
 
+## Deliverable D: what the second system actually offers
+
+Surveyed 2026-09-05 from the pinned Isaac Lab, before writing any adapter.
+
+`Isaac-Forge-PegInsert-Direct-v0` is a round peg into a round hole: peg diameter
+**7.986 mm**, hole diameter **8.100 mm**, so **57 microns of clearance per
+side** against the rack's 11 mm. Success is depth within 4% of the 25 mm socket
+height — about 1 mm — and there is a separate `engage_threshold` at 0.9.
+
+Three things make it a genuine second system for this method rather than a
+box-tick.
+
+**The delivery/precision split maps onto it structurally.** `engage_threshold`
+is "the peg entered the hole" and `success_threshold` is "it went in far
+enough"; those are delivery and precision under different names. The split was
+not designed for Forge and is not being bent to fit it.
+
+**Geometry can be varied without new assets.** `UsdFileCfg` exposes `scale`, and
+at 57 microns of clearance a 0.5% scale change on the peg moves the diameter by
+40 microns and nearly closes it. That is a far more sensitive clearance axis
+than the rack's and a good stress test of a procedure built on millimetres.
+
+**And it reproduces the rack's confound, which is the useful part.** Uniform
+scaling changes the peg's diameter *and* its height together — exactly as the
+rack's section cohorts changed width and thickness together. A corpus built from
+uniform scaling should make the tool refuse, for the same reason and with the
+same message, and the fix is non-uniform scaling. If that happens it is
+evidence the confound problem is a property of how campaigns are run rather than
+a quirk of this rack.
+
+What Forge does **not** offer is phases. It resets into a grasped pose and
+inserts, so there is no capture or extract to attribute between. Phase
+attribution therefore cannot be demonstrated there, and the second-system
+result will be about the delivery/precision split, the criterion curve, and the
+refusal behaviour. Saying which parts of the method transfer and which are not
+testable on a given system is part of the method, not an apology for it.
+
 ## Two things the plan needs from outside the repository
 
 **Engineer feedback cannot be gathered by me.** Establishing that the problem
