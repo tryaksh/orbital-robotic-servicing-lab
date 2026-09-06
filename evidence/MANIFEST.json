@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 84,
     "retracted": 12,
-    "historical": 197
+    "historical": 199
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -1504,6 +1504,14 @@
     "pre_handoff_predictability_v1.json": {
       "title": "Whether pre-handoff state predicts the residual the seating step leaves",
       "generated_utc": "2026-09-05T19:40:38.798396+00:00"
+    },
+    "prediction_thicker_130x26_v1.json": {
+      "title": "Predicted phase response to a proposed configuration change",
+      "generated_utc": "2026-09-06T00:43:31.932630+00:00"
+    },
+    "prediction_wider_140x20_v1.json": {
+      "title": "Predicted phase response to a proposed configuration change",
+      "generated_utc": "2026-09-06T00:43:31.486931+00:00"
     },
     "prescription_factorial_v1.json": {
       "title": "The rack prescription crossed with the retention fixture",

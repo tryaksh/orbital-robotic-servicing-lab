@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-118 scripts. Grouped by the verb their filename starts with.
+119 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -189,6 +189,7 @@ Each takes `--check` so CI can prove the artifact is current.
 | `plan_relocation_joint_path.py` | Plan the collision-aware UR10e branch change used by relocation. |
 | `play.py` | Evaluate or record an RL-Games blade-swap policy. |
 | `pool_sweep_points.py` | Pool a sweep point measured at several seeds into one entry, at the full n. |
+| `predict_configuration_change.py` | Will my controller handle this change, where will it fail, and what should I measure? |
 | `pretrain_student.py` | Offline behavioural cloning for the multimodal vision actor. |
 | `probe_workcell_policies.sh` | Phase 1: run the UNCHANGED promoted policies on the changed workcell. |
 | `project_insertion_checkpoint.py` | Project the frozen insertion actor onto local assembly observations. |
