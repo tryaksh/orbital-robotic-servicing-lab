@@ -1,0 +1,64 @@
+{
+  "title": "Whether recording the handoff trace changes the run",
+  "evidence_type": "simulation_only",
+  "generated_utc": "2026-09-06T00:19:48.823414+00:00",
+  "question": "The cohort whose outcomes vary was run without --handoff_trace. Before its pre-handoff state can be joined to those outcomes, the traced re-run has to be the same run.",
+  "criterion_m": 0.0025,
+  "tolerance_m": 1e-09,
+  "source_revision": {
+    "available": true,
+    "commit": "beac233859c2577d4fe32426e06b231904ae8110",
+    "branch": "research/correction-aware-handoffs",
+    "dirty": false,
+    "code_dirty": false,
+    "tracked_changes": [],
+    "error": null
+  },
+  "pairs": [
+    {
+      "original": "artifacts/retention_nominal/seed4070/nominal.npz",
+      "traced": "artifacts/jam_mechanism/reference/seed4070/nominal.npz",
+      "episodes": 64,
+      "original_successes": 62,
+      "traced_successes": 62,
+      "episodes_agreeing": 64,
+      "max_residual_difference_m": 0.0,
+      "median_residual_difference_m": 0.0,
+      "tolerance_m": 1e-09,
+      "agrees": true,
+      "traced_carries_pre_handoff_rows": 62
+    },
+    {
+      "original": "artifacts/retention_nominal/seed5070/nominal.npz",
+      "traced": "artifacts/jam_mechanism/reference/seed5070/nominal.npz",
+      "episodes": 64,
+      "original_successes": 61,
+      "traced_successes": 61,
+      "episodes_agreeing": 64,
+      "max_residual_difference_m": 0.0,
+      "median_residual_difference_m": 0.0,
+      "tolerance_m": 1e-09,
+      "agrees": true,
+      "traced_carries_pre_handoff_rows": 61
+    },
+    {
+      "original": "artifacts/retention_nominal/seed6070/nominal.npz",
+      "traced": "artifacts/jam_mechanism/reference/seed6070/nominal.npz",
+      "episodes": 64,
+      "original_successes": 64,
+      "traced_successes": 64,
+      "episodes_agreeing": 64,
+      "max_residual_difference_m": 0.0,
+      "median_residual_difference_m": 0.0,
+      "tolerance_m": 1e-09,
+      "agrees": true,
+      "traced_carries_pre_handoff_rows": 64
+    }
+  ],
+  "all_agree": true,
+  "scope_and_limitations": [
+    "Simulation only. No result here was produced on real hardware.",
+    "Agreement is measured on this machine, at this commit, at these seeds, at the same environment count. NVIDIA documents that simulator results are not guaranteed reproducible across environment counts or hardware, so nothing here claims determinism beyond what was measured.",
+    "This checks that the trace does not perturb the run. It does not check that the recorded fields mean what their names say."
+  ]
+}
