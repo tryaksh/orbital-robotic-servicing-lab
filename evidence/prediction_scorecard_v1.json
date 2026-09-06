@@ -1,0 +1,195 @@
+{
+  "title": "Three predictors scored against configurations none had seen",
+  "evidence_type": "prospective_prediction_scored",
+  "generated_utc": "2026-09-06T02:21:42.741849+00:00",
+  "source_revision": {
+    "available": true,
+    "commit": "b5093460903246bcdccbb1fe23ffb3d99ef4ed97",
+    "branch": "research/correction-aware-handoffs",
+    "dirty": false,
+    "code_dirty": false,
+    "tracked_changes": [],
+    "error": null
+  },
+  "scoring_rule": "docs/PREREGISTRATION_jam_prediction.md, third addendum",
+  "claims_file": "D:/6axis-space-robotics/configs/prediction_claims.json",
+  "reference": {
+    "cohorts": 3,
+    "episodes": 192,
+    "phase_counts": {
+      "capture": 3,
+      "extract": 2
+    },
+    "phase_rates": {
+      "capture": 0.015625,
+      "seat": 0.0,
+      "extract": 0.010416666666666666,
+      "transit": 0.0,
+      "insert": 0.0,
+      "terminal_gate": 0.0
+    },
+    "delivery_rate": 0.9739583333333334,
+    "jam_rate_among_delivered": 0.0
+  },
+  "configurations": {
+    "wider_140x20": {
+      "observed": {
+        "cohorts": 3,
+        "episodes": 192,
+        "phase_counts": {
+          "extract": 2,
+          "insert": 1
+        },
+        "phase_rates": {
+          "capture": 0.0,
+          "seat": 0.0,
+          "extract": 0.010416666666666666,
+          "transit": 0.0,
+          "insert": 0.005208333333333333,
+          "terminal_gate": 0.0
+        },
+        "delivery_rate": 0.984375,
+        "jam_rate_among_delivered": 0.0
+      },
+      "phase_that_rose": "insert",
+      "rise_fragility": {
+        "phase": "insert",
+        "observed_episodes": 1,
+        "episodes_above_reference": 1.0,
+        "inside_reference_interval": true,
+        "fragile": true
+      },
+      "predictors": {
+        "clearance_rule_2c_over_theta": {
+          "predictor": "clearance_rule_2c_over_theta",
+          "produces": [
+            "direction"
+          ],
+          "s1_correct": null,
+          "s2_correct": false,
+          "s2_observed_rate": 0.005208333333333333,
+          "s2_reference_rate": 0.0,
+          "s3_absolute_error": null
+        },
+        "tool": {
+          "predictor": "tool",
+          "produces": [
+            "phase",
+            "direction",
+            "rate"
+          ],
+          "s1_named_phase": "insert",
+          "s1_actual_phase": "insert",
+          "s1_correct": true,
+          "s2_correct": false,
+          "s2_observed_rate": 0.005208333333333333,
+          "s2_reference_rate": 0.0,
+          "s3_predicted": 0.1302,
+          "s3_observed": 0.005208333333333333,
+          "s3_absolute_error": 0.12499166666666668
+        },
+        "hand": {
+          "predictor": "hand",
+          "produces": [
+            "phase",
+            "direction",
+            "rate"
+          ],
+          "s1_named_phase": "insert",
+          "s1_actual_phase": "insert",
+          "s1_correct": true,
+          "s2_correct": false,
+          "s2_observed_rate": 0.005208333333333333,
+          "s2_reference_rate": 0.0,
+          "s3_predicted": ">= 0.25",
+          "s3_observed": 0.0,
+          "s3_absolute_error": 0.25
+        }
+      }
+    },
+    "thicker_130x26": {
+      "observed": {
+        "cohorts": 3,
+        "episodes": 192,
+        "phase_counts": {
+          "terminal_gate": 1,
+          "extract": 12,
+          "insert": 9,
+          "capture": 5
+        },
+        "phase_rates": {
+          "capture": 0.026041666666666668,
+          "seat": 0.0,
+          "extract": 0.0625,
+          "transit": 0.0,
+          "insert": 0.046875,
+          "terminal_gate": 0.005208333333333333
+        },
+        "delivery_rate": 0.9114583333333334,
+        "jam_rate_among_delivered": 0.05142857142857143
+      },
+      "phase_that_rose": "extract",
+      "rise_fragility": {
+        "phase": "extract",
+        "observed_episodes": 12,
+        "episodes_above_reference": 10.0,
+        "inside_reference_interval": false,
+        "fragile": false
+      },
+      "predictors": {
+        "clearance_rule_2c_over_theta": {
+          "predictor": "clearance_rule_2c_over_theta",
+          "produces": [
+            "direction"
+          ],
+          "s1_correct": null,
+          "s2_correct": false,
+          "s2_observed_rate": 0.046875,
+          "s2_reference_rate": 0.0,
+          "s3_absolute_error": null
+        },
+        "tool": {
+          "predictor": "tool",
+          "produces": [
+            "phase",
+            "direction",
+            "rate"
+          ],
+          "s1_named_phase": "insert",
+          "s1_actual_phase": "extract",
+          "s1_correct": false,
+          "s2_correct": true,
+          "s2_observed_rate": 0.046875,
+          "s2_reference_rate": 0.0,
+          "s3_predicted": 0.0625,
+          "s3_observed": 0.046875,
+          "s3_absolute_error": 0.015625
+        },
+        "hand": {
+          "predictor": "hand",
+          "produces": [
+            "phase",
+            "direction",
+            "rate"
+          ],
+          "s1_named_phase": "extract",
+          "s1_actual_phase": "extract",
+          "s1_correct": true,
+          "s2_correct": true,
+          "s2_observed_rate": 0.0625,
+          "s2_reference_rate": 0.010416666666666666,
+          "s3_predicted": 0.885,
+          "s3_observed": 0.9114583333333334,
+          "s3_absolute_error": 0.02645833333333336
+        }
+      }
+    }
+  },
+  "scope_and_limitations": [
+    "Simulation only. No result here was produced on real hardware.",
+    "The predictions and the scoring rule were both committed before any episode of either configuration existed; git history is the record.",
+    "Three seeds and 192 episodes a configuration. A phase whose reference rate is a handful of events has a wide interval and a rate error of a few percent is not a result.",
+    "Two configurations is two independent transfer cases however many episodes each contains.",
+    "The clearance rule is scored on direction alone because that is all it produces. It is neither penalised for silence on phases it cannot represent nor credited for them."
+  ]
+}

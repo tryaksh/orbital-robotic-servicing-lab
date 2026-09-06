@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 84,
     "retracted": 12,
-    "historical": 200
+    "historical": 201
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -1508,6 +1508,10 @@
     "pre_handoff_predictability_v1.json": {
       "title": "Whether pre-handoff state predicts the residual the seating step leaves",
       "generated_utc": "2026-09-05T19:40:38.798396+00:00"
+    },
+    "prediction_scorecard_v1.json": {
+      "title": "Three predictors scored against configurations none had seen",
+      "generated_utc": "2026-09-06T02:21:42.741849+00:00"
     },
     "prediction_thicker_130x26_v1.json": {
       "title": "Predicted phase response to a proposed configuration change",
