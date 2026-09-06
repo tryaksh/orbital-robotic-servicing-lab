@@ -258,6 +258,42 @@ So the mechanism finding carries no dependence on the idealisation. Anything
 said about the *rate* of the reference workcell does depend on it, and that
 distinction is now measured rather than argued.
 
+### Why every predictor failed: clearance is not a monotone tolerance
+
+**Diagnosis, not prediction.** This reads the wider module's failed runs after
+the fact and explains them. It is the third stage in `METHOD.md`'s table and is
+labelled as such.
+
+Peak yaw during insertion, three configurations differing only in how much
+lateral room the module has:
+
+| configuration | clearance/side | median peak yaw | p95 | max | reach the 83.6 mrad wedging band | jams |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| reference, relief 4.61 mm | 15.678 mm | 56.02 | 72.88 | 74.24 | **0/187** | 0 |
+| prescribed, relief 0.00 mm | 11.065 mm | 56.12 | **87.08** | 94.84 | **13/187** | 12 |
+| wider 140 x 20, relief 0.00 | 6.065 mm | 57.14 | 60.24 | 83.43 | **0/190** | 1 |
+
+The median is the same in all three — 56 to 57 mrad — so the swing itself is the
+controller's normal motion and clearance does not change it. **The tail is
+non-monotonic.** At generous clearance the entry flare guides the module and the
+p95 stays at 72.88. At the tightest clearance the channel physically denies the
+rotation and the p95 falls to 60.24. In between, at 11.065 mm, there is enough
+room to go crooked and not enough guidance to prevent it, and the p95 reaches
+87.08 — into the band where the module wedges.
+
+So **clearance both permits the wedge and supplies the room the wedge needs**,
+and jam risk peaks at intermediate clearance rather than rising as clearance
+falls. That is why all three predictors were wrong about the wider module: every
+one of them assumed monotonicity. It is also exactly why `2c/theta` misses by a
+factor of three — that bound takes the tilt as given and asks how deep the part
+can go, when in this failure the clearance is what *determines* the achievable
+tilt.
+
+The engineering statement is sharper than anything the rate comparison
+produced: **the design library's prescription moved this channel from a safe
+clearance to the worst available one.** Narrowing it further would have been
+safer than narrowing it partway.
+
 ### What this obliges, and what it does not
 
 It does **not** retract a number. Every cohort measured what it measured.
