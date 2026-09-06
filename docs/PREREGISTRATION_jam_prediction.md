@@ -194,3 +194,54 @@ a day inside it. If the tool is right, the accumulated knowledge was worth less
 than the corpus. If I am right, the procedure is discarding a real signal
 because its corpus confounds thickness, and the fix is to run a cohort that
 varies thickness alone -- which is what `130x26` is.
+
+---
+
+## Third addendum: how the comparison will be scored
+
+Fixed before any prediction data exists, so the scoring cannot be chosen to suit
+the outcome.
+
+Three predictors are being compared, and they do not all produce the same kind
+of output, so each is scored only on what it actually claims:
+
+| predictor | produces | scored on |
+| --- | --- | --- |
+| `2c/theta` clearance rule | a direction, and a depth limit | direction only |
+| the tool | phase, direction, and a rate per phase | all three |
+| my hand prediction | phase, direction, and a rate for `130x26` | all three |
+
+**S1 — phase identification.** For each configuration, which phase's failure
+rate actually rose most against the reference? A predictor scores if it named
+that phase. The clearance rule is treated as naming `insert`, since that is the
+only phase it represents; it is not penalised for silence on phases it has no
+model of, and it gets no credit for them either.
+
+**S2 — direction.** Per phase the predictor spoke about: did the rate move the
+way it said, or stay unchanged when it said unchanged? "Unchanged" counts as
+correct if the observed rate lies inside the reference's Wilson 95% interval.
+
+**S3 — rate error.** Absolute difference between predicted and observed rate,
+per phase, for predictors that give a rate. Reported, not thresholded — with
+three seeds and twelve-ish events the interval is wide and a small error is not
+a result.
+
+**The headline the decision report must answer**, and it is S1, not S3: *did the
+method name where the failure would appear, on configurations it had never
+seen?* A predictor that gets the phase right and the rate badly wrong is more
+useful to an engineer deciding where to spend effort than one that gets a number
+close for the wrong phase.
+
+**What counts as the method beating the simple alternative.** Not agreeing with
+it. The clearance rule already gets `140x20` directionally right. The method
+beats it only if it is right about something the rule cannot express — a phase
+other than insert, a rate, or the delivery/precision split — *and* the rule is
+silent or wrong there. If the only difference is that the method also produced
+numbers that happen to be correct on `insert`, that is worth stating plainly as
+a modest result and not as a win.
+
+**If the tool's refusal on thickness turns out to have cost it a correct
+prediction** — that is, if `130x26` moves in a phase the tool declined to speak
+about and my hand prediction called — the honest reading is that the refusal
+rule is too conservative, not that the method failed. That is a fixable
+parameter and the report will say which direction to move it.
