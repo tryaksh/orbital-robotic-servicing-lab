@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 84,
     "retracted": 12,
-    "historical": 196
+    "historical": 197
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -1517,6 +1517,10 @@
       "title": "The rack requirement as a function of the manipulator's delivered attitude"
     },
     "rack_retention_paired_n192_v2.json": {},
+    "reference_workcell_reproduction_v1.json": {
+      "title": "Whether recording the handoff trace changes the run",
+      "generated_utc": "2026-09-06T00:19:48.823414+00:00"
+    },
     "release_drift_retention_v1.json": {
       "title": "The error that fails the task appears after the hand lets go",
       "generated_utc": "2026-09-05T21:39:00.130314+00:00"
