@@ -48,7 +48,7 @@ def test_current_study_is_explicitly_not_frozen():
     study = json.loads((ROOT / "configs/study.json").read_text())
     unmet = validate_study(study)
     assert "protocol_frozen" in unmet
-    assert "held_part_gravity_resolved" in unmet
+    assert "fault_support_validated" in unmet
 
 
 def test_training_and_evaluation_seed_leakage_is_rejected():

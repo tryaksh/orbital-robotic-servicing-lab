@@ -14,12 +14,13 @@
     "gear": "Isaac-Forge-GearMesh-Direct-v0"
   },
   "gates": {
-    "held_part_gravity_resolved": false,
+    "held_part_gravity_resolved": true,
     "actor_information_audited": false,
     "fault_support_validated": false,
-    "within_job_reset_accounting_verified": false,
-    "success_and_force_evaluator_verified": false,
-    "protocol_frozen": false
+    "within_job_reset_accounting_verified": true,
+    "success_and_force_evaluator_verified": true,
+    "protocol_frozen": false,
+    "recovery_reward_compatibility_verified": false
   },
   "training": {
     "primary_arms": [
@@ -69,8 +70,8 @@
     "deadline_seconds": 30,
     "seated_dwell_seconds": 0.5,
     "force_budget_n": 20,
-    "force_budget_meaning": "Experimental simulated load limit, not a hardware damage or safety rating",
-    "force_sampling_and_abort_latency": "Unresolved; audit at physics step granularity before freeze",
+    "force_budget_meaning": "Experimental limit on raw incoming wrist-joint load; not fixture normal force, hardware damage, or a safety rating",
+    "force_sampling_and_abort_latency": "Raw wrist load sampled at every 1/120 s physics step; evaluator latches hold for the next control application. No measured guarantee of a hard force ceiling or stopping distance.",
     "allowed_fault_families": [
       "lateral_pose_bias",
       "approach_offset",
@@ -82,10 +83,13 @@
       "force_abort",
       "lost_grasp",
       "within_job_simulator_reset",
-      "within_job_part_pose_write",
+      "within_job_state_write",
       "nonfinite_state"
     ],
-    "recovery_definition": "Witnessed miss/stall followed by settled insertion within the same job; stall predicate not yet frozen"
+    "recovery_definition": "Witnessed contact failure followed by retained-grasp withdrawal and settled reinsertion within the same job. Current evaluator stall proxy alone is insufficient; no completed recovery yet.",
+    "primary_held_part_gravity": "enabled",
+    "evaluator_defaults_source": "src/assembly_recovery/evaluation.py:JobCriteria; actual resolved values are recorded in every validation report",
+    "evaluator_version": 2
   },
   "success_target": {
     "relative_unfinished_job_reduction": 0.5,
@@ -97,5 +101,13 @@
     "max_block_minutes": 300,
     "reserve_fraction_for_evaluation_and_reporting": 0.25,
     "maximum_upstream_smoke_epochs_before_study_adapter": 20
+  },
+  "gate_evidence": {
+    "held_part_gravity_resolved": "evidence/peg_validation.json: select physical held-part gravity; three development seeds retain bilateral contact. Robot gravity compensation is idealized.",
+    "within_job_reset_accounting_verified": "evidence/peg_validation.json: explicit reset/write guards and a 12-second run beyond the upstream reset horizon; raw physics traces replay identically.",
+    "success_and_force_evaluator_verified": "evidence/peg_validation.json and CPU tests: dwell, raw wrist-load abort, bilateral grasp loss, failure precedence, trace continuity. Development criteria, not hardware force certification.",
+    "actor_information_audited": "Narrow adapter actor/action-frame probes pass; retain this gate until retry/training wrappers are audited. The stall witness currently uses evaluator-only filtered load.",
+    "fault_support_validated": "Seven sustained contact stalls can be withdrawn with retained grasp. Numeric fault support and completed same-job reinsertion remain unvalidated.",
+    "recovery_reward_compatibility_verified": "evidence/reward_audit.json is source inspection only; matched full-trajectory returns are still required."
   }
 }

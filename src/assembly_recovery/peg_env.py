@@ -9,9 +9,13 @@ from __future__ import annotations
 from dataclasses import asdict
 from functools import wraps
 
+import carb
+import isaaclab.sim as sim_utils
 import torch
+from isaaclab.sensors import ContactSensor, ContactSensorCfg
 from isaaclab.utils.math import axis_angle_from_quat, quat_apply, quat_apply_inverse, quat_conjugate, quat_mul
 from isaaclab_tasks.direct.forge.forge_env import ForgeEnv
+from pxr import UsdPhysics
 
 from assembly_recovery.evaluation import JobCriteria, JobEvaluator, PhysicsSample
 from assembly_recovery.geometry import PegGeometry
@@ -27,6 +31,8 @@ class PegStudyEnv(ForgeEnv):
             raise ValueError("This adapter currently implements peg evaluation only")
         if velocity_mode not in {"upstream", "corrected"}:
             raise ValueError("Unknown velocity mode")
+        # Pinned ContactSensor discovers parents through USD, not Fabric-only clones.
+        cfg.scene.clone_in_fabric = False
         self.criteria = criteria
         self.velocity_mode = velocity_mode
         self.jobs_live = False
@@ -57,6 +63,30 @@ class PegStudyEnv(ForgeEnv):
                 if hasattr(asset, method_name):
                     original = getattr(asset, method_name)
                     setattr(asset, method_name, self._guard_write(original, method_name))
+
+    def _setup_scene(self):
+        carb.settings.get_settings().set_bool("/physics/disableContactProcessing", False)
+        super()._setup_scene()
+        bodies = {}
+        for asset in ("HeldAsset", "FixedAsset"):
+            matches = sim_utils.get_all_matching_child_prims(
+                f"/World/envs/env_0/{asset}", predicate=lambda prim: prim.HasAPI(UsdPhysics.RigidBodyAPI)
+            )
+            if len(matches) != 1:
+                raise RuntimeError(f"Expected one rigid body in {asset}, found {len(matches)}")
+            bodies[asset] = str(matches[0].GetPath()).replace("env_0", "env_.*")
+        fingers = sim_utils.get_all_matching_child_prims(
+            "/World/envs/env_0/Robot",
+            predicate=lambda prim: prim.HasAPI(UsdPhysics.RigidBodyAPI) and prim.GetName() in {"panda_leftfinger", "panda_rightfinger"},
+        )
+        if len(fingers) != 2:
+            raise RuntimeError("Expected two physical finger bodies")
+        self.contact_filter_paths = [bodies["FixedAsset"]] + [str(p.GetPath()).replace("env_0", "env_.*") for p in sorted(fingers, key=lambda p: p.GetName())]
+        self.fixture_contact = ContactSensor(ContactSensorCfg(
+            prim_path=bodies["HeldAsset"], filter_prim_paths_expr=self.contact_filter_paths,
+            update_period=0.0, history_length=0,
+        ))
+        self.scene.sensors["peg_fixture_contact"] = self.fixture_contact
 
     def _guard_write(self, original, name):
         @wraps(original)
@@ -130,6 +160,8 @@ class PegStudyEnv(ForgeEnv):
             raise RuntimeError("Finalize the previous cohort first")
         self.jobs = [JobEvaluator(f"{prefix}-{i}", self.criteria) for i in range(self.num_envs)]
         self.samples = [[] for _ in self.jobs]
+        self.contact_samples = [[] for _ in self.jobs]
+        self.finger_contact_samples = [[] for _ in self.jobs]
         self.velocity_errors = []
         self.finished_mask[:] = False
         self.hold_pos[:] = self.fingertip_midpoint_pos
@@ -156,13 +188,21 @@ class PegStudyEnv(ForgeEnv):
         finite = (torch.isfinite(self.held_pos).all(dim=-1) & torch.isfinite(self.held_quat).all(dim=-1)
                   & torch.isfinite(self.noisy_fingertip_pos).all(dim=-1) & torch.isfinite(self.noisy_fingertip_quat).all(dim=-1)
                   & torch.isfinite(self.ee_linvel_fd).all(dim=-1) & torch.isfinite(self.ee_angvel_fd).all(dim=-1))
+        pair_force = self.fixture_contact.data.force_matrix_w
+        if pair_force is None or not torch.isfinite(pair_force).all():
+            raise RuntimeError("Peg-fixture contact measurement is unavailable or nonfinite")
+        force_norms = torch.linalg.vector_norm(pair_force, dim=-1).sum(dim=1)
+        pair_norm = force_norms[:, 0].cpu().tolist()
+        finger_norms = force_norms[:, 1:].cpu().tolist()
         rows = torch.stack((upstream, seated, raw_force, filtered_force, separated, drift, observed_height, finite), dim=1).cpu().tolist()
         for i, (job, values) in enumerate(zip(self.jobs, rows, strict=True)):
             if job.outcome is not None:
                 continue
             sample = PhysicsSample(job.last_step + 1, bool(values[0]), bool(values[1]), values[2], values[3],
-                                   bool(values[4]), values[5], values[6], self.commanded_down, bool(values[7]))
+                                   bool(values[4]), values[5], values[6], self.commanded_down, bool(values[7]), tuple(finger_norms[i]))
             self.samples[i].append(asdict(sample))
+            self.contact_samples[i].append(pair_norm[i])
+            self.finger_contact_samples[i].append(finger_norms[i])
             job.observe(sample)
             if job.outcome is not None:
                 self.finished_mask[i] = True

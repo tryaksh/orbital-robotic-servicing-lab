@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "status": "source_audited_trajectory_test_pending",
+  "upstream_commit": "37ddf626871758333d6ed89cf64ad702aef127d0",
+  "source_sha256": {
+    ".deps/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/direct/factory/factory_env.py": "9e2d6b0b3cfb97e8b691947c6ecf312e9b3b8adf563f0d4148a3c7102e98256a",
+    ".deps/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/direct/factory/factory_utils.py": "d65da4571a0c53451914109f8699b2587d97b5e1e92093b155ca72e385596095",
+    ".deps/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/direct/forge/forge_env.py": "492d52568719a35cd434fe4269b2cd5cb9b69c6750bc049f255130e47d38fe1c",
+    ".deps/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/direct/forge/forge_tasks_cfg.py": "e1df702ad3c80488eecbd5badbf0b7b545a28d42c6bb790dab1255e9e1967364",
+    ".deps/IsaacLab/source/isaaclab_tasks/isaaclab_tasks/direct/forge/agents/rl_games_ppo_cfg.yaml": "80ab97a56bacbe5eefeb4874f8a26b13bd4c8701bc1759a38b2e08a716778e8c"
+  },
+  "finding": "No literal signed downward-progress penalty. State proximity and engagement rewards can nevertheless favor remaining near a jam over initially withdrawing.",
+  "proximity_terms": {
+    "distance": "mean corresponding 3D keypoint distance",
+    "formula": "sum(1 / (exp(a*d) + b + exp(-a*d)))",
+    "coefficients": [
+      [
+        5,
+        4
+      ],
+      [
+        50,
+        2
+      ],
+      [
+        100,
+        0
+      ]
+    ]
+  },
+  "other_terms": {
+    "engagement": 1,
+    "upstream_success": 1,
+    "action_magnitude_scale": 0,
+    "action_change_scale": -0.1,
+    "asset_relative_action_error_scale": -0.001,
+    "excess_filtered_wrist_load_scale": -0.2,
+    "success_prediction_error_scale": "0 until cohort success >=0.25, then -1"
+  },
+  "ppo": {
+    "gamma": 0.995,
+    "gae_tau": 0.95
+  },
+  "analytic_proximity_only": [
+    {
+      "aligned_keypoint_distance_m": 0.005,
+      "proximity_reward_only": 0.8561928311823965
+    },
+    {
+      "aligned_keypoint_distance_m": 0.025,
+      "proximity_reward_only": 0.42087360669190255
+    }
+  ],
+  "decision": "Keep upstream reward pending matched full-trajectory checks. If a shared study correction is justified, retain the official reference and rerun all affected arms.",
+  "required_next_check": "Match initial seed/fault and total job horizon. Record per-term rewards for a witnessed contact stall versus feasible successful retract/reinsert. Compare full discounted returns, not single-step Z movement. Exclude rewards after evaluator termination from job results and explicitly define training terminal handling.",
+  "scope_and_limitations": [
+    "Source and analytic component audit, not proof that PPO can learn recovery.",
+    "Two distances ignore engagement, force, actions, prediction and future success; they are not complete rewards or rollout returns.",
+    "Current short scripted probes do not include a verified successful recovery after a contact jam."
+  ]
+}

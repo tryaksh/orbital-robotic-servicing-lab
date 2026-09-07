@@ -1,0 +1,781 @@
+{
+  "schema": 1,
+  "status": "development_validation_complete_protocol_not_frozen",
+  "research_result": false,
+  "summary": {
+    "canonical_validation_runs": 8,
+    "canonical_scripted_jobs": 32,
+    "gravity_enabled_hold_jobs": 12,
+    "gravity_enabled_hold_failures": 0,
+    "gravity_enabled_hold_max_translation_drift_mm": 0.12305993004702032,
+    "deliberate_releases": 4,
+    "releases_detected_as_lost_grasp": 4,
+    "scripted_insertion_outcomes": {
+      "success": 1,
+      "probe_end": 8,
+      "force_abort": 3
+    },
+    "stalled_insertion_jobs": 7,
+    "completed_recoveries": 0,
+    "historical_runs_retained": 22,
+    "historical_failed_or_incomplete_runs": 5,
+    "common_development_control_transitions_in_finished_probes": 11880,
+    "cpu_tests_passed": 58
+  },
+  "criteria": {
+    "physics_dt": 0.008333333333333333,
+    "deadline_s": 30,
+    "seated_dwell_s": 0.5,
+    "force_budget_n": 20,
+    "stall_window_s": 1.0,
+    "stall_progress_m": 0.001,
+    "contact_threshold_n": 5.0,
+    "progress_filter_s": 0.1,
+    "contact_occupancy": 0.8,
+    "attempt_occupancy": 0.5,
+    "finger_contact_threshold_n": 0.01,
+    "grasp_contact_grace_s": 0.1
+  },
+  "canonical_behavior_source_sha256": {
+    "src/assembly_recovery/evaluation.py": "42d8a41b9ede199c3435717870d1d127ca95564b714a6d2904d9c22ff5836c0a",
+    "src/assembly_recovery/peg_env.py": "15430539bea26e0ac1ff415edeb5862dfa6a148b8ad20dad53abe9f20f47e960",
+    "scripts/validate_peg.py": "d0d1109c49809bace01d6a79cc9b03c84728b74fa4ab18e8b5e68698ab8d0503",
+    "configs/study.json": "94eda04667e1e0ae2102b4db3f24ac6e44b5ba62dc7261ad8bde3f00debf72a8"
+  },
+  "key_findings": [
+    "Physical held-part gravity retained the grasp across three development seeds; choose enabled gravity for the study, with idealized robot gravity compensation disclosed.",
+    "Actual rigid-body paths are derived from USD RigidBodyAPI. The fixed body is nested twice; displayed body names and mesh paths gave unsupported zero contact readings. USD cloning is required for the pinned sensor parent discovery.",
+    "Distance-only loss detection missed one released peg near the hand. Contact instrumentation found five seconds without finger contact. Evaluator v2 adds a 0.1 s bilateral-contact grace at 0.01 N; all four releases are now failed jobs.",
+    "The seven observed stalls have a separately measured fixture-contact signal. No successful same-job recovery has been demonstrated; the current script withdraws but never commands reinsertion.",
+    "Upstream velocity mode differed from consecutive noisy-position finite differences by up to 0.11814504116773605 m/s in the retained historical v10 probe. Corrected mode satisfies that identity; this is not measurement accuracy against hardware.",
+    "Initial perturbations can yield sustained contact failures, but numeric fault bins, recovery solvability and the reward-compatibility comparison remain open."
+  ],
+  "canonical": [
+    {
+      "run_id": "peg_hold_disabled_10070_v12",
+      "controller": "scripted_hold",
+      "seed": 10070,
+      "gravity": "disabled",
+      "simulated_seconds": 12.0,
+      "wall_seconds": 56.625,
+      "requested_jobs": 4,
+      "outcomes": {
+        "probe_end": 4
+      },
+      "withdrawal_observations": [],
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "artifacts": {
+        "manifest": {
+          "path": "artifacts/assembly/peg_hold_disabled_10070_v12/manifest.json",
+          "sha256": "875d89592c009a1486750055e58e4123f4704553eaf900b88d0d05c08f216c2d"
+        },
+        "report": {
+          "path": "artifacts/assembly/peg_hold_disabled_10070_v12/probe/report.json",
+          "sha256": "ac293a9a0b818acddd1e2e8e8c4cce8a047b1670c93b4356799843b2f53ae050"
+        },
+        "physics_trace": {
+          "path": "artifacts/assembly/peg_hold_disabled_10070_v12/probe/physics_samples.jsonl",
+          "sha256": "c3d4ba0c01d36b2ce71b2ca8a56beb987f83569c881406ea418f4de62aa7658a"
+        },
+        "control_trace": {
+          "path": "artifacts/assembly/peg_hold_disabled_10070_v12/probe/control_samples.jsonl",
+          "sha256": "d4283e11cebb07977e6a18c0f2d95fb7c714346ce91058fb0e1ad4c29c381958"
+        }
+      },
+      "max_grasp_translation_drift_mm": 0.04447366882232018,
+      "peak_raw_wrist_load_n": 1.0723929405212402,
+      "peak_fixture_normal_force_n": 0.0,
+      "all_jobs_include_finger_contact": true
+    },
+    {
+      "run_id": "peg_hold_enabled_10070_v12",
+      "controller": "scripted_hold",
+      "seed": 10070,
+      "gravity": "enabled",
+      "simulated_seconds": 6.0,
+      "wall_seconds": 36.5,
+      "requested_jobs": 4,
+      "outcomes": {
+        "probe_end": 4
+      },
+      "withdrawal_observations": [],
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "artifacts": {
+        "manifest": {
+          "path": "artifacts/assembly/peg_hold_enabled_10070_v12/manifest.json",
+          "sha256": "3ca17516f7e1cf77ff67a758d8f4d01a3d160d3daf56eec72b7841560c721d29"
+        },
+        "report": {
+          "path": "artifacts/assembly/peg_hold_enabled_10070_v12/probe/report.json",
+          "sha256": "c0f664d22a970f8eab742670f359d88b0ad414a5f76f507b0ff9eea3a564b223"
+        },
+        "physics_trace": {
+          "path": "artifacts/assembly/peg_hold_enabled_10070_v12/probe/physics_samples.jsonl",
+          "sha256": "ee64dffc99721aa7c8c78b803d8100f85f8bb5a46ab4a7fa4a62d42f1b926793"
+        },
+        "control_trace": {
+          "path": "artifacts/assembly/peg_hold_enabled_10070_v12/probe/control_samples.jsonl",
+          "sha256": "2658947ee66e2533a70a55631e31134fe94bc92a406199b98e81685e1644bb50"
+        }
+      },
+      "max_grasp_translation_drift_mm": 0.07872829883126542,
+      "peak_raw_wrist_load_n": 7.276639461517334,
+      "peak_fixture_normal_force_n": 8.293445587158203,
+      "all_jobs_include_finger_contact": true
+    },
+    {
+      "run_id": "peg_hold_enabled_10071_v12",
+      "controller": "scripted_hold",
+      "seed": 10071,
+      "gravity": "enabled",
+      "simulated_seconds": 6.0,
+      "wall_seconds": 35.014999999984866,
+      "requested_jobs": 4,
+      "outcomes": {
+        "probe_end": 4
+      },
+      "withdrawal_observations": [],
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "artifacts": {
+        "manifest": {
+          "path": "artifacts/assembly/peg_hold_enabled_10071_v12/manifest.json",
+          "sha256": "b07eb56147f2945e1e1cee7755e114f58cce25be03b608148f4f188bb8157e00"
+        },
+        "report": {
+          "path": "artifacts/assembly/peg_hold_enabled_10071_v12/probe/report.json",
+          "sha256": "e3c824d018ac84b19a544839f845163896e377ebefefe7ce1bf2601cbff27070"
+        },
+        "physics_trace": {
+          "path": "artifacts/assembly/peg_hold_enabled_10071_v12/probe/physics_samples.jsonl",
+          "sha256": "7950a8eb9054f61517eb2838bda70b648091bb0bbc9bda1d4bd9754532e70e17"
+        },
+        "control_trace": {
+          "path": "artifacts/assembly/peg_hold_enabled_10071_v12/probe/control_samples.jsonl",
+          "sha256": "d1934f3d11e52f92c1649c53d1aedae38e6d8caa08ac777b4bc22146e185e993"
+        }
+      },
+      "max_grasp_translation_drift_mm": 0.12305993004702032,
+      "peak_raw_wrist_load_n": 8.192336082458496,
+      "peak_fixture_normal_force_n": 9.288627624511719,
+      "all_jobs_include_finger_contact": true
+    },
+    {
+      "run_id": "peg_hold_enabled_10072_v12",
+      "controller": "scripted_hold",
+      "seed": 10072,
+      "gravity": "enabled",
+      "simulated_seconds": 6.0,
+      "wall_seconds": 34.469000000011874,
+      "requested_jobs": 4,
+      "outcomes": {
+        "probe_end": 4
+      },
+      "withdrawal_observations": [],
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "artifacts": {
+        "manifest": {
+          "path": "artifacts/assembly/peg_hold_enabled_10072_v12/manifest.json",
+          "sha256": "31a0a30c11a317a0e3b971de10197b78e581616b90ed07d12914d1295b36ebbf"
+        },
+        "report": {
+          "path": "artifacts/assembly/peg_hold_enabled_10072_v12/probe/report.json",
+          "sha256": "493b73dd6e7ef05a3764d80fdaf85a9a3e539ed515f8c7e648af7794c1fb6220"
+        },
+        "physics_trace": {
+          "path": "artifacts/assembly/peg_hold_enabled_10072_v12/probe/physics_samples.jsonl",
+          "sha256": "110661849f626d3a260420129debaf004dfad97f25b29caf983c17ed5f777098"
+        },
+        "control_trace": {
+          "path": "artifacts/assembly/peg_hold_enabled_10072_v12/probe/control_samples.jsonl",
+          "sha256": "3b1b5f5146d346362a7cbfa45b3d2d931834813a928a3af86ea926fc9367476e"
+        }
+      },
+      "max_grasp_translation_drift_mm": 0.04149446249357425,
+      "peak_raw_wrist_load_n": 0.6561883091926575,
+      "peak_fixture_normal_force_n": 0.0,
+      "all_jobs_include_finger_contact": true
+    },
+    {
+      "run_id": "peg_insert_enabled_10070_v12",
+      "controller": "scripted_insert_withdraw",
+      "seed": 10070,
+      "gravity": "enabled",
+      "simulated_seconds": 8.0,
+      "wall_seconds": 44.390999999974156,
+      "requested_jobs": 4,
+      "outcomes": {
+        "success": 1,
+        "probe_end": 2,
+        "force_abort": 1
+      },
+      "withdrawal_observations": [
+        {
+          "job_index": 1,
+          "contact_fraction_in_stall_window": 1.0,
+          "first_stall_s": 2.75,
+          "part_rise_during_withdrawal_m": 0.007915228605270386,
+          "final_base_clearance_m": 0.008096518367528914,
+          "final_pair_normal_force_n": 0.0,
+          "completed_reinsertion": false
+        },
+        {
+          "job_index": 2,
+          "contact_fraction_in_stall_window": 1.0,
+          "first_stall_s": 2.933333333333333,
+          "part_rise_during_withdrawal_m": 0.0072031170129776,
+          "final_base_clearance_m": 0.007351496629416941,
+          "final_pair_normal_force_n": 0.0,
+          "completed_reinsertion": false
+        }
+      ],
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "artifacts": {
+        "manifest": {
+          "path": "artifacts/assembly/peg_insert_enabled_10070_v12/manifest.json",
+          "sha256": "caa108a5d12c1f043a64b8aab9325df6736273f59f702e02a6f6a51144c4bcd8"
+        },
+        "report": {
+          "path": "artifacts/assembly/peg_insert_enabled_10070_v12/probe/report.json",
+          "sha256": "66f0e4ee7843f6b1f8843bd0f22fbf4a859643f7d93a0a8b561a6f12dbb96746"
+        },
+        "physics_trace": {
+          "path": "artifacts/assembly/peg_insert_enabled_10070_v12/probe/physics_samples.jsonl",
+          "sha256": "66f95bbd8ffcc994909817eed3506abd947d5be2790b6b6f3621895a8d1ae302"
+        },
+        "control_trace": {
+          "path": "artifacts/assembly/peg_insert_enabled_10070_v12/probe/control_samples.jsonl",
+          "sha256": "e3323c3d32abb7190a311444160dbd89c8cd1fd883ad24229dae0d4d1ca7187f"
+        }
+      },
+      "max_grasp_translation_drift_mm": 1.2790127657353878,
+      "peak_raw_wrist_load_n": 20.533388137817383,
+      "peak_fixture_normal_force_n": 22.784950256347656,
+      "all_jobs_include_finger_contact": true
+    },
+    {
+      "run_id": "peg_insert_enabled_10071_v12",
+      "controller": "scripted_insert_withdraw",
+      "seed": 10071,
+      "gravity": "enabled",
+      "simulated_seconds": 8.0,
+      "wall_seconds": 43.10899999999674,
+      "requested_jobs": 4,
+      "outcomes": {
+        "probe_end": 3,
+        "force_abort": 1
+      },
+      "withdrawal_observations": [
+        {
+          "job_index": 1,
+          "contact_fraction_in_stall_window": 1.0,
+          "first_stall_s": 3.5083333333333333,
+          "part_rise_during_withdrawal_m": 0.011630449444055557,
+          "final_base_clearance_m": 0.011723583936691283,
+          "final_pair_normal_force_n": 0.0,
+          "completed_reinsertion": false
+        },
+        {
+          "job_index": 2,
+          "contact_fraction_in_stall_window": 1.0,
+          "first_stall_s": 2.6666666666666665,
+          "part_rise_during_withdrawal_m": 0.007552541792392731,
+          "final_base_clearance_m": 0.007836992293596266,
+          "final_pair_normal_force_n": 0.0,
+          "completed_reinsertion": false
+        }
+      ],
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "artifacts": {
+        "manifest": {
+          "path": "artifacts/assembly/peg_insert_enabled_10071_v12/manifest.json",
+          "sha256": "f98bf1f62e5e2c7ee76c32b6df11e235737187a1d06855744efaf86effa2e9d9"
+        },
+        "report": {
+          "path": "artifacts/assembly/peg_insert_enabled_10071_v12/probe/report.json",
+          "sha256": "19447c6e5de8fdc105972ad5e4049af1f1040ae385b6a02b65a5f1e2505d992c"
+        },
+        "physics_trace": {
+          "path": "artifacts/assembly/peg_insert_enabled_10071_v12/probe/physics_samples.jsonl",
+          "sha256": "b854d26f6da5369169679372be61497c70357c21ccef8c98752552d496d9c10c"
+        },
+        "control_trace": {
+          "path": "artifacts/assembly/peg_insert_enabled_10071_v12/probe/control_samples.jsonl",
+          "sha256": "5e008cd43de37e17fd367c325b338bb90c7fa6ad4caaed6739b0eda55d5e271d"
+        }
+      },
+      "max_grasp_translation_drift_mm": 2.923801774159074,
+      "peak_raw_wrist_load_n": 20.45712661743164,
+      "peak_fixture_normal_force_n": 22.919111251831055,
+      "all_jobs_include_finger_contact": true
+    },
+    {
+      "run_id": "peg_insert_enabled_10072_v12",
+      "controller": "scripted_insert_withdraw",
+      "seed": 10072,
+      "gravity": "enabled",
+      "simulated_seconds": 8.0,
+      "wall_seconds": 42.82799999997951,
+      "requested_jobs": 4,
+      "outcomes": {
+        "probe_end": 3,
+        "force_abort": 1
+      },
+      "withdrawal_observations": [
+        {
+          "job_index": 0,
+          "contact_fraction_in_stall_window": 1.0,
+          "first_stall_s": 3.4499999999999997,
+          "part_rise_during_withdrawal_m": 0.017483718693256378,
+          "final_base_clearance_m": 0.005365403741598128,
+          "final_pair_normal_force_n": 0.0,
+          "completed_reinsertion": false
+        },
+        {
+          "job_index": 2,
+          "contact_fraction_in_stall_window": 1.0,
+          "first_stall_s": 3.1,
+          "part_rise_during_withdrawal_m": 0.011496350169181824,
+          "final_base_clearance_m": 0.011761324852705,
+          "final_pair_normal_force_n": 0.0,
+          "completed_reinsertion": false
+        },
+        {
+          "job_index": 3,
+          "contact_fraction_in_stall_window": 0.9916666666666667,
+          "first_stall_s": 2.8666666666666667,
+          "part_rise_during_withdrawal_m": 0.005859695374965668,
+          "final_base_clearance_m": 0.005877798795700072,
+          "final_pair_normal_force_n": 0.0,
+          "completed_reinsertion": false
+        }
+      ],
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "artifacts": {
+        "manifest": {
+          "path": "artifacts/assembly/peg_insert_enabled_10072_v12/manifest.json",
+          "sha256": "be9c976b8dc23e835106e7a6b2c2c6f522c8fc1585491c1b0969ef81efd3ae7d"
+        },
+        "report": {
+          "path": "artifacts/assembly/peg_insert_enabled_10072_v12/probe/report.json",
+          "sha256": "38ff48211c3e0599f7d62c3d3f5dc0596144e078c2fdc0a70d914f5fcb4492dc"
+        },
+        "physics_trace": {
+          "path": "artifacts/assembly/peg_insert_enabled_10072_v12/probe/physics_samples.jsonl",
+          "sha256": "717ea4557a7a6207d02fcf569bb109406264ae396053e46e82f1e874c5549f00"
+        },
+        "control_trace": {
+          "path": "artifacts/assembly/peg_insert_enabled_10072_v12/probe/control_samples.jsonl",
+          "sha256": "6b2e11d24c1c426b53ae8dfdeb07d6040451b5a4a314b4593f5e746dc74727cc"
+        }
+      },
+      "max_grasp_translation_drift_mm": 4.778906237334013,
+      "peak_raw_wrist_load_n": 20.126699447631836,
+      "peak_fixture_normal_force_n": 22.379789352416992,
+      "all_jobs_include_finger_contact": true
+    },
+    {
+      "run_id": "peg_release_enabled_10070_v12",
+      "controller": "scripted_release",
+      "seed": 10070,
+      "gravity": "enabled",
+      "simulated_seconds": 6.0,
+      "wall_seconds": 34.67200000002049,
+      "requested_jobs": 4,
+      "outcomes": {
+        "lost_grasp": 4
+      },
+      "withdrawal_observations": [],
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "artifacts": {
+        "manifest": {
+          "path": "artifacts/assembly/peg_release_enabled_10070_v12/manifest.json",
+          "sha256": "8102c4db4e6ad81fca1ddcd1b9247e25854fb3a23cdac0484e06c0070c52324f"
+        },
+        "report": {
+          "path": "artifacts/assembly/peg_release_enabled_10070_v12/probe/report.json",
+          "sha256": "416a1b2b35ff80e25ea1097c03afd051181dbefb9094727e4518c704a881aee9"
+        },
+        "physics_trace": {
+          "path": "artifacts/assembly/peg_release_enabled_10070_v12/probe/physics_samples.jsonl",
+          "sha256": "ac5f0079c3c1d60520f9a7c6ddf7d129be9b96da887c64117d07da30af4d1e0c"
+        },
+        "control_trace": {
+          "path": "artifacts/assembly/peg_release_enabled_10070_v12/probe/control_samples.jsonl",
+          "sha256": "3462feb559805acb8b8355f40d3292bf8dadb148c8f54438181a6ed2615fbf3c"
+        }
+      },
+      "max_grasp_translation_drift_mm": 28.74133549630642,
+      "peak_raw_wrist_load_n": 0.25683701038360596,
+      "peak_fixture_normal_force_n": 1.0957574844360352,
+      "all_jobs_include_finger_contact": true
+    }
+  ],
+  "historical": [
+    {
+      "run_id": "peg_contact_enabled_10070_v2",
+      "status": "artifact_check_failed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v2/manifest.json",
+        "sha256": "e68cfc032105e73e2020e9f921d788cc587d6b6dd94f9a986ff85659fb6ee860"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v2/probe/report.json",
+        "sha256": "7e2396c3ae69f29fdee82a0ad319478a7f910194c07f51beae94f7e2585a0197"
+      },
+      "error": "RuntimeError: Failed to initialize contact reporter for specified bodies.\n\tInput prim path    : /World/envs/env_.*/HeldAsset/forge_round_peg_8mm\n\tResolved prim paths: /World/envs/env_.*/HeldAsset/(forge_round_peg_8mm)",
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_contact_enabled_10070_v3",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v3/manifest.json",
+        "sha256": "9fdec9abd67f263ec7b69c1ac9edf420884045340947d2e7480017274e5098ff"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v3/probe/report.json",
+        "sha256": "b4683502e47ca48eb1e1982a5545b4c8a5d3dcf3e80f88ecf578aa8e3ec9ff08"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_contact_enabled_10070_v4",
+      "status": "artifact_check_failed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v4/manifest.json",
+        "sha256": "98b91d8dc43a2123858bdbeaad7ba65f5a1cc49a6a0c24b742ebb02366b3d2aa"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v4/probe/report.json",
+        "sha256": "304ef388c366abccbb659ce9e5651f386d873b8a62c6db3145700bf14946596f"
+      },
+      "error": "RuntimeError: Validation checks failed; inspect report",
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_contact_enabled_10070_v5",
+      "status": "artifact_check_failed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v5/manifest.json",
+        "sha256": "9db894d258379778bad36d38f136358de03717330b0d94b616ff0ebc9ae774b6"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v5/probe/report.json",
+        "sha256": "3a50e953a152eab88e66d621dbd9ab3d675ff1957afe2cc522335283214456ae"
+      },
+      "error": "RuntimeError: Validation checks failed; inspect report",
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_contact_enabled_10070_v6",
+      "status": "artifact_check_failed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v6/manifest.json",
+        "sha256": "d22fc8cbdd6e97c3acfa4d6acf682d3e5dfc04805eb0312316c27d6ca32474df"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v6/probe/report.json",
+        "sha256": "42101aa86a7d2a3cb41b237f44a0cd3d490a90fadd14c131708cf462bdb1010c"
+      },
+      "error": "RuntimeError: Validation checks failed; inspect report",
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_contact_enabled_10070_v7",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v7/manifest.json",
+        "sha256": "b07bb19f60532c4d12c42604fc587a31fabd9403a1e0d30b8f8cc2f0e82e9e00"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v7/probe/report.json",
+        "sha256": "fb0d44e0e44de584824424fa0112acb0c8fe9789ed6e6965320162a2dbc7c1d7"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_contact_enabled_10070_v8",
+      "status": "artifact_check_failed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v8/manifest.json",
+        "sha256": "da7c7229a441ac565f85409663b0c474f51e1bd041cdf78a2c40c494b8eebd38"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v8/probe/report.json",
+        "sha256": "06d12cd2012a9835bc3d1c0fc0344e889e3d401cfffa7e60ac4beb18eab7dabd"
+      },
+      "error": "RuntimeError: Sensor at path '/World/envs/env_.*/FixedAsset/forge_hole_8mm' could not find any bodies with contact reporter API.\nHINT: Make sure to enable 'activate_contact_sensors' in the corresponding asset spawn configuration.",
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_contact_enabled_10070_v9",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v9/manifest.json",
+        "sha256": "451a31490aa525eef2504247803ca434ede773afa7dd7b257b4eea6418ac59ca"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_contact_enabled_10070_v9/probe/report.json",
+        "sha256": "c1d4aafa358b8ead6ed918f20aa0e8044f7583a28a89bbaa7659ede73cc0e9d4"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_fingers_hold_10070_v11",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_fingers_hold_10070_v11/manifest.json",
+        "sha256": "125dd75ff931a20a0f6a397ff2dff18a466c43ec3376d08689d2f1ee554498e5"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_fingers_hold_10070_v11/probe/report.json",
+        "sha256": "12385e112f52bb3293dee571778571db39f9eb6ef1e27058caa4928904a6a46c"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_fingers_release_10070_v11",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_fingers_release_10070_v11/manifest.json",
+        "sha256": "61ca7bf76a9bd33f269321752492af179cb88137b19f7e1d52ce1a8f0c6ace25"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_fingers_release_10070_v11/probe/report.json",
+        "sha256": "fa31ca14731a13d3ffefc29ac6c6d1939d006f068e11af397e312bd7402483a6"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_gravity_enabled_10070_v1",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_gravity_enabled_10070_v1/manifest.json",
+        "sha256": "34bc49f9e1f03a71c3bf8a8dee19507ebe5c3752ce39727d66367c3307589558"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_gravity_enabled_10070_v1/probe/report.json",
+        "sha256": "1fb7aa0fe5ffb198de5e3bbe6f8f98063ec6b1514a165176244d3186440dfe9c"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_hold_disabled_10070_v10",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_hold_disabled_10070_v10/manifest.json",
+        "sha256": "41896c02ca3bf4f08fbadd14612c3973bb0d49cb0ca37aa3b647217d13c00bd6"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_hold_disabled_10070_v10/probe/report.json",
+        "sha256": "ef4ce9302dcbca8ed9c4cf171ce0168ace6d238b6092be8ebdd2553f1c7c70e4"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_hold_disabled_10071_v10",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_hold_disabled_10071_v10/manifest.json",
+        "sha256": "c293288efb614b23a9aff0146ed143c7a0aa65559b1b8500c6f6f73079f765b9"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_hold_disabled_10071_v10/probe/report.json",
+        "sha256": "259b78952eb22afefa2c7f1a4c773825e568c9c24b9593d7b0f90cc2943c6632"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_hold_disabled_10072_v10",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_hold_disabled_10072_v10/manifest.json",
+        "sha256": "5349dcfc350543579b2d571443b9e139eaf35e6b0ee651d9d61a9457550bcdb2"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_hold_disabled_10072_v10/probe/report.json",
+        "sha256": "400d7781d6d20fefbaa8b540cdb14d9a6cf965564627814e123b9e696fad2a2e"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_hold_enabled_10070_v10",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_hold_enabled_10070_v10/manifest.json",
+        "sha256": "ff48783a12b56f550cb67917589521d9ddee37a1d2060bb8711a07a3c595ebc4"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_hold_enabled_10070_v10/probe/report.json",
+        "sha256": "f91b9118d41ac600d8e7763167514ff1380ab428088972652e55d2ddbaf2ae5f"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_hold_enabled_10071_v10",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_hold_enabled_10071_v10/manifest.json",
+        "sha256": "67cf503311ee83ca6a1068a01d5e81abc30ce57c9ef312188c279330b45a6130"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_hold_enabled_10071_v10/probe/report.json",
+        "sha256": "2b528b510c4ea6be2269ac598cc6b45795d1210d6c99d17534925dce4e71d37a"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_hold_enabled_10072_v10",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_hold_enabled_10072_v10/manifest.json",
+        "sha256": "9f19631109cb2247c9267c0d74dadbf58ba0e789bed7b61fbf57ddfc0b525668"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_hold_enabled_10072_v10/probe/report.json",
+        "sha256": "d4bc569cd40c81c1b8ef4874c571841bceaf380dcf80bf41a8cfb6b87d1a8fcf"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_insert_enabled_10070_v10",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_insert_enabled_10070_v10/manifest.json",
+        "sha256": "4c79773b4d7f4adc507f603926a2c05ac9a42b2ba5a16888ee4f8ceb003598cb"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_insert_enabled_10070_v10/probe/report.json",
+        "sha256": "7334a2ee42e0399b2e799cd66bc5c7ae0572daf0113127d9dcf7bb7302323d7e"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_insert_enabled_10071_v10",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_insert_enabled_10071_v10/manifest.json",
+        "sha256": "5e3b96ab7b57393317de0c84d3c53d01568188c229b9c111b6ad5f691994b958"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_insert_enabled_10071_v10/probe/report.json",
+        "sha256": "d2d3abf00ef136782ad9e54c21159a64e15a8eda415afbd894b0622d40240e81"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_insert_enabled_10072_v10",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_insert_enabled_10072_v10/manifest.json",
+        "sha256": "f34be9aa898c4bbeb85eb561c5d5f9bb66755367d24eb0ffc97ff5e024f5a143"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_insert_enabled_10072_v10/probe/report.json",
+        "sha256": "b56d8484dc826096e66612eda31ba2a286f7d6c2c4927935f49d4400c44a6f97"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_release_enabled_10070_v10",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_release_enabled_10070_v10/manifest.json",
+        "sha256": "0529820640d5b5f55c87ed914192f2c2257481e8703ebeac27078cfd1ff7950f"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_release_enabled_10070_v10/probe/report.json",
+        "sha256": "acccce8fab3fa66914a1eea1313127be40e53dc0a8b483ee35d3ee325fae7d69"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    },
+    {
+      "run_id": "peg_velocity_upstream_10070_v10",
+      "status": "completed",
+      "manifest": {
+        "path": "artifacts/assembly/peg_velocity_upstream_10070_v10/manifest.json",
+        "sha256": "252d707bb587ab23a5372abb5ed030b665ca6f1b6848f759ebfb640a1bd6dbb1"
+      },
+      "report": {
+        "path": "artifacts/assembly/peg_velocity_upstream_10070_v10/probe/report.json",
+        "sha256": "496b9d801c31b3472d3bf5db509cdc143d921333d09d1b14624017ab3a942677"
+      },
+      "error": null,
+      "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
+    }
+  ],
+  "next_action": "Create a complete scripted stall-withdraw-reinsert job using allowed observations; compare with a matched persistent-attempt arm, record per-term discounted reward and a short video, then define recoverable fault bins.",
+  "scope_and_limitations": [
+    "Scripted development probes, no learned controller evaluation, no research effect size, no held-out test seeds.",
+    "probe_end is a finalized short experiment, not a successful assembly or a 30-second timeout. Do not pool these probes into a policy success rate.",
+    "Simulator-derived noisy pose is not camera perception; preset grasp is not pickup.",
+    "Fixture and finger sensors report simulated normal contact; wrist incoming load is different. The 20 N development budget applies to raw wrist load, not fixture normal force or hardware safety.",
+    "Abort latches a hold after measurement; no guarantee of a hard force ceiling or mechanical stopping distance.",
+    "Stall detector is an evaluator proxy with access to filtered simulator wrist load. A deployable retry trigger must use the actor-available noisy measurements.",
+    "No stall penalty is in the reward. Oscillation and brief-signal-gap regression tests address particular gaming modes, not a proof against all gaming.",
+    "Contact occupancy, grasp grace, seated geometry, fault support and reward compatibility still need development validation before protocol freeze.",
+    "Source snapshots and raw traces live in ignored local artifacts; repository includes this compact summary and hashes, not publicly released raw data.",
+    "Historical scores are retained with their original criteria and must not be quoted as current evaluator v2 scores.",
+    "Per-job details are stored once in hashed raw reports; canonical entries here retain cohort summaries and the seven withdrawal observations."
+  ],
+  "supporting_sources": [
+    "https://github.com/isaac-sim/IsaacLab/issues/3758"
+  ],
+  "post_run_verification": "Current fail-closed hold/release outcome checks applied to all eight saved canonical reports and passed. Added after the runs; physics/evaluator source is unchanged. Updated study gate flags do not alter recorded criteria."
+}
