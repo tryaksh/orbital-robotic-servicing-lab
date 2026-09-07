@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "name": "assembly_recovery",
+  "status": "development_not_frozen",
+  "question": "At equal training cost, does adaptive practice on recoverable failures reduce unfinished assembly jobs more than uniform practice and simple retract/retry?",
+  "upstream": {
+    "isaac_sim": "5.1.0",
+    "isaac_lab_tag": "v2.3.2",
+    "isaac_lab_commit": "37ddf626871758333d6ed89cf64ad702aef127d0",
+    "rl_games_commit": "6b3534f29568158e9e29ec8bf83cc88fce5f0cae"
+  },
+  "tasks": {
+    "peg": "Isaac-Forge-PegInsert-Direct-v0",
+    "gear": "Isaac-Forge-GearMesh-Direct-v0"
+  },
+  "gates": {
+    "held_part_gravity_resolved": false,
+    "actor_information_audited": false,
+    "fault_support_validated": false,
+    "within_job_reset_accounting_verified": false,
+    "success_and_force_evaluator_verified": false,
+    "protocol_frozen": false
+  },
+  "training": {
+    "primary_arms": [
+      "uniform_faults",
+      "adaptive_faults"
+    ],
+    "comparators": [
+      "standard_forge",
+      "standard_forge_retract_retry",
+      "fixed_difficulty_curriculum"
+    ],
+    "seeds": [
+      170,
+      271,
+      372
+    ],
+    "nominal_fraction": 0.25,
+    "transition_targets": [
+      1000000,
+      3000000,
+      10000000
+    ],
+    "optional_extension_transitions": 30000000,
+    "initial_num_envs": 64,
+    "initial_horizon": 128,
+    "bootstrap_cost": "Count in each arm or explicitly report identical shared initialization cost",
+    "probe_and_mining_cost": "Included in total transitions",
+    "adaptive_priority_initial": "p * (1 - p) with nonzero bin sampling floor; learning progress is a separate ablation"
+  },
+  "splits": {
+    "development_seeds": [
+      10070,
+      10071,
+      10072
+    ],
+    "test_seeds": [
+      20070,
+      20071,
+      20072
+    ],
+    "test_fault_jobs_per_training_seed": 200,
+    "test_nominal_jobs_per_training_seed": 100,
+    "fault_support_status": "Must specify numeric ranges and held-out combinations before freezing; seeds alone do not establish out-of-distribution testing"
+  },
+  "job_protocol": {
+    "status": "development_defaults_not_final",
+    "deadline_seconds": 30,
+    "seated_dwell_seconds": 0.5,
+    "force_budget_n": 20,
+    "force_budget_meaning": "Experimental simulated load limit, not a hardware damage or safety rating",
+    "force_sampling_and_abort_latency": "Unresolved; audit at physics step granularity before freeze",
+    "allowed_fault_families": [
+      "lateral_pose_bias",
+      "approach_offset",
+      "friction"
+    ],
+    "gear_extension": "yaw_error_after_action_range_check",
+    "failure_events": [
+      "deadline",
+      "force_abort",
+      "lost_grasp",
+      "within_job_simulator_reset",
+      "within_job_part_pose_write",
+      "nonfinite_state"
+    ],
+    "recovery_definition": "Witnessed miss/stall followed by settled insertion within the same job; stall predicate not yet frozen"
+  },
+  "success_target": {
+    "relative_unfinished_job_reduction": 0.5,
+    "max_nominal_success_loss_absolute": 0.02,
+    "interpretation": "Engineering ambition, not a promised result or publication gate"
+  },
+  "compute": {
+    "concurrent_gpu_jobs": 1,
+    "max_block_minutes": 300,
+    "reserve_fraction_for_evaluation_and_reporting": 0.25,
+    "maximum_upstream_smoke_epochs_before_study_adapter": 20
+  }
+}

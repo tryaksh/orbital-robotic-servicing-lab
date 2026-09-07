@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'research/**']
   pull_request:
 
 jobs:
@@ -12,12 +12,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - name: Install lightweight test tools
-        run: python -m pip install --upgrade pip pytest ruff
-      - name: Install package without Isaac runtime dependencies
-        run: python -m pip install -e .
+          python-version: '3.11'
+      - name: Install CPU-only project and test tools
+        run: python -m pip install -e ".[dev]"
       - name: Lint
         run: ruff check src scripts tests
       - name: Unit tests
-        run: pytest -m "not isaac and not camera and not benchmark"
+        run: pytest
+      - name: Validate baseline plan
+        run: python scripts/run_experiment.py plan --task peg --epochs 2 --num-envs 64

@@ -1,0 +1,65 @@
+{
+  "scope": "Lessons retained from the retired zero-gravity project; old results do not support the new study.",
+  "rules": [
+    {
+      "lesson": "Check geometry and controllability before more training",
+      "evidence": "Old extraction improved after task corrections while an additional 2000 epochs did not improve the tested checkpoint result.",
+      "action": "Derive clearances, fault ranges and actionable withdrawal before a GPU campaign."
+    },
+    {
+      "lesson": "Compare the same physical task",
+      "evidence": "Rack retention changed complete-chain results independently of policy learning.",
+      "action": "Hash task physics and hold it fixed across arms; never combine fixture and policy improvements into one learning number."
+    },
+    {
+      "lesson": "An isolated skill can fail in a workflow",
+      "evidence": "High standalone insertion success did not survive the chain; a scripted comparator also failed on the problematic handoff fixture.",
+      "action": "Use the job distribution during training and evaluation; diagnose before attributing a gap to learned composition."
+    },
+    {
+      "lesson": "More prose created conflicting state",
+      "evidence": "Several plans and handoffs disagreed about the current research question, counts and next task.",
+      "action": "Maintain only README.md, ROADMAP.md and AGENTS.md; update state in place."
+    },
+    {
+      "lesson": "Keep negative results and exact scope",
+      "evidence": "Prior reports included retractions and limitations that were lost when prose repeated the numbers.",
+      "action": "Keep immutable per-job evidence and corrected interpretations; never quote a metric without its denominator and scope."
+    },
+    {
+      "lesson": "Measure sustained throughput on the actual new workload",
+      "evidence": "Early fps peaks were mistaken for sustainable throughput; system memory and warning spam affected campaign performance.",
+      "action": "Measure at least 20 epochs, memory and artifact progress; one GPU job until justified otherwise."
+    },
+    {
+      "lesson": "One serial supervisor, no sleeping shell network",
+      "evidence": "An old overnight campaign exhausted Git-Bash process resources through waiting queue shells.",
+      "action": "Run dependent stages sequentially in one process; bound each stage and reserve evaluation time."
+    },
+    {
+      "lesson": "Record source at start",
+      "evidence": "Old reports recorded the commit at completion, which could differ from loaded Python source.",
+      "action": "Hash and snapshot source before launching; do not infer provenance from the end-of-run commit."
+    },
+    {
+      "lesson": "Artifact existence is necessary but not sufficient",
+      "evidence": "Old log status reporting and gate exit handling masked failures or reran valid negative outcomes.",
+      "action": "Record process exit, timeout, config and checkpoint load checks separately; a failed performance gate is a measurement, not an invalid run."
+    },
+    {
+      "lesson": "Separate test cases from training and tuning",
+      "evidence": "Repairing a failed prospective prediction and scoring the same cases does not create a new prospective test.",
+      "action": "Freeze development and final test sets; version any revised claim and use fresh evaluation cases."
+    },
+    {
+      "lesson": "Simulator measurements are not automatically deployed sensors",
+      "evidence": "Old camera error means or medians hid excursions; some perception claims exceeded line-of-sight or synthetic-noise evidence.",
+      "action": "Audit actor information, labels and error sequences; use precise language about simulation and sensing."
+    },
+    {
+      "lesson": "A clean clone contains no ignored artifacts",
+      "evidence": "Tests once depended on ignored campaign queues and passed locally while failing CI.",
+      "action": "Run CPU tests from an exported tracked tree before completing changes."
+    }
+  ]
+}

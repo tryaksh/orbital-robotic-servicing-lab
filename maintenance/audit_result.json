@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "audit_date_local": "2026-09-06",
+  "original_commit": "1b969f6db01aeac226667db4759b7603b3f663a0",
+  "active_branch": "research/assembly-recovery",
+  "original_tracked_files": 638,
+  "retired_original_tracked_files": 629,
+  "original_weight_files_verified_unchanged": 653,
+  "archive_bundle_sha256": "9651aa10c2c9fce6e7e8cc9bed05ca12637b63a7c72fd8c6ac1f111fba331473",
+  "archive_verified": true,
+  "old_test_baseline_before_retirement": {
+    "passed": 505,
+    "skipped": 7,
+    "scope": "Tests of the original retired system. Not evidence about the new assembly study."
+  },
+  "new_cpu_checks": {
+    "status": "passed",
+    "passed": 31,
+    "ruff": "passed",
+    "clean_checkout": "passed from staged tracked-file export, without ignored local artifacts",
+    "package_install": "passed with declared isolated build dependencies",
+    "source_hashes": {
+      "src/assembly_recovery/protocol.py": "d38b46cbb7e58f85bdb78a8904d8510c09478e30f8f673f62ea9272761dd3117",
+      "src/assembly_recovery/__init__.py": "c245621cf4ce1260e99af39b4dfff6286b9d1f741c7f06c2157e2306b1e54b71",
+      "scripts/assembly_smoke.py": "f12bf7d95f6078667895b2b36ebfaace3d8afe612e39178f5a5bb9d910f149db",
+      "scripts/run_experiment.py": "afdf4d1689b09c8567df26a1555a5021485dc9dc61e3712a0ebda131b18c3f12",
+      "scripts/verify_checkpoint.py": "dd4e2a00aee41fba8ec96f5f525fc2085f22b485d2ae2f948f4c16ccfbb48550",
+      "scripts/write_environment_lock.py": "e3e9247078dcb34f623ff7ad6701e804972848472a2147c284dac8be1cdfece1",
+      "tests/test_launcher.py": "51345e867877ddae025695abe6c78231df4b30a96831c4762dff0aa92c4b5079",
+      "tests/test_protocol.py": "61082178bce1426958b4139e8c7d463d62446415b6dceddde0d80fc550cf205c",
+      "tests/test_repository_contract.py": "75c05bb04f88ff8e1b9001bb2b55cdbe3d4bb8e7f16787666a9e68e8da12295d"
+    }
+  },
+  "new_simulator_checks": {
+    "smoke": "completed",
+    "training": "completed",
+    "checkpoint_loaded": true,
+    "training_frames": 16384,
+    "scope": "Infrastructure only; proposed recovery method not implemented"
+  },
+  "branch_decisions": [
+    {
+      "name": "main",
+      "tip": "bccce6d40019bbc3f034da5a54b53a47af423a4b",
+      "action": "Kept unchanged; ancestor of original working branch"
+    },
+    {
+      "name": "industrial-relocation",
+      "tip": "533b5988bbb7894dc3661f754162bd7723f604eb",
+      "action": "Archived and removed locally; ancestor"
+    },
+    {
+      "name": "paper/serviceability-qualification",
+      "tip": "3dced19fa2f7a3ab867801bf463c50bc3b9590ac",
+      "action": "Archived and removed locally; ancestor"
+    },
+    {
+      "name": "keyed-interface",
+      "tip": "f74200719328f74ff11befea716341692133fe53",
+      "action": "Archived and removed locally; one unique commit of superseded interface changes"
+    },
+    {
+      "name": "research/correction-aware-handoffs",
+      "tip": "1b969f6db01aeac226667db4759b7603b3f663a0",
+      "action": "Renamed to research/assembly-recovery; old tip archived"
+    }
+  ],
+  "remote_changes": "None; no push or remote branch deletion",
+  "current_next_action": "Implement peg adapter and complete-job evaluator; validate gravity, actions and actor information before long training.",
+  "active_tracked_files": 26
+}
