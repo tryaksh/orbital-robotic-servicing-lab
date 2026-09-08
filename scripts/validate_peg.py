@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import sys
+import time
 import traceback
 from dataclasses import asdict
 from pathlib import Path
@@ -22,7 +24,7 @@ def expected_outcomes_match(controller, jobs, simulated_seconds, deadline_s):
     if controller == "hold":
         expected = "deadline" if simulated_seconds >= deadline_s else "probe_end"
         return all(job["outcome"] == expected for job in jobs)
-    return controller == "insert_withdraw"
+    return controller in {"insert_withdraw", "retry", "continue"}
 
 
 def information_probe(env):
@@ -75,8 +77,11 @@ def main():
     parser.add_argument("--seed", type=int, default=10070)
     parser.add_argument("--gravity", choices=("enabled", "disabled"), default="enabled")
     parser.add_argument("--velocity", choices=("corrected", "upstream"), default="corrected")
-    parser.add_argument("--controller", choices=("hold", "insert_withdraw", "release"), default="hold")
+    parser.add_argument("--controller", choices=("hold", "insert_withdraw", "release", "retry", "continue"), default="hold")
     parser.add_argument("--seconds", type=float, default=6)
+    parser.add_argument("--retry-config", type=Path)
+    parser.add_argument("--video", action="store_true")
+    parser.add_argument("--video-env", type=int, default=1)
     AppLauncher.add_app_launcher_args(parser)
     args = parser.parse_args()
     if not 1 <= args.seconds <= 35:
@@ -84,7 +89,7 @@ def main():
     args.output.mkdir(parents=True, exist_ok=False)
     report = {"status": "starting", "seed": args.seed, "controller": "scripted_" + args.controller,
               "held_part_gravity": args.gravity, "velocity_mode": args.velocity}
-    app = env = None
+    app = env = video = None
     try:
         app = AppLauncher(args).app
         import torch
@@ -93,6 +98,8 @@ def main():
 
         from assembly_recovery.evaluation import JobCriteria, JobEvaluator, PhysicsSample
         from assembly_recovery.peg_env import PegStudyEnv, WithinJobMutationError
+        from assembly_recovery.retry_controller import ActorRetryController, RetrySettings
+        from assembly_recovery.reward_ledger import discounted_job_return
 
         cfg = parse_env_cfg("Isaac-Forge-PegInsert-Direct-v0", device=args.device or "cuda:0", num_envs=4)
         cfg.seed = args.seed
@@ -100,7 +107,11 @@ def main():
         protocol = json.loads((ROOT / "configs/study.json").read_text())["job_protocol"]
         criteria = JobCriteria(physics_dt=cfg.sim.dt, deadline_s=protocol["deadline_seconds"],
                                seated_dwell_s=protocol["seated_dwell_seconds"], force_budget_n=protocol["force_budget_n"])
-        env = PegStudyEnv(cfg, criteria=criteria, velocity_mode=args.velocity)
+        if cfg.obs_order != ActorRetryController.observation_order:
+            raise RuntimeError("Unexpected actor observation layout")
+        cfg.viewer.resolution = (960, 720)
+        env = PegStudyEnv(cfg, criteria=criteria, velocity_mode=args.velocity,
+                          render_mode="rgb_array" if args.video else None)
         env.reset()
         dump_yaml(str(args.output / "environment.yaml"), cfg)
         report.update(clone_in_fabric=cfg.scene.clone_in_fabric, criteria=asdict(criteria), geometry=env.geometry.report(), world_gravity=list(cfg.sim.gravity),
@@ -115,7 +126,42 @@ def main():
         initial_action = env.actions.clone().clamp(-1, 1)
         report["initial_action"] = initial_action.cpu().tolist()
         report["initial_action_outside_bounds"] = (env.actions.abs() > 1).any(dim=1).cpu().tolist()
+        paired_controller = args.controller in {"retry", "continue"}
+        settings = RetrySettings(**json.loads(args.retry_config.read_text())) if args.retry_config else RetrySettings()
+        actor_obs = env._get_observations()["policy"].cpu().tolist()
+        controllers = [ActorRetryController(row, step_dt=env.step_dt, position_bounds=cfg.ctrl.pos_action_bounds,
+                                           seated_height_m=env.geometry.seated_fingertip_above_hole_top_m,
+                                           retry=args.controller == "retry", settings=settings) for row in actor_obs]
+        initial_state = {}
+        for name in ("held_pos", "held_quat", "fixed_pos", "fixed_quat", "fingertip_midpoint_pos", "fingertip_midpoint_quat",
+                     "init_fixed_pos_obs_noise", "ema_factor", "task_prop_gains", "pos_threshold", "rot_threshold",
+                     "dead_zone_thresholds", "contact_penalty_thresholds", "actions", "force_sensor_world_smooth"):
+            initial_state[name] = getattr(env, name).cpu().tolist()
+        initial_state["actor_observation"] = actor_obs
+        initial_state["robot_joint_pos"] = env._robot.data.joint_pos.cpu().tolist()
+        initial_state["robot_joint_vel"] = env._robot.data.joint_vel.cpu().tolist()
+        for name, asset in (("held", env._held_asset), ("fixed", env._fixed_asset)):
+            initial_state[name + "_root_state"] = asset.data.root_state_w.cpu().tolist()
+            initial_state[name + "_material"] = asset.root_physx_view.get_material_properties().cpu().tolist()
+            initial_state[name + "_mass"] = asset.root_physx_view.get_masses().cpu().tolist()
+        report["initial_state"] = initial_state
+        report["initial_state_sha256"] = hashlib.sha256(json.dumps(initial_state, sort_keys=True).encode()).hexdigest()
+        report["runtime"] = {"python": sys.version, "executable": sys.executable, "torch": torch.__version__,
+                             "cuda": torch.version.cuda, "gpu": torch.cuda.get_device_name()}
+        report["resolved_reward_scales"] = {name: getattr(cfg.task, name) for name in (
+            "action_penalty_ee_scale", "action_grad_penalty_scale", "action_penalty_asset_scale",
+            "contact_penalty_scale", "delay_until_ratio")}
+        if args.video:
+            import imageio.v2 as imageio
+
+            target = env._fixed_asset.data.root_pos_w[args.video_env].cpu().tolist()
+            env.sim.set_camera_view(eye=[target[0] + 0.20, target[1] - 0.22, target[2] + 0.18],
+                                    target=[target[0], target[1], target[2] + 0.04])
+            video = imageio.get_writer(str(args.output / "trajectory.mp4"), fps=round(1 / env.step_dt), macro_block_size=8)
+            report["video"] = {"job_index": args.video_env, "fps": round(1 / env.step_dt), "frames": 0,
+                               "scope": "Actual simulator frames; camera positioning uses evaluator geometry only."}
         env.begin_jobs(args.output.parent.name)
+        rollout_started = time.monotonic()
         resets = 0
         controls = []
         control_steps = math.ceil(args.seconds / env.step_dt)
@@ -123,6 +169,12 @@ def main():
             elapsed = step * env.step_dt
             action = initial_action.clone()
             phase = "hold"
+            controller_states = []
+            if paired_controller:
+                decisions = [controller.act(row, elapsed) for controller, row in zip(controllers, actor_obs, strict=True)]
+                action = torch.tensor([decision[0] for decision in decisions], device=env.device)
+                controller_states = [decision[1] for decision in decisions]
+                phase = [state["phase"] for state in controller_states]
             if args.controller == "insert_withdraw" and elapsed >= 1:
                 phase = "insert" if elapsed < 4 else "withdraw"
                 action[:, :2] = 0
@@ -131,18 +183,40 @@ def main():
             if args.controller == "release" and elapsed >= 1:
                 phase = "release"
                 env.release_gripper = True
-            env.commanded_down = phase == "insert"
+            env.commanded_down = [p in {"insert", "search", "seat"} for p in phase] if paired_controller else phase == "insert"
             active = [job.outcome is None for job in env.jobs]
+            observation_before = actor_obs
             with torch.inference_mode():
                 obs, reward, terminated, truncated, _ = env.step(action)
             if not torch.isfinite(obs["policy"]).all() or not torch.isfinite(reward).all():
                 raise RuntimeError("Non-finite observations or reward")
             resets += int((terminated | truncated).sum())
+            actor_obs = obs["policy"].cpu().tolist()
             controls.append({"step": step + 1, "phase": phase, "active_before_step": active,
+                             "actor_observation_before": observation_before, "commanded_action": action.cpu().tolist(),
+                             "applied_action": env.actions.cpu().tolist(), "controller_state": controller_states,
+                             "reward_terms": {k: v.cpu().tolist() for k, v in env.reward_terms.items()},
+                             "success_prediction_scale": env.success_pred_scale,
                              "reward": reward.cpu().tolist(), "part_pos": env.held_pos.cpu().tolist(),
+                             "part_quat": env.held_quat.cpu().tolist(),
                              "fingertip_pos": env.fingertip_midpoint_pos.cpu().tolist(),
                              "finger_joint_positions": env._robot.data.joint_pos[:, -2:].cpu().tolist()})
+            if video is not None:
+                video.append_data(env.render())
+                report["video"]["frames"] += 1
+            if step % 75 == 0:
+                print(json.dumps({"control_step": step + 1, "time_s": (step + 1) * env.step_dt,
+                                  "phase": phase, "outcomes": [job.outcome for job in env.jobs]}), flush=True)
         jobs = env.end_jobs()
+        rollout_wall_s = time.monotonic() - rollout_started
+        report["resources"] = {"rollout_wall_s": rollout_wall_s, "control_transitions": control_steps * env.num_envs,
+                               "control_transitions_per_wall_s": control_steps * env.num_envs / rollout_wall_s,
+                               "peak_torch_allocated_bytes": torch.cuda.max_memory_allocated(),
+                               "peak_torch_reserved_bytes": torch.cuda.max_memory_reserved(),
+                               "scope": "Instrumented scripted rollout including recording; Torch memory excludes PhysX and renderer. Not training capacity."}
+        report["controllers"] = [controller.report() for controller in controllers] if paired_controller else []
+        report["returns"] = [discounted_job_return(controls, i, job.last_step, cfg.decimation)
+                             for i, job in enumerate(env.jobs)]
         replay = []
         with (args.output / "physics_samples.jsonl").open("x") as handle:
             for job, samples, contacts in zip(jobs, env.samples, env.contact_samples, strict=True):
@@ -227,6 +301,8 @@ def main():
         report.update(status="failed", error=f"{type(exc).__name__}: {exc}", traceback=traceback.format_exc())
         raise
     finally:
+        if video is not None:
+            video.close()
         (args.output / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf8")
         if env is not None:
             env.close()

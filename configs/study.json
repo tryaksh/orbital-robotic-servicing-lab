@@ -20,7 +20,7 @@
     "within_job_reset_accounting_verified": true,
     "success_and_force_evaluator_verified": true,
     "protocol_frozen": false,
-    "recovery_reward_compatibility_verified": false
+    "recovery_reward_compatibility_verified": true
   },
   "training": {
     "primary_arms": [
@@ -86,10 +86,11 @@
       "within_job_state_write",
       "nonfinite_state"
     ],
-    "recovery_definition": "Witnessed contact failure followed by retained-grasp withdrawal and settled reinsertion within the same job. Current evaluator stall proxy alone is insufficient; no completed recovery yet.",
+    "recovery_definition": "Witnessed contact failure followed by retained-grasp withdrawal and settled reinsertion within the same job. Evaluator stall proxy alone is insufficient. One scripted development case is now verified in evidence/recovery_pair_10070_r02.json.",
     "primary_held_part_gravity": "enabled",
     "evaluator_defaults_source": "src/assembly_recovery/evaluation.py:JobCriteria; actual resolved values are recorded in every validation report",
-    "evaluator_version": 2
+    "evaluator_version": 2,
+    "development_reward_terminal_handling": "Only control reward endpoints at/before evaluator termination; later rewards zero, no bootstrap. Partial terminal interval omitted. Training integration is not implemented."
   },
   "success_target": {
     "relative_unfinished_job_reduction": 0.5,
@@ -106,8 +107,8 @@
     "held_part_gravity_resolved": "evidence/peg_validation.json: select physical held-part gravity; three development seeds retain bilateral contact. Robot gravity compensation is idealized.",
     "within_job_reset_accounting_verified": "evidence/peg_validation.json: explicit reset/write guards and a 12-second run beyond the upstream reset horizon; raw physics traces replay identically.",
     "success_and_force_evaluator_verified": "evidence/peg_validation.json and CPU tests: dwell, raw wrist-load abort, bilateral grasp loss, failure precedence, trace continuity. Development criteria, not hardware force certification.",
-    "actor_information_audited": "Narrow adapter actor/action-frame probes pass; retain this gate until retry/training wrappers are audited. The stall witness currently uses evaluator-only filtered load.",
-    "fault_support_validated": "Seven sustained contact stalls can be withdrawn with retained grasp. Numeric fault support and completed same-job reinsertion remain unvalidated.",
-    "recovery_reward_compatibility_verified": "evidence/reward_audit.json is source inspection only; matched full-trajectory returns are still required."
+    "actor_information_audited": "Adapter probes and every recorded retry decision replay from the 24-scalar noisy actor vector; evaluator-only fixture/finger contact is excluded. Keep this gate false until the training wrapper and all transforms are audited.",
+    "fault_support_validated": "One unique seed 10070 fault case completes contact stall, withdrawal and reinsertion; another retained-grasp search stays >3.25 mm off-centre and times out. Numeric fault bins and cross-development-seed support remain unvalidated.",
+    "recovery_reward_compatibility_verified": "evidence/recovery_pair_10070_r02.json and evidence/reward_audit.json: one witnessed scripted recovery returns 75.797 vs 37.543 for a bitwise-matched persistent stall at gamma 0.995. Narrow development trajectory gate only; training terminal integration and wider fault support remain open."
   }
 }

@@ -3,24 +3,35 @@
   "status": "development_validation_complete_protocol_not_frozen",
   "research_result": false,
   "summary": {
-    "canonical_validation_runs": 8,
-    "canonical_scripted_jobs": 32,
+    "canonical_validation_runs": 11,
+    "canonical_scripted_jobs": 44,
     "gravity_enabled_hold_jobs": 12,
     "gravity_enabled_hold_failures": 0,
     "gravity_enabled_hold_max_translation_drift_mm": 0.12305993004702032,
     "deliberate_releases": 4,
     "releases_detected_as_lost_grasp": 4,
     "scripted_insertion_outcomes": {
-      "success": 1,
+      "success": 6,
       "probe_end": 8,
-      "force_abort": 3
+      "force_abort": 6,
+      "deadline": 4
     },
-    "stalled_insertion_jobs": 7,
-    "completed_recoveries": 0,
+    "stalled_insertion_jobs": 13,
+    "completed_recoveries": 2,
     "historical_runs_retained": 22,
     "historical_failed_or_incomplete_runs": 5,
-    "common_development_control_transitions_in_finished_probes": 11880,
-    "cpu_tests_passed": 58
+    "common_development_control_transitions_in_finished_probes": 17280,
+    "cpu_tests_passed": 68,
+    "unique_development_fault_cases_with_completed_recovery": 1,
+    "latest_recorded_pair": {
+      "evidence": "evidence/recovery_pair_10070_r02.json",
+      "jobs_per_arm": 4,
+      "retry_successes": 2,
+      "continued_successes": 1,
+      "witnessed_retry_recoveries": 1,
+      "unique_seed": 10070,
+      "scope": "Scripted development pairing, not a learning effect or held-out estimate."
+    }
   },
   "criteria": {
     "physics_dt": 0.008333333333333333,
@@ -46,9 +57,12 @@
     "Physical held-part gravity retained the grasp across three development seeds; choose enabled gravity for the study, with idealized robot gravity compensation disclosed.",
     "Actual rigid-body paths are derived from USD RigidBodyAPI. The fixed body is nested twice; displayed body names and mesh paths gave unsupported zero contact readings. USD cloning is required for the pinned sensor parent discovery.",
     "Distance-only loss detection missed one released peg near the hand. Contact instrumentation found five seconds without finger contact. Evaluator v2 adds a 0.1 s bilateral-contact grace at 0.01 N; all four releases are now failed jobs.",
-    "The seven observed stalls have a separately measured fixture-contact signal. No successful same-job recovery has been demonstrated; the current script withdraws but never commands reinsertion.",
+    "The original seven contact stalls could be withdrawn. A new actor-only controller now completes seed 10070 case 2: evaluator stall at 2.933 s, noisy-actor retry at 4 s, 12.368 mm part rise with fixture clearance, and seated dwell complete at 13.75 s. The unrecorded probe and video run repeat one case, not two independent cases.",
     "Upstream velocity mode differed from consecutive noisy-position finite differences by up to 0.11814504116773605 m/s in the retained historical v10 probe. Corrected mode satisfies that identity; this is not measurement accuracy against hardware.",
-    "Initial perturbations can yield sustained contact failures, but numeric fault bins, recovery solvability and the reward-compatibility comparison remain open."
+    "The recorded recovery/continued-insertion pair has bitwise-identical saved initial states, resolved environment YAML, and all 60 approach control steps before withdrawal. Gamma=0.995 job returns are 75.797 versus 37.543, excluding rewards after evaluator termination. Numeric recoverable fault bins and training integration remain open.",
+    "All four paired requests remain in the evidence: both arms seat case 0, both time out on case 1, only retry completes case 2, and both abort on force in case 3. Recovery is scripted, not learned.",
+    "Case 1 remains a measured lateral miss during reinsertion search: closest recorded peg-base XY offset is 3.253 mm; at deadline the base is near the fixture top. This does not establish an irrecoverable fault.",
+    "The instantiated peg configuration has zero action-change reward scale; the prior source-only reward audit incorrectly reported -0.1 and now explicitly records the correction."
   ],
   "canonical": [
     {
@@ -448,6 +462,307 @@
       "peak_raw_wrist_load_n": 0.25683701038360596,
       "peak_fixture_normal_force_n": 1.0957574844360352,
       "all_jobs_include_finger_contact": true
+    },
+    {
+      "run_id": "peg_retry_10070_r01",
+      "controller": "scripted_actor_retry",
+      "seed": 10070,
+      "gravity": "enabled",
+      "simulated_seconds": 30.0,
+      "wall_seconds": 146.06299999999464,
+      "requested_jobs": 4,
+      "outcomes": {
+        "success": 2,
+        "deadline": 1,
+        "force_abort": 1
+      },
+      "completed_recoveries_with_contact_and_withdrawal_witness": 1,
+      "withdrawal_observations": [
+        {
+          "job_index": 1,
+          "witnessed_complete_recovery": false,
+          "trigger": {
+            "time_s": 4.0,
+            "observed_height_m": 0.0352754145860672,
+            "noisy_load_mean_n": 8.882051659708415,
+            "load_occupancy": 1.0
+          },
+          "evaluator_first_stall_s": 2.75,
+          "fixture_contact_fraction_in_stall_window": 1.0,
+          "withdrawn_part_rise_m": 0.007392212748527527,
+          "withdrawal_final_base_clearance_m": 0.007573502510786055,
+          "withdrawal_longest_fixture_clear_s": 2.025,
+          "outcome": "deadline",
+          "retained_grasp_to_termination": true
+        },
+        {
+          "job_index": 2,
+          "witnessed_complete_recovery": true,
+          "trigger": {
+            "time_s": 4.0,
+            "observed_height_m": 0.03227968141436577,
+            "noisy_load_mean_n": 9.31917552414687,
+            "load_occupancy": 1.0
+          },
+          "evaluator_first_stall_s": 2.933333333333333,
+          "fixture_contact_fraction_in_stall_window": 1.0,
+          "withdrawn_part_rise_m": 0.01236792653799057,
+          "withdrawal_final_base_clearance_m": 0.012516306154429911,
+          "withdrawal_longest_fixture_clear_s": 1.3333333333333333,
+          "outcome": "success",
+          "retained_grasp_to_termination": true
+        }
+      ],
+      "source_commit_at_start": "02c1153e62bc499f8a576f5f3d40005141e64593",
+      "source_dirty_at_start": true,
+      "source_snapshot": {
+        "path": "artifacts/assembly/peg_retry_10070_r01/source.zip",
+        "bytes": 50386,
+        "sha256": "5fb6706dc1245f0f7faf5404de9c1504f932ae240a1303c0a04eef15b897fa6c"
+      },
+      "behavior_source_sha256": {
+        "configs/study.json": "6aeef743553c2298ec5af99975c43aaddeab1cec0297fc0cf332a7ac877dccda",
+        "scripts/validate_peg.py": "ac257aac79bd21ff9f8a1bae14db4fbf1a9e147ac1824c2af1697ebdd7305034",
+        "src/assembly_recovery/peg_env.py": "0fe0db0879ff86631c4bd2a0593c3475c71b37a28e5a9f571d87b16e55acc5f1",
+        "src/assembly_recovery/retry_controller.py": "fbd9b613c1a7bfe76eff820c904bea4505d0c2eb2d2797c2d6d7700adfb52b58"
+      },
+      "information_probe_passed": true,
+      "actor_decisions_replayed_from_saved_noisy_observations": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "artifacts": {
+        "manifest": {
+          "path": "artifacts/assembly/peg_retry_10070_r01/manifest.json",
+          "sha256": "ce4a3fecee6a6521f8bdfff6240d78a22cb5c5b45576bfa0d51f5c0b3f477975"
+        },
+        "report.json": {
+          "path": "artifacts/assembly/peg_retry_10070_r01/probe/report.json",
+          "bytes": 44495,
+          "sha256": "60be79cf99482a305c76b8f2dfb11e4ea6b4cc45f71451a9848b18961b85e1a6"
+        },
+        "physics_samples.jsonl": {
+          "path": "artifacts/assembly/peg_retry_10070_r01/probe/physics_samples.jsonl",
+          "bytes": 2496241,
+          "sha256": "f15918ff1cb749d6444fdd1675dc6c62a3f319c66fce3b3f71588ffb09c2d8c5"
+        },
+        "control_samples.jsonl": {
+          "path": "artifacts/assembly/peg_retry_10070_r01/probe/control_samples.jsonl",
+          "bytes": 2470860,
+          "sha256": "0b5ca846303c52030b1a5520c2fcfaad6b18bd87f1ac8a5a3b66c7129e887afd"
+        },
+        "environment.yaml": {
+          "path": "artifacts/assembly/peg_retry_10070_r01/probe/environment.yaml",
+          "bytes": 18356,
+          "sha256": "4950e53af7c14e1e59af3b57e19fdf021a20ec352dd8e4d2fdc6db9e13af1dce"
+        }
+      },
+      "scope": "Development feasibility probe; r01 is unpaired and r02 repeats the same seed/cases with video. Repetitions are not independent recovery cases."
+    },
+    {
+      "run_id": "peg_retry_10070_video_r02",
+      "controller": "scripted_actor_retry",
+      "seed": 10070,
+      "gravity": "enabled",
+      "simulated_seconds": 30.0,
+      "wall_seconds": 170.125,
+      "requested_jobs": 4,
+      "outcomes": {
+        "success": 2,
+        "deadline": 1,
+        "force_abort": 1
+      },
+      "completed_recoveries_with_contact_and_withdrawal_witness": 1,
+      "withdrawal_observations": [
+        {
+          "job_index": 1,
+          "witnessed_complete_recovery": false,
+          "trigger": {
+            "time_s": 4.0,
+            "observed_height_m": 0.0352754145860672,
+            "noisy_load_mean_n": 8.882051659708415,
+            "load_occupancy": 1.0
+          },
+          "evaluator_first_stall_s": 2.75,
+          "fixture_contact_fraction_in_stall_window": 1.0,
+          "withdrawn_part_rise_m": 0.007392212748527527,
+          "withdrawal_final_base_clearance_m": 0.007573502510786055,
+          "withdrawal_longest_fixture_clear_s": 2.025,
+          "outcome": "deadline",
+          "retained_grasp_to_termination": true
+        },
+        {
+          "job_index": 2,
+          "witnessed_complete_recovery": true,
+          "trigger": {
+            "time_s": 4.0,
+            "observed_height_m": 0.03227968141436577,
+            "noisy_load_mean_n": 9.31917552414687,
+            "load_occupancy": 1.0
+          },
+          "evaluator_first_stall_s": 2.933333333333333,
+          "fixture_contact_fraction_in_stall_window": 1.0,
+          "withdrawn_part_rise_m": 0.01236792653799057,
+          "withdrawal_final_base_clearance_m": 0.012516306154429911,
+          "withdrawal_longest_fixture_clear_s": 1.3333333333333333,
+          "outcome": "success",
+          "retained_grasp_to_termination": true
+        }
+      ],
+      "source_commit_at_start": "02c1153e62bc499f8a576f5f3d40005141e64593",
+      "source_dirty_at_start": true,
+      "source_snapshot": {
+        "path": "artifacts/assembly/peg_retry_10070_video_r02/source.zip",
+        "bytes": 54488,
+        "sha256": "cd1235e7b847792dd8b7d8cd88782979f4380d78f0203d3cb3c6edfde642d014"
+      },
+      "behavior_source_sha256": {
+        "configs/study.json": "6aeef743553c2298ec5af99975c43aaddeab1cec0297fc0cf332a7ac877dccda",
+        "scripts/validate_peg.py": "2d821268d40dd7ebd312437af28b3a39dfcca44126f584391cec43977ac62135",
+        "src/assembly_recovery/peg_env.py": "0fe0db0879ff86631c4bd2a0593c3475c71b37a28e5a9f571d87b16e55acc5f1",
+        "src/assembly_recovery/retry_controller.py": "fbd9b613c1a7bfe76eff820c904bea4505d0c2eb2d2797c2d6d7700adfb52b58"
+      },
+      "information_probe_passed": true,
+      "actor_decisions_replayed_from_saved_noisy_observations": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "artifacts": {
+        "manifest": {
+          "path": "artifacts/assembly/peg_retry_10070_video_r02/manifest.json",
+          "sha256": "d9eea76124ff31b5a5c98e72623b0c88139c081b3400efb0f833c9868a84c25e"
+        },
+        "report.json": {
+          "path": "artifacts/assembly/peg_retry_10070_video_r02/probe/report.json",
+          "bytes": 45287,
+          "sha256": "490b9e5d950db36d1ccd3b3cee04808d84a9bd3702f88036d43253878496ad3b"
+        },
+        "physics_samples.jsonl": {
+          "path": "artifacts/assembly/peg_retry_10070_video_r02/probe/physics_samples.jsonl",
+          "bytes": 2530963,
+          "sha256": "d1accb611195c377cfe20fe62de60171ef7ad8f3213dd13a836ea4e4e679e5bc"
+        },
+        "control_samples.jsonl": {
+          "path": "artifacts/assembly/peg_retry_10070_video_r02/probe/control_samples.jsonl",
+          "bytes": 2470860,
+          "sha256": "0b5ca846303c52030b1a5520c2fcfaad6b18bd87f1ac8a5a3b66c7129e887afd"
+        },
+        "environment.yaml": {
+          "path": "artifacts/assembly/peg_retry_10070_video_r02/probe/environment.yaml",
+          "bytes": 18356,
+          "sha256": "4950e53af7c14e1e59af3b57e19fdf021a20ec352dd8e4d2fdc6db9e13af1dce"
+        },
+        "trajectory.mp4": {
+          "path": "artifacts/assembly/peg_retry_10070_video_r02/probe/trajectory.mp4",
+          "bytes": 1101944,
+          "sha256": "dc28c2791412167afb1925734570b02671f0d25b2b6cae00e60425faade5cfed"
+        }
+      },
+      "scope": "Development feasibility probe; r01 is unpaired and r02 repeats the same seed/cases with video. Repetitions are not independent recovery cases."
+    },
+    {
+      "run_id": "peg_continue_10070_video_r02",
+      "controller": "scripted_continued_insertion",
+      "seed": 10070,
+      "gravity": "enabled",
+      "simulated_seconds": 30.0,
+      "wall_seconds": 156.53099999998813,
+      "requested_jobs": 4,
+      "outcomes": {
+        "success": 1,
+        "deadline": 2,
+        "force_abort": 1
+      },
+      "completed_recoveries_with_contact_and_withdrawal_witness": 0,
+      "withdrawal_observations": [
+        {
+          "job_index": 1,
+          "witnessed_complete_recovery": false,
+          "trigger": {
+            "time_s": 4.0,
+            "observed_height_m": 0.0352754145860672,
+            "noisy_load_mean_n": 8.882051659708415,
+            "load_occupancy": 1.0
+          },
+          "evaluator_first_stall_s": 2.75,
+          "fixture_contact_fraction_in_stall_window": 1.0,
+          "withdrawn_part_rise_m": 0.0,
+          "withdrawal_final_base_clearance_m": null,
+          "withdrawal_longest_fixture_clear_s": 0.0,
+          "outcome": "deadline",
+          "retained_grasp_to_termination": true
+        },
+        {
+          "job_index": 2,
+          "witnessed_complete_recovery": false,
+          "trigger": {
+            "time_s": 4.0,
+            "observed_height_m": 0.03227968141436577,
+            "noisy_load_mean_n": 9.31917552414687,
+            "load_occupancy": 1.0
+          },
+          "evaluator_first_stall_s": 2.933333333333333,
+          "fixture_contact_fraction_in_stall_window": 1.0,
+          "withdrawn_part_rise_m": 0.0,
+          "withdrawal_final_base_clearance_m": null,
+          "withdrawal_longest_fixture_clear_s": 0.0,
+          "outcome": "deadline",
+          "retained_grasp_to_termination": true
+        }
+      ],
+      "source_commit_at_start": "02c1153e62bc499f8a576f5f3d40005141e64593",
+      "source_dirty_at_start": true,
+      "source_snapshot": {
+        "path": "artifacts/assembly/peg_continue_10070_video_r02/source.zip",
+        "bytes": 57517,
+        "sha256": "0de1bbcc302f6c241e0391efe7870d600b2c513d81108da58a39412e7a1f5f8b"
+      },
+      "behavior_source_sha256": {
+        "configs/study.json": "6aeef743553c2298ec5af99975c43aaddeab1cec0297fc0cf332a7ac877dccda",
+        "scripts/validate_peg.py": "2d821268d40dd7ebd312437af28b3a39dfcca44126f584391cec43977ac62135",
+        "src/assembly_recovery/peg_env.py": "0fe0db0879ff86631c4bd2a0593c3475c71b37a28e5a9f571d87b16e55acc5f1",
+        "src/assembly_recovery/retry_controller.py": "fbd9b613c1a7bfe76eff820c904bea4505d0c2eb2d2797c2d6d7700adfb52b58"
+      },
+      "information_probe_passed": true,
+      "actor_decisions_replayed_from_saved_noisy_observations": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "artifacts": {
+        "manifest": {
+          "path": "artifacts/assembly/peg_continue_10070_video_r02/manifest.json",
+          "sha256": "5f4530b124ecf827dc619ea25f473cee1c44cb771fc63b1d2a58bfb75271c5f4"
+        },
+        "report.json": {
+          "path": "artifacts/assembly/peg_continue_10070_video_r02/probe/report.json",
+          "bytes": 44311,
+          "sha256": "c41e2088d99628ccd82a004ade664e319cd2d5bb89d24a9470c2fc071369e1da"
+        },
+        "physics_samples.jsonl": {
+          "path": "artifacts/assembly/peg_continue_10070_video_r02/probe/physics_samples.jsonl",
+          "bytes": 3420914,
+          "sha256": "04abb67a4c2de53950b51f5f6ca51d8f929fca15e63fc2c90c02e609e24975a0"
+        },
+        "control_samples.jsonl": {
+          "path": "artifacts/assembly/peg_continue_10070_video_r02/probe/control_samples.jsonl",
+          "bytes": 2429589,
+          "sha256": "67587540318728e76cb145e4854ea9798dab5bcb24942589c679a598d8a3bce7"
+        },
+        "environment.yaml": {
+          "path": "artifacts/assembly/peg_continue_10070_video_r02/probe/environment.yaml",
+          "bytes": 18356,
+          "sha256": "4950e53af7c14e1e59af3b57e19fdf021a20ec352dd8e4d2fdc6db9e13af1dce"
+        },
+        "trajectory.mp4": {
+          "path": "artifacts/assembly/peg_continue_10070_video_r02/probe/trajectory.mp4",
+          "bytes": 820075,
+          "sha256": "eda12caf6c5fe9b53836a35e566c86d92241d125a5ead50e18acf9b1f4e2b1a1"
+        }
+      },
+      "scope": "Development feasibility probe; r01 is unpaired and r02 repeats the same seed/cases with video. Repetitions are not independent recovery cases."
     }
   ],
   "historical": [
@@ -760,22 +1075,84 @@
       "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
     }
   ],
-  "next_action": "Create a complete scripted stall-withdraw-reinsert job using allowed observations; compare with a matched persistent-attempt arm, record per-term discounted reward and a short video, then define recoverable fault bins.",
+  "next_action": "Define and validate numeric recoverable fault bins with the actor-only retry on development seeds. Begin with an unload-and-realign probe of the unresolved >3.25 mm lateral miss; pair every changed controller against continued insertion under the same task, 30 s deadline and 20 N wrist budget. Keep held-out seeds closed and finish training-wrapper information/terminal audits before protocol freeze or long training.",
   "scope_and_limitations": [
     "Scripted development probes, no learned controller evaluation, no research effect size, no held-out test seeds.",
     "probe_end is a finalized short experiment, not a successful assembly or a 30-second timeout. Do not pool these probes into a policy success rate.",
     "Simulator-derived noisy pose is not camera perception; preset grasp is not pickup.",
     "Fixture and finger sensors report simulated normal contact; wrist incoming load is different. The 20 N development budget applies to raw wrist load, not fixture normal force or hardware safety.",
     "Abort latches a hold after measurement; no guarantee of a hard force ceiling or mechanical stopping distance.",
-    "Stall detector is an evaluator proxy with access to filtered simulator wrist load. A deployable retry trigger must use the actor-available noisy measurements.",
     "No stall penalty is in the reward. Oscillation and brief-signal-gap regression tests address particular gaming modes, not a proof against all gaming.",
-    "Contact occupancy, grasp grace, seated geometry, fault support and reward compatibility still need development validation before protocol freeze.",
     "Source snapshots and raw traces live in ignored local artifacts; repository includes this compact summary and hashes, not publicly released raw data.",
     "Historical scores are retained with their original criteria and must not be quoted as current evaluator v2 scores.",
-    "Per-job details are stored once in hashed raw reports; canonical entries here retain cohort summaries and the seven withdrawal observations."
+    "Per-job details are stored once in hashed raw reports; canonical entries here retain cohort summaries and the seven withdrawal observations.",
+    "The new retry reads only the saved 24-scalar actor vector. Evaluator-only fixture/finger contact and filtered wrist stall labels do not enter its decisions; all actions replay from noisy actor measurements. This does not audit a future training wrapper.",
+    "One development fault case recovered twice. No learned recovery, training comparison, independent-seed recovery estimate, numeric fault support, or held-out result is established.",
+    "Job return includes upstream control reward endpoints at/before physics-step termination, followed by absorbing zero with no bootstrap. A partial terminal interval lacks a sampled endpoint and is omitted (2/120 s in the recovered case); training terminal handling is still to be implemented and frozen.",
+    "The scripted success-prediction action stays -1 in both arms. Once the upstream cohort latch activates, its penalty cancels the upstream success reward in successful states; all these terms are included.",
+    "The raw simulator recordings and 30-second side-by-side replay are local ignored artifacts, not a publicly released benchmark."
   ],
   "supporting_sources": [
     "https://github.com/isaac-sim/IsaacLab/issues/3758"
   ],
-  "post_run_verification": "Current fail-closed hold/release outcome checks applied to all eight saved canonical reports and passed. Added after the runs; physics/evaluator source is unchanged. Updated study gate flags do not alter recorded criteria."
+  "post_run_verification": "Current fail-closed hold/release outcome checks applied to all eight saved canonical reports and passed. Added after the runs; physics/evaluator source is unchanged. Updated study gate flags do not alter recorded criteria.",
+  "superseded": [
+    {
+      "as_of_source_commit": "02c1153",
+      "fields": {
+        "summary.completed_recoveries": 0,
+        "key_findings": [
+          "The seven observed stalls have a separately measured fixture-contact signal. No successful same-job recovery has been demonstrated; the current script withdraws but never commands reinsertion.",
+          "Initial perturbations can yield sustained contact failures, but numeric fault bins, recovery solvability and the reward-compatibility comparison remain open."
+        ]
+      },
+      "reason": "The original withdrawal-only evidence remains valid for its controller. New actor-only scripted reinsertion completed one development fault case twice, with a recorded matched pair.",
+      "replacement_evidence": "evidence/recovery_pair_10070_r02.json"
+    }
+  ],
+  "canonical_behavior_source_sha256_scope": "Original eight v12 canonical probes only; the three recovery probes have individual prelaunch source hashes and snapshots.",
+  "recorded_comparison": {
+    "evidence": "evidence/recovery_pair_10070_r02.json",
+    "sha256": "65f6e8b27f91ea9ed9f91c187cc0a26ca25a49fd07075bc3ed0af178590c7e36",
+    "video": "artifacts/assembly/recovery_comparison_10070_r02/paired_recovery.mp4",
+    "figure": "artifacts/assembly/recovery_comparison_10070_r02/comparison.pdf",
+    "visualization_manifest": "artifacts/assembly/recovery_comparison_10070_r02/visualization.json",
+    "visualization_manifest_sha256": "36c41ef7426f5b9b7fb88267943ead646cebb9c96f8eae0ba4fbbb5bc49d65f7",
+    "decoded_frames": 450,
+    "fps": 15,
+    "resolved_environment_yaml_identical": true,
+    "scope": "Actual simulator frames for matched case 2; all four requested jobs appear in paired evidence."
+  },
+  "new_block_verification": {
+    "lint": "passed",
+    "cpu_tests_passed": 68,
+    "new_serial_gpu_runs": 3,
+    "new_scripted_jobs": 12,
+    "new_control_transitions_including_probe_and_postterminal_holds": 5400,
+    "new_run_sources_archived_before_launch": true,
+    "new_saved_physics_and_actor_controllers_replayed": true,
+    "new_artifact_and_source_snapshot_hashes_verified": true,
+    "upstream_unchanged": true,
+    "raw_and_composed_video_decoded": true,
+    "clean_tracked_export_checked": {
+      "path": "artifacts/assembly/handover_recovery_r02",
+      "lint": "passed",
+      "bare_pytest_passed": 68,
+      "plan_without_ignored_local_artifacts": "passed"
+    }
+  },
+  "failure_analysis": {
+    "run_id": "peg_retry_10070_video_r02",
+    "case_index": 1,
+    "outcome": "deadline",
+    "measured_cause": "Persistent lateral misalignment during reinsertion search; the peg stays at the fixture top and never reaches seated depth.",
+    "minimum_recorded_peg_base_xy_error_during_search_mm": 3.252937751652251,
+    "final_peg_base_xy_error_mm": 3.545741758478441,
+    "final_base_above_fixture_top_mm": -0.07833316922187944,
+    "final_noisy_actor_load_mean_n": 5.632516168255665,
+    "force_target_n": 8.0,
+    "pressure_offset_at_cap_m": 0.025,
+    "inference_limit": "These traces do not separate insufficient motion under friction/dead zone from inadequate search coverage. The configured clearance is not a mesh certification.",
+    "next_targeted_experiment": "Use actor-only unloading followed by slower lateral realignment; measure achieved motion against the desired search path and rerun continued insertion under the unchanged 30 s/20 N task before assigning recoverable bins."
+  }
 }

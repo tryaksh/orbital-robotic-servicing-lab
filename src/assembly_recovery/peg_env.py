@@ -144,6 +144,27 @@ class PegStudyEnv(ForgeEnv):
         done = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         return done, done.clone()
 
+    def _get_factory_rew_dict(self, curr_successes):
+        terms, scales = super()._get_factory_rew_dict(curr_successes)
+        self.reward_terms = {name: (term * scales[name]).expand(self.num_envs).detach().clone()
+                             for name, term in terms.items()}
+        return terms, scales
+
+    def _log_forge_metrics(self, rew_dict, policy_success_pred):
+        scales = {"action_penalty_asset": -self.cfg_task.action_penalty_asset_scale,
+                  "contact_penalty": -self.cfg_task.contact_penalty_scale,
+                  "success_pred_error": -self.success_pred_scale}
+        self.reward_terms.update({name: (term * scales[name]).detach().clone() for name, term in rew_dict.items()})
+        return super()._log_forge_metrics(rew_dict, policy_success_pred)
+
+    def _get_rewards(self):
+        reward = super()._get_rewards()
+        reconstructed = sum(self.reward_terms.values())
+        self.reward_reconstruction_error = float((reward - reconstructed).abs().max())
+        if self.reward_reconstruction_error > 1e-5:
+            raise RuntimeError("Recorded reward terms do not reconstruct upstream reward")
+        return reward
+
     def generate_ctrl_signals(self, ctrl_target_fingertip_midpoint_pos, ctrl_target_fingertip_midpoint_quat,
                               ctrl_target_gripper_dof_pos):
         if self.jobs_live:
@@ -198,8 +219,9 @@ class PegStudyEnv(ForgeEnv):
         for i, (job, values) in enumerate(zip(self.jobs, rows, strict=True)):
             if job.outcome is not None:
                 continue
+            down = self.commanded_down if isinstance(self.commanded_down, bool) else bool(self.commanded_down[i])
             sample = PhysicsSample(job.last_step + 1, bool(values[0]), bool(values[1]), values[2], values[3],
-                                   bool(values[4]), values[5], values[6], self.commanded_down, bool(values[7]), tuple(finger_norms[i]))
+                                   bool(values[4]), values[5], values[6], down, bool(values[7]), tuple(finger_norms[i]))
             self.samples[i].append(asdict(sample))
             self.contact_samples[i].append(pair_norm[i])
             self.finger_contact_samples[i].append(finger_norms[i])
