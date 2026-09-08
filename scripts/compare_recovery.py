@@ -44,7 +44,7 @@ def verify_run(directory):
         for row in physics[job["job_id"]]:
             sample = {k: v for k, v in row.items() if k not in {"job_id", "peg_fixture_contact_force_n"}}
             evaluator.observe(PhysicsSample(**sample))
-        evaluator.finish("probe_end")
+        evaluator.finish("initialization_invalid" if job["outcome"] == "initialization_invalid" else "probe_end")
         if evaluator.result() != job:
             raise ValueError("Reloaded physics does not reproduce job")
         if job["forbidden_events"] or report["automatic_resets"] or report["initializations_during_jobs"]:
@@ -64,7 +64,10 @@ def verify_run(directory):
                 raise ValueError("Controller cannot be replayed from actor measurements alone")
             if state != row["controller_state"][i]:
                 raise ValueError("Controller internal state replay mismatch")
-        if controller.report() != controller_record:
+        replayed = controller.report()
+        # Old records predate optional settings; compare their recorded fields.
+        replayed["settings"] = {k: replayed["settings"][k] for k in controller_record["settings"]}
+        if replayed != controller_record:
             raise ValueError("Controller event replay mismatch")
     return manifest, report, controls, physics
 
@@ -125,6 +128,9 @@ def main():
     same_conditions &= (args.recovery / "probe/environment.yaml").read_bytes() == (args.continued / "probe/environment.yaml").read_bytes()
     behavior_files = ("scripts/validate_peg.py", "src/assembly_recovery/peg_env.py", "src/assembly_recovery/retry_controller.py",
                       "src/assembly_recovery/evaluation.py", "src/assembly_recovery/geometry.py", "src/assembly_recovery/reward_ledger.py", "configs/study.json")
+    if rr.get("fault_cases") is not None or cr.get("fault_cases") is not None:
+        same_conditions &= rr.get("fault_cases") == cr.get("fault_cases")
+        behavior_files += ("src/assembly_recovery/faults.py", "src/assembly_recovery/fault_env.py")
     same_source = all(rm["source_hashes"][name] == cm["source_hashes"][name] for name in behavior_files)
     same_settings = [x["settings"] for x in rr["controllers"]] == [x["settings"] for x in cr["controllers"]]
     same_upstream = rm["upstream_source_sha256"] == cm["upstream_source_sha256"] and rm["upstream_commit"] == cm["upstream_commit"]

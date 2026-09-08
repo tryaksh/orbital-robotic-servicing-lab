@@ -27,6 +27,7 @@ def main():
     parser.add_argument("--max-minutes", type=int, default=5)
     parser.add_argument("--sim-python", type=Path, default=Path("C:/isaac-sim/python.bat"))
     parser.add_argument("--retry-config", type=Path)
+    parser.add_argument("--fault-plan", type=Path)
     parser.add_argument("--video", action="store_true")
     parser.add_argument("--video-env", type=int, default=1)
     args = parser.parse_args()
@@ -39,6 +40,17 @@ def main():
         parser.error("Pinned upstream source must be unchanged")
     if not args.sim_python.is_file():
         parser.error("Simulator interpreter not found")
+    if args.fault_plan:
+        plan = json.loads(args.fault_plan.read_text())
+        from assembly_recovery.faults import validate_development_request
+
+        try:
+            validate_development_request(plan, study_sha256=sha256(ROOT / "configs/study.json"),
+                                         settings_sha256=sha256(args.retry_config) if args.retry_config else None,
+                                         seed=args.seed, controller=args.controller, seconds=args.seconds,
+                                         gravity=args.gravity, velocity=args.velocity)
+        except ValueError as exc:
+            parser.error(str(exc))
     output = ROOT / "artifacts/assembly" / run_id
     output.mkdir(parents=True, exist_ok=False)
     command = [str(args.sim_python), str(ROOT / "scripts/validate_peg.py"), "--headless", "--output", str(output / "probe"),
@@ -48,6 +60,10 @@ def main():
         config_copy = output / "retry_settings.json"
         config_copy.write_bytes(args.retry_config.read_bytes())
         command += ["--retry-config", str(config_copy)]
+    if args.fault_plan:
+        plan_copy = output / "fault_plan.json"
+        plan_copy.write_bytes(args.fault_plan.read_bytes())
+        command += ["--fault-plan", str(plan_copy)]
     if args.video:
         command += ["--video", "--enable_cameras", "--video-env", str(args.video_env)]
     manifest = {"schema": 1, "run_id": run_id, "status": "starting", "research_result": False,
@@ -59,6 +75,7 @@ def main():
                 "checkpoint": None, "seed": args.seed,
                 "environment_lock": json.loads((ROOT / "environment-lock.local.json").read_text()) if (ROOT / "environment-lock.local.json").is_file() else None,
                 "environment_lock_sha256": sha256(ROOT / "environment-lock.local.json") if (ROOT / "environment-lock.local.json").is_file() else None,
+                "fault_plan_sha256": sha256(output / "fault_plan.json") if args.fault_plan else None,
                 "retry_config_sha256": sha256(output / "retry_settings.json") if args.retry_config else None,
                 "upstream_source_sha256": {p.relative_to(ROOT).as_posix(): sha256(p)
                                            for folder in ("factory", "forge")
@@ -82,7 +99,7 @@ def main():
                                  for p in (output / "source.zip", report, trace, output / "probe/control_samples.jsonl",
                                            output / "probe/environment.yaml") if p.is_file()]
         manifest["artifacts"] += [{"path": p.relative_to(ROOT).as_posix(), "bytes": p.stat().st_size, "sha256": sha256(p)}
-                                  for p in (output / "probe/trajectory.mp4", output / "retry_settings.json") if p.is_file()]
+                                  for p in (output / "probe/trajectory.mp4", output / "retry_settings.json", output / "fault_plan.json") if p.is_file()]
     except BaseException as exc:
         manifest.update(status="launcher_failed", error=f"{type(exc).__name__}: {exc}")
         raise

@@ -80,6 +80,7 @@ def main():
     parser.add_argument("--controller", choices=("hold", "insert_withdraw", "release", "retry", "continue"), default="hold")
     parser.add_argument("--seconds", type=float, default=6)
     parser.add_argument("--retry-config", type=Path)
+    parser.add_argument("--fault-plan", type=Path)
     parser.add_argument("--video", action="store_true")
     parser.add_argument("--video-env", type=int, default=1)
     AppLauncher.add_app_launcher_args(parser)
@@ -101,18 +102,38 @@ def main():
         from assembly_recovery.retry_controller import ActorRetryController, RetrySettings
         from assembly_recovery.reward_ledger import discounted_job_return
 
-        cfg = parse_env_cfg("Isaac-Forge-PegInsert-Direct-v0", device=args.device or "cuda:0", num_envs=4)
+        study = json.loads((ROOT / "configs/study.json").read_text())
+        fault_cases = None
+        if args.fault_plan:
+            from assembly_recovery.faults import development_cases
+
+            plan = json.loads(args.fault_plan.read_text())
+            if hashlib.sha256((ROOT / "configs/study.json").read_bytes()).hexdigest() != plan["study_sha256"]:
+                raise ValueError("Study differs from the predeclared fault plan")
+            fault_cases = development_cases(study, args.seed)
+            if args.seconds != 30 or args.controller not in {"retry", "continue"}:
+                raise ValueError("Fault matrix requires paired full-deadline scripted jobs")
+        cfg = parse_env_cfg("Isaac-Forge-PegInsert-Direct-v0", device=args.device or "cuda:0", num_envs=len(fault_cases) if fault_cases else 4)
         cfg.seed = args.seed
         cfg.task.held_asset.spawn.rigid_props.disable_gravity = args.gravity == "disabled"
-        protocol = json.loads((ROOT / "configs/study.json").read_text())["job_protocol"]
+        protocol = study["job_protocol"]
         criteria = JobCriteria(physics_dt=cfg.sim.dt, deadline_s=protocol["deadline_seconds"],
                                seated_dwell_s=protocol["seated_dwell_seconds"], force_budget_n=protocol["force_budget_n"])
         if cfg.obs_order != ActorRetryController.observation_order:
             raise RuntimeError("Unexpected actor observation layout")
         cfg.viewer.resolution = (960, 720)
-        env = PegStudyEnv(cfg, criteria=criteria, velocity_mode=args.velocity,
-                          render_mode="rgb_array" if args.video else None)
+        env_type, fault_kwargs = PegStudyEnv, {}
+        if fault_cases:
+            from assembly_recovery.fault_env import PegFaultEnv
+
+            env_type = PegFaultEnv
+            fault_kwargs = {"cases": fault_cases, "nominal": study["fault_support"]["nominal"]}
+        env = env_type(cfg, criteria=criteria, velocity_mode=args.velocity,
+                       render_mode="rgb_array" if args.video else None, **fault_kwargs)
         env.reset()
+        if fault_cases:
+            report["fault_cases"] = fault_cases
+            report["initialization_validity"] = env.initialization_report()
         dump_yaml(str(args.output / "environment.yaml"), cfg)
         report.update(clone_in_fabric=cfg.scene.clone_in_fabric, criteria=asdict(criteria), geometry=env.geometry.report(), world_gravity=list(cfg.sim.gravity),
                       robot_gravity_disabled=cfg.robot.spawn.rigid_props.disable_gravity,
@@ -151,6 +172,8 @@ def main():
         report["resolved_reward_scales"] = {name: getattr(cfg.task, name) for name in (
             "action_penalty_ee_scale", "action_grad_penalty_scale", "action_penalty_asset_scale",
             "contact_penalty_scale", "delay_until_ratio")}
+        if cfg.task.action_grad_penalty_scale != 0.0:
+            raise RuntimeError("Resolved peg action-change reward coefficient must remain zero")
         if args.video:
             import imageio.v2 as imageio
 
@@ -161,6 +184,10 @@ def main():
             report["video"] = {"job_index": args.video_env, "fps": round(1 / env.step_dt), "frames": 0,
                                "scope": "Actual simulator frames; camera positioning uses evaluator geometry only."}
         env.begin_jobs(args.output.parent.name)
+        for i, validity in enumerate(report.get("initialization_validity", [])):
+            if not validity["valid"]:
+                env.jobs[i].finish("initialization_invalid")
+                env.finished_mask[i] = True
         rollout_started = time.monotonic()
         resets = 0
         controls = []
@@ -224,7 +251,7 @@ def main():
                 for sample, contact in zip(samples, contacts, strict=True):
                     handle.write(json.dumps({"job_id": job["job_id"], "peg_fixture_contact_force_n": contact, **sample}) + "\n")
                     evaluator.observe(PhysicsSample(**sample))
-                evaluator.finish("probe_end")
+                evaluator.finish("initialization_invalid" if job["outcome"] == "initialization_invalid" else "probe_end")
                 replay.append(evaluator.result())
         with (args.output / "control_samples.jsonl").open("x") as handle:
             for control in controls:

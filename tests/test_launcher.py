@@ -50,3 +50,13 @@ def test_plan_needs_no_simulator_or_local_artifacts():
     assert plan["task_id"] == "Isaac-Forge-PegInsert-Direct-v0"
     assert plan["requested_transitions"] == 16384
     assert plan["unmet_study_gates"]
+
+
+def test_training_launcher_rejects_reserved_seeds_before_simulator_access():
+    root = Path(__file__).resolve().parents[1]
+    for mode in ("plan", "train"):
+        for seed in (10070, 20070):
+            result = subprocess.run([sys.executable, str(root / "scripts/run_experiment.py"), mode,
+                                     "--seed", str(seed)], cwd=root, capture_output=True, text=True)
+            assert result.returncode != 0
+            assert "Training seed must belong" in result.stderr

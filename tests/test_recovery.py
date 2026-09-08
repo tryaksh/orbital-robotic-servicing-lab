@@ -2,7 +2,7 @@ import copy
 
 import pytest
 
-from assembly_recovery.retry_controller import ActorRetryController
+from assembly_recovery.retry_controller import ActorRetryController, RetrySettings
 from assembly_recovery.reward_ledger import discounted_job_return
 from scripts.compare_recovery import recovery_witness
 
@@ -93,3 +93,21 @@ def test_recovery_claim_requires_separate_contact_and_withdrawal_witnesses(missi
     elif missing == "pretrigger_stall":
         report["jobs"][0]["first_stall_step"] = 125
     assert recovery_witness(report, controls, physics, 0)["witnessed_complete_recovery"] is (missing is None)
+
+
+def test_realignment_unloads_before_search_and_is_time_bounded():
+    policy = ActorRetryController(observation(), step_dt=1 / 15, position_bounds=[0.05] * 3,
+                                 seated_height_m=0.007392, retry=True,
+                                 settings=RetrySettings(realignment_min_s=2.0, realignment_max_s=4.0))
+    for step in range(61):
+        policy.act(observation(), step / 15)
+    offset = observation(height=0.045, load=1.0)
+    offset[0] = 0.006
+    for step in range(61, 150):
+        action, state = policy.act(offset, step / 15)
+    assert state["phase"] == "realign"
+    assert action[0] < 0 and action[2] == pytest.approx(0.9)
+    for step in range(150, 167):
+        _, state = policy.act(offset, step / 15)
+    assert state["phase"] == "search"
+    assert policy.events[-1]["observed_alignment_within_tolerance"] is False

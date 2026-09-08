@@ -1,28 +1,28 @@
 {
   "schema": 1,
-  "status": "development_validation_complete_protocol_not_frozen",
+  "status": "development_fault_matrix_verified_training_gates_open",
   "research_result": false,
   "summary": {
-    "canonical_validation_runs": 11,
-    "canonical_scripted_jobs": 44,
+    "canonical_validation_runs": 21,
+    "canonical_scripted_jobs": 228,
     "gravity_enabled_hold_jobs": 12,
     "gravity_enabled_hold_failures": 0,
     "gravity_enabled_hold_max_translation_drift_mm": 0.12305993004702032,
     "deliberate_releases": 4,
     "releases_detected_as_lost_grasp": 4,
     "scripted_insertion_outcomes": {
-      "success": 6,
+      "success": 86,
       "probe_end": 8,
-      "force_abort": 6,
-      "deadline": 4
+      "force_abort": 26,
+      "deadline": 88
     },
-    "stalled_insertion_jobs": 13,
-    "completed_recoveries": 2,
+    "stalled_insertion_jobs": 154,
+    "completed_recoveries": 43,
     "historical_runs_retained": 22,
     "historical_failed_or_incomplete_runs": 5,
-    "common_development_control_transitions_in_finished_probes": 17280,
-    "cpu_tests_passed": 68,
-    "unique_development_fault_cases_with_completed_recovery": 1,
+    "common_development_control_transitions_in_finished_probes": 100080,
+    "cpu_tests_passed": 103,
+    "unique_development_fault_cases_with_completed_recovery": 41,
     "latest_recorded_pair": {
       "evidence": "evidence/recovery_pair_10070_r02.json",
       "jobs_per_arm": 4,
@@ -31,6 +31,27 @@
       "witnessed_retry_recoveries": 1,
       "unique_seed": 10070,
       "scope": "Scripted development pairing, not a learning effect or held-out estimate."
+    },
+    "completed_recoveries_definition": "Full witnessed contact-stall/withdrawal/reinsertion run occurrences; repeated physical cases are not independent evidence.",
+    "latest_fault_matrix": {
+      "evidence": "evidence/peg_fault_matrix_v1.json",
+      "sha256": "ce9a410bc36b7cc3f9af90bcda4950e62f4628f98c4ea6f591c94c64d6d022dc",
+      "retry_completions": 60,
+      "continued_completions": 14,
+      "jobs_per_arm": 84,
+      "witnessed_retry_recoveries": 39,
+      "retry_force_aborts": 5,
+      "continued_force_aborts": 11,
+      "initializations_valid": 168,
+      "scope": "Representative development points only; full intervals and reserved combinations remain unvalidated."
+    },
+    "latest_block": {
+      "evidence": "evidence/fault_validation_block.json",
+      "runs": 10,
+      "jobs": 184,
+      "rollout_control_transitions": 82800,
+      "targeted_variants": 2,
+      "tuning_capped": true
     }
   },
   "criteria": {
@@ -57,12 +78,11 @@
     "Physical held-part gravity retained the grasp across three development seeds; choose enabled gravity for the study, with idealized robot gravity compensation disclosed.",
     "Actual rigid-body paths are derived from USD RigidBodyAPI. The fixed body is nested twice; displayed body names and mesh paths gave unsupported zero contact readings. USD cloning is required for the pinned sensor parent discovery.",
     "Distance-only loss detection missed one released peg near the hand. Contact instrumentation found five seconds without finger contact. Evaluator v2 adds a 0.1 s bilateral-contact grace at 0.01 N; all four releases are now failed jobs.",
-    "The original seven contact stalls could be withdrawn. A new actor-only controller now completes seed 10070 case 2: evaluator stall at 2.933 s, noisy-actor retry at 4 s, 12.368 mm part rise with fixture clearance, and seated dwell complete at 13.75 s. The unrecorded probe and video run repeat one case, not two independent cases.",
-    "Upstream velocity mode differed from consecutive noisy-position finite differences by up to 0.11814504116773605 m/s in the retained historical v10 probe. Corrected mode satisfies that identity; this is not measurement accuracy against hardware.",
-    "The recorded recovery/continued-insertion pair has bitwise-identical saved initial states, resolved environment YAML, and all 60 approach control steps before withdrawal. Gamma=0.995 job returns are 75.797 versus 37.543, excluding rewards after evaluator termination. Numeric recoverable fault bins and training integration remain open.",
-    "All four paired requests remain in the evidence: both arms seat case 0, both time out on case 1, only retry completes case 2, and both abort on force in case 3. Recovery is scripted, not learned.",
-    "Case 1 remains a measured lateral miss during reinsertion search: closest recorded peg-base XY offset is 3.253 mm; at deadline the base is near the fixture top. This does not establish an irrecoverable fault.",
-    "The instantiated peg configuration has zero action-change reward scale; the prior source-only reward audit incorrectly reported -0.1 and now explicitly records the correction."
+    "The original case-1 search moved less than its applied targets under load. V1 reduced the closest reinsertion miss to 2.348 mm but timed out. V2 completes witnessed recovery at 25.075 s; matched continued insertion times out. V2 loses case 2. Two targeted variants were tested and tuning is capped.",
+    "The predeclared matrix has 84 unique cases across seven bins and seeds 10070-10072. All 168 arm initializations pass; retry completes 60/84 vs 14/84 continued insertion, including 39 witnessed recoveries. Force aborts are 5 vs 11. Every bin has sample support; entire intervals remain unvalidated.",
+    "All 10 new runs preserve prelaunch source snapshots and replay physics, actor decisions and returns. Paired initial conditions, resolved YAML and pretrigger trajectories match. Rollout transition counts exclude reset initialization stepping, which must be instrumented before training cost comparisons.",
+    "The resolved action-change reward coefficient is zero. Keep the reward. Training source audit found finite-job terminal/bootstrap gaps; no long training or learned recovery is claimed.",
+    "Repeated device-to-host copies/scalar branches motivate a tensorized training path. A CPU temporal-force diagnostic preserves raw 20 N aborts. Physics-timestep refinement is registered for final robustness testing; final cases remain unopened."
   ],
   "canonical": [
     {
@@ -763,6 +783,585 @@
         }
       },
       "scope": "Development feasibility probe; r01 is unpaired and r02 repeats the same seed/cases with video. Repetitions are not independent recovery cases."
+    },
+    {
+      "run_id": "peg_realign_v1_10070_retry",
+      "controller": "scripted_retry",
+      "seed": 10070,
+      "gravity": "enabled",
+      "simulated_seconds": 30.0,
+      "wall_seconds": 137.7039999999979,
+      "requested_jobs": 4,
+      "outcomes": {
+        "success": 2,
+        "deadline": 1,
+        "force_abort": 1
+      },
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "manifest": "artifacts/assembly/peg_realign_v1_10070_retry/manifest.json",
+      "manifest_sha256": "653cc968935c4c84cf69fff9154e70eb48785280cb6684e8405ce7615fc356b8",
+      "artifacts": [
+        {
+          "path": "artifacts/assembly/peg_realign_v1_10070_retry/source.zip",
+          "bytes": 60650,
+          "sha256": "5cbef5a49d00fb2a4452c1d8484a698802bdd104e9ccdc1dd38501a39e118113"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v1_10070_retry/probe/report.json",
+          "bytes": 45918,
+          "sha256": "166e2128700f1e6d2e8273599a92cd82e064ef3d6eb9136560b8a92e37571361"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v1_10070_retry/probe/physics_samples.jsonl",
+          "bytes": 2916563,
+          "sha256": "202b026f34650b56df2ce319201c3e53fd73ccdc8763db12be26f00cb5351fee"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v1_10070_retry/probe/control_samples.jsonl",
+          "bytes": 2478949,
+          "sha256": "a594c1de7e00fc21d13ce41f473d2debe157ad85573a2ab779622b5cd64c1cc7"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v1_10070_retry/probe/environment.yaml",
+          "bytes": 18356,
+          "sha256": "4950e53af7c14e1e59af3b57e19fdf021a20ec352dd8e4d2fdc6db9e13af1dce"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v1_10070_retry/retry_settings.json",
+          "bytes": 167,
+          "sha256": "3b0c6fa3b5e7c10b545efbdbb380e58f7ac485cf80bed000d580ac780dd6a299"
+        }
+      ],
+      "scope": "Scripted development; actual fault and controller settings are in the hashed report. Do not pool settings variants as a learned-policy rate."
+    },
+    {
+      "run_id": "peg_realign_v1_10070_continue",
+      "controller": "scripted_continue",
+      "seed": 10070,
+      "gravity": "enabled",
+      "simulated_seconds": 30.0,
+      "wall_seconds": 136.17199999999139,
+      "requested_jobs": 4,
+      "outcomes": {
+        "success": 1,
+        "deadline": 2,
+        "force_abort": 1
+      },
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "manifest": "artifacts/assembly/peg_realign_v1_10070_continue/manifest.json",
+      "manifest_sha256": "2641af85593d6478d39a4db0ea13e540954c3a47c55371c7b6ba2b31c579d970",
+      "artifacts": [
+        {
+          "path": "artifacts/assembly/peg_realign_v1_10070_continue/source.zip",
+          "bytes": 61883,
+          "sha256": "1853601bd86ffff762d446c11470ef91e3bb87d1d942eae09ac8e0b052244f2b"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v1_10070_continue/probe/report.json",
+          "bytes": 44587,
+          "sha256": "d705c8994883d53645ba40be8ca7dec54b913faa779922e3f8d2bdf501550112"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v1_10070_continue/probe/physics_samples.jsonl",
+          "bytes": 3428651,
+          "sha256": "ec40403fec94e46a50cce5ed60fc12fdb6503eb555752c29ee5cb8d7b7b5544c"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v1_10070_continue/probe/control_samples.jsonl",
+          "bytes": 2429589,
+          "sha256": "b0761732c1b6f00962c0921978edc28efed1a3ba97fa557b8f979063ba722173"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v1_10070_continue/probe/environment.yaml",
+          "bytes": 18356,
+          "sha256": "4950e53af7c14e1e59af3b57e19fdf021a20ec352dd8e4d2fdc6db9e13af1dce"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v1_10070_continue/retry_settings.json",
+          "bytes": 167,
+          "sha256": "3b0c6fa3b5e7c10b545efbdbb380e58f7ac485cf80bed000d580ac780dd6a299"
+        }
+      ],
+      "scope": "Scripted development; actual fault and controller settings are in the hashed report. Do not pool settings variants as a learned-policy rate."
+    },
+    {
+      "run_id": "peg_realign_v2_10070_retry",
+      "controller": "scripted_retry",
+      "seed": 10070,
+      "gravity": "enabled",
+      "simulated_seconds": 30.0,
+      "wall_seconds": 135.46900000001187,
+      "requested_jobs": 4,
+      "outcomes": {
+        "success": 2,
+        "deadline": 1,
+        "force_abort": 1
+      },
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "manifest": "artifacts/assembly/peg_realign_v2_10070_retry/manifest.json",
+      "manifest_sha256": "66e225b5f01d23b34bfad0c70b31f2e77aaa7397da848c42ea47f4c7310be3bf",
+      "artifacts": [
+        {
+          "path": "artifacts/assembly/peg_realign_v2_10070_retry/source.zip",
+          "bytes": 64137,
+          "sha256": "07aad0e7c237ed2cb7895790b4ef8a166b60b973d7eed83a75fb4d5726de9af2"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v2_10070_retry/probe/report.json",
+          "bytes": 45912,
+          "sha256": "32a89cd3c1e6796a4d2e35410b503ea7e8fa879eaad4a6d93b679445883cebea"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v2_10070_retry/probe/physics_samples.jsonl",
+          "bytes": 3131177,
+          "sha256": "b2129ddfd5017b832f36ab84f9f6ef89606c386c55519b7d7701090ca94d47fa"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v2_10070_retry/probe/control_samples.jsonl",
+          "bytes": 2478399,
+          "sha256": "1ed57552e619afa2d64c8c87de4b10f3ac9d5480b2d9c27d0586f48589ae7034"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v2_10070_retry/probe/environment.yaml",
+          "bytes": 18356,
+          "sha256": "4950e53af7c14e1e59af3b57e19fdf021a20ec352dd8e4d2fdc6db9e13af1dce"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v2_10070_retry/retry_settings.json",
+          "bytes": 234,
+          "sha256": "edbfecf369079c61bffe9ba8c994dd534797893f635c008845e31812e0a2f7e8"
+        }
+      ],
+      "scope": "Scripted development; actual fault and controller settings are in the hashed report. Do not pool settings variants as a learned-policy rate."
+    },
+    {
+      "run_id": "peg_realign_v2_10070_continue",
+      "controller": "scripted_continue",
+      "seed": 10070,
+      "gravity": "enabled",
+      "simulated_seconds": 30.0,
+      "wall_seconds": 139.0,
+      "requested_jobs": 4,
+      "outcomes": {
+        "success": 1,
+        "deadline": 2,
+        "force_abort": 1
+      },
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "manifest": "artifacts/assembly/peg_realign_v2_10070_continue/manifest.json",
+      "manifest_sha256": "e98ca6dffab3245dcfeaf78ec42a1897800d4509ab4aede3d5f55e626e45054d",
+      "artifacts": [
+        {
+          "path": "artifacts/assembly/peg_realign_v2_10070_continue/source.zip",
+          "bytes": 67019,
+          "sha256": "249de711e901334547b342a88bc5a5b7f4debb65db6924ab87239a16939d9617"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v2_10070_continue/probe/report.json",
+          "bytes": 44595,
+          "sha256": "c02f2682e78dd5406199d46364a63f6d6a139b9e1a8e8983c4b2671ad557b7de"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v2_10070_continue/probe/physics_samples.jsonl",
+          "bytes": 3428651,
+          "sha256": "b00acb7eddc162cc8b33218b3d926b1ceb66f3d46c0dfb4f71153e1702f799cb"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v2_10070_continue/probe/control_samples.jsonl",
+          "bytes": 2429589,
+          "sha256": "b0761732c1b6f00962c0921978edc28efed1a3ba97fa557b8f979063ba722173"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v2_10070_continue/probe/environment.yaml",
+          "bytes": 18356,
+          "sha256": "4950e53af7c14e1e59af3b57e19fdf021a20ec352dd8e4d2fdc6db9e13af1dce"
+        },
+        {
+          "path": "artifacts/assembly/peg_realign_v2_10070_continue/retry_settings.json",
+          "bytes": 234,
+          "sha256": "edbfecf369079c61bffe9ba8c994dd534797893f635c008845e31812e0a2f7e8"
+        }
+      ],
+      "scope": "Scripted development; actual fault and controller settings are in the hashed report. Do not pool settings variants as a learned-policy rate."
+    },
+    {
+      "run_id": "peg_matrix_v1_10070_retry",
+      "controller": "scripted_retry",
+      "seed": 10070,
+      "gravity": "enabled",
+      "simulated_seconds": 30.0,
+      "wall_seconds": 146.96900000001187,
+      "requested_jobs": 28,
+      "outcomes": {
+        "deadline": 7,
+        "success": 17,
+        "force_abort": 4
+      },
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "manifest": "artifacts/assembly/peg_matrix_v1_10070_retry/manifest.json",
+      "manifest_sha256": "ef94527386ec593e072afe63b67d325d405170f01edf1b7b8852a8241751c307",
+      "artifacts": [
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10070_retry/source.zip",
+          "bytes": 70703,
+          "sha256": "f16ea485d17344da5ae57c3cabfef1adc1c61951f861bddc76806602d255c413"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10070_retry/probe/report.json",
+          "bytes": 334643,
+          "sha256": "22344f7be87b681d70d368ef9f81ea73bb91121b4e2f06f65a0a23ade473dabf"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10070_retry/probe/physics_samples.jsonl",
+          "bytes": 27874770,
+          "sha256": "297cd974852f4d170a4f6beffca532399c57a2f971d1257417c0761c7013dfff"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10070_retry/probe/control_samples.jsonl",
+          "bytes": 16609233,
+          "sha256": "a3865416e0e542733aec0dfc8f53122a150ddaef34e36407a12a8b2955ff56fc"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10070_retry/probe/environment.yaml",
+          "bytes": 18352,
+          "sha256": "0d67af1e0ef8577a417e0260b453ff2021a33ab3e075ed0434e672df053ef381"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10070_retry/retry_settings.json",
+          "bytes": 234,
+          "sha256": "edbfecf369079c61bffe9ba8c994dd534797893f635c008845e31812e0a2f7e8"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10070_retry/fault_plan.json",
+          "bytes": 48750,
+          "sha256": "a72868e6581120e3a2e35e2796447397a2694e46d06d5715fcdbfd51b8899270"
+        }
+      ],
+      "scope": "Scripted development; actual fault and controller settings are in the hashed report. Do not pool settings variants as a learned-policy rate."
+    },
+    {
+      "run_id": "peg_matrix_v1_10070_continue",
+      "controller": "scripted_continue",
+      "seed": 10070,
+      "gravity": "enabled",
+      "simulated_seconds": 30.0,
+      "wall_seconds": 149.60999999998603,
+      "requested_jobs": 28,
+      "outcomes": {
+        "deadline": 19,
+        "force_abort": 6,
+        "success": 3
+      },
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "manifest": "artifacts/assembly/peg_matrix_v1_10070_continue/manifest.json",
+      "manifest_sha256": "993493deafbfd38bd8382f111949b163b11d55f3c40b28eb4216083a033f9147",
+      "artifacts": [
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10070_continue/source.zip",
+          "bytes": 70703,
+          "sha256": "17bdf0536398caadea3635202588e7e45c8f1de27e2e2922603591b0d10e9744"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10070_continue/probe/report.json",
+          "bytes": 317865,
+          "sha256": "128f5abf172a7a5805cccf6f350f41e95deb647ffd765e9cad6c485f97c2cc41"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10070_continue/probe/physics_samples.jsonl",
+          "bytes": 33139505,
+          "sha256": "34eb2a8689f9cbca0b7a9923bacd3b638cc0773530e0179d525eb897a45f3009"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10070_continue/probe/control_samples.jsonl",
+          "bytes": 16160031,
+          "sha256": "22784583a141d978a3d0ba5e897533649f7466e06ea6fcb7a2b2c78cd4842f64"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10070_continue/probe/environment.yaml",
+          "bytes": 18352,
+          "sha256": "0d67af1e0ef8577a417e0260b453ff2021a33ab3e075ed0434e672df053ef381"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10070_continue/retry_settings.json",
+          "bytes": 234,
+          "sha256": "edbfecf369079c61bffe9ba8c994dd534797893f635c008845e31812e0a2f7e8"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10070_continue/fault_plan.json",
+          "bytes": 48750,
+          "sha256": "a72868e6581120e3a2e35e2796447397a2694e46d06d5715fcdbfd51b8899270"
+        }
+      ],
+      "scope": "Scripted development; actual fault and controller settings are in the hashed report. Do not pool settings variants as a learned-policy rate."
+    },
+    {
+      "run_id": "peg_matrix_v1_10071_retry",
+      "controller": "scripted_retry",
+      "seed": 10071,
+      "gravity": "enabled",
+      "simulated_seconds": 30.0,
+      "wall_seconds": 146.04699999999139,
+      "requested_jobs": 28,
+      "outcomes": {
+        "deadline": 5,
+        "success": 22,
+        "force_abort": 1
+      },
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "manifest": "artifacts/assembly/peg_matrix_v1_10071_retry/manifest.json",
+      "manifest_sha256": "821c08f5bfc96bc5a530b2d65a56e068bc47896ef5bf76a8d54f507b30c55d34",
+      "artifacts": [
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10071_retry/source.zip",
+          "bytes": 70802,
+          "sha256": "b2ec345c6f7f39762769e7244f0f18a7ec84b6d92fb40f5e95f9b0ac3ba4ac89"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10071_retry/probe/report.json",
+          "bytes": 334831,
+          "sha256": "1e8fc0317824a148aec9fc3688650513175746e3ba9a3ce5e86b96eab7c95be1"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10071_retry/probe/physics_samples.jsonl",
+          "bytes": 26141612,
+          "sha256": "6b0d65116ca577cdd929f7f828528e5d57e1bc40aac228d7c2372f327eab80b3"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10071_retry/probe/control_samples.jsonl",
+          "bytes": 16636626,
+          "sha256": "64aeec7097753357d649a8bcf468d47f950ea84c39deed2b2454811031d0815b"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10071_retry/probe/environment.yaml",
+          "bytes": 18352,
+          "sha256": "abb35b90f972beb914838423182109bed78a9d35723a3d0ba730ec56c9f617ab"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10071_retry/retry_settings.json",
+          "bytes": 234,
+          "sha256": "edbfecf369079c61bffe9ba8c994dd534797893f635c008845e31812e0a2f7e8"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10071_retry/fault_plan.json",
+          "bytes": 48750,
+          "sha256": "a72868e6581120e3a2e35e2796447397a2694e46d06d5715fcdbfd51b8899270"
+        }
+      ],
+      "scope": "Scripted development; actual fault and controller settings are in the hashed report. Do not pool settings variants as a learned-policy rate."
+    },
+    {
+      "run_id": "peg_matrix_v1_10071_continue",
+      "controller": "scripted_continue",
+      "seed": 10071,
+      "gravity": "enabled",
+      "simulated_seconds": 30.0,
+      "wall_seconds": 149.04699999999139,
+      "requested_jobs": 28,
+      "outcomes": {
+        "deadline": 19,
+        "success": 6,
+        "force_abort": 3
+      },
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "manifest": "artifacts/assembly/peg_matrix_v1_10071_continue/manifest.json",
+      "manifest_sha256": "60a8fd182911a01c1a7b77f1417d20263c73319f17fdd2e27892814f648ae7c3",
+      "artifacts": [
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10071_continue/source.zip",
+          "bytes": 70802,
+          "sha256": "ca3a591ef3a304f8e55d2f740affd793c565ad79c769fd533c1f9e3b78b24606"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10071_continue/probe/report.json",
+          "bytes": 318068,
+          "sha256": "06a64e9b6285964dbd76c9cd46dd7d3911ed7477ad0f59e2ebd5a8b50ea6f817"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10071_continue/probe/physics_samples.jsonl",
+          "bytes": 33171721,
+          "sha256": "40dbddfbb18f70f27088b4037b49dac5f66f09b8e7cc3a43df5e548de444cf5b"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10071_continue/probe/control_samples.jsonl",
+          "bytes": 16171842,
+          "sha256": "0a1add9806ee0a2212a6c6d5aacac9d13850ea00741344d1db5676badab239d8"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10071_continue/probe/environment.yaml",
+          "bytes": 18352,
+          "sha256": "abb35b90f972beb914838423182109bed78a9d35723a3d0ba730ec56c9f617ab"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10071_continue/retry_settings.json",
+          "bytes": 234,
+          "sha256": "edbfecf369079c61bffe9ba8c994dd534797893f635c008845e31812e0a2f7e8"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10071_continue/fault_plan.json",
+          "bytes": 48750,
+          "sha256": "a72868e6581120e3a2e35e2796447397a2694e46d06d5715fcdbfd51b8899270"
+        }
+      ],
+      "scope": "Scripted development; actual fault and controller settings are in the hashed report. Do not pool settings variants as a learned-policy rate."
+    },
+    {
+      "run_id": "peg_matrix_v1_10072_retry",
+      "controller": "scripted_retry",
+      "seed": 10072,
+      "gravity": "enabled",
+      "simulated_seconds": 30.0,
+      "wall_seconds": 147.32800000000861,
+      "requested_jobs": 28,
+      "outcomes": {
+        "success": 21,
+        "deadline": 7
+      },
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "manifest": "artifacts/assembly/peg_matrix_v1_10072_retry/manifest.json",
+      "manifest_sha256": "88545ed71727988d18720a68de973314a8567e0e40625c8ff8a4ccccefa4cba1",
+      "artifacts": [
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10072_retry/source.zip",
+          "bytes": 71012,
+          "sha256": "196fa640a64daaaf1ac1e8a41c4656cf63ca0b1ef844fd4cabc37c5d997cd96e"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10072_retry/probe/report.json",
+          "bytes": 335086,
+          "sha256": "27e629490c76c3fcc1d8dc6a6afd78946c671ec73f5b161c3bec60bc1bfe4c12"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10072_retry/probe/physics_samples.jsonl",
+          "bytes": 28724786,
+          "sha256": "7b02ca12af3b4b4c1400535696b667d608d6013c1a34a76d4ff4ccc70818acfa"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10072_retry/probe/control_samples.jsonl",
+          "bytes": 16654567,
+          "sha256": "139c6c813083a06d0b9c04fb083f84f658b60d63f425f37846d38dd95093d0b0"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10072_retry/probe/environment.yaml",
+          "bytes": 18352,
+          "sha256": "3342534eecdc2c1c847c0ee0c5146689e364575c7f9ad264868846105eae9df3"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10072_retry/retry_settings.json",
+          "bytes": 234,
+          "sha256": "edbfecf369079c61bffe9ba8c994dd534797893f635c008845e31812e0a2f7e8"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10072_retry/fault_plan.json",
+          "bytes": 48750,
+          "sha256": "a72868e6581120e3a2e35e2796447397a2694e46d06d5715fcdbfd51b8899270"
+        }
+      ],
+      "scope": "Scripted development; actual fault and controller settings are in the hashed report. Do not pool settings variants as a learned-policy rate."
+    },
+    {
+      "run_id": "peg_matrix_v1_10072_continue",
+      "controller": "scripted_continue",
+      "seed": 10072,
+      "gravity": "enabled",
+      "simulated_seconds": 30.0,
+      "wall_seconds": 152.45300000000861,
+      "requested_jobs": 28,
+      "outcomes": {
+        "deadline": 21,
+        "force_abort": 2,
+        "success": 5
+      },
+      "information_probe_passed": true,
+      "automatic_resets": 0,
+      "initializations_during_jobs": 0,
+      "physics_trace_reloaded_and_replayed": true,
+      "reset_and_pose_write_guards_passed": true,
+      "velocity_identity_max_error_m_s": 0.0,
+      "manifest": "artifacts/assembly/peg_matrix_v1_10072_continue/manifest.json",
+      "manifest_sha256": "5e54aad55a10776afc603882a407f9633055b400c30655a547481a5fcfaebf82",
+      "artifacts": [
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10072_continue/source.zip",
+          "bytes": 71012,
+          "sha256": "246512f6d2644b4643c682d3d241e3559b4b94706db2491b802bb697db6c6c51"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10072_continue/probe/report.json",
+          "bytes": 318177,
+          "sha256": "70a7ae58348c1390d5e9a7ae083206ff9423f9a74bb631a82fbe2c1a8a2af489"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10072_continue/probe/physics_samples.jsonl",
+          "bytes": 36349097,
+          "sha256": "bd50e1faea544e54944a11baa9723c7244e938eb6808e6ee9d7c2510e7ae9513"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10072_continue/probe/control_samples.jsonl",
+          "bytes": 16191118,
+          "sha256": "ccb28365ad006113ddf893051cf409de8dcce181fb5b2e039ca12c1079127188"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10072_continue/probe/environment.yaml",
+          "bytes": 18352,
+          "sha256": "3342534eecdc2c1c847c0ee0c5146689e364575c7f9ad264868846105eae9df3"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10072_continue/retry_settings.json",
+          "bytes": 234,
+          "sha256": "edbfecf369079c61bffe9ba8c994dd534797893f635c008845e31812e0a2f7e8"
+        },
+        {
+          "path": "artifacts/assembly/peg_matrix_v1_10072_continue/fault_plan.json",
+          "bytes": 48750,
+          "sha256": "a72868e6581120e3a2e35e2796447397a2694e46d06d5715fcdbfd51b8899270"
+        }
+      ],
+      "scope": "Scripted development; actual fault and controller settings are in the hashed report. Do not pool settings variants as a learned-policy rate."
     }
   ],
   "historical": [
@@ -1075,7 +1674,7 @@
       "superseded_reason": "Earlier contact API, instrumentation, or distance-only grasp criterion. Not current job-score evidence."
     }
   ],
-  "next_action": "Define and validate numeric recoverable fault bins with the actor-only retry on development seeds. Begin with an unload-and-realign probe of the unresolved >3.25 mm lateral miss; pair every changed controller against continued insertion under the same task, 30 s deadline and 20 N wrist budget. Keep held-out seeds closed and finish training-wrapper information/terminal audits before protocol freeze or long training.",
+  "next_action": "Implement and verify the tensorized finite-job training adapter against the CPU evaluator: instantiated actor/critic leak checks, partial terminal rewards, zero terminal bootstrap and initialization/absorbing transition costs. Profile memory and sustained throughput, finish development support/physics checks, then freeze before long training. No further scripted-controller tuning.",
   "scope_and_limitations": [
     "Scripted development probes, no learned controller evaluation, no research effect size, no held-out test seeds.",
     "probe_end is a finalized short experiment, not a successful assembly or a 30-second timeout. Do not pool these probes into a policy success rate.",
@@ -1090,7 +1689,10 @@
     "One development fault case recovered twice. No learned recovery, training comparison, independent-seed recovery estimate, numeric fault support, or held-out result is established.",
     "Job return includes upstream control reward endpoints at/before physics-step termination, followed by absorbing zero with no bootstrap. A partial terminal interval lacks a sampled endpoint and is omitted (2/120 s in the recovered case); training terminal handling is still to be implemented and frozen.",
     "The scripted success-prediction action stays -1 in both arms. Once the upstream cohort latch activates, its penalty cancels the upstream success reward in successful states; all these terms are included.",
-    "The raw simulator recordings and 30-second side-by-side replay are local ignored artifacts, not a publicly released benchmark."
+    "The raw simulator recordings and 30-second side-by-side replay are local ignored artifacts, not a publicly released benchmark.",
+    "Includes both targeted variants, both arms and post-terminal holds. Excludes reset IK/grasp physics stepping; full process wall time is recorded. No learned training or final test ran.",
+    "Latest matrix validates representative development points; full ranges and reserved combinations remain unvalidated/unopened.",
+    "Latest witnessed counts include repetitions: two original physical cases plus 39 distinct matrix cases have completed recovery under the labeled scripts."
   ],
   "supporting_sources": [
     "https://github.com/isaac-sim/IsaacLab/issues/3758"
@@ -1108,9 +1710,34 @@
       },
       "reason": "The original withdrawal-only evidence remains valid for its controller. New actor-only scripted reinsertion completed one development fault case twice, with a recorded matched pair.",
       "replacement_evidence": "evidence/recovery_pair_10070_r02.json"
+    },
+    {
+      "as_of_source_commit": "2080d93 plus exact archived development snapshots",
+      "fields": [
+        "key_findings",
+        "next_action",
+        "case1_unresolved_interpretation"
+      ],
+      "previous_key_findings": [
+        "Physical held-part gravity retained the grasp across three development seeds; choose enabled gravity for the study, with idealized robot gravity compensation disclosed.",
+        "Actual rigid-body paths are derived from USD RigidBodyAPI. The fixed body is nested twice; displayed body names and mesh paths gave unsupported zero contact readings. USD cloning is required for the pinned sensor parent discovery.",
+        "Distance-only loss detection missed one released peg near the hand. Contact instrumentation found five seconds without finger contact. Evaluator v2 adds a 0.1 s bilateral-contact grace at 0.01 N; all four releases are now failed jobs.",
+        "The original seven contact stalls could be withdrawn. A new actor-only controller now completes seed 10070 case 2: evaluator stall at 2.933 s, noisy-actor retry at 4 s, 12.368 mm part rise with fixture clearance, and seated dwell complete at 13.75 s. The unrecorded probe and video run repeat one case, not two independent cases.",
+        "Upstream velocity mode differed from consecutive noisy-position finite differences by up to 0.11814504116773605 m/s in the retained historical v10 probe. Corrected mode satisfies that identity; this is not measurement accuracy against hardware.",
+        "The recorded recovery/continued-insertion pair has bitwise-identical saved initial states, resolved environment YAML, and all 60 approach control steps before withdrawal. Gamma=0.995 job returns are 75.797 versus 37.543, excluding rewards after evaluator termination. Numeric recoverable fault bins and training integration remain open.",
+        "All four paired requests remain in the evidence: both arms seat case 0, both time out on case 1, only retry completes case 2, and both abort on force in case 3. Recovery is scripted, not learned.",
+        "Case 1 remains a measured lateral miss during reinsertion search: closest recorded peg-base XY offset is 3.253 mm; at deadline the base is near the fixture top. This does not establish an irrecoverable fault.",
+        "The instantiated peg configuration has zero action-change reward scale; the prior source-only reward audit incorrectly reported -0.1 and now explicitly records the correction."
+      ],
+      "reason": "V2 establishes case-1 feasibility and the numeric matrix adds sample support. Previous controller failures and every new losing arm remain intact.",
+      "replacement_evidence": [
+        "evidence/recovery_realign_v2_10070.json",
+        "evidence/peg_fault_matrix_v1.json",
+        "evidence/fault_validation_block.json"
+      ]
     }
   ],
-  "canonical_behavior_source_sha256_scope": "Original eight v12 canonical probes only; the three recovery probes have individual prelaunch source hashes and snapshots.",
+  "canonical_behavior_source_sha256_scope": "Original eight v12 canonical probes only; the three recovery probes have individual prelaunch source hashes and snapshots. Later development blocks have separate prelaunch snapshots and manifest hashes; the earlier mapping is not their source provenance.",
   "recorded_comparison": {
     "evidence": "evidence/recovery_pair_10070_r02.json",
     "sha256": "65f6e8b27f91ea9ed9f91c187cc0a26ca25a49fd07075bc3ed0af178590c7e36",
@@ -1154,5 +1781,14 @@
     "pressure_offset_at_cap_m": 0.025,
     "inference_limit": "These traces do not separate insufficient motion under friction/dead zone from inadequate search coverage. The configured clearance is not a mesh certification.",
     "next_targeted_experiment": "Use actor-only unloading followed by slower lateral realignment; measure achieved motion against the desired search path and rerun continued insertion under the unchanged 30 s/20 N task before assigning recoverable bins."
+  },
+  "latest_block_verification": {
+    "evidence": "evidence/fault_validation_block.json",
+    "all_10_runs_verified": true,
+    "matrix_final_reverification": {
+      "artifact": "artifacts/assembly/peg_fault_matrix_v1_final_verification.json",
+      "sha256": "0a797c29439ea80d598e1e2316f433f67a23d034c49ba2d2f173e580e221bc81",
+      "results_identical_to_preserved_matrix": true
+    }
   }
 }

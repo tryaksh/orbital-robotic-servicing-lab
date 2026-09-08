@@ -28,6 +28,9 @@ class RetrySettings:
     force_integral_gain_m_n_s: float = 0.0004
     initial_pressure_offset_m: float = 0.012
     capture_depth_m: float = 0.004
+    realignment_min_s: float = 0.0
+    realignment_max_s: float = 4.0
+    realignment_tolerance_m: float = 0.001
 
 
 class ActorRetryController:
@@ -98,12 +101,24 @@ class ActorRetryController:
                     self._transition("withdraw", elapsed, **{k: v for k, v in self.trigger.items() if k != "time_s"})
         if (self.phase == "withdraw" and elapsed - self.phase_started >= s.withdrawal_s
                 and height - self.trigger["observed_height_m"] >= s.withdrawal_rise_m):
-            self._transition("search", elapsed, observed_rise_m=height - self.trigger["observed_height_m"])
+            self._transition("realign" if s.realignment_min_s > 0 else "search", elapsed,
+                             observed_rise_m=height - self.trigger["observed_height_m"])
             self.search_contact_height = self.trigger["observed_height_m"]
+        if self.phase == "realign":
+            aligned = math.hypot(*(median(row[0][a] for row in self.short_history) for a in range(2))) <= s.realignment_tolerance_m
+            duration = elapsed - self.phase_started
+            if duration >= s.realignment_max_s or (duration >= s.realignment_min_s and aligned):
+                self._transition("search", elapsed, observed_alignment_within_tolerance=aligned)
         if self.phase == "insert":
             action[:3] = [0.0, 0.0, self.seated_height / self.bounds[2]]
         elif self.phase == "withdraw":
             action[:3] = [0.0, 0.0, s.withdrawal_height_m / self.bounds[2]]
+        elif self.phase == "realign":
+            for axis in range(2):
+                self.integral_xy[axis] -= s.lateral_integral_gain * self.dt * xyz[axis]
+                self.integral_xy[axis] = max(-s.lateral_integral_limit_m, min(s.lateral_integral_limit_m, self.integral_xy[axis]))
+                action[axis] = self.integral_xy[axis] / self.bounds[axis]
+            action[2] = s.withdrawal_height_m / self.bounds[2]
         elif self.phase in {"search", "seat"}:
             time_in_search = elapsed - self.phase_started
             if self.phase == "search":
