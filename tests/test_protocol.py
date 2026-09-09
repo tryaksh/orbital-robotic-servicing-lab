@@ -44,8 +44,10 @@ def test_partial_artifacts_never_mask_failed_or_timed_out_jobs(returncode, timeo
     assert assess_completion(returncode, timeout, checks) == expected
 
 
-def test_current_study_is_explicitly_not_frozen():
+def test_open_scientific_gates_are_reported():
     study = json.loads((ROOT / "configs/study.json").read_text())
+    study["gates"]["protocol_frozen"] = False
+    study["gates"]["fault_support_validated"] = False
     unmet = validate_study(study)
     assert "protocol_frozen" in unmet
     assert "fault_support_validated" in unmet

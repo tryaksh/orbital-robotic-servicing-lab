@@ -5,6 +5,7 @@ import torch
 from isaaclab.utils.math import quat_apply
 
 from assembly_recovery.peg_env import PegStudyEnv, WithinJobMutationError
+from assembly_recovery.training_inputs import bounded_initial_actions
 
 
 class PegFaultEnv(PegStudyEnv):
@@ -41,6 +42,11 @@ class PegFaultEnv(PegStudyEnv):
             materials[i, :, 0] = case["fixed_static_friction"]
             materials[i, :, 1] = case["fixed_dynamic_friction"]
         self._fixed_asset.root_physx_view.set_material_properties(materials, env_ids.cpu())
+        # The initial physical pose can lie outside the noisy action frame's box.
+        # Bound EMA history exactly as future requested actions are bounded.
+        self.initial_actions_before_projection = self.actions.clone()
+        self.actions.copy_(bounded_initial_actions(self.actions))
+        self.prev_actions.copy_(self.actions)
 
     def initialization_report(self):
         axis = torch.zeros_like(self.held_pos)
@@ -69,6 +75,9 @@ class PegFaultEnv(PegStudyEnv):
                                                    and abs(m[1] - case["fixed_dynamic_friction"]) < 1e-6 for m in actual_material),
             }
             result.append({"case_id": case["case_id"], "valid": all(checks.values()), "checks": checks,
+                           "initial_action_before_projection": self.initial_actions_before_projection[i].cpu().tolist(),
+                           "initial_action": self.actions[i].cpu().tolist(),
+                           "initial_action_projection_applied": bool((self.initial_actions_before_projection[i] != self.actions[i]).any()),
                            "conservative_peg_cylinder_clearance_m": float(clearance[i]),
                            "fixture_contact_n": float(forces[i, 0]), "finger_contact_n": forces[i, 1:].cpu().tolist(),
                            "actual_fixed_material": actual_material,

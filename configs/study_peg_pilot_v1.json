@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "assembly_recovery",
-  "status": "peg_pilot_frozen_v2",
+  "status": "peg_pilot_frozen_v1",
   "question": "At equal training cost, does adaptive practice on recoverable failures reduce unfinished assembly jobs more than uniform practice and simple retract/retry?",
   "upstream": {
     "isaac_sim": "5.1.0",
@@ -21,8 +21,7 @@
     "success_and_force_evaluator_verified": true,
     "protocol_frozen": true,
     "recovery_reward_compatibility_verified": true,
-    "training_terminal_handling_verified": true,
-    "initial_action_projection_verified": true
+    "training_terminal_handling_verified": true
   },
   "training": {
     "primary_arms": [
@@ -51,7 +50,7 @@
     "bootstrap_cost": "Count in each arm or explicitly report identical shared initialization cost",
     "probe_and_mining_cost": "Included in total transitions",
     "adaptive_priority_initial": "p * (1 - p) with nonzero bin sampling floor; learning progress is a separate ablation",
-    "pilot_protocol": "configs/protocol_v2.json"
+    "pilot_protocol": "configs/protocol_v1.json"
   },
   "splits": {
     "development_seeds": [
@@ -69,7 +68,7 @@
     "fault_support_status": "96 paired development cases at lower/interior/upper grid values; 192 valid initializations and fixed-script completion support at every bin/value. Continuous intervals are sampled, not proven. Final combinations/seeds stay closed."
   },
   "job_protocol": {
-    "status": "frozen_peg_pilot_v2",
+    "status": "frozen_peg_pilot_v1",
     "deadline_seconds": 30,
     "seated_dwell_seconds": 0.5,
     "force_budget_n": 20,
@@ -94,8 +93,7 @@
     "evaluator_defaults_source": "src/assembly_recovery/evaluation.py:JobCriteria; actual resolved values are recorded in every validation report",
     "evaluator_version": 2,
     "development_reward_terminal_handling": "Implemented and verified: only control endpoints at/before evaluator termination; later rewards zero and no terminal bootstrap. Partial terminal interval omitted. Absorbing slots excluded from PPO and normalization.",
-    "force_filter_status": "Raw 20 N abort unchanged. A 20 ms EWMA plus 25 ms sustained-load diagnostic is CPU-tested, not wired into job outcomes. Any future filtered-abort protocol needs development evidence and shared reruns.",
-    "initial_action_history": "After physical initialization, project finite initial EMA and previous-action history into [-1,1]. Preserve nonfinite values for validation failure. Record original/projected history; no pose or noise changes."
+    "force_filter_status": "Raw 20 N abort unchanged. A 20 ms EWMA plus 25 ms sustained-load diagnostic is CPU-tested, not wired into job outcomes. Any future filtered-abort protocol needs development evidence and shared reruns."
   },
   "success_target": {
     "relative_unfinished_job_reduction": 0.5,
@@ -116,8 +114,7 @@
     "fault_support_validated": "evidence/training_support_v1.json: 96 matched cases, retry 73/96 versus continued insertion 18/96, all 192 initializations valid. Every low/interior/high bin/value has fixed-script completion support. This is sampled development coverage, not every continuous point.",
     "recovery_reward_compatibility_verified": "evidence/recovery_pair_10070_r02.json and evidence/reward_audit.json: one witnessed scripted recovery returns 75.797 vs 37.543 for a bitwise-matched persistent stall at gamma 0.995. Narrow development trajectory gate only; training terminal integration and wider fault support remain open.",
     "training_terminal_handling_verified": "evidence/training_contract_verified_v1.json and evidence/training_path_parity_r01.json: CPU/native/reward parity, one done, frozen terminal observations, zero bootstrap, masked PPO/normalization, explicit initialization and absorbing cost; runtime API guards and nonfinite controls pass.",
-    "protocol_frozen": "configs/protocol_v2.json: fresh bounded peg pilot after shared initial-action correction. Protocol v1 and configs/study_peg_pilot_v1.json preserved; no reuse of partial weights.",
-    "initial_action_projection_verified": "evidence/initial_action_projection_v2.json: same RNG tail case fixed, 1024/1024 valid; before/after diagnostic physical states and noise bitwise identical; both scripted paths and PPO contract rerun. Failed v1 pilot remains incomplete with partial weights."
+    "protocol_frozen": "configs/protocol_v1.json: exact peg pilot source/config hashes; final evaluation and gear remain closed. evidence/physics_refinement_development_v1.json verifies timing/sensor mechanics, not convergence."
   },
   "fault_support": {
     "version": "peg-development-v1",

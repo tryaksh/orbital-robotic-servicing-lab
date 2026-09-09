@@ -49,7 +49,8 @@ def test_plan_needs_no_simulator_or_local_artifacts():
     plan = json.loads(result.stdout)
     assert plan["task_id"] == "Isaac-Forge-PegInsert-Direct-v0"
     assert plan["requested_transitions"] == 16384
-    assert plan["unmet_study_gates"]
+    study = json.loads((root / "configs/study.json").read_text())
+    assert plan["unmet_study_gates"] == [k for k, v in study["gates"].items() if not v]
 
 
 def test_training_launcher_rejects_reserved_seeds_before_simulator_access():
