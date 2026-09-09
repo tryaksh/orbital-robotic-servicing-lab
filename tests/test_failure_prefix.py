@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from assembly_recovery.protocol import sha256
 from assembly_recovery.retry_controller import ActorRetryController, RetrySettings
 
 
@@ -18,3 +19,10 @@ def test_frozen_retry_and_continue_share_entire_four_second_prefix():
     assert controllers[0].phase == "insert"
     assert controllers[1].phase == "withdraw"
     assert actions[0] != actions[1]
+
+
+def test_frozen_prefix_sources_keep_their_recorded_bytes():
+    root = Path(__file__).resolve().parents[1]
+    registration = json.loads((root / "configs/failure_prefix_recovery_v1.json").read_text())
+    for name, digest in registration["diagnostic_source_sha256"].items():
+        assert sha256(root / name) == digest, name

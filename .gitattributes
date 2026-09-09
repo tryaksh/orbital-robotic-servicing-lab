@@ -38,3 +38,5 @@ configs/protocol_v3.json text eol=crlf
 evidence/completion_credit_controls_v3_r01.json text eol=crlf
 evidence/policy_diagnosis_v2_r01.json text eol=crlf
 scripts/run_completion.py text eol=crlf
+evidence/failure_prefix_v4_r01.json text eol=crlf
+configs/retry_unload_realign_v1.json text eol=crlf
