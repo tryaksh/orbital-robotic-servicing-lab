@@ -1,0 +1,6 @@
+# Preserve the byte-exact files captured in this research cycle.
+approach_slew_env_v1.py text eol=crlf
+approach_slew_v1.py text eol=crlf
+recovery_teaching_v1.py text eol=crlf
+servo_impact_env_v1.py text eol=crlf
+servo_impact_timing_v1.py text eol=crlf

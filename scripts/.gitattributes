@@ -1,0 +1,12 @@
+# Preserve the byte-exact files captured in this research cycle.
+plot_research_cycle_v1.py text eol=crlf
+probe_approach_slew_v1.py text eol=crlf
+probe_contact_impact_v1.py text eol=crlf
+probe_servo_impact_v1.py text eol=crlf
+profile_training_capacity_v1.py text eol=crlf
+review_contact_impact_v1.py text eol=crlf
+review_contact_impact_v2.py text eol=crlf
+review_training_capacity_v1.py text eol=crlf
+review_training_capacity_v2.py text eol=crlf
+run_training_capacity_v1.py text eol=crlf
+train_recovery_teaching_v1.py text eol=crlf
