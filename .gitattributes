@@ -40,3 +40,4 @@ evidence/policy_diagnosis_v2_r01.json text eol=crlf
 scripts/run_completion.py text eol=crlf
 evidence/failure_prefix_v4_r01.json text eol=crlf
 configs/retry_unload_realign_v1.json text eol=crlf
+scripts/verify_training_contract.py text eol=crlf
