@@ -1,5 +1,5 @@
 {
-  "scope": "Lessons retained from the retired zero-gravity project; old results do not support the new study.",
+  "scope": "Lessons retained across this project. Peg-era lessons come from the retired zero-gravity study and its old results do not support the current cable work; cable-era lessons are marked by their evidence.",
   "rules": [
     {
       "lesson": "Check geometry and controllability before more training",
@@ -60,6 +60,36 @@
       "lesson": "A clean clone contains no ignored artifacts",
       "evidence": "Tests once depended on ignored campaign queues and passed locally while failing CI.",
       "action": "Run CPU tests from an exported tracked tree before completing changes."
+    },
+    {
+      "lesson": "Build the deformable scene so surplus length has a stable resting place",
+      "evidence": "Twelve fixture variants were rejected before one settled with the cable captured. A slack service loop built as a mid-air bow swung during relaxation and dragged the cable clean out of a 20 mm clip channel; clip length, clip width and clip friction all made no difference because the escape was lateral migration of the whole run, not axial sliding.",
+      "action": "Make installed slack an explicit small factor and derive the anchor position from it, so the routed guide length always equals the cable rest length and no surplus has to be parked. Verify capture after settling, never at construction."
+    },
+    {
+      "lesson": "A constructed rope configuration needs a gravity ramp, not just damping",
+      "evidence": "The 20 mm-segment cable whipped at 0.83 m/s during the first half second of settling and jumped out of the clip. Raising joint damping from 1e-5 to 2e-4 stopped the integrator blowing up but did not stop the escape; ramping gravity from zero over 1.5 s of initialization did.",
+      "action": "Ramp gravity during between-job initialization, restore the registered value exactly before the job, and put gravity in the mutation guard so a within-job change fails the request."
+    },
+    {
+      "lesson": "Reject a folded initial chain instead of integrating it",
+      "evidence": "Chain fits that had to absorb 100 mm of surplus produced 110 degree turns and NaN accelerations within 0.13 s. MuJoCo auto-resets on instability, which read as a native clock rewind in the mutation guard - a correct detection of a genuine state reset, but a confusing symptom.",
+      "action": "Assert a maximum initial turn angle at construction and count the rejection as a failed request."
+    },
+    {
+      "lesson": "Store verification ledgers in float64",
+      "evidence": "An independent replay of every verdict disagreed on dwell for all eight requests purely because a float32 ledger stored 0.4999991 s for a 0.5 s dwell threshold.",
+      "action": "Use float64 for any array a checker will re-run a threshold predicate against."
+    },
+    {
+      "lesson": "Separating control clocks is cheap and it is also the speed-up",
+      "evidence": "Recomputing impedance at 500 Hz instead of every 4 kHz step, dropping the second per-step mj_forward, and precompiling a geom-to-group table lifted per-worker throughput from 1.78k to about 2.1k native steps/s while making the physical cadence independent of dt. Twelve CPU workers then ran 35 requests, 2.17M steps, in 87 s of wall time.",
+      "action": "Fix the clock contract first: it is both the correctness requirement and most of the performance work. Benchmark worker counts before considering a backend port."
+    },
+    {
+      "lesson": "Stop tuning a fixture once it starts fighting a preconceived failure mode",
+      "evidence": "Most of one session went into trying to make a distal cable catch perturb the plug. The cable is 50 g; a taut route transmits under 0.2 N at the boot, so it can never perturb a 1500 N/m impedance controller. The real, measurable constraint was kinematic: the plug has an 84.4 mm envelope before the open clip lets go.",
+      "action": "Measure the coupling magnitude early with a ramp probe. If it cannot move the controller, redefine the constraint around what the physics does supply instead of tuning geometry toward the story you wanted."
     }
   ]
 }
