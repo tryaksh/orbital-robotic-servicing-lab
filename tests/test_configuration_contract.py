@@ -70,7 +70,7 @@ def test_the_live_grapple_interface_is_declared_in_exactly_one_place() -> None:
     2026-08-18: it cost insertion 67 points to buy extraction 0.13, and the keyed
     redesign meant to supersede it is itself refuted by
     ``evidence/grapple_pin_keyed_interference.json``. The measurements stay in
-    docs/archive/ and evidence/; the code does not.
+    docs/handover/ and evidence/; the code does not.
 
     **The insert task restates it, and that is deliberate.** The chain's seating
     stroke softens the lock to a bounded spring-damper, so the skill declares the

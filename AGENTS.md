@@ -11,11 +11,14 @@ Everything below is the working rules, not the state.
 
 | You need | Read | Cost |
 | --- | --- | --- |
+| What this project is, for someone who has never seen it | `README.md` | one file |
+| Which branches exist, and where the deleted ones went | `docs/REPO_MAP.md` | one file |
 | Current state, numbers, checkpoints | `docs/NOW.md` | one file |
-| What to work on next | `docs/NEXT_WORK.md` | one file |
+| What is closed, and what each open item would cost | `ROADMAP.md` | one file |
+| What to work on next, in full detail | `docs/NEXT_WORK.md` | one file |
 | Is this evidence file current? | `evidence/MANIFEST.json` → `counts`, `canonical` | head of one file |
 | Why a requirement is what it is | `docs/service_interface_spec.md` (large — search it, do not read it) | grep |
-| How a past conclusion was reached | `docs/archive/` + `evidence/RETRACTED.md` | on demand |
+| How a past conclusion was reached | `docs/handover/` + `evidence/RETRACTED.md` | on demand |
 | Which script does X | `scripts/README.md` | one file |
 | What the videos actually show | `docs/DEMOS.md` | one file |
 | What is idealised, and what would falsify it | `docs/sim_to_real.md` | one file |

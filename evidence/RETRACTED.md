@@ -28,7 +28,7 @@ other half — whether a report describes the checkpoint a run actually loaded.
 | `workflow_remove_certification.json` and the other pre-2026-08-15 removal runs | 14.06% removal | Same defect: certified before the velocity limits were derived | `workflow_remove_retain_certification.json` — 98.78% |
 | `workflow_install_final_certification.json` | 84.38% installation | Describes the *same two policies* by checkpoint hash, but was certified 8.5 h before commit `ffac648` raised the capture phase's budget from 6 s to 10 s | `workflow_install_promoted_certification.json` — 89.41%, and the later clock/retain re-run above it |
 | `workflow_install_v6insert_certification.json` | 86.28% installation | Same defect, same commit | as above |
-| `vision_workflow_camera_twoslot_certification.json`, the 2026-08-17 run | 65.10% camera; the gate failed by 23.6 points | **One of its three seeds does not reproduce.** Seed 5070 recorded 25.00%; re-run on 2026-08-18 with the identical task, the identical three checkpoints by SHA-256, the identical pose head, 64 environments and 192 episodes, it scores **80.73%**. The other two seeds move within sampling noise, −4.17 and +1.57. The pose head is *best* on the collapsing seed — 2.52 mm mean against 2.65 and 2.53 — and the failures were 142 capture-budget overruns, not the insertion tail the write-up blamed | the re-certification of 2026-08-18, in the same file. The superseded reasoning is kept in `docs/archive/` |
+| `vision_workflow_camera_twoslot_certification.json`, the 2026-08-17 run | 65.10% camera; the gate failed by 23.6 points | **One of its three seeds does not reproduce.** Seed 5070 recorded 25.00%; re-run on 2026-08-18 with the identical task, the identical three checkpoints by SHA-256, the identical pose head, 64 environments and 192 episodes, it scores **80.73%**. The other two seeds move within sampling noise, −4.17 and +1.57. The pose head is *best* on the collapsing seed — 2.52 mm mean against 2.65 and 2.53 — and the failures were 142 capture-budget overruns, not the insertion tail the write-up blamed | the re-certification of 2026-08-18, in the same file. The superseded reasoning is kept in `docs/handover/` |
 | the 96.10% capture figure, formerly in `grapple_grasp_v5_certification.json` | 96.10% capture | Certified 9.4 h before `ffac648` tightened `capture_success_mask` from a 20 mm grip tolerance to 10 mm. Re-reading its own episodes could only bound it **between 43% and 96%**, because the criterion is the termination: an episode that ended at 15 mm under the old rule would not have ended at all under the new one | **re-measured 2026-08-17: 88.78% pooled and 79.22% in the worst stage, so it FAILS its 95% gate.** The file now holds that run; the number above exists only here. Both bounds were wrong — the lower far too pessimistic, the upper the stale figure itself |
 
 | `insertion_conditioned_controller_v1.json` | guarded 5.15%, v24 2.96% pooled | Its 27 reset-station pairs disabled the insertion task's fixed-to-compliant form lock, so those arms did not reproduce the v24 reset distribution. The three real chain-handoff pairs remain valid and were isolated without alteration. | `insertion_conditioned_controller_v3.json`; use `insertion_chain_handoff_controller_v1.json` only for the preserved handoff-only subset |
@@ -219,7 +219,7 @@ the thing that needs repeating.
 
 `BLADE_SIZE` went from 450 x 160 x 35 mm to **450 x 130 x 20 mm** and the
 destination bay's seated plane from 0.75 m to a derived **0.676 m**. Both are
-requirements rather than tunings and both are argued in `docs/archive/next_session_handoff.md`.
+requirements rather than tunings and both are argued in `docs/handover/next_session_handoff.md`.
 Every report below was a good measurement of the module and rack that existed
 when it was taken.
 
@@ -290,7 +290,7 @@ guarded advance at 52.4 mrad — inside the 52.36 mrad gate the hand-off used, a
 about twice what the destination channel admits over the length it is engaged
 over — and it wedges. The guarded advance's stall detector then holds the target
 rather than pushing, which is the behaviour it was built for. The gate is the
-defect and it is fixed; see `docs/archive/next_session_handoff.md`.
+defect and it is fixed; see `docs/handover/next_session_handoff.md`.
 
 **And the comparison above is itself a snapshot.** It was taken mid-session, with
 the solved-IK transit in place and the seating stroke still being performed by

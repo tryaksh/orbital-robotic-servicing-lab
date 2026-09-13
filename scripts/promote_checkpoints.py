@@ -24,6 +24,9 @@ Usage::
         --extract grapple_extract_l0_seed70_v15w65 \\
         --insert grapple_insert_l0_seed70_v11w65
 
+If one epoch exists under two filenames it stops and asks, rather than settling
+it by a sort order; add ``--resolve <run>=<filename>`` to say which you mean.
+
 CPU only. Reads no checkpoint weights, imports nothing from Isaac Lab.
 """
 
@@ -53,20 +56,31 @@ SCRIPTS = (
 EPOCH = re.compile(r"_ep_(\d+)_")
 
 
-def newest_checkpoint(run: str) -> str:
+def newest_checkpoint(run: str, chosen: dict[str, str] | None = None) -> str:
     """Return the highest-epoch checkpoint under a run, as a repo-relative path.
 
     Highest epoch, not newest mtime. A resumed run writes its early checkpoints
     after a later run's, and picking by mtime would silently promote a policy
     thousands of epochs behind the one meant.
 
-    **One epoch can have two files.** Some runs here carry both
-    ``..._ep_1500_rew_35.348194.pth`` and ``..._ep_1500_rew__35.348194_.pth``
-    -- the same epoch and the same reward under two rl-games naming conventions.
-    CLAUDE.md names the double-underscore form and every certification in
-    ``evidence/`` was produced from it, so a silent pick between them would be a
-    promotion decision made by ``sorted()``. Ties are reported and broken by
-    file size then name, deterministically.
+    **One epoch can have two files, and this refuses to guess between them.**
+    Some runs here carry both ``..._ep_1500_rew_35.348194.pth`` and
+    ``..._ep_1500_rew__35.348194_.pth`` — the same epoch and the same reward
+    under two rl-games naming conventions. Their weights are byte-identical, so
+    nothing about the policy's behaviour depends on which you pick, but a report's
+    ``checkpoint_sha256`` is a hash of the *file*, so the two give the same policy
+    two different provenance records, and ``check_evidence_currency.py`` can then
+    be made to disagree with itself.
+
+    This used to break the tie by ``(file size, name)``, which selects the
+    double-underscore file. That is **not** the one the current extraction
+    certification was produced from: extract epoch 12600 is certified under
+    ``last_..._ep_12600_rew_172.70488.pth`` at 1,341,301 bytes, and the size rule
+    picks the 1,341,477-byte twin. A tool whose entire purpose is to stop
+    evidence and scripts drifting apart should not settle that quietly.
+
+    So a tie now stops the promotion and prints both candidates. Pass the one you
+    mean with ``--resolve <run>=<filename>``.
     """
 
     candidates = sorted(LOG_ROOT.glob(f"*/{run}/nn/*_ep_*.pth"))
@@ -74,12 +88,28 @@ def newest_checkpoint(run: str) -> str:
         raise SystemExit(f"no checkpoints under logs/rl_games/*/{run}/nn/")
     top = max(int(EPOCH.search(path.name).group(1)) for path in candidates)
     tied = sorted(path for path in candidates if int(EPOCH.search(path.name).group(1)) == top)
-    if len(tied) > 1:
-        print(f"  NOTE {run}: epoch {top} exists under {len(tied)} filenames:")
+    if len(tied) == 1:
+        return tied[0].relative_to(ROOT).as_posix()
+
+    wanted = (chosen or {}).get(run)
+    if wanted is not None:
         for path in tied:
-            print(f"       {path.name}  ({path.stat().st_size} bytes)")
-    best = max(tied, key=lambda path: (path.stat().st_size, path.name))
-    return best.relative_to(ROOT).as_posix()
+            if path.name == wanted:
+                return path.relative_to(ROOT).as_posix()
+        raise SystemExit(
+            f"--resolve {run}={wanted} names a file that is not one of the tied "
+            f"candidates: " + ", ".join(path.name for path in tied)
+        )
+
+    listing = "\n".join(f"       {path.name}  ({path.stat().st_size:,} bytes)" for path in tied)
+    raise SystemExit(
+        f"{run}: epoch {top} exists under {len(tied)} filenames and this tool will not choose "
+        f"between them.\n{listing}\n"
+        f"Their weights are usually identical, but a report hashes the file, not the weights, so "
+        f"picking the wrong one gives the same policy two provenance records.\n"
+        f"Check which file the current certification in evidence/ was produced from, then pass:\n"
+        f"       --resolve {run}=<filename>"
+    )
 
 
 def main() -> int:
@@ -87,13 +117,30 @@ def main() -> int:
     parser.add_argument("--grasp", required=True, help="Run name of the promoted capture policy.")
     parser.add_argument("--extract", required=True, help="Run name of the promoted extraction policy.")
     parser.add_argument("--insert", required=True, help="Run name of the promoted insertion policy.")
+    parser.add_argument(
+        "--resolve",
+        action="append",
+        default=[],
+        metavar="RUN=FILENAME",
+        help=(
+            "Which file to promote when one epoch exists under two filenames. Repeatable. "
+            "Without it a tie stops the promotion rather than being settled by a sort order."
+        ),
+    )
     parser.add_argument("--dry_run", action="store_true")
     args = parser.parse_args()
 
+    chosen: dict[str, str] = {}
+    for pair in args.resolve:
+        run, _, filename = pair.partition("=")
+        if not run or not filename:
+            raise SystemExit(f"--resolve expects RUN=FILENAME, got {pair!r}")
+        chosen[run] = filename
+
     promoted = {
-        "GRASP_CKPT": newest_checkpoint(args.grasp),
-        "EXTRACT_CKPT": newest_checkpoint(args.extract),
-        "INSERT_CKPT": newest_checkpoint(args.insert),
+        "GRASP_CKPT": newest_checkpoint(args.grasp, chosen),
+        "EXTRACT_CKPT": newest_checkpoint(args.extract, chosen),
+        "INSERT_CKPT": newest_checkpoint(args.insert, chosen),
     }
     for name, path in promoted.items():
         print(f"{name} -> {path}")

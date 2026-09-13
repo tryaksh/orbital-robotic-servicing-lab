@@ -33,7 +33,9 @@ ROOT = Path(__file__).resolve().parents[1]
 #: Documents a stranger or the next implementation agent is expected to read.
 DOCUMENTS = (
     "README.md",
+    "ROADMAP.md",
     "CLAUDE.md",
+    "docs/REPO_MAP.md",
     "docs/NOW.md",
     "docs/NEXT_WORK.md",
     "docs/compute_service_demo.md",

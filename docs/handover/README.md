@@ -1,4 +1,4 @@
-# Archive
+# Session handovers
 
 Session handoffs and retired state files, in the order they were written. Every
 one has been superseded by [`../NOW.md`](../NOW.md), which is the file to read

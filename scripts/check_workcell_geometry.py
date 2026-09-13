@@ -1,6 +1,6 @@
 """Answer the workcell's geometry questions before anything starts a simulator.
 
-``docs/archive/next_session_handoff.md`` asks four of them, in this order:
+``docs/handover/next_session_handoff.md`` asks four of them, in this order:
 
 * can the arm reach the grasp pose in bay 1 and hold the module square there;
 * can it pull the module straight out without folding up;
