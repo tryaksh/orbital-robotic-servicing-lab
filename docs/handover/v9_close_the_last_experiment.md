@@ -136,10 +136,12 @@ manifest says **64, 12 and 167**. Nothing catches that, which is the same class 
 drift `tests/test_documented_numbers.py` exists to prevent — extend it so the
 counts are pinned too.
 
-Then prune. There are over six thousand lines across fourteen documents, and
-`README.md` and `ROADMAP.md` are now the front doors. Superseded prose is what gets
-deleted; a result is never deleted to tidy up. If you cannot tell which a passage
-is, it is a result.
+Then prune, and **rule 2 below is most of the pruning**: no "session", no
+addressing an agent, no naming the writing standard, and nothing explained twice
+across documents that should each own one thing. There are over six thousand lines
+across fourteen documents, and `README.md` and `ROADMAP.md` are now the front
+doors. Superseded prose is what gets deleted; a result is never deleted to tidy
+up. If you cannot tell which a passage is, it is a result.
 
 ---
 
@@ -149,15 +151,39 @@ is, it is a result.
    and it applies to every document you touch: natural English, explain unfamiliar
    terms where they first appear, concrete over abstract, focused but not cryptic.
    The current `README.md` is the standard being asked for — read it first.
-2. **Never delete a result.** Failed runs, retracted certificates and losing arms
+2. **Write for the reader, not about the work.** These documents still read in
+   places as though they were produced by and for a working session, and a reader
+   has no idea what a session is: a `ROADMAP.md` heading that says *"Done in this
+   session"*, *"this session deliberately did not touch it"*, *"the open task list
+   with costs, as the sessions wrote it"*, and a repository map that opens by
+   addressing an agent. Delete that frame. State what is true now and what was
+   found; git history already records who changed what and when. Three more, while
+   you are there:
+   - **Do not name the writing standard inside the document.** "Plain English" is
+     an instruction to whoever is writing, not content for whoever is reading.
+   - **Say each thing once, in the document that owns it.** The README owns what
+     the project is, `ROADMAP.md` owns what is open, `docs/REPO_MAP.md` owns where
+     things went, `docs/NOW.md` owns the detailed verified state. They currently
+     re-explain each other. Cross-link instead — and this is most of the six
+     thousand lines Stage 6 is asking you to cut.
+   - **Cut the paragraph that restates the paragraph above it.** If a passage
+     survives being deleted, it was not carrying anything.
+
+   Two exemptions, and they are real: `AGENTS.md`, `CLAUDE.md` and everything
+   under `docs/handover/` are addressed to whoever picks the work up next, so
+   process words belong there. And **keep genuine domain vocabulary** — a
+   *handoff* here is one skill handing state to the next skill in the chain, which
+   is a technical term and is load-bearing in several results. Do not sweep a word
+   away because it looks like process-speak without checking what it means.
+3. **Never delete a result.** Failed runs, retracted certificates and losing arms
    stay with their scope. `evidence/RETRACTED.md` is part of the record, not an
    embarrassment.
-3. **Every claim keeps its evidence link**, and quote canonical reports only.
-4. **Report the controller that actually stepped the phase**, never a
+4. **Every claim keeps its evidence link**, and quote canonical reports only.
+5. **Report the controller that actually stepped the phase**, never a
    configuration flag, and never an inherited historical rate.
-5. Capture commit, source hashes, config and seeds **before** launch. A primary
+6. Capture commit, source hashes, config and seeds **before** launch. A primary
    result needs a clean tree.
-6. Run the full CPU suite and `scripts/build_evidence_manifest.py --check` before
+7. Run the full CPU suite and `scripts/build_evidence_manifest.py --check` before
    every commit.
 
 ## Traps already paid for
@@ -187,7 +213,10 @@ is, it is a result.
    measured rack pinned in a test.
 4. No file in the repository carries a name its own run contradicts.
 5. Every count and rate in the maintained documents is defended by a test.
-6. Nothing is uncommitted, nothing is unpushed, no gate was moved, no website
+6. **No maintained document mentions a session, addresses an agent, names the
+   writing standard, or explains the project a second time.** `AGENTS.md`,
+   `CLAUDE.md` and `docs/handover/` are exempt.
+7. Nothing is uncommitted, nothing is unpushed, no gate was moved, no website
    material was produced.
 
 Finish by telling the owner, in plain English: what the experiment decided, what
