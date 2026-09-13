@@ -44,3 +44,6 @@ environment-lock.local.json
 
 # Per-machine coding-agent settings; the shared CLAUDE.md is tracked, this is not.
 .claude/settings.local.json
+
+# MuJoCo writes this beside whatever it is run from.
+MUJOCO_LOG.TXT

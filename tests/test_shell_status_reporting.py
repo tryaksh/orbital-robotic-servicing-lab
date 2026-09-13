@@ -37,16 +37,19 @@ SHELL_DIRECTORIES = (ROOT / "scripts", ROOT / "artifacts" / "campaign")
 #: same line. It runs during expansion and overwrites the status.
 CLOBBERED = re.compile(r"(?:\$\(|`)[^\n]*\$\?")
 
-#: Campaign queues that were mid-run when the rule was introduced. Bash reads a
-#: script incrementally and remembers a byte offset, so editing one while it
-#: executes can make it run garbage; each of these had hours of GPU work left.
-#: Fix them once they finish and delete them from this list -- the test below
-#: fails if an entry no longer needs to be here, so the exemption cannot rot.
-IN_FLIGHT = {
-    "queue_noised_skill_cert.sh": "running the noised extraction certification, 2026-09-03",
-    "queue_training_slot_a.sh": "training extraction seeds 71 and 72, 2026-09-03",
-    "queue_training_slot_b.sh": "training capture seed 71, the wedge-gated insert, capture 72, 2026-09-03",
-}
+#: Campaign queues that are mid-run *right now*. Bash reads a script
+#: incrementally and remembers a byte offset, so editing one while it executes
+#: can make it run garbage; a queue with hours of GPU work left goes in here
+#: until it finishes. Fix it once it does and delete it from this list -- the
+#: test below fails if an entry no longer needs to be here, so an exemption
+#: cannot quietly rot.
+#:
+#: Empty since 2026-09-13. The three entries added on 2026-09-03 -- the noised
+#: extraction certification and the two training slots -- had finished long
+#: before then, and the exemption outlived the run by ten days without anyone
+#: noticing, because a skip is silent. The scripts are fixed and the entries are
+#: gone. If this list is not empty, the rule is not being enforced everywhere.
+IN_FLIGHT: dict[str, str] = {}
 
 
 def _shell_files() -> list[Path]:
@@ -98,12 +101,13 @@ def test_no_exemption_outlives_its_reason() -> None:
     for name in IN_FLIGHT:
         path = next((p for p in _shell_files() if p.name == name), None)
         if path is None:
-            # Not stale -- unreachable. The campaign queues live under
-            # `artifacts/`, which is gitignored, so a clean checkout does not
-            # have them and CI cannot see them. Absence here means "cannot
-            # check", and reporting it as "deleted" turned this guard into a red
-            # CI on every push. The cost is that an exemption for a genuinely
-            # deleted script is only caught on a machine that has the file.
+            # Not stale -- unreachable. `artifacts/` is gitignored except for
+            # `artifacts/campaign/*.sh`, so the queues a clean checkout carries
+            # are the shipped ones and any queue written ad hoc during a campaign
+            # is not. Absence here means "cannot check", and reporting it as
+            # "deleted" turned this guard into a red CI on every push. The cost
+            # is that an exemption for a genuinely deleted script is only caught
+            # on a machine that has the file.
             continue
         if not _offenders(path):
             stale.append(f"{name} (already fixed)")

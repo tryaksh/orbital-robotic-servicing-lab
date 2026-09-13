@@ -1,4 +1,4 @@
-"""Launch Isaac Sim headlessly and record a machine-readable readiness marker.
+r"""Launch Isaac Sim headlessly and record a machine-readable readiness marker.
 
 This script must be executed with ``C:\isaac-sim\python.bat``.  It deliberately
 does not import Isaac Lab: the cleanup gate proves that the retained simulator

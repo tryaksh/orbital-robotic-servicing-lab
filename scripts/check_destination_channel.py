@@ -59,7 +59,11 @@ args.headless = True
 app_launcher = AppLauncher(args)
 simulation_app = app_launcher.app
 
-import zero_g_blade_swap.tasks  # noqa: F401  -- registers the tasks
+# `zero_g_blade_swap.tasks` is a namespace package with no `__init__.py`, so
+# importing it runs no code and registers nothing; `parse_env_cfg` would then
+# fail to find the task id below. The `gym.register` calls live one level down,
+# which is what every other script in this directory imports.
+import zero_g_blade_swap.tasks.blade_swap  # noqa: F401  -- registers the tasks
 from isaaclab_tasks.utils import parse_env_cfg
 
 from zero_g_blade_swap.grapple_geometry import (

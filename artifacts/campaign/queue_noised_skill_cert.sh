@@ -40,7 +40,8 @@ for arm in noised clean; do
       "$PY" scripts/play.py --headless --task "$TASK" --checkpoint "$CKPT" \
           --num_envs 128 --episodes 1000 --curriculum_stage "$stage" --seed "$seed" \
           --episode_metrics "${out}.npz" > "${out}.log" 2>&1
-      echo "[$(date +%H:%M:%S)]   $arm stage=$stage seed=$seed exit=$?"
+      rc=$?
+      echo "[$(date +%H:%M:%S)]   $arm stage=$stage seed=$seed exit=$rc"
       rows+=("${out}.npz")
     done
   done
@@ -54,7 +55,8 @@ for arm in noised clean; do
         "One PPO training seed, resumed from the certified v18pin checkpoint; the evaluation seeds are held out." \
         "$NOTE" \
       > "artifacts/campaign/noisedcert/aggregate_${arm}.log" 2>&1
-  echo "[$(date +%H:%M:%S)] $arm aggregate exit=$?"
+  rc=$?
+  echo "[$(date +%H:%M:%S)] $arm aggregate exit=$rc"
   tail -5 "artifacts/campaign/noisedcert/aggregate_${arm}.log"
 done
 echo "[$(date +%H:%M:%S)] noised skill certification done"

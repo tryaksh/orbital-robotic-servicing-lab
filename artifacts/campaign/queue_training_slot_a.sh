@@ -22,6 +22,7 @@ for seed in 71 72; do
       --max_iterations 12600 --checkpoint "$V17" \
       --run_name "grapple_extract_l0_seed${seed}_v18stage" \
       > "artifacts/campaign/train_extract_seed${seed}_v18stage.log" 2>&1
-  echo "[$(date +%H:%M:%S)] extract seed $seed exit=$?"
+  rc=$?
+  echo "[$(date +%H:%M:%S)] extract seed $seed exit=$rc"
 done
 echo "[$(date +%H:%M:%S)] slot A done"

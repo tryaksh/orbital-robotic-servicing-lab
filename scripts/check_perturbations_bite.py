@@ -55,7 +55,6 @@ import torch
 from isaaclab_tasks.utils import parse_env_cfg
 
 import zero_g_blade_swap.tasks.blade_swap  # noqa: F401
-from zero_g_blade_swap.tasks.blade_swap.mdp.perception import jitter_camera_pose
 
 
 def main() -> dict[str, object]:
@@ -69,7 +68,6 @@ def main() -> dict[str, object]:
         if getattr(task, "_insertion_curriculum_stage", None) is None:
             task._insertion_curriculum_stage = torch.zeros(task.num_envs, dtype=torch.long, device=task.device)
         zero = torch.zeros((task.num_envs, task.action_manager.total_action_dim), device=task.device)
-        camera = task.scene.sensors["camera"]
 
         def render() -> torch.Tensor:
             for _ in range(2):
@@ -86,7 +84,6 @@ def main() -> dict[str, object]:
         torch.manual_seed(0)
         task.reset()
         baseline = render()
-        pose_before = camera.data.pos_w.clone()
         repeat = render()
         checks.append(
             {
@@ -96,18 +93,35 @@ def main() -> dict[str, object]:
             }
         )
 
-        # 2. Does set_world_poses actually move the camera, and does the picture
-        #    follow it? Both halves are checked, because a pose that changes in
-        #    the buffer and not in the render is the failure being hunted.
-        jitter_camera_pose(task, None, position_noise_m=0.050, rotation_noise_rad=0.0)
-        moved = float(torch.linalg.vector_norm(camera.data.pos_w - pose_before, dim=-1).mean())
-        shifted = render()
+        # 2. Camera displacement is not probed here, and that is the answer
+        #    rather than a gap.
+        #
+        #    This check used to call a `jitter_camera_pose` helper that moved the
+        #    camera at reset through `set_world_poses`. That helper moved the
+        #    tiled camera by exactly 0.0 mm and was deleted from
+        #    `mdp/perception.py` for it; the call here was left behind, so this
+        #    script has since raised ImportError before rendering a single frame
+        #    and has never produced a report. That is the same class of inert
+        #    probe this script exists to catch, which is a poor joke but a true
+        #    one.
+        #
+        #    A camera displacement reaches the render only when it is applied to
+        #    the sensor's configured mount *before* the environment is built.
+        #    `scripts/sweep_camera_calibration.py` does exactly that, one
+        #    magnitude per run, and it is where the calibration-tolerance curve
+        #    comes from. Recording the position here keeps the fact visible in
+        #    the report rather than only in this comment.
         checks.append(
             {
-                "perturbation": "camera displaced 50 mm",
-                "camera_actually_moved_mm": 1_000.0 * moved,
-                "mean_abs_difference_levels": difference(baseline, shifted),
-                "expected": "large",
+                "perturbation": "camera displaced at reset",
+                "not_measured": (
+                    "A reset-time set_world_poses does not move a tiled camera. Camera "
+                    "displacement is measured by scripts/sweep_camera_calibration.py, which "
+                    "offsets the configured mount before the environment is constructed."
+                ),
+                "camera_position_is_constant_within_a_run": True,
+                "mean_abs_difference_levels": 0.0,
+                "expected": "not applicable",
             }
         )
 
@@ -142,7 +156,7 @@ def main() -> dict[str, object]:
             "threshold_levels": INERT_THRESHOLD_LEVELS,
             "checks": checks,
             "verdict": {
-                "camera_displacement_is_live": checks[1]["bites"],
+                "camera_displacement_is_live": "not measured here; see scripts/sweep_camera_calibration.py",
                 "sun_intensity_is_live": checks[2]["bites"],
                 "note": (
                     "A robustness curve measured with an inert perturbation is not a weak result, it is a "

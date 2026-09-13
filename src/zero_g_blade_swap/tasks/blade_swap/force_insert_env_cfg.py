@@ -48,10 +48,10 @@ from isaaclab.utils import configclass
 
 from . import mdp
 from .grapple_pin_env_cfg import InsertPolicyObsCfg
+from .robust_insertion_env_cfg import configure_insertion_play_presentation
 from .scene_cfg import ZeroGTwoSlotGrapplePinSceneCfg
 from .two_slot_env_cfg import (
     ZeroGBladeGrapplePinInsertTwoSlotEnvCfg,
-    ZeroGBladeGrapplePinInsertTwoSlotPlayEnvCfg,
     ZeroGBladeGrapplePinTwoSlotWorkflowEnvCfg,
 )
 from .workflow_demo_env_cfg import WorkflowInsertObsCfg, WorkflowObservationsCfg
@@ -135,10 +135,30 @@ class ZeroGBladeGrapplePinInsertForceEnvCfg(ZeroGBladeGrapplePinInsertTwoSlotEnv
 
 @configclass
 class ZeroGBladeGrapplePinInsertForcePlayEnvCfg(ZeroGBladeGrapplePinInsertForceEnvCfg):
+    """One environment, configured for watching a policy rather than training one.
+
+    This used to finish by calling ``ZeroGBladeGrapplePinInsertTwoSlotPlayEnvCfg``'s
+    own ``__post_init__`` with ``self``, to reuse its presentation settings. That
+    cannot work. This class does not inherit from that one, so the zero-argument
+    ``super()`` inside the borrowed method resolves against a type ``self`` is not
+    an instance of, and Python raises ``TypeError: super(type, obj)`` before the
+    environment is ever built.
+
+    It failed at construction, which is why the three runs of
+    ``verify_insert_skill.sh`` meant to score the first seating policy able to
+    feel contact each exited in about ten seconds having produced no episodes at
+    all. The chain half of that verification did run, and scored 4/24; the skill
+    half has still never run. See
+    ``evidence/workflow_robot_carried_insert_v33force_chain_policy_certification.json``.
+
+    The fix is to call the shared helper directly, which is what every other play
+    configuration in this package already does.
+    """
+
     def __post_init__(self) -> None:
         super().__post_init__()
         self.scene.num_envs = 1
-        ZeroGBladeGrapplePinInsertTwoSlotPlayEnvCfg.__post_init__(self)
+        configure_insertion_play_presentation(self)
 
 
 # ---------------------------------------------------------------------------
