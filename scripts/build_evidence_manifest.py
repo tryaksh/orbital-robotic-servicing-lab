@@ -46,10 +46,11 @@ RETRACTED = EVIDENCE / "RETRACTED.md"
 CANONICAL: tuple[tuple[str, str], ...] = (
     (
         "live_service_stability_validation_seed6070.json",
-        "Fixed-base v3 service profile validated on clean commit 88235d8: all nine original checks pass, "
-        "1192/1192 camera detections, 0.138 mm maximum transit drift and 0.733333 s rack-only hold. "
+        "Fixed-base v3 service profile validated from fresh checkout 4a433e0: all nine original checks pass, "
+        "1173/1173 camera detections, 0.517 mm maximum transit drift and 0.733333 s rack-only hold. "
         "One recorded episode at development seed 6070 with stable lighting, not a reliability rate. "
-        "Quintic transit, guarded extraction finish and absolute-IK insertion; physical criteria unchanged.",
+        "Quintic transit, guarded extraction finish with accepted-target holds between fresh camera updates, "
+        "and absolute-IK insertion; physical criteria unchanged.",
     ),
     (
         "workflow_robot_carried_m130pin_guarded_certification.json",

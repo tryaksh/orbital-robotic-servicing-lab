@@ -2,4 +2,9 @@
 *.py text eol=lf
 
 # Historical execution snapshots retain the exact bytes that were hashed.
-/evidence/source_snapshots/** -text
+/evidence/source_snapshots/** -text -diff linguist-generated=true
+/evidence/stability_20260914/** -text
+/evidence/stability_camera_cadence_v5_20260914/** -text
+/evidence/workflow_stability_*.json -text
+/evidence/live_service_stability_*.json -text
+/docs/media/** -text

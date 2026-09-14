@@ -11,7 +11,7 @@
   "counts": {
     "canonical": 76,
     "retracted": 12,
-    "historical": 218
+    "historical": 220
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -363,7 +363,7 @@
     "live_service_stability_validation_seed6070.json": {
       "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
       "source_revision": {
-        "commit": "88235d8c27314b6092b0aac38506af9526ceea40",
+        "commit": "4a433e048b954e88360242fd78e5bb8e5399a988",
         "dirty": false
       },
       "policy_sha256": "1AFE41D3AFBC8C6B6A26C3A426863F37ADF8C44B3B10849ECF0F4B88FBEFAEA3",
@@ -372,7 +372,7 @@
         "extract": "5971A916C9C7B8F77A2973E25EB504C9B31794BC9C3F2E64EACF83EB7FDC0B95",
         "insert": "CFBB09E2DDC7AF11E180DD772C42F5D86AB20EA56BD0A00F2FEB2EA378B4EC69"
       },
-      "holds_up": "Fixed-base v3 service profile validated on clean commit 88235d8: all nine original checks pass, 1192/1192 camera detections, 0.138 mm maximum transit drift and 0.733333 s rack-only hold. One recorded episode at development seed 6070 with stable lighting, not a reliability rate. Quintic transit, guarded extraction finish and absolute-IK insertion; physical criteria unchanged."
+      "holds_up": "Fixed-base v3 service profile validated from fresh checkout 4a433e0: all nine original checks pass, 1173/1173 camera detections, 0.517 mm maximum transit drift and 0.733333 s rack-only hold. One recorded episode at development seed 6070 with stable lighting, not a reliability rate. Quintic transit, guarded extraction finish with accepted-target holds between fresh camera updates, and absolute-IK insertion; physical criteria unchanged."
     },
     "rack_requirement_sweep_v1.json": {
       "title": "The rack requirement as a function of the manipulator's delivered attitude",
@@ -1387,6 +1387,7 @@
       "title": "Which axis the module rotates about when the prescribed channel jams it",
       "generated_utc": "2026-09-06T00:54:51.933791+00:00"
     },
+    "live_service_stability_initial_validation_seed6070.json": {},
     "mating_compliance.json": {
       "title": "Mating compliance for a robot-carried module",
       "generated_utc": "2026-08-23T06:48:28.749990+00:00"
@@ -1551,6 +1552,7 @@
     "servicing_camera_geometry_v3_640px.json": {
       "title": "Fixed servicing-camera coverage of the flush fiducial workflow envelope"
     },
+    "source_snapshots.json": {},
     "trace_non_perturbing_v1.json": {
       "title": "Whether recording the handoff trace changes the run",
       "generated_utc": "2026-09-05T19:40:37.543348+00:00"
