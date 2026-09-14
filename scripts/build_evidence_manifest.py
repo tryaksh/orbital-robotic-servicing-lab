@@ -399,6 +399,63 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "The current fail-closed boundary result: entry attitude supported; five dimensions unresolved or contradicted.",
     ),
     (
+        "grapple_insert_v33force_c11065_certification.json",
+        (
+            "**The first learned seating skill here to pass its own gate: 2,977/3,001 = 99.20%**, "
+            "Wilson [98.81, 99.46], three held-out seeds at 128 environments, against v24's 36.77% "
+            "isolated and v20chain's 0.00%. The one change from every blind predecessor is seven "
+            "observation values: the contact force in tool axes, the same force filtered, and its "
+            "magnitude. **Do not read this as the seating phase being solved** -- the same weights "
+            "score 24/96 in the chain that calls them, which is the composition result and not a "
+            "skill result. Checkpoint `v33force` epoch 3000, sha256 86599FC2..., under logs/ and "
+            "absent from a clone."
+        ),
+    ),
+    (
+        "workflow_robot_carried_insert_v33force_c11065_chain_guarded_n96_certification.json",
+        (
+            "The scripted guarded advance at the throat the design library prescribes: 23/96, "
+            "23.96%. Paired with the policy arm beside it, one flag apart."
+        ),
+    ),
+    (
+        "workflow_robot_carried_insert_v33force_c11065_chain_policy_n96_certification.json",
+        (
+            "The learned force-feedback seating policy at the same throat: 24/96, 25.00%. One "
+            "episode from the scripted arm over ninety-six paired episodes, with thirty-one of them "
+            "changing outcome -- an informative null rather than an absence of evidence."
+        ),
+    ),
+    (
+        "workflow_robot_carried_insert_v33force_relieved_chain_guarded_certification.json",
+        (
+            "The cell that completes the 2x2: the scripted advance on the force task at the shipped "
+            "relieved throat, 17/24, 70.83%, Wilson [50.8, 85.1]. It reproduces the state task's "
+            "no-rack control exactly, which is what licenses reading the force-task and state-task "
+            "arms together."
+        ),
+    ),
+    (
+        "seating_bay_factorial_v1.json",
+        (
+            "**The controller is not the variable; the bay is, and the effect crosses over.** Two "
+            "factors on one checkpoint set, paired, same seeds and same cohorts. The 3.897 mm of "
+            "relief is worth **+41.7 points** to the scripted advance (7/24 to 17/24, gained 12 lost "
+            "2, one-sided p = 0.0065) and **-16.7 points** to the learned policy (8/24 to 4/24, "
+            "gained 0 lost 4, p = 0.0625) -- opposite signs. At the prescribed throat the two "
+            "controllers are one episode apart over 96 paired episodes with 31 changing outcome, "
+            "p = 0.50. Read the nulls as informative: which controller is better is a property of "
+            "the bay."
+        ),
+    ),
+    (
+        "seating_controller_head_to_head_v33force_relieved_bay.json",
+        (
+            "The decision, arithmetically: at the bay the chain actually runs the scripted advance "
+            "keeps the seating phase, 70.83% against 16.67%, on every shared seed."
+        ),
+    ),
+    (
         "channel_verdict_shipped_bay_v1.json",
         (
             "**The design rule, run on the bay this repository ships, and it fails.** Relieved, the "

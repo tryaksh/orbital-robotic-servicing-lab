@@ -274,12 +274,26 @@ point, ten times the offset, did not fire it. What the check does do is take
 `.max()` across every environment at one instant, so a single environment whose
 joints have not yet been written when it runs is enough.
 
-**Do not widen the tolerance.** The tolerance is right and the check has caught
-real defects. Either run it per environment and report which one disagreed, or
-run it after the first reset has been stepped in every environment. Then re-run
-the rung.
+**Done 2026-09-13.** The check follows the commanding now: each environment is
+validated the first time it is about to be given a solved target, it is never
+commanded before it has been, and the error names the environment, its own residual
+and how many of the environments checked on that step disagree. That is strictly
+stronger than the old behaviour, which ran once and left every environment reaching
+a solved leg later unvalidated.
 
-**Cost.** Under an hour, plus the one sweep point.
+The tolerance did not move. It is 0.5 mm and 1.0 mrad against a closed form that
+agrees with the simulator's recorded configurations to 0.006 mm, and
+`tests/test_forward_kinematics_agreement_is_per_environment.py` pins it along with
+the shape of the reduction -- source-level, so a future `.max()` over the whole
+tensor fails without a GPU.
+
+One consequence for reports: `forward_kinematics_agreement_m` is now the worst
+residual over the environments that were actually validated. The old figure could
+include an environment nobody had asked to move, whose tool frame was whatever the
+last reset left.
+
+**Still open:** the `base_y_+1mm` rung was never re-run and remains missing from
+the rail ladder. About ten minutes of GPU.
 
 <a id="t17"></a>
 ## T17 -- Score each criterion against the failure it predicts
@@ -579,6 +593,65 @@ arms.
 **Cost.** ~2 h GPU for a retrain, ~110 min to verify both halves.
 
 ---
+
+## T21 — Fifty-one recovered reports have not been read
+
+**Opened 2026-09-13.** The two-repository reorganisation retired a branch that was
+mostly a different project and partly this one, so two days of servicing campaign
+went into `archive/assembly-recovery-training` with it. All fifty-four reports came
+back on 2026-09-13 ([`REPO_MAP.md`](REPO_MAP.md) has the inventory). Three are
+promoted; the rest arrived classified `historical`, which is the safe default and
+not a verdict on them.
+
+What is in the unread group, by what it could close:
+
+| Reports | The open question they bear on |
+| --- | --- |
+| `workflow_robot_carried_vision_factorial_*` and `factorial_paired_*`, five cells and five paired readings | **T1.** The camera-driven chain's 2x2x2 factorial, which `analyse_factorial.py` decomposes into main effects and interactions on both scales. `NOW.md` records this as "five cells remain"; the five cells exist |
+| `workflow_robot_carried_vision_gate_*_n48`, `..._dose_base85_...`, `guard_bounds_axis_paired_n24`, `handoff_gate_ablation_paired_n48` | The guard-bound axis at 48 episodes rather than 24 |
+| `workflow_robot_carried_gravity_*_n48`, five rungs from 0 to -9.81 m/s^2 | Nothing currently asks this, and it is the closest thing here to a statement about whether the zero-gravity assumption is load-bearing. The 0 rung scores 14/48 and every other rung scores 0/48 |
+| `rack_prescription_*_paired_n192`, `section_*_retained_paired_n192`, `rack_retention_paired_n192_v2`, `prescription_factorial_v1` | **T16** and the section axis, paired, at 192 episodes |
+| `prediction_scorecard_v1`, `prediction_wider_140x20_v1`, `prediction_thicker_130x26_v1` | Whether the closed form predicts configurations it has not seen, which is the strongest form of the design claim and is not made anywhere yet |
+| `jam_mechanism_v1`, `entry_swing_v1`, `capture_attrition_v1`, `release_drift_v1`, `release_drift_retention_v1` | Mechanism behind the boundary axes |
+| `pre_handoff_predictability_v1`, `handoff_qualification_residual_v1`, `residual_transfer_v1`, `residual_vs_counted_power_v1` | The transfer rule, whose earlier measurement was retracted for reading a judgement-time value as a hand-over one. These were produced afterwards and may or may not avoid it |
+| `trace_non_perturbing_v1`, `reference_workcell_reproduction_v1`, `retention_configuration_v1` | Controls: whether recording a trace perturbs the run, and which cohorts had the pawls fitted |
+
+**Read the scope block before promoting any of them**, and check
+`check_criterion_currency.py` on each: several were produced before corrections
+that landed later, and a recovered report is not automatically a current one.
+
+**Cost.** CPU, a day of reading. No simulator.
+
+## T22 — The recovered generators are back; verifying them is what remains
+
+**Restored 2026-09-13.** The evidence came back and the code that produced it had
+not: nineteen files -- `src/handoff_qualification/` and fifteen analysis scripts --
+existed only in `archive/assembly-recovery-training`. A report whose generator is
+absent cannot be re-run, extended, or checked by
+`check_reproducible_from_source.py`, which is the one mechanism here that closes a
+provenance gap by demonstration rather than by a recorded commit. All nineteen are
+restored, with the five test files that cover them; `ruff` and the full suite pass
+at 1,210 tests.
+
+**One of them carried a correction that invalidates a published p-value**, which is
+why restoring the code and not only the reports mattered. `mcnemar_exact` in
+`compare_paired_arms.py` summed the *smaller* discordant tail whichever way the
+effect ran, so a treatment that lost every discordant episode was reported with the
+same small "one-sided p" as one that won every discordant episode.
+`rack_prescription_paired_n192` published 2.95e-06 on 28 gained against 74 lost --
+a decisive loss, printed with the p-value of a decisive win. The corrected function
+returns `improvement_p`, `deterioration_p` and a named `direction`;
+`tests/test_paired_comparison_direction.py` holds it, including that case. Every
+paired figure currently quoted in the maintained documents is a gain, so no
+published number here moves.
+
+**What remains.** Run each generator and compare its output against the recovered
+report, the way `check_reproducible_from_source.py` does for the reports whose
+generators need no simulator. A generator that does not reproduce its own report is
+a finding, not a failure of the restore, and several of these reports were produced
+before corrections that landed later.
+
+**Cost.** A few hours, CPU only.
 
 ## T0 — Recover source provenance for every result that remains in scope
 

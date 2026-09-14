@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-107 scripts. Grouped by the verb their filename starts with.
+123 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -33,6 +33,7 @@ These are the ones to run first and the ones that run in CI. A requirement only 
 | `check_service_latch_clearance.py` | Prove the robot-side service latch fits, from measurements and no simulator. |
 | `check_servicing_camera_geometry.py` | Project the flush datum through the shipped camera over the workflow envelope. |
 | `check_source_provenance.py` | Can the source that produced a report still be recovered from git? |
+| `check_trace_is_non_perturbing.py` | Did turning the trace on change the run it was measuring? |
 | `check_workcell_geometry.py` | Answer the workcell's geometry questions before anything starts a simulator. |
 
 ## Runners — drive a workflow or a training job
@@ -79,16 +80,25 @@ These read `.npz` episode metrics and write `evidence/*.json`.
 | --- | --- |
 | `report_attitude_wall_move.py` | Does the insert skill's attitude floor move with the channel throat? |
 | `report_boundary_failure_modes.py` | Score each analytical criterion against the failure it predicts, not the pooled rate. |
+| `report_capture_attrition.py` | What is left once the destination bay holds the module, and what records it. |
 | `report_chain_robustness.py` | Rank what breaks the chain, from the sweep's own per-episode rows. |
 | `report_channel_isolation.py` | Which observation channel costs extraction its transfer, on an unchanged checkpoint. |
 | `report_conditioned_insertion.py` | Compare learned and guarded insertion on exactly paired initial conditions. |
+| `report_entry_swing.py` | What the destination channel's relief is actually for. |
 | `report_extract_attribution.py` | One table: what each change to the extract task was worth, on one policy. |
 | `report_insert_attitude.py` | Why the insert skill does not seat: attitude it cannot deliver, not creep. |
 | `report_insert_depth_limit.py` | Why the insert skill stops short: it is attitude again, one layer down. |
 | `report_insert_distribution_intervention.py` | Preserve a targeted insertion-training intervention and its losing control. |
+| `report_jam_mechanism.py` | Which way is the module cocked when it wedges: yaw, pitch, or roll? |
 | `report_mating_compliance.py` | Pool the mating-compliance runs into one table, and one specification number. |
+| `report_pre_handoff_predictability.py` | Does the state handed to the seating step predict what the seating step leaves? |
+| `report_prescription_factorial.py` | The rack prescription, read as the 2x2 it needed to be all along. |
 | `report_rack_retention.py` | Pair strict no-rack and rack-retention cohorts and report load transfer. |
+| `report_release_drift.py` | Where in the sequence does the error that fails the task actually appear? |
+| `report_residual_transfer.py` | Does the criterion curve hold up, within a configuration and across three? |
+| `report_retention_configuration.py` | Which cohorts were run with the destination rack's pawls fitted, and which were not? |
 | `report_robot_carried_interface.py` | Pool the robot-carried transit runs into one interface result. |
+| `report_seating_bay_factorial.py` | Which matters more, the seating controller or the bay it seats into. |
 | `report_seating_head_to_head.py` | Which seating controller does the chain keep, decided arithmetically. |
 | `report_skill_gate_attrition.py` | Which condition the capture and extraction skills fail on, episode by episode. |
 
@@ -110,6 +120,7 @@ Envelopes, budgets and design windows.
 | --- | --- |
 | `measure_attitude_wall.sh` | How far off the base's own plane does a target have to be before the arm can |
 | `measure_criterion_retention.py` | Rank episodes by a recorded quantity against the failure mode a criterion names. |
+| `measure_delivered_attitude.py` | Measure the attitude the transit actually hands the insertion over at. |
 | `measure_gripper_envelope.py` | Measure where the Robotiq 2F-85 finger pads physically are. |
 | `measure_inference_budget.py` | What the autonomy stack costs to run, per control step. |
 | `measure_pin_design_window.py` | How tall a feature can the gripper accept, at each depth along its approach? |
@@ -172,23 +183,28 @@ Each takes `--check` so CI can prove the artifact is current.
 | `benchmark.py` | Benchmark safe parallel-environment counts in isolated Isaac Sim processes. |
 | `calibrate_grasp_pose.py` | Solve the arm joint angles that put the finger pads on the blade's interface. |
 | `compare_paired_arms.py` | Compare two arms that were run on the same cohort, as the paired data they are. |
+| `compare_residual_estimators.py` | Does reading the residual beat counting successes, at the same episode cost? |
 | `compare_workcells.py` | Print the before/after table straight from the evidence files. |
+| `correct_paired_direction.py` | Re-read every published paired comparison with a directional test. |
 | `derive_rack_requirement.py` | Compute a rack requirement from a manipulator's measured performance. |
 | `diagnose_extract_section.sh` | Why did 900 epochs of fine-tuning move extract 1.4 points? |
 | `grasp_diagnostics.py` | Measure what the simulated Robotiq 2F-85 friction grasp can actually hold. |
 | `plan_relocation_joint_path.py` | Plan the collision-aware UR10e branch change used by relocation. |
 | `play.py` | Evaluate or record an RL-Games blade-swap policy. |
 | `pool_sweep_points.py` | Pool a sweep point measured at several seeds into one entry, at the full n. |
+| `predict_configuration_change.py` | Will my controller handle this change, where will it fail, and what should I measure? |
 | `pretrain_student.py` | Offline behavioural cloning for the multimodal vision actor. |
 | `probe_workcell_policies.sh` | Phase 1: run the UNCHANGED promoted policies on the changed workcell. |
 | `project_insertion_checkpoint.py` | Project the frozen insertion actor onto local assembly observations. |
 | `promote_checkpoints.py` | Move every script's default checkpoint set to a newly promoted one, atomically. |
+| `qualify_handoff.py` | What tolerance does this controller and fixture actually hold, and to what? |
 | `rebuild_perception.sh` | Phase 8: rebuild perception on the changed geometry. |
 | `record_demo.sh` | Record demonstration clips of a trained insertion policy. |
 | `relabel_lead_in.py` | Correct the lead-in label that ``play.py`` misread, without re-measuring. |
 | `replay_fiducial_detector.py` | Compare the deployed fiducial fallback on preserved workflow RGB frames. |
 | `retrain_extract_on_pin.sh` | Extract, retrained against the criterion and the rack it actually has. |
 | `retrain_workcell_skills.sh` | Fine-tune the three promoted skills onto the moved workcell. |
+| `score_prediction_test.py` | Score three predictors against configurations none of them had seen. |
 | `setup_windows.ps1` | Install Isaac Lab and RL-Games against Isaac Sim's interpreter, at the pinned commits. |
 | `smoke_env.py` | Run deterministic state and vision smoke tests against the installed tasks. |
 | `validate_serviceability_boundary.py` | Compare the derived serviceability boundary with preserved simulation arms. |

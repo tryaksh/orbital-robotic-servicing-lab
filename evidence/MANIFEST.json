@@ -8,9 +8,9 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 66,
+    "canonical": 72,
     "retracted": 12,
-    "historical": 221
+    "historical": 218
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -273,6 +273,27 @@
       "policy_sha256": "47AA9EFB60F7794BE5CDD1EBD0AD5EC0E94CE00345BCF975D83AE9418D9A1B9F",
       "holds_up": "The learned insert skill on the derived rack: 36.77% pooled over 3,000 episodes, from 0.00%."
     },
+    "grapple_insert_v33force_c11065_certification.json": {
+      "title": "Head-on grapple-pin insert skill, insert_v33force_c11065, orientation scaled to the channel",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-04T23:27:41+00:00",
+      "overall": {
+        "episodes": 3001,
+        "successes": 2977,
+        "success_rate": 0.992003,
+        "wilson_95": [
+          0.988127,
+          0.99462
+        ]
+      },
+      "gate_passed": true,
+      "source_revision": {
+        "commit": "52627f800a6d46f2a9d54d81f024bb4e3b06da10",
+        "dirty": false
+      },
+      "policy_sha256": "86599FC204C2FEE8A36E077BBA8F6C12AFDFB9C878D650E743C82FB074DADFBD",
+      "holds_up": "**The first learned seating skill here to pass its own gate: 2,977/3,001 = 99.20%**, Wilson [98.81, 99.46], three held-out seeds at 128 environments, against v24's 36.77% isolated and v20chain's 0.00%. The one change from every blind predecessor is seven observation values: the contact force in tool axes, the same force filtered, and its magnitude. **Do not read this as the seating phase being solved** -- the same weights score 24/96 in the chain that calls them, which is the composition result and not a skill result. Checkpoint `v33force` epoch 3000, sha256 86599FC2..., under logs/ and absent from a clone."
+    },
     "insert_attitude_diagnosis.json": {
       "title": "Why the insert skill does not seat: attitude, not creep",
       "evidence_type": "simulation_only",
@@ -410,11 +431,23 @@
       },
       "holds_up": "Why the form lock has to soften for the mating stroke. A refutation, kept."
     },
+    "seating_bay_factorial_v1.json": {
+      "title": "Which matters more, the seating controller or the bay it seats into",
+      "evidence_type": "paired_simulation_arms",
+      "generated_utc": "2026-09-14T02:38:33.143426+00:00",
+      "holds_up": "**The controller is not the variable; the bay is, and the effect crosses over.** Two factors on one checkpoint set, paired, same seeds and same cohorts. The 3.897 mm of relief is worth **+41.7 points** to the scripted advance (7/24 to 17/24, gained 12 lost 2, one-sided p = 0.0065) and **-16.7 points** to the learned policy (8/24 to 4/24, gained 0 lost 4, p = 0.0625) -- opposite signs. At the prescribed throat the two controllers are one episode apart over 96 paired episodes with 31 changing outcome, p = 0.50. Read the nulls as informative: which controller is better is a property of the bay."
+    },
     "seating_controller_head_to_head.json": {
       "title": "Which controller seats the module: the guarded advance or the learned policy",
       "evidence_type": "simulation_only",
       "generated_utc": "2026-08-26T02:02:08.434741+00:00",
       "holds_up": "Which controller seats the module, decided arithmetically on the same rack and seeds."
+    },
+    "seating_controller_head_to_head_v33force_relieved_bay.json": {
+      "title": "Which controller seats the module: the guarded advance or the learned policy",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-14T02:34:08.230687+00:00",
+      "holds_up": "The decision, arithmetically: at the bay the chain actually runs the scripted advance keeps the seating phase, 70.83% against 16.67%, on every shared seed."
     },
     "service_latch_clearance.json": {
       "title": "Robot-side service latch clearance, derived from the measured gripper envelope",
@@ -494,6 +527,69 @@
       "gate_passed": false,
       "policy_sha256": "0409E1D82C72DC54D6A16D83837B7D6673370CC6674C0E317E6A1A465BA47ED7",
       "holds_up": "The learned seating policy inside the chain: 0.00%, against 36.77% alone. The gap is the result."
+    },
+    "workflow_robot_carried_insert_v33force_c11065_chain_guarded_n96_certification.json": {
+      "title": "Robot-carried relocation, scripted guarded advance, force task, 11.065 mm channel, 32 environments",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-05T02:07:38+00:00",
+      "overall": {
+        "episodes": 96,
+        "successes": 23,
+        "success_rate": 0.239583,
+        "wilson_95": [
+          0.165282,
+          0.333924
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "1d6b1639164cfee3aae3ba8b68ef0e2cad1f027a",
+        "dirty": false
+      },
+      "policy_sha256": "6461D359045D032923474C89B4E87AB255B08C4A10C78056345527BFD0936EE5",
+      "holds_up": "The scripted guarded advance at the throat the design library prescribes: 23/96, 23.96%. Paired with the policy arm beside it, one flag apart."
+    },
+    "workflow_robot_carried_insert_v33force_c11065_chain_policy_n96_certification.json": {
+      "title": "Robot-carried relocation, learned force-feedback seating, force task, 11.065 mm channel, 32 environments",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-05T02:30:19+00:00",
+      "overall": {
+        "episodes": 96,
+        "successes": 24,
+        "success_rate": 0.25,
+        "wilson_95": [
+          0.17414,
+          0.345098
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "1d6b1639164cfee3aae3ba8b68ef0e2cad1f027a",
+        "dirty": false
+      },
+      "policy_sha256": "6461D359045D032923474C89B4E87AB255B08C4A10C78056345527BFD0936EE5",
+      "holds_up": "The learned force-feedback seating policy at the same throat: 24/96, 25.00%. One episode from the scripted arm over ninety-six paired episodes, with thirty-one of them changing outcome -- an informative null rather than an absence of evidence."
+    },
+    "workflow_robot_carried_insert_v33force_relieved_chain_guarded_certification.json": {
+      "title": "Robot-carried relocation, scripted guarded advance, force task, shipped relieved throat 15.678 mm per side",
+      "evidence_type": "simulation_only",
+      "generated_utc": "2026-09-14T02:28:00+00:00",
+      "overall": {
+        "episodes": 24,
+        "successes": 17,
+        "success_rate": 0.708333,
+        "wilson_95": [
+          0.508323,
+          0.850854
+        ]
+      },
+      "gate_passed": false,
+      "source_revision": {
+        "commit": "db5b79fc3d4aa0decef8725a5c8dfbde04e27883",
+        "dirty": false
+      },
+      "policy_sha256": "6461D359045D032923474C89B4E87AB255B08C4A10C78056345527BFD0936EE5",
+      "holds_up": "The cell that completes the 2x2: the scripted advance on the force task at the shipped relieved throat, 17/24, 70.83%, Wilson [50.8, 85.1]. It reproduces the state task's no-rack control exactly, which is what licenses reading the force-task and state-task arms together."
     },
     "workflow_robot_carried_m130_guarded_certification.json": {
       "title": "Robot-carried servicing workflow, bay 1 to bay 2: m130_guarded",
@@ -1160,10 +1256,6 @@
       "title": "Rack-mouth-only insertion training intervention",
       "generated_utc": "2026-08-28T04:55:36.672673+00:00"
     },
-    "grapple_insert_v33force_c11065_certification.json": {
-      "title": "Head-on grapple-pin insert skill, insert_v33force_c11065, orientation scaled to the channel",
-      "generated_utc": "2026-09-04T23:27:41+00:00"
-    },
     "grapple_insert_v3_certification.json": {
       "title": "Head-on grapple-pin insert skill",
       "generated_utc": "2026-08-10T16:55:37+00:00"
@@ -1640,17 +1732,9 @@
       "title": "Robot-carried relocation, scripted guarded advance, force task, channel throat 11.065 mm per side",
       "generated_utc": "2026-09-04T23:01:03+00:00"
     },
-    "workflow_robot_carried_insert_v33force_c11065_chain_guarded_n96_certification.json": {
-      "title": "Robot-carried relocation, scripted guarded advance, force task, 11.065 mm channel, 32 environments",
-      "generated_utc": "2026-09-05T02:07:38+00:00"
-    },
     "workflow_robot_carried_insert_v33force_c11065_chain_policy_certification.json": {
       "title": "Robot-carried relocation, seating driven by the learned insert policy (insert_v33force_c11065)",
       "generated_utc": "2026-09-04T23:47:47+00:00"
-    },
-    "workflow_robot_carried_insert_v33force_c11065_chain_policy_n96_certification.json": {
-      "title": "Robot-carried relocation, learned force-feedback seating, force task, 11.065 mm channel, 32 environments",
-      "generated_utc": "2026-09-05T02:30:19+00:00"
     },
     "workflow_robot_carried_insert_v33force_chain_policy_certification.json": {
       "title": "Robot-carried relocation, seating driven by the learned insert policy (insert_v33force)",

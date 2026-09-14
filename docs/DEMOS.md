@@ -1,16 +1,15 @@
 # Demonstrations
 
-**No recording shows the chain as it is currently certified, and one shows a
-complete changeout.** Those are different claims and the difference is the whole
-content of this file.
+**Two recordings now show one episode each of the chain as it is currently
+certified, and both were checked against their own reports rather than against
+their filenames.**
 
-The certified rate is 22 of 24 episodes across three held-out seeds on the state
-task. A cohort is twenty-four episodes and a clip is one, so a clip can never *be*
-the certified result; the most it can be is one episode of the same arm. Every
-other file on disk predates the changes that produced the current numbers, which
-was the finding of the 2026-08-25 media audit — that table is kept below, because
-publishing a clip that looks like the current system and is not would overstate
-exactly the thing this project is careful about.
+A cohort is twenty-four episodes and a clip is one, so a clip can never *be* the
+certified 22/24; the most it can be is one episode of the same arm, and that is
+what these are. Every other file on disk predates the changes that produced the
+current numbers, which was the finding of the 2026-08-25 media audit — that table
+is kept below, because publishing a clip that looks like the current system and is
+not would overstate exactly the thing this project is careful about.
 
 Videos are **not committed**. `*.mp4` is gitignored and stays that way: git stores
 video as opaque blobs, so every re-render adds a permanent full copy and the cost
@@ -18,7 +17,27 @@ of a clone grows for everyone, forever, including CI. The repository is about
 21 MB and should stay that size. Media belongs on a release, and a release should
 only carry footage that is true.
 
-## The one complete changeout
+## The certified chain, one episode each
+
+| | seed 5070 | seed 6070 |
+| --- | --- | --- |
+| File | `artifacts/robotcarried/video_certified_chain_clip_seed5070/rl-video-step-0.mp4` (24 MB) | `..._seed6070/rl-video-step-0.mp4` (23 MB) |
+| Run | `artifacts/robotcarried/certified_chain_clip_seed5070_report.json` | `..._seed6070_report.json` |
+| Source | commit `db5b79f`, tracked worktree clean | the same |
+| Task | `Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0` — the task the 22/24 was measured on | the same |
+| All seven insertion conditions | true | true |
+| Settled seating still held after 0.70 s | true | true |
+| Both robot-side supports released | true | true |
+| Rack alone through the full recheck | true | true |
+| Terminal lateral error | 0.113 mm | 0.63 mm |
+
+Against a 2.5 mm lateral tolerance, so both are two orders inside it. Neither is a
+rate: the recorder refuses more than one environment while the certification runs
+eight, so each draws a single environment's reset state rather than one of that
+cohort's eight, and lighting is fixed for the recorder rather than randomized. Both
+differences are named in the script that produced them.
+
+## The camera-driven changeout
 
 | | |
 | --- | --- |
@@ -28,6 +47,9 @@ only carry footage that is true.
 | What it shows | trained capture, trained extraction, robot-carried transit, guarded insertion to the derived seated plane at 0.676 m, both robot-side supports released, and the rack alone holding the module for 0.733 s |
 | Perception | live throughout: 1,772/1,772 detections, zero failures, both flush plates used |
 | What it is not | the certified chain. It is the **camera-driven** task, whose pooled rate is 4/24, and it is one episode at one seed with visual randomization off for recording. It is a favourable sample of a harder task, and it is labelled as one everywhere it appears. |
+
+This is the clip worth publishing for what it shows that the two above do not:
+perception driving the guarded advance, live, for the whole stroke.
 
 ## The three fields that decide whether a clip may be published
 
@@ -40,8 +62,8 @@ all_conditions_including_released_gripper
 destination_rack_retention.observed_per_environment[0].full_rack_only_recheck_observed
 ```
 
-All three are true in the run above. A clip whose run reports `false` on any of
-them is a record of a failure, whatever it looks like.
+All three are true in all three runs above. A clip whose run reports `false` on any
+of them is a record of a failure, whatever it looks like.
 
 ## Two files carried names their own runs contradict, and were renamed
 
@@ -88,7 +110,7 @@ For the camera-driven task:
 scripts/run_robot_carried.sh rgbd
 ```
 
-## The set worth publishing, once it exists
+## The set worth publishing
 
 Four clips, each captioned with the report that backs it:
 
@@ -97,12 +119,12 @@ Four clips, each captioned with the report that backs it:
    throughout, on a visible robot-side form lock, with no world constraint, no
    teleport and no hidden carrier.
 3. **The complete chain on the certified state task**, with a run that reports
-   true on all three fields above.
-4. **Perception** — RGB-D driving the guarded advance on the current geometry,
-   which is the clip that exists.
+   true on all three fields above. Both clips above qualify.
+4. **Perception** — RGB-D driving the guarded advance on the current geometry.
 
-Until (3) exists, demonstrated capability is claimed from `evidence/` and not from
-footage.
+All four exist. What does not exist, and cannot, is a clip that carries a rate:
+demonstrated capability is claimed from `evidence/` and footage is what it looks
+like.
 
 ## Why this is not just tidiness
 

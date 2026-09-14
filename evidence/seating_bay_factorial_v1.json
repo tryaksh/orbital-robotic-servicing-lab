@@ -1,0 +1,185 @@
+{
+  "title": "Which matters more, the seating controller or the bay it seats into",
+  "evidence_type": "paired_simulation_arms",
+  "generated_utc": "2026-09-14T02:38:33.143426+00:00",
+  "question": "Two factors -- the seating controller and the destination channel's throat -- crossed on one checkpoint set, the same task, the same three held-out seeds and the same environments. Which one moves the chain?",
+  "held_fixed": {
+    "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflowForce-v0",
+    "held_out_evaluation_seeds": [
+      4070,
+      5070,
+      6070
+    ],
+    "capture_checkpoint_sha256": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+    "extract_checkpoint_sha256": "ADC247AB0E9403761A3108228019AE7BE4DC408155B414B6BF0226102E5CCA54",
+    "insert_checkpoint_sha256": "86599FC204C2FEE8A36E077BBA8F6C12AFDFB9C878D650E743C82FB074DADFBD",
+    "insert_checkpoint": "grapple_insert_l0_seed70_v33force epoch 3000",
+    "note": "The insert weights are loaded in every cell and stepped only where the controller is the policy, which is how every guarded arm in this repository is run: the policy-set hash is then identical across the pair and the difference cannot be the checkpoint."
+  },
+  "cells": {
+    "prescribed_guarded_8env": {
+      "channel_throat_per_side_mm": 11.065,
+      "destination_channel_relief_m": 0.0,
+      "seating_controller": "scripted guarded advance",
+      "environments_per_seed": 8,
+      "episodes": 24,
+      "successes": 7,
+      "success_rate": 0.291667,
+      "success_rate_wilson_95": {
+        "low": 0.149146,
+        "high": 0.491677
+      }
+    },
+    "prescribed_policy_8env": {
+      "channel_throat_per_side_mm": 11.065,
+      "destination_channel_relief_m": 0.0,
+      "seating_controller": "learned force-feedback seating",
+      "environments_per_seed": 8,
+      "episodes": 24,
+      "successes": 8,
+      "success_rate": 0.333333,
+      "success_rate_wilson_95": {
+        "low": 0.179722,
+        "high": 0.532937
+      }
+    },
+    "prescribed_guarded_32env": {
+      "channel_throat_per_side_mm": 11.065,
+      "destination_channel_relief_m": 0.0,
+      "seating_controller": "scripted guarded advance",
+      "environments_per_seed": 32,
+      "episodes": 96,
+      "successes": 23,
+      "success_rate": 0.239583,
+      "success_rate_wilson_95": {
+        "low": 0.165282,
+        "high": 0.333924
+      }
+    },
+    "prescribed_policy_32env": {
+      "channel_throat_per_side_mm": 11.065,
+      "destination_channel_relief_m": 0.0,
+      "seating_controller": "learned force-feedback seating",
+      "environments_per_seed": 32,
+      "episodes": 96,
+      "successes": 24,
+      "success_rate": 0.25,
+      "success_rate_wilson_95": {
+        "low": 0.17414,
+        "high": 0.345098
+      }
+    },
+    "relieved_guarded_8env": {
+      "channel_throat_per_side_mm": 15.678,
+      "destination_channel_relief_m": 0.0046125,
+      "seating_controller": "scripted guarded advance",
+      "environments_per_seed": 8,
+      "episodes": 24,
+      "successes": 17,
+      "success_rate": 0.708333,
+      "success_rate_wilson_95": {
+        "low": 0.508323,
+        "high": 0.850854
+      }
+    },
+    "relieved_policy_8env": {
+      "channel_throat_per_side_mm": 15.678,
+      "destination_channel_relief_m": 0.0046125,
+      "seating_controller": "learned force-feedback seating",
+      "environments_per_seed": 8,
+      "episodes": 24,
+      "successes": 4,
+      "success_rate": 0.166667,
+      "success_rate_wilson_95": {
+        "low": 0.066787,
+        "high": 0.358531
+      }
+    }
+  },
+  "paired_comparisons": [
+    {
+      "what_changes": "the bay, scripted controller held fixed",
+      "baseline": "prescribed_guarded_8env",
+      "treatment": "relieved_guarded_8env",
+      "episodes": 24,
+      "baseline_successes": 7,
+      "treatment_successes": 17,
+      "points": 41.667,
+      "discordant_gained": 12,
+      "discordant_lost": 2,
+      "direction": "gained",
+      "mcnemar_two_sided_p": 0.012939,
+      "mcnemar_improvement_p": 0.00647,
+      "mcnemar_deterioration_p": 0.999084
+    },
+    {
+      "what_changes": "the bay, learned controller held fixed",
+      "baseline": "prescribed_policy_8env",
+      "treatment": "relieved_policy_8env",
+      "episodes": 24,
+      "baseline_successes": 8,
+      "treatment_successes": 4,
+      "points": -16.667,
+      "discordant_gained": 0,
+      "discordant_lost": 4,
+      "direction": "lost",
+      "mcnemar_two_sided_p": 0.125,
+      "mcnemar_improvement_p": 1.0,
+      "mcnemar_deterioration_p": 0.0625
+    },
+    {
+      "what_changes": "the controller, in the bay the chain actually runs",
+      "baseline": "relieved_policy_8env",
+      "treatment": "relieved_guarded_8env",
+      "episodes": 24,
+      "baseline_successes": 4,
+      "treatment_successes": 17,
+      "points": 54.167,
+      "discordant_gained": 14,
+      "discordant_lost": 1,
+      "direction": "gained",
+      "mcnemar_two_sided_p": 0.000977,
+      "mcnemar_improvement_p": 0.000488,
+      "mcnemar_deterioration_p": 0.999969
+    },
+    {
+      "what_changes": "the controller, at the prescribed throat, 24 episodes",
+      "baseline": "prescribed_policy_8env",
+      "treatment": "prescribed_guarded_8env",
+      "episodes": 24,
+      "baseline_successes": 8,
+      "treatment_successes": 7,
+      "points": -4.167,
+      "discordant_gained": 7,
+      "discordant_lost": 8,
+      "direction": "lost",
+      "mcnemar_two_sided_p": 1.0,
+      "mcnemar_improvement_p": 0.696381,
+      "mcnemar_deterioration_p": 0.5
+    },
+    {
+      "what_changes": "the controller, at the prescribed throat, 96 episodes",
+      "baseline": "prescribed_policy_32env",
+      "treatment": "prescribed_guarded_32env",
+      "episodes": 96,
+      "baseline_successes": 24,
+      "treatment_successes": 23,
+      "points": -1.042,
+      "discordant_gained": 15,
+      "discordant_lost": 16,
+      "direction": "lost",
+      "mcnemar_two_sided_p": 1.0,
+      "mcnemar_improvement_p": 0.63995,
+      "mcnemar_deterioration_p": 0.5
+    }
+  ],
+  "scope_and_limitations": [
+    "Simulation only. No result here was produced on real hardware.",
+    "The pairing assumes episode i of one arm started from the state episode i of the other did, which follows from identical seeds, identical checkpoints and deterministic resets. The tool cannot check it, so the claim of a fixed cohort travels with the number. Cells at different environment counts are never paired.",
+    "Neither controller clears the unchanged 95% chain gate in any cell, and no gate moved.",
+    "The 11.065 mm cells do not enable the destination rack's pawls, because run_robot_carried.sh certify does not; nor do the 15.678 mm cells. The published 22/24 does, and is a different arm.",
+    "A null between the two controllers at the prescribed throat is reported as an informative null because thirty-one of ninety-six episodes change outcome and they split evenly. It is not a claim that the two controllers are identical.",
+    "Every p-value is named for the direction it tests. `improvement_p` is the probability of gaining at least as many episodes as were gained; for a comparison the treatment LOST it is near 1.0, and `deterioration_p` is the one to read. Two-sided is the default. A p-value that does not know which arm won is worse than no p-value, and this project published one before the implementation was corrected.",
+    "The bay effect on the learned controller is the one cell pair with no significance at n = 24, and its direction is opposite to the scripted controller's. Direction, not rate."
+  ]
+}

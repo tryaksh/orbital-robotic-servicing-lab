@@ -387,9 +387,12 @@ rate moves for a dozen reasons, the predicted mechanism moves for one.
       flag changed, and every one was first reported as two independent Wilson
       intervals. McNemar's exact test on the discordant pairs changes the
       conclusion for two of the three main arms -- the lead-in guard bound
-      (10 gained, 2 lost, one-sided p = 0.019) and rack retention (5 gained,
+      (10 gained, 2 lost, improvement p = 0.019) and rack retention (5 gained,
       0 lost, p = 0.031) both have overlapping unpaired intervals and are
-      significant paired. Report both, and state the fixed cohort with the
+      significant paired. **Quote the two-sided value by default and name the
+      direction of any one-sided one**: the implementation summed the smaller
+      discordant tail whichever way the effect ran, so a decisive loss came out
+      with the p-value of a decisive win, and one report was published that way. Report both, and state the fixed cohort with the
       number, because the pairing is an assumption about how the runs were made
       and not a property of the data. `scripts/compare_paired_arms.py`.
  score each criterion against the failure it

@@ -98,7 +98,7 @@ Sorted by what it would take, not by how interesting it is.
 | # | What | Cost |
 | --- | --- | --- |
 | **T21** | **Fifty-one of the fifty-four recovered reports have not been read.** They arrived classified `historical`, which is the safe default and not a verdict. Among them: the complete camera-driven 2×2×2 factorial, a gravity ladder, paired n=192 arms, and three prediction scorecards. Reading them could close open questions with measurements that already exist. | CPU, a day of reading |
-| **T22** | **The generators of twenty-three of those reports are still only in the archive tag** — `src/handoff_qualification/` and about a dozen analysis scripts, roughly 5,500 lines. A report whose generator is absent cannot be re-run or extended. | restore, then re-run each generator against its recovered report |
+| **T22** | **Verify the nineteen recovered generators against their own reports.** They are restored and the suite passes; what has not happened is running each one and comparing its output to the report it produced, the way `check_reproducible_from_source.py` does. Restoring the code is also what found a published p-value that had the direction wrong. | a few hours, CPU |
 | **T7** | **The live demonstration service runs a superseded policy set.** Small if folded into the next certification run. | small |
 
 ### Needs a real simulator run, and is worth buying

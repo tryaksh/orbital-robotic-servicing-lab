@@ -102,8 +102,24 @@ the chain:
 
 So the skill is excellent and the chain does not care. One episode separates the
 learned controller from the hand-written one it was meant to beat, and both sit
-near a quarter. The seating phase does not change hands: a policy takes it only by
-winning pooled *and* on every shared seed, and it loses a seed.
+near a quarter — over ninety-six paired episodes, thirty-one of which change
+outcome. The seating phase does not change hands: a policy takes it only by winning
+pooled *and* on every shared seed, and it loses a seed.
+
+**And which controller is better turns out to depend on the rack, not the
+controller.** The same four measurements, crossed against the one geometry change
+the chain makes — the destination bay is widened by 3.897 mm past what the design
+rule allows, which is what lets the module in at all:
+
+| Channel clearance per side | Hand-written controller | Learned controller |
+| --- | ---: | ---: |
+| 11.065 mm, what the design rule prescribes | 29% | 33% |
+| 15.678 mm, what the rack actually is | **71%** | 17% |
+
+Widening the bay is worth **+42 points** to the hand-written controller and
+**−17 points** to the learned one. Opposite directions from the same change. And at
+the clearance the rule prescribes, the two controllers are indistinguishable and
+both are bad. The rack is the variable.
 
 The policies before it say the same thing from the other direction. One seats
 36.77% on its own and **0 out of 96** from the states the chain actually delivers,
@@ -174,7 +190,7 @@ put the hand where you want it instead of learning them.
 
 - **Every report is classified, mechanically.**
   [`evidence/MANIFEST.json`](evidence/MANIFEST.json) is generated from the files
-  themselves and currently holds **66 canonical, 12 retracted and 221 historical**
+  themselves and currently holds **72 canonical, 12 retracted and 218 historical**
   reports. Quote canonical. Never quote retracted.
   [`evidence/RETRACTED.md`](evidence/RETRACTED.md) says why each retraction
   happened. `canonical` is a hand-written list with a sentence per entry saying
@@ -218,7 +234,7 @@ put the hand where you want it instead of learning them.
 Install steps and the exact Isaac Lab version are in
 [`docs/INSTALL.md`](docs/INSTALL.md).
 
-The checks that need no simulator, no GPU and no graphics — **1,105 tests in
+The checks that need no simulator, no GPU and no graphics — **1,210 tests in
 about twenty seconds**:
 
 ```powershell

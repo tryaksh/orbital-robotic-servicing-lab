@@ -16,7 +16,7 @@ Everything is simulated. Nothing has run on hardware.
 
 | Item | Verified state |
 | --- | --- |
-| Evidence | 66 canonical, 12 retracted, 221 historical; quote only canonical |
+| Evidence | 72 canonical, 12 retracted, 218 historical; quote only canonical |
 | Source provenance | **33 reports carry** a hash of every source file as it was on disk at run time. Six recover completely from git; the rest have at least one file that matches nothing, 119 of 266 bindings in all, because the run used uncommitted code |
 | Current completion result | 22/24, **91.67%**, after visible rack retention engages, both robot-side supports release, and the rack alone holds for at least 0.70 s |
 | Boundary decision | **not qualified**; only entry attitude is supported. The rack-clearance axis was re-measured after a sweep defect: `--rack_lateral_clearance_mm` moved each bay's guides and left its lips and entry flares behind, and 6 mm per side goes from 0/64 to 36/64 once the mouth moves with the walls |
@@ -499,7 +499,7 @@ directory name.
 Read paired -- the arms are the same seed, the same checkpoints and the same
 sixty-four environments with one flag changed -- both halves sharpen:
 
-| clearance | flares fitted | removed | gained by fitting | lost | McNemar one-sided |
+| clearance | flares fitted | removed | gained by fitting | lost | McNemar improvement p |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | 6 mm per side | 36/64 | 20/64 | 24 | 8 | **0.0035** |
 | nominal | 35/64 | 38/64 | 13 | 16 | 0.36 |
@@ -746,7 +746,7 @@ independent Wilson intervals. That throws the pairing away. The right reading is
 McNemar's exact test on the episodes whose outcome actually changed.
 `scripts/compare_paired_arms.py` does both and prints both.
 
-| comparison | baseline | treatment | gained | lost | McNemar one-sided |
+| comparison | baseline | treatment | gained | lost | McNemar improvement p |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | oracle pose against camera pose | 4/24 | 20/24 | 17 | 1 | **0.00007** |
 | lead-in guard bound against the shipped estimator bound | 4/24 | 12/24 | 10 | 2 | **0.019** |
@@ -767,6 +767,18 @@ seeds are not paired and must be read unpaired. The tool cannot check which it
 has been given, so the claim of a fixed cohort travels with the number. The
 unpaired intervals stay in every report, because "how far apart are these two
 arms" and "what is this arm's rate" are different questions.
+
+**And the one-sided value was direction-blind, which is worse than having none.**
+`mcnemar_exact` summed the *smaller* discordant tail whichever way the effect ran,
+so a treatment that lost every discordant episode was reported with the same small
+"one-sided p" as one that won every discordant episode. The four rows above are all
+gains, so none of their numbers moves -- but `rack_prescription_paired_n192`
+published 2.95e-06 on 28 gained against 74 lost, which reads as a decisive
+improvement and is a decisive loss. The tool now returns `improvement_p`,
+`deterioration_p` and a named `direction`; two-sided is the default to quote, and
+the directional value is only meaningful where the direction was named in advance.
+`tests/test_paired_comparison_direction.py` holds it, including the case that
+exposed it.
 
 ## Fifty-four reports came back out of a retired branch
 
@@ -955,14 +967,51 @@ seed. At 8 environments it wins pooled, 8 against 7, and loses seed 4070 at 1/8
 against 2/8. A controller better on average and worse on one seed has a failure
 mode nobody has looked at.
 
-**Read the pair, not either arm alone.** Both controllers collapse in the
-11.065 mm bay, which is the bay built to the design library's own prescription,
-while the scripted advance scores 20/24 and 22/24 in the *relieved* bay every
-published chain number comes from. The relief is 3.897 mm past the library's upper
-bound and it is worth about fifty points to the scripted controller. That is this
-project's thesis measured directly -- the rack decides, not the controller -- and
-the guarded arm at the relieved throat on the same force task is the one cell of
-that 2x2 that had not been run.
+### The controller is not the variable; the bay is, and it crosses over
+
+The missing cell ran on 2026-09-13, so the 2x2 is complete: two factors, one
+checkpoint set, the same task, the same three held-out seeds, the same cohorts, two
+flags. Every comparison is paired.
+[`seating_bay_factorial_v1.json`](../evidence/seating_bay_factorial_v1.json)
+
+| channel throat per side | scripted guarded advance | learned force seating |
+| --- | ---: | ---: |
+| 11.065 mm, the library's prescription | 7/24, and 23/96 | 8/24, and 24/96 |
+| 15.678 mm, the shipped relief | **17/24 = 70.83%** [50.8, 85.1] | 4/24 = 16.67% |
+
+| what changes | gained | lost | direction | two-sided p |
+| --- | ---: | ---: | --- | ---: |
+| the bay, scripted controller fixed | 12 | 2 | **gained** | **0.0129** |
+| the bay, learned controller fixed | 0 | 4 | **lost** | 0.125 |
+| the controller, in the bay the chain runs | 14 | 1 | **gained** | **0.00098** |
+| the controller at the prescription, 96 episodes | 15 | 16 | tied | **1.00** |
+
+**The relief is worth +41.7 points to the scripted advance and -16.7 to the learned
+policy.** Opposite signs on the same geometry change: this is an interaction, not a
+main effect, and which controller is better is a property of the bay rather than of
+the controller. The learned arm's direction is not significant at n = 24 and is
+reported as direction only.
+
+**At the prescribed throat the two controllers are one episode apart over
+ninety-six paired episodes, and thirty-one of those episodes change outcome.** That
+is an informative null rather than an absence of evidence, and it is the strongest
+statement here that the seating controller is not the variable.
+
+**The new cell also reproduces the state task exactly.** 17/24 is the state task's
+paired no-rack control to the episode, which is what licenses reading the force-task
+arms and the state-task arms together: the contact sensor and the seven observation
+values cost the scripted controller nothing.
+
+**None of these cells has the rack's pawls fitted**, because
+`run_robot_carried.sh certify` does not enable them, and the pawls absorb most of
+the bay effect. At 192 paired episodes on the sweep cohort the prescription loses
+**23.96 points** with no pawls (110/192 against 64/192, 0 gained, 74 lost,
+deterioration p = 3.0e-06) and only **6.25 points** with them fitted (187/192
+against 175/192, 0 gained, 12 lost, deterioration p = 2.4e-04). So the honest
+statement is that the bay dominates the controller, and that a rack which retains
+its own module recovers most of what a wider channel gives away.
+[`rack_prescription_paired_n192.json`](../evidence/rack_prescription_paired_n192.json),
+[`rack_prescription_retained_paired_n192.json`](../evidence/rack_prescription_retained_paired_n192.json)
 
 **The training reward was never the result and must not be quoted as one.** It
 reached 98.2 against the blind policy's 43.9 plateau on an identical reward
