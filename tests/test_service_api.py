@@ -148,7 +148,7 @@ def test_capabilities_are_live_and_replay_remains_available(tmp_path: Path) -> N
     assert live["title"].startswith("Live RGB-D")
     assert "robot-carried transit" in live["description"]
     assert "form lock" in live["description"]
-    assert "settling verification" in live["description"]
+    assert "strict rack-only verification" in live["description"]
     assert any("Isaac Python" in reason for reason in live["unavailable_reasons"])
     assert any("NVIDIA GPU" in reason for reason in live["unavailable_reasons"])
 

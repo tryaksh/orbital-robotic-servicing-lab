@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-123 scripts. Grouped by the verb their filename starts with.
+124 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -207,6 +207,7 @@ Each takes `--check` so CI can prove the artifact is current.
 | `score_prediction_test.py` | Score three predictors against configurations none of them had seen. |
 | `setup_windows.ps1` | Install Isaac Lab and RL-Games against Isaac Sim's interpreter, at the pinned commits. |
 | `smoke_env.py` | Run deterministic state and vision smoke tests against the installed tasks. |
+| `validate_live_service.py` | Record and audit the proposed live service profile before promoting its evidence. |
 | `validate_serviceability_boundary.py` | Compare the derived serviceability boundary with preserved simulation arms. |
 | `validate_sim.py` | Launch Isaac Sim headlessly and record a machine-readable readiness marker. |
 | `verify_insert_skill.sh` | Verify an insert checkpoint the way extraction is verified: alone, then in the chain. |

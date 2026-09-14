@@ -112,6 +112,16 @@ class PlanningResult(StrictModel):
     scores_calibrated: Literal[False] = False
 
 
+class MissionVerification(StrictModel):
+    passed: bool
+    checks: dict[str, bool]
+    failed_checks: list[str]
+    transit_position_drift_mm: NonnegativeFloat | None = None
+    rack_only_hold_s: NonnegativeFloat | None = None
+    detections: int | None = Field(default=None, ge=0)
+    detection_attempts: int | None = Field(default=None, ge=0)
+
+
 class JobResult(StrictModel):
     completed: bool
     is_live_simulation: bool
@@ -119,6 +129,7 @@ class JobResult(StrictModel):
     planning: PlanningResult | None = None
     telemetry: TelemetryResult
     qualification: QualificationResult
+    verification: MissionVerification | None = None
     summary: str
 
 

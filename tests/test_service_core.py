@@ -14,18 +14,20 @@ from zero_g_blade_swap.service.config import ServiceSettings
 from zero_g_blade_swap.service.models import BackendKind, Job, JobProvenance, JobStatus
 from zero_g_blade_swap.service.presets import (
     ASSET_SOURCE,
+    CAMERA_CALIBRATION_SOURCE,
     CAMERA_CONFIG_SOURCE,
     FIDUCIAL_EVIDENCE,
     FIDUCIAL_SOURCE,
     FULL_CHAIN_EVIDENCE,
-    INSERT_W65_TWO_SLOT,
+    INSERT_CHECKPOINT,
     LIVE_INPUT_REQUIREMENTS,
     LIVE_TASK_ID,
     PERCEPTION_SOURCE,
-    WORKCELL_CONFIG_SOURCE,
-    WORKFLOW_SCRIPT,
+    WORKFLOW_BINDINGS,
     ExecutionSpec,
     PresetRegistry,
+    command_contract,
+    live_workflow_argv,
     provenance_for,
     sha256_file,
 )
@@ -33,6 +35,10 @@ from zero_g_blade_swap.service.runner import CompositeRunner, parse_process_line
 from zero_g_blade_swap.service.store import JobStore, utc_now
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _strict_report() -> dict:
+    return json.loads((ROOT / "evidence/rgbd_strict_rack_retention_datum_pair_seed6070.json").read_text())
 
 
 def test_core_service_import_does_not_require_fastapi() -> None:
@@ -97,12 +103,12 @@ def _live_registry(
             "orientation_error_rad": {"p95": 0.012},
             "occupancy_exact_match": 1.0,
             "dataset_sha256": "a" * 64,
-            "calibration": {"resolution_px": [384, 384]},
+            "calibration": {"resolution_px": [640, 640]},
             "deployment_boundary": {
                 "runtime_inputs": ["rgb", "registered_metric_depth", "camera_intrinsics"],
             },
             "runtime_source_bindings": bindings(
-                (FIDUCIAL_SOURCE, ASSET_SOURCE, PERCEPTION_SOURCE, CAMERA_CONFIG_SOURCE)
+                (FIDUCIAL_SOURCE, ASSET_SOURCE, PERCEPTION_SOURCE, CAMERA_CONFIG_SOURCE, CAMERA_CALIBRATION_SOURCE)
             ),
         }
         evidence.write_text(json.dumps(payload), encoding="utf-8")
@@ -111,13 +117,20 @@ def _live_registry(
     workflow_evidence.write_text(
         json.dumps(
             {
+                **_strict_report(),
                 "task": LIVE_TASK_ID,
                 "completed": True,
                 "reached_phase": "done",
                 "predicate_fired": True,
                 "seated_conditions_still_held_after_settling": True,
-                "visual_randomization": "on",
+                "visual_randomization": "off (recording)",
+                "service_preset_revision": "isaac-rgbd-strict-mission-v2",
+                "service_command_contract": command_contract(live_workflow_argv(
+                    ServiceSettings(project_root=project_root, runtime_dir=tmp_path / "runtime",
+                                    static_dir=tmp_path / "static", isaac_python=tmp_path / "isaac-python.bat"),
+                    6070, Path("VALIDATION_ARTIFACTS"))),
                 "perception": {
+                    **_strict_report()["perception"],
                     "source": "rgb_fiducial_calibrated_pnp",
                     "terminal_bay_occupancy_scores": [0.0, 1.0],
                 },
@@ -125,17 +138,10 @@ def _live_registry(
                 "checkpoint_sha256": {
                     "capture": sha256_file(project_root / LIVE_INPUT_REQUIREMENTS[1][2]),
                     "extract": sha256_file(project_root / LIVE_INPUT_REQUIREMENTS[2][2]),
-                    "insert": sha256_file(project_root / INSERT_W65_TWO_SLOT),
+                    "insert": sha256_file(project_root / INSERT_CHECKPOINT),
                 },
                 "runtime_source_bindings": bindings(
-                    (
-                        WORKFLOW_SCRIPT,
-                        FIDUCIAL_SOURCE,
-                        ASSET_SOURCE,
-                        PERCEPTION_SOURCE,
-                        CAMERA_CONFIG_SOURCE,
-                        WORKCELL_CONFIG_SOURCE,
-                    )
+                    WORKFLOW_BINDINGS
                 ),
             }
         ),
@@ -325,16 +331,20 @@ def test_post_spawn_emit_failure_still_terminates_process(tmp_path: Path, monkey
 def test_live_result_consumes_reported_perception_without_inventing_channels(tmp_path: Path) -> None:
     artifact_dir = tmp_path / "artifacts"
     artifact_dir.mkdir()
+    (artifact_dir / "video").mkdir()
+    (artifact_dir / "video" / "episode.mp4").write_bytes(b"\x00\x00\x00\x18ftypisom" + b"0" * 32)
     (artifact_dir / "workflow_report.json").write_text(
         json.dumps(
             {
+                **_strict_report(),
                 "completed": True,
                 "final": {"grip_error_m": 0.004},
                 "perception": {
+                    **_strict_report()["perception"],
                     "position_m": [0.5, -0.22, 0.7],
                     "quaternion_wxyz": [1.0, 0.0, 0.0, 0.0],
                     "confidence": None,
-                    "source": "rgb_pose_head",
+                    "source": "rgb_fiducial_calibrated_pnp",
                     "pose_error_mm": 2.4,
                     "pose_error_is_privileged_simulation_diagnostic": True,
                 },
@@ -370,7 +380,7 @@ def test_live_result_consumes_reported_perception_without_inventing_channels(tmp
     assert result.perception.pose_error_is_privileged_simulation_diagnostic is True
     assert result.perception.confidence is None
     assert result.planning is not None
-    assert result.planning.source == "rgb_pose_head_occupancy_gate"
+    assert result.planning.source == "rgbd_fiducial_occupancy_gate"
     assert result.planning.source_bay == 0
     assert result.planning.destination_bay == 1
     assert result.planning.initial_occupancy_scores == (0.93, 0.08)
@@ -383,7 +393,8 @@ def test_live_result_consumes_reported_perception_without_inventing_channels(tmp
     assert result.qualification.success_rate is None
     assert result.qualification.trials == 1
     assert "not a statistical reliability qualification" in result.qualification.summary
-    assert "passed its settled terminal gate" in result.summary
+    assert result.completed is True
+    assert result.verification is not None and result.verification.passed
 
 
 def test_live_preset_uses_fixed_argv_and_runtime_outputs(tmp_path: Path) -> None:
@@ -398,7 +409,7 @@ def test_live_preset_uses_fixed_argv_and_runtime_outputs(tmp_path: Path) -> None
     # Long enough for one whole workflow. Measured end to end at about 3,800
     # control steps on this workcell, so the old 3,600 could only ever end by
     # running out of clock.
-    assert int(spec.argv[spec.argv.index("--steps") + 1]) >= 4200
+    assert int(spec.argv[spec.argv.index("--steps") + 1]) == 1900
     # And on the rail, which is the configuration that squares the module. The
     # rail carries the robot; --base_rail_on_relocation carries the module and is
     # asserted absent below.
@@ -412,10 +423,14 @@ def test_live_preset_uses_fixed_argv_and_runtime_outputs(tmp_path: Path) -> None
     assert float(spec.argv[spec.argv.index("--latch_rated_force_n") + 1]) > 0.0
     assert float(spec.argv[spec.argv.index("--latch_rated_torque_nm") + 1]) > 0.0
     assert spec.argv[spec.argv.index("--insert_checkpoint") + 1] == str(
-        (settings.project_root / INSERT_W65_TWO_SLOT).resolve()
+        (settings.project_root / INSERT_CHECKPOINT).resolve()
     )
     assert spec.argv[spec.argv.index("--report") + 1] == str(artifacts / "workflow_report.json")
-    assert "--stable_lighting" not in spec.argv
+    assert "--stable_lighting" in spec.argv
+    assert "--rack_retention" in spec.argv
+    assert spec.argv[spec.argv.index("--release_sequence") + 1] == "simultaneous"
+    assert spec.argv[spec.argv.index("--module_velocity_source") + 1] == "kinematics"
+    assert spec.argv[spec.argv.index("--fiducial_guard_bounds") + 1] == "lead_in"
     assert {role for role, _path in spec.input_files} == {
         "workflow_driver",
         "capture_policy",
@@ -428,7 +443,8 @@ def test_live_preset_uses_fixed_argv_and_runtime_outputs(tmp_path: Path) -> None
         "perception_integration",
         "service_latch_geometry",
         "camera_config",
-        "workcell_config",
+        "workcell_config", "camera_calibration", "rack_retention", "provenance_source",
+        "insert_reset_bank", "two_slot_config",
     }
     provenance = provenance_for(spec)
     evidence_input = next(item for item in provenance.inputs if item.role == "perception_evidence")

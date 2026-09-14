@@ -13,24 +13,26 @@ from pathlib import Path
 
 from zero_g_blade_swap import __version__
 from zero_g_blade_swap.grapple_geometry import BLADE_LENGTH_M
+from zero_g_blade_swap.servicing_camera import CAMERA_HEIGHT_PX, CAMERA_WIDTH_PX
 
 from .config import ServiceSettings
 from .models import BackendKind, Capabilities, InputProvenance, JobProvenance, PresetCapability
+from .verification import verify_mission
 
 GRASP = Path(
-    "logs/rl_games/zero_g_blade_insertion_contact/grapple_grasp_l0_seed70_v6w65/nn/"
-    "last_zero_g_blade_insertion_contact_ep_2400_rew__37.24023_.pth"
+    "logs/rl_games/zero_g_blade_insertion_contact/grapple_grasp_l0_seed70_v7m130/nn/"
+    "last_zero_g_blade_insertion_contact_ep_3100_rew_30.262873.pth"
 )
 EXTRACT = Path(
-    "logs/rl_games/zero_g_blade_insertion_contact/grapple_extract_l0_seed70_v16w65/nn/"
-    "last_zero_g_blade_insertion_contact_ep_9700_rew__176.34572_.pth"
+    "logs/rl_games/zero_g_blade_insertion_contact/grapple_extract_l0_seed70_v19noised/nn/"
+    "last_zero_g_blade_insertion_contact_ep_14600_rew_166.19054.pth"
 )
-INSERT_W65_TWO_SLOT = Path(
-    "logs/rl_games/zero_g_blade_insertion_contact/grapple_insert_l0_seed70_v12w65/nn/"
-    "last_zero_g_blade_insertion_contact_ep_7100_rew_-20.706831.pth"
+INSERT_CHECKPOINT = Path(
+    "logs/rl_games/zero_g_blade_insertion_contact/grapple_insert_l0_seed70_v13m130/nn/"
+    "last_zero_g_blade_insertion_contact_ep_8000_rew_-42.01845.pth"
 )
-FIDUCIAL_EVIDENCE = Path("evidence/fiducial_rgbd_service_plate.json")
-FULL_CHAIN_EVIDENCE = Path("evidence/full_chain_rgbd_service_seed4070.json")
+FIDUCIAL_EVIDENCE = Path("evidence/fiducial_rgbd_service_current_seed287.json")
+FULL_CHAIN_EVIDENCE = Path("evidence/live_service_current_validation_seed6070.json")
 FIDUCIAL_SOURCE = Path("src/zero_g_blade_swap/fiducial.py")
 ASSET_SOURCE = Path("src/zero_g_blade_swap/tasks/blade_swap/assets.py")
 PERCEPTION_SOURCE = Path("src/zero_g_blade_swap/tasks/blade_swap/mdp/perception.py")
@@ -43,6 +45,15 @@ POSE_HEAD_W65_OVERVIEW_EVIDENCE = Path("evidence/module_pose_head_two_slot_w65_o
 CAMERA_SCALE_W65_OVERVIEW_EVIDENCE = Path("evidence/camera_scale_grapple_w65.json")
 WORKFLOW_SCRIPT = Path("scripts/run_workflow_demo.py")
 LATCH_SOURCE = Path("src/zero_g_blade_swap/service_latch.py")
+CAMERA_CALIBRATION_SOURCE = Path("src/zero_g_blade_swap/servicing_camera.py")
+RACK_RETENTION_SOURCE = Path("src/zero_g_blade_swap/rack_retention.py")
+WORKFLOW_BINDINGS = (
+    WORKFLOW_SCRIPT, FIDUCIAL_SOURCE, ASSET_SOURCE, PERCEPTION_SOURCE,
+    CAMERA_CONFIG_SOURCE, WORKCELL_CONFIG_SOURCE, CAMERA_CALIBRATION_SOURCE,
+    RACK_RETENTION_SOURCE, Path("src/zero_g_blade_swap/provenance.py"),
+    Path("src/zero_g_blade_swap/tasks/blade_swap/insert_reset_bank.py"),
+    Path("src/zero_g_blade_swap/tasks/blade_swap/two_slot_env_cfg.py"),
+)
 #: Rating the live run gives the robot-side form lock, in newtons and
 #: newton-metres. Not a preference: ``scripts/run_robot_carried.sh sweep``
 #: measures what the transit's own reaction demands and
@@ -91,9 +102,9 @@ MAX_CAPTURE_ORIENTATION_DRIFT_RAD = 1.0e-4
 # command-line input therefore cannot accidentally be omitted from readiness.
 LIVE_INPUT_REQUIREMENTS = (
     ("workflow driver", "workflow_driver", WORKFLOW_SCRIPT),
-    ("w65 capture checkpoint", "capture_policy", GRASP),
-    ("w65 extract checkpoint", "extract_policy", EXTRACT),
-    ("w65 two-slot insert checkpoint", "insert_policy", INSERT_W65_TWO_SLOT),
+    ("m130 capture checkpoint", "capture_policy", GRASP),
+    ("perception-trained extract checkpoint", "extract_policy", EXTRACT),
+    ("loaded insert checkpoint (guarded controller executes)", "insert_policy", INSERT_CHECKPOINT),
     ("RGB-D fiducial evidence", "perception_evidence", FIDUCIAL_EVIDENCE),
     ("successful full-chain evidence", "workflow_evidence", FULL_CHAIN_EVIDENCE),
     ("fiducial estimator", "fiducial_estimator", FIDUCIAL_SOURCE),
@@ -102,6 +113,11 @@ LIVE_INPUT_REQUIREMENTS = (
     ("RGB-D camera configuration", "camera_config", CAMERA_CONFIG_SOURCE),
     ("service-workcell configuration", "workcell_config", WORKCELL_CONFIG_SOURCE),
     ("service-latch geometry", "service_latch_geometry", LATCH_SOURCE),
+    ("camera calibration", "camera_calibration", CAMERA_CALIBRATION_SOURCE),
+    ("rack retention", "rack_retention", RACK_RETENTION_SOURCE),
+    ("provenance implementation", "provenance_source", WORKFLOW_BINDINGS[8]),
+    ("insert reset bank", "insert_reset_bank", WORKFLOW_BINDINGS[9]),
+    ("two-slot configuration", "two_slot_config", WORKFLOW_BINDINGS[10]),
 )
 
 
@@ -182,9 +198,10 @@ class PresetRegistry:
                     "Runs the measured two-bay Isaac workflow: calibrated RGB-D fiducial perception, "
                     "visual occupancy planning, learned capture and extraction, a robot-carried transit "
                     "on a visible robot-side form lock, guarded robot-driven insertion, release after "
-                    "settling verification, telemetry, video, and artifacts."
+                    "strict rack-only verification, telemetry, video, and hashed artifacts. "
+                    "One recorded simulation episode with stable lighting; not a reliability certificate."
                 ),
-                revision="isaac-rgbd-robot-carried-v1",
+                revision="isaac-rgbd-strict-mission-v2",
                 backend=BackendKind.ISAAC,
                 estimated_runtime_s=480,
                 produces_video=True,
@@ -309,8 +326,8 @@ class PresetRegistry:
         if not _valid_sha256(evidence.get("dataset_sha256")):
             reasons.append("RGB-D perception evidence does not identify its rendered corpus by SHA256")
         calibration = evidence.get("calibration")
-        if not isinstance(calibration, dict) or calibration.get("resolution_px") != [384, 384]:
-            reasons.append("RGB-D perception evidence is not for the deployed 384x384 camera")
+        if not isinstance(calibration, dict) or calibration.get("resolution_px") != [CAMERA_WIDTH_PX, CAMERA_HEIGHT_PX]:
+            reasons.append("RGB-D perception evidence is not for the deployed 640x640 camera")
         boundary = evidence.get("deployment_boundary")
         runtime_inputs = boundary.get("runtime_inputs") if isinstance(boundary, dict) else None
         if not isinstance(runtime_inputs, list) or "registered_metric_depth" not in runtime_inputs:
@@ -318,7 +335,7 @@ class PresetRegistry:
         reasons.extend(
             self._runtime_binding_reasons(
                 evidence,
-                (FIDUCIAL_SOURCE, ASSET_SOURCE, PERCEPTION_SOURCE, CAMERA_CONFIG_SOURCE),
+                (FIDUCIAL_SOURCE, ASSET_SOURCE, PERCEPTION_SOURCE, CAMERA_CONFIG_SOURCE, CAMERA_CALIBRATION_SOURCE),
                 "RGB-D perception evidence",
             )
         )
@@ -340,8 +357,16 @@ class PresetRegistry:
             or evidence.get("seated_conditions_still_held_after_settling") is not True
         ):
             reasons.append("full-chain RGB-D evidence is not a settled successful relocation")
-        if evidence.get("visual_randomization") != "on":
-            reasons.append("full-chain evidence did not retain visual randomization")
+        if evidence.get("visual_randomization") != "off (recording)":
+            reasons.append("full-chain evidence does not match the stable-lighting recording preset")
+        verification = verify_mission(evidence)
+        if not verification.passed:
+            reasons.append("full-chain evidence fails strict mission checks: " + ", ".join(verification.failed_checks))
+        if evidence.get("service_preset_revision") != self.get("isaac_full_chain_perception").revision:
+            reasons.append("full-chain evidence names a different service preset revision")
+        expected_argv = live_workflow_argv(self.settings, 6070, Path("VALIDATION_ARTIFACTS"))
+        if evidence.get("service_command_contract") != command_contract(expected_argv):
+            reasons.append("full-chain evidence does not bind the current mission command")
         perception = evidence.get("perception")
         if not isinstance(perception, dict) or perception.get("source") != "rgb_fiducial_calibrated_pnp":
             reasons.append("full-chain evidence did not execute calibrated RGB-D fiducial perception")
@@ -357,7 +382,7 @@ class PresetRegistry:
         ):
             reasons.append("full-chain evidence does not finish with destination-bay occupancy")
         digests = evidence.get("checkpoint_sha256")
-        policies = {"capture": GRASP, "extract": EXTRACT, "insert": INSERT_W65_TWO_SLOT}
+        policies = {"capture": GRASP, "extract": EXTRACT, "insert": INSERT_CHECKPOINT}
         if not isinstance(digests, dict):
             reasons.append("full-chain evidence does not bind policy checkpoints")
         else:
@@ -371,14 +396,7 @@ class PresetRegistry:
         reasons.extend(
             self._runtime_binding_reasons(
                 evidence,
-                (
-                    WORKFLOW_SCRIPT,
-                    FIDUCIAL_SOURCE,
-                    ASSET_SOURCE,
-                    PERCEPTION_SOURCE,
-                    CAMERA_CONFIG_SOURCE,
-                    WORKCELL_CONFIG_SOURCE,
-                ),
+                WORKFLOW_BINDINGS,
                 "full-chain evidence",
             )
         )
@@ -609,77 +627,7 @@ class PresetRegistry:
             input_files = tuple(
                 (role, self._project_path(relative)) for _label, role, relative in LIVE_INPUT_REQUIREMENTS
             )
-            report = artifact_dir / "workflow_report.json"
-            video = artifact_dir / "video"
-            argv = (
-                str(self.settings.isaac_python),
-                str(self._project_path(WORKFLOW_SCRIPT)),
-                "--headless",
-                "--workflow",
-                "relocate",
-                "--task",
-                LIVE_TASK_ID,
-                "--curriculum_stage",
-                "0",
-                "--grasp_checkpoint",
-                str(self._project_path(GRASP)),
-                "--extract_checkpoint",
-                str(self._project_path(EXTRACT)),
-                "--insert_checkpoint",
-                str(self._project_path(INSERT_W65_TWO_SLOT)),
-                "--perception_backend",
-                "fiducial_pnp",
-                # The robot carries the module. The world-mounted payload stage
-                # that used to appear here took it off the arm after extraction
-                # and moved it independently; it is retained in the driver as a
-                # labelled historical baseline and is deliberately not reachable
-                # from this preset. tests/test_robot_carried_contract.py keeps it
-                # out.
-                # **The robot rides the rail, and the showcase run has to use
-                # it.** This preset used to omit the flag, which meant the one
-                # run a viewer actually sees was the configuration the project's
-                # own measurements say cannot work: without a rail the arm has to
-                # translate the bay pitch at the retreat depth, where its
-                # realised authority falls to 0.72, and the destination squaring
-                # leg has never converged there. The flag moves the *robot*; it
-                # is not --base_rail_on_relocation, which moves the module and is
-                # kept out of this preset deliberately.
-                "--robot_rail_on_relocation",
-                "--latch_on_release",
-                "--latch_joint_mode",
-                "fixed",
-                "--latch_rated_force_n",
-                str(LATCH_RATED_FORCE_N),
-                "--latch_rated_torque_nm",
-                str(LATCH_RATED_TORQUE_NM),
-                "--mating_mode",
-                "compliant",
-                "--mating_force_cap_n",
-                str(MATING_FORCE_CAP_N),
-                "--destination_channel_relief_m",
-                str(DESTINATION_CHANNEL_RELIEF_M),
-                "--num_envs",
-                "1",
-                "--seed",
-                str(seed),
-                # The chain takes about 3,800 control steps end to end on this
-                # workcell, measured. 3,600 sets an episode shorter than one
-                # workflow, so the showcase run could only ever end by running
-                # out of clock -- which is what it did.
-                "--steps",
-                "5000",
-                "--settle_steps",
-                "30",
-                "--inspection_view",
-                "workcell",
-                "--video",
-                "--video_dir",
-                str(video),
-                "--handoff_trace",
-                str(artifact_dir / "handoff_trace.npz"),
-                "--report",
-                str(report),
-            )
+            argv = live_workflow_argv(self.settings, seed, artifact_dir)
         return ExecutionSpec(
             preset_id=preset.id,
             preset_title=preset.title,
@@ -692,6 +640,57 @@ class PresetRegistry:
             environment={"PYTHONUNBUFFERED": "1"},
             input_files=input_files,
         )
+
+
+def live_workflow_argv(settings: ServiceSettings, seed: int, artifact_dir: Path) -> tuple[str, ...]:
+    """One recipe shared by service execution and its offline validation run.
+
+    Constructing a command does not admit a service job. Registry.build checks
+    readiness, source bindings, and checkpoint hashes before execution.
+    """
+    return (
+        str(settings.isaac_python), str(settings.project_root / WORKFLOW_SCRIPT),
+        "--headless", "--workflow", "relocate", "--task", LIVE_TASK_ID,
+        "--curriculum_stage", "0",
+        "--grasp_checkpoint", str(settings.project_root / GRASP),
+        "--extract_checkpoint", str(settings.project_root / EXTRACT),
+        "--insert_checkpoint", str(settings.project_root / INSERT_CHECKPOINT),
+        "--perception_backend", "fiducial_pnp",
+        "--module_velocity_source", "kinematics",
+        "--fiducial_guard_bounds", "lead_in", "--insert_controller", "guarded",
+        "--robot_rail_on_relocation", "--latch_on_release", "--latch_joint_mode", "fixed",
+        "--latch_rated_force_n", str(LATCH_RATED_FORCE_N),
+        "--latch_rated_torque_nm", str(LATCH_RATED_TORQUE_NM),
+        "--latch_position_stiffness_n_per_m", "40000",
+        "--latch_rotation_stiffness_nm_per_rad", "20000",
+        "--mating_mode", "compliant", "--mating_force_cap_n", str(MATING_FORCE_CAP_N),
+        "--destination_channel_relief_m", str(DESTINATION_CHANNEL_RELIEF_M),
+        "--release_sequence", "simultaneous", "--rack_retention",
+        "--num_envs", "1", "--seed", str(seed), "--steps", "1900",
+        "--stable_lighting", "--inspection_view", "workcell", "--video",
+        "--video_dir", str(artifact_dir / "video"),
+        "--handoff_trace", str(artifact_dir / "handoff_trace.npz"),
+        "--report", str(artifact_dir / "workflow_report.json"),
+    )
+
+
+def command_contract(argv: tuple[str, ...]) -> list[str]:
+    """Portable command binding, excluding paths bound separately and the seed."""
+    path_flags = {
+        "--grasp_checkpoint", "--extract_checkpoint", "--insert_checkpoint",
+        "--video_dir", "--handoff_trace", "--report", "--seed",
+    }
+    result = []
+    index = 2
+    while index < len(argv):
+        flag = argv[index]
+        result.append(flag)
+        if flag in path_flags:
+            result.append("<bound-input-or-run-output>" if flag != "--seed" else "<seed>")
+            index += 2
+        else:
+            index += 1
+    return result
 
 
 def sha256_file(path: Path) -> str:

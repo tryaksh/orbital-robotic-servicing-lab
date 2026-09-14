@@ -224,7 +224,7 @@ def test_the_live_preset_does_not_use_the_world_mounted_payload_stage() -> None:
     """The rejected showcase, kept out of the default by a test rather than by memory."""
 
     source = PRESETS.read_text(encoding="utf-8")
-    argv = source.split("argv = (")[1].split(")\n        return ExecutionSpec")[0]
+    argv = source.split("def live_workflow_argv(")[1].split("def command_contract(")[0]
     assert '"--base_rail_on_relocation"' not in argv
     assert '"--latch_on_release"' in argv
     assert '"--latch_joint_mode"' in argv

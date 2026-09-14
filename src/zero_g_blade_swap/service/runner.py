@@ -23,6 +23,7 @@ from .models import (
     TelemetryResult,
 )
 from .presets import ExecutionSpec
+from .verification import verify_mission
 
 Emit = Callable[..., Awaitable[None]]
 
@@ -306,7 +307,7 @@ class CompositeRunner:
         environment.update(spec.environment)
         process_options: dict[str, Any] = {}
         if os.name == "nt":
-            process_options["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+            process_options["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
         else:
             process_options["start_new_session"] = True
 
@@ -442,7 +443,13 @@ class CompositeRunner:
             return None
         # Do not let truthy strings such as ``"false"`` promote a malformed
         # report into a successful workflow outcome.
-        completed = report.get("completed") is True
+        if not isinstance(report, dict):
+            return None
+        verification = verify_mission(report, video_dir=spec.artifact_dir / "video")
+        completed = verification.passed
+        (spec.artifact_dir / "mission_verification.json").write_text(
+            verification.model_dump_json(indent=2) + "\n", encoding="utf-8"
+        )
         final = report.get("final") if isinstance(report.get("final"), dict) else {}
         perception = report.get("perception") if isinstance(report.get("perception"), dict) else {}
         planning = report.get("planning") if isinstance(report.get("planning"), dict) else None
@@ -484,6 +491,7 @@ class CompositeRunner:
         return JobResult(
             completed=completed,
             is_live_simulation=True,
+            verification=verification,
             perception=PerceptionResult(
                 position_m=_finite_tuple(perception.get("position_m"), 3),
                 quaternion_wxyz=_finite_tuple(perception.get("quaternion_wxyz"), 4),
