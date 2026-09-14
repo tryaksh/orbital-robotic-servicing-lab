@@ -978,6 +978,7 @@ from zero_g_blade_swap.arm_kinematics import (
 from zero_g_blade_swap.checkpoint_policy import CheckpointPolicy
 from zero_g_blade_swap.motion_profile import (
     DEFAULT_MOTION_LIMITS,
+    MotionLimits,
     QUINTIC_PEAK_ACCELERATION,
     QUINTIC_PEAK_VELOCITY,
 )
@@ -1642,6 +1643,9 @@ class WorkflowDriver:
         self.profile_trim_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.profile_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.extract_finish_active = torch.zeros(count, dtype=torch.bool, device=device)
+        self.extract_finish_target_pos = torch.zeros((count, 3), device=device)
+        self.extract_finish_target_rot = torch.zeros((count, 4), device=device)
+        self.extract_finish_target_rot[:, 0] = 1.0
         self.extract_finish_age = torch.zeros(count, dtype=torch.long, device=device)
         self.extract_finish_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.extract_finish_holds = torch.zeros(count, dtype=torch.long, device=device)
@@ -2684,7 +2688,7 @@ class WorkflowDriver:
         # --- extract -> clear ------------------------------------------------
         extracting = self.phase == EXTRACT
         if args.extraction_finish == "guarded" and bool(extracting.any()):
-            self._finish_extraction_smoothly(extracting, established, step)
+            self._finish_extraction_smoothly(extracting, established, step, tool, tool_rot)
         if step % TRANSIT_WAYPOINT_STRIDE == 0 and bool(extracting.any()):
             ids = torch.nonzero(extracting, as_tuple=False).squeeze(-1)
             slots = self.waypoint_write[ids].clamp(max=self.max_waypoints - 1)
@@ -3985,8 +3989,9 @@ class WorkflowDriver:
 
     def _finish_extraction_smoothly(
         self, extracting: torch.Tensor, established: torch.Tensor, step: int,
+        tool: torch.Tensor, tool_rot: torch.Tensor,
     ) -> None:
-        """Finish the last 20 mm using fresh estimated pose, retaining PPO's other axes.
+        """Finish a nearly stationary pull with one controlled tool-pose path.
 
         The target is 4 mm beyond the unchanged clearance plane. This removes
         the learned controller's asymptotic approach to the exact success
@@ -3995,19 +4000,32 @@ class WorkflowDriver:
         extraction actually succeeds. Limits here are an experimental control
         choice, not a qualified hardware operating envelope.
         """
-        position, _, _ = self._payload_feedback()
+        position, _, velocity = self._payload_feedback()
         ready = torch.isfinite(position).all(dim=-1)
         estimator = getattr(self.task, "_module_state_estimator", None)
         if estimator is not None and estimator.backend == "fiducial_pnp":
             ready &= estimator.fiducial_current_detection
-        enter = extracting & established & ready & (position[:, 0] <= EXTRACTED_BLADE_CENTRE_X + 0.020)
+        enter = (
+            extracting & established & ready
+            & (position[:, 0] <= EXTRACTED_BLADE_CENTRE_X + 0.020)
+            & (torch.linalg.vector_norm(velocity[:, :3], dim=-1) <= 0.025)
+        )
         fresh = enter & ~self.extract_finish_active
         self.extract_finish_started[fresh & (self.extract_finish_started < 0)] = step
+        fresh_ids = torch.nonzero(fresh, as_tuple=False).squeeze(-1)
+        if fresh_ids.numel() > 0:
+            self.extract_finish_target_pos[fresh_ids] = tool[fresh_ids]
+            distance = (position[fresh_ids, 0] - (EXTRACTED_BLADE_CENTRE_X - 0.004)).clamp_min(0.0)
+            self.extract_finish_target_pos[fresh_ids, 0] -= distance
+            self.extract_finish_target_rot[fresh_ids] = tool_rot[fresh_ids]
+            self._check_forward_kinematics(fresh_ids, tool, tool_rot)
+            self._seed_solved_setpoints(fresh_ids, torch.full_like(fresh_ids, -2), tool, tool_rot)
         self.extract_finish_active |= enter
         active = extracting & self.extract_finish_active
         ready &= established
         blocked = active & ~ready
         self.actions[blocked, :6] = 0.0
+        self.solved_joint_hold[blocked] = False
         self.extract_finish_holds[blocked] += 1
         moving = active & ready
         if not bool(moving.any()):
@@ -4015,14 +4033,13 @@ class WorkflowDriver:
         ids = torch.nonzero(moving, as_tuple=False).squeeze(-1)
         self.extract_finish_steps[ids] += 1
         self.extract_finish_age[ids] += 1
-        progress = (self.extract_finish_age[ids] * float(self.task.step_dt) / 0.4).clamp(0.0, 1.0)
-        blend = progress.pow(3) * (10.0 - 15.0 * progress + 6.0 * progress.square())
-        remaining = position[ids, 0] - (EXTRACTED_BLADE_CENTRE_X - 0.004)
-        # A 0.5 mm increment at 30 Hz. Never push back into the rack in the
-        # terminal pull; the unchanged predicate judges the final held state.
-        delta = -(remaining.clamp_min(0.0) * 0.15).clamp(max=0.015 * float(self.task.step_dt))
-        finish_action = delta / self.scales[EXTRACT][0]
-        self.actions[ids, 0] = (1.0 - blend) * self.actions[ids, 0] + blend * finish_action
+        # A single six-axis pose target avoids fighting the PPO's saturated
+        # transverse/rotation commands with an unrelated axial override.
+        self._command_solved_tool_pose(
+            ids, self.extract_finish_target_pos[ids], self.extract_finish_target_rot[ids],
+            self.scales[EXTRACT], profile_limits=MotionLimits(0.015, 0.04, 0.15, 0.3),
+        )
+        self.actions[ids, :6] = 0.0
 
     def _seed_solved_setpoints(
         self, ids: torch.Tensor, leg: torch.Tensor, tool: torch.Tensor, tool_rot: torch.Tensor
@@ -4038,15 +4055,23 @@ class WorkflowDriver:
 
         if ids.numel() == 0:
             return
-        self.solved_setpoint_pos[ids] = tool[ids]
-        self.solved_setpoint_rot[ids] = tool_rot[ids]
-        self.profile_start_pos[ids] = tool[ids]
-        self.profile_start_rot[ids] = tool_rot[ids]
+        continuing = (self.profile_elapsed[ids] >= 0.0) & args.transit_joint_trim
+        # Retain the last accepted nominal pose when carrying load-compensation
+        # bias. Re-anchoring it on measured pose would introduce a new command
+        # discontinuity. The old nominal pose is FK(previous command - bias)
+        # within the already checked IK residual.
+        start_pos = torch.where(continuing.unsqueeze(-1), self.solved_setpoint_pos[ids], tool[ids])
+        start_rot = torch.where(continuing.unsqueeze(-1), self.solved_setpoint_rot[ids], tool_rot[ids])
+        self.solved_setpoint_pos[ids] = start_pos
+        self.solved_setpoint_rot[ids] = start_rot
+        self.profile_start_pos[ids] = start_pos
+        self.profile_start_rot[ids] = start_rot
         self.profile_elapsed[ids] = -1.0
         self.solved_setpoint_leg[ids] = leg
         # And the joint target starts at the joints, so a refused solve holds the
         # arm where it is rather than commanding a pose nothing has produced.
-        self.solved_joint_targets[ids] = self.task.scene["robot"].data.joint_pos[ids][
+        initialize_ids = ids[~continuing]
+        self.solved_joint_targets[initialize_ids] = self.task.scene["robot"].data.joint_pos[initialize_ids][
             :, self.arm_joint_ids
         ]
 
@@ -4056,6 +4081,7 @@ class WorkflowDriver:
         target_pos: torch.Tensor,
         target_rot: torch.Tensor,
         scale: torch.Tensor,
+        profile_limits: MotionLimits | None = None,
     ) -> None:
         """Generate a Cartesian setpoint and solve physical joint targets for it.
 
@@ -4078,7 +4104,8 @@ class WorkflowDriver:
         setpoint_pos = self.solved_setpoint_pos[ids]
         setpoint_rot = self.solved_setpoint_rot[ids]
         previous_pos, previous_rot = setpoint_pos.clone(), setpoint_rot.clone()
-        if args.transit_motion_profile == "quintic":
+        smooth = args.transit_motion_profile == "quintic" or profile_limits is not None
+        if smooth:
             start_pos = self.profile_start_pos[ids]
             start_rot = self.profile_start_rot[ids]
             rotation_vector = axis_angle_from_quat(quat_mul(target_rot, quat_inv(start_rot)))
@@ -4086,7 +4113,7 @@ class WorkflowDriver:
             if bool(fresh.any()):
                 distance = torch.linalg.vector_norm(target_pos - start_pos, dim=-1)
                 rotation = torch.linalg.vector_norm(rotation_vector, dim=-1)
-                limits = DEFAULT_MOTION_LIMITS
+                limits = DEFAULT_MOTION_LIMITS if profile_limits is None else profile_limits
                 duration = torch.stack((
                     QUINTIC_PEAK_VELOCITY * distance / limits.linear_velocity_mps,
                     (QUINTIC_PEAK_ACCELERATION * distance / limits.linear_acceleration_mps2).sqrt(),
@@ -4135,8 +4162,8 @@ class WorkflowDriver:
         targets = torch.zeros_like(solved)
         targets[:, self.arm_dh_permutation] = solved
         targets = targets.to(self.solved_joint_targets.dtype)
-        if args.transit_motion_profile == "quintic":
-            self.profile_steps[ids] += reached.to(torch.long)
+        if smooth:
+            self.profile_steps[ids] += (reached & (self.phase[ids] == TRANSIT)).to(torch.long)
             refused_ids = ids[~reached]
             self.profile_elapsed[refused_ids] -= float(self.task.step_dt)
             self.solved_setpoint_pos[refused_ids] = previous_pos[~reached]
@@ -4161,7 +4188,7 @@ class WorkflowDriver:
         if bool(reached.any()):
             self.solved_joint_targets[ids[reached]] = targets[reached]
         self.solved_joint_hold[ids] = True
-        self.solved_ik_steps[ids] += 1
+        self.solved_ik_steps[ids] += (self.phase[ids] == TRANSIT).to(torch.long)
         if bool((~reached).any()):
             self.solved_ik_refusals[ids[~reached]] += 1
         self.solved_ik_worst_position_residual_m[ids] = torch.maximum(
@@ -4185,7 +4212,7 @@ class WorkflowDriver:
 
         if self.base_rail_enabled:
             return
-        self.solved_joint_hold &= self.phase == TRANSIT
+        self.solved_joint_hold &= (self.phase == TRANSIT) | ((self.phase == EXTRACT) & self.extract_finish_active)
         self.arm.set_joint_hold_mask(self.rail_indexing | self.solved_joint_hold)
         ids = torch.nonzero(self.solved_joint_hold, as_tuple=False).squeeze(-1)
         if ids.numel() > 0:
@@ -6532,7 +6559,7 @@ def main() -> dict[str, object]:
                 "extraction_finish_steps": driver.extract_finish_steps.cpu().tolist(),
                 "extraction_finish_sensor_holds": driver.extract_finish_holds.cpu().tolist(),
                 "extraction_finish_started_at_step": driver.extract_finish_started.cpu().tolist(),
-                "extraction_finish_scope": "PPO transverse/orientation actions with a blended, fresh-estimate axial finish; unchanged success and lock-engagement predicates.",
+                "extraction_finish_scope": "PPO extraction followed near rest by a fresh-camera-defined fixed-attitude tool path through physical joint drives; unchanged success and lock-engagement predicates.",
             },
             # Whether the robot carried the module, as a number rather than as
             # a claim. Present on every workflow that has a transit, including
