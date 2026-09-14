@@ -736,6 +736,10 @@ def _parser() -> argparse.ArgumentParser:
         help="Retain historical increments or use synchronized speed/acceleration-bounded transit setpoints.",
     )
     parser.add_argument(
+        "--transit_joint_trim", action="store_true",
+        help="Use bounded joint-encoder integral trim after each solved profile to remove static tracking bias.",
+    )
+    parser.add_argument(
         "--extraction_finish", choices=("policy", "guarded"), default="policy",
         help="Keep PPO alone or blend in a camera-guarded final axial pull without changing extraction success.",
     )
@@ -1633,7 +1637,12 @@ class WorkflowDriver:
         self.profile_start_rot[:, 0] = 1.0
         self.profile_elapsed = torch.full((count,), -1.0, device=device)
         self.profile_duration = torch.zeros(count, device=device)
+        self.profile_joint_bias = torch.zeros((count, 6), device=device)
+        self.profile_joint_bias_max = torch.zeros(count, device=device)
+        self.profile_trim_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.profile_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.extract_finish_active = torch.zeros(count, dtype=torch.bool, device=device)
+        self.extract_finish_age = torch.zeros(count, dtype=torch.long, device=device)
         self.extract_finish_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.extract_finish_holds = torch.zeros(count, dtype=torch.long, device=device)
         self.extract_finish_started = torch.full((count,), -1, dtype=torch.long, device=device)
@@ -1907,10 +1916,9 @@ class WorkflowDriver:
         self.done_steps[env_ids] = 0
         self.transit_started[env_ids] = 0
         self.profile_elapsed[env_ids] = -1.0
+        self.profile_joint_bias[env_ids] = 0.0
         self.extract_finish_active[env_ids] = False
-        self.extract_finish_steps[env_ids] = 0
-        self.extract_finish_holds[env_ids] = 0
-        self.extract_finish_started[env_ids] = -1
+        self.extract_finish_age[env_ids] = 0
         # Only the *reference* is per-episode. The accumulators below it are
         # deliberately left alone, for the same reason the latch evidence is:
         # every environment is reset before the report is formatted, so a
@@ -3994,9 +4002,10 @@ class WorkflowDriver:
             ready &= estimator.fiducial_current_detection
         enter = extracting & established & ready & (position[:, 0] <= EXTRACTED_BLADE_CENTRE_X + 0.020)
         fresh = enter & ~self.extract_finish_active
-        self.extract_finish_started[fresh] = step
+        self.extract_finish_started[fresh & (self.extract_finish_started < 0)] = step
         self.extract_finish_active |= enter
         active = extracting & self.extract_finish_active
+        ready &= established
         blocked = active & ~ready
         self.actions[blocked, :6] = 0.0
         self.extract_finish_holds[blocked] += 1
@@ -4005,7 +4014,8 @@ class WorkflowDriver:
             return
         ids = torch.nonzero(moving, as_tuple=False).squeeze(-1)
         self.extract_finish_steps[ids] += 1
-        progress = (self.extract_finish_steps[ids] * float(self.task.step_dt) / 0.4).clamp(0.0, 1.0)
+        self.extract_finish_age[ids] += 1
+        progress = (self.extract_finish_age[ids] * float(self.task.step_dt) / 0.4).clamp(0.0, 1.0)
         blend = progress.pow(3) * (10.0 - 15.0 * progress + 6.0 * progress.square())
         remaining = position[ids, 0] - (EXTRACTED_BLADE_CENTRE_X - 0.004)
         # A 0.5 mm increment at 30 Hz. Never push back into the rack in the
@@ -4067,6 +4077,7 @@ class WorkflowDriver:
         robot = self.task.scene["robot"]
         setpoint_pos = self.solved_setpoint_pos[ids]
         setpoint_rot = self.solved_setpoint_rot[ids]
+        previous_pos, previous_rot = setpoint_pos.clone(), setpoint_rot.clone()
         if args.transit_motion_profile == "quintic":
             start_pos = self.profile_start_pos[ids]
             start_rot = self.profile_start_rot[ids]
@@ -4124,6 +4135,29 @@ class WorkflowDriver:
         targets = torch.zeros_like(solved)
         targets[:, self.arm_dh_permutation] = solved
         targets = targets.to(self.solved_joint_targets.dtype)
+        if args.transit_motion_profile == "quintic":
+            self.profile_steps[ids] += reached.to(torch.long)
+            refused_ids = ids[~reached]
+            self.profile_elapsed[refused_ids] -= float(self.task.step_dt)
+            self.solved_setpoint_pos[refused_ids] = previous_pos[~reached]
+            self.solved_setpoint_rot[refused_ids] = previous_rot[~reached]
+        if args.transit_joint_trim:
+            # An exact IK target is not an exact physical pose with finite PD
+            # joint stiffness. Correct the encoder-observed static residual
+            # only after the trajectory has stopped. Do not increase actuator
+            # force limits or bypass the robot's physical joint drives.
+            settled_target = reached & (self.profile_elapsed[ids] >= self.profile_duration[ids])
+            measured_joints = robot.data.joint_pos[ids][:, self.arm_joint_ids]
+            error = targets - measured_joints
+            error = torch.atan2(torch.sin(error), torch.cos(error))
+            increment = (1.5 * error).clamp(-0.03, 0.03) * float(self.task.step_dt)
+            increment *= settled_target.unsqueeze(-1)
+            self.profile_joint_bias[ids] = (self.profile_joint_bias[ids] + increment).clamp(-0.06, 0.06)
+            self.profile_joint_bias_max[ids] = torch.maximum(
+                self.profile_joint_bias_max[ids], self.profile_joint_bias[ids].abs().amax(dim=-1),
+            )
+            self.profile_trim_steps[ids] += settled_target.to(torch.long)
+            targets += self.profile_joint_bias[ids]
         if bool(reached.any()):
             self.solved_joint_targets[ids[reached]] = targets[reached]
         self.solved_joint_hold[ids] = True
@@ -5498,6 +5532,9 @@ def _transit_retention_report(driver, arguments) -> dict[str, object]:
         "scripted_leg_controller": {
             "solved_inverse_kinematics_enabled": TRANSIT_SOLVED_IK,
             "method": (
+                "synchronized quintic Cartesian setpoints with zero endpoint velocity/acceleration, "
+                "turned into physical joint-drive targets by measured-seed inverse kinematics"
+                if bool((driver.profile_steps > 0).any()) else
                 "a tool setpoint walked toward the leg target at one action scale per control "
                 "step, turned into arm joint targets by a damped-least-squares solve seeded "
                 "from the measured joints, and commanded through set_joint_target_override"
@@ -6420,6 +6457,8 @@ def main() -> dict[str, object]:
                 else []
             )
         )
+        if bool((driver.extract_finish_steps > 0).any()):
+            scripted_phases.append("guarded_extraction_finish")
         result: dict[str, object] = {
             'destination_rack_retention': _rack_retention_report(driver, args),
             "task": args.task,
@@ -6476,6 +6515,11 @@ def main() -> dict[str, object]:
             "scripted_phases": scripted_phases,
             "motion_refinement": {
                 "transit_profile": args.transit_motion_profile,
+                "quintic_control_steps": driver.profile_steps.cpu().tolist(),
+                "joint_trim_enabled": args.transit_joint_trim,
+                "joint_trim_steps": driver.profile_trim_steps.cpu().tolist(),
+                "joint_trim_max_abs_bias_rad": driver.profile_joint_bias_max.cpu().tolist(),
+                "joint_trim_bounds": {"max_bias_rad": 0.06, "max_bias_rate_radps": 0.03, "integral_gain_per_s": 1.5},
                 "profile_limits": {
                     "linear_velocity_mps": DEFAULT_MOTION_LIMITS.linear_velocity_mps,
                     "linear_acceleration_mps2": DEFAULT_MOTION_LIMITS.linear_acceleration_mps2,
