@@ -1,0 +1,309 @@
+{
+  "id": "775eaa6d-f87d-4e78-8c7b-7e62884468bf",
+  "preset_id": "isaac_full_chain_perception",
+  "preset_title": "Live RGB-D compute-module service run",
+  "seed": 6070,
+  "status": "failed",
+  "created_at": "2026-09-14T21:18:44.046587Z",
+  "started_at": "2026-09-14T21:18:44.052587Z",
+  "finished_at": "2026-09-14T21:20:06.326314Z",
+  "progress": 0.96,
+  "current_stage": "failed",
+  "error": "Workflow did not satisfy its terminal success predicate",
+  "exit_code": 0,
+  "cancel_requested": false,
+  "artifacts": [
+    {
+      "path": "execution.log",
+      "media_type": "application/octet-stream",
+      "size_bytes": 14778,
+      "sha256": "4f7fd53da46737b80688a63d672befabeab7ce0eb4347253a4c53868d8e7fb92"
+    },
+    {
+      "path": "handoff_trace.npz",
+      "media_type": "application/octet-stream",
+      "size_bytes": 3937,
+      "sha256": "d9b0f2024b3867e97c7d3323a1d5ad5051e6edb272b0081876cab75bb8d040b3"
+    },
+    {
+      "path": "mission_verification.json",
+      "media_type": "application/json",
+      "size_bytes": 698,
+      "sha256": "39485a14b78b4b0ba37d076b5e7456131fb195eac70e9a6645f31bb1101a4af7"
+    },
+    {
+      "path": "video/rl-video-step-0.mp4",
+      "media_type": "video/mp4",
+      "size_bytes": 10437877,
+      "sha256": "d105ed0cc1ccb4e499d1cb04aae0e843db7726de2dac70302e80450306d5f4e1"
+    },
+    {
+      "path": "workflow_report.json",
+      "media_type": "application/json",
+      "size_bytes": 21121,
+      "sha256": "d2b5ed496c8960203f11e6d9fb42340e8bedad0cbdc3a85ec9a257844d8bf46d"
+    }
+  ],
+  "result": {
+    "completed": false,
+    "is_live_simulation": true,
+    "perception": {
+      "position_m": [
+        0.5829,
+        0.0,
+        0.72
+      ],
+      "quaternion_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "confidence": 0.0,
+      "source": "rgb_fiducial_calibrated_pnp",
+      "pose_error_mm": 171.529663,
+      "pose_error_is_privileged_simulation_diagnostic": true
+    },
+    "planning": {
+      "source": "rgbd_fiducial_occupancy_gate",
+      "source_bay": 0,
+      "destination_bay": 1,
+      "initial_occupancy_scores": null,
+      "decision_threshold": 0.5,
+      "gate_passed": null,
+      "scores_calibrated": false
+    },
+    "telemetry": {
+      "grip_error_mm": 40.493,
+      "peak_force_n": null,
+      "peak_torque_nm": null,
+      "safety_state": "unknown",
+      "applicable_limits": {
+        "force_n": null,
+        "torque_nm": null,
+        "grip_error_mm": null
+      }
+    },
+    "qualification": {
+      "passed": null,
+      "success_rate": null,
+      "trials": 1,
+      "threshold": null,
+      "summary": "Experimental live execution failed its terminal workflow predicate; no qualification decision or relocation success was issued."
+    },
+    "verification": {
+      "passed": false,
+      "checks": {
+        "single_camera_episode": true,
+        "terminal_seating": false,
+        "both_robot_supports_released": false,
+        "rack_only_hold": false,
+        "bounded_robot_carried_transit": false,
+        "live_rgbd": false,
+        "visual_occupancy_plan": false,
+        "executed_controllers": false,
+        "saved_video": true
+      },
+      "failed_checks": [
+        "terminal_seating",
+        "both_robot_supports_released",
+        "rack_only_hold",
+        "bounded_robot_carried_transit",
+        "live_rgbd",
+        "visual_occupancy_plan",
+        "executed_controllers"
+      ],
+      "transit_position_drift_mm": 0.0,
+      "rack_only_hold_s": 0.0,
+      "detections": 0,
+      "detection_attempts": 331
+    },
+    "summary": "Experimental live Isaac execution failed the terminal workflow gate; no relocation success is claimed."
+  },
+  "provenance": {
+    "schema_version": 1,
+    "service_version": "0.1.0",
+    "source_revision": "e50150053593c8fc40ac406ef41a36492919643e",
+    "source_dirty": false,
+    "preset_revision": "isaac-rgbd-strict-mission-v3",
+    "backend": "isaac",
+    "command_argv": [
+      "C:\\isaac-sim\\python.bat",
+      "D:\\portfolio\\.lab-work\\orbital-improvement\\worker-final\\scripts\\run_workflow_demo.py",
+      "--headless",
+      "--workflow",
+      "relocate",
+      "--task",
+      "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "--curriculum_stage",
+      "0",
+      "--grasp_checkpoint",
+      "D:\\portfolio\\.lab-work\\orbital-improvement\\worker-final\\policies\\servicing_v2\\capture_v7m130.pth",
+      "--extract_checkpoint",
+      "D:\\portfolio\\.lab-work\\orbital-improvement\\worker-final\\policies\\servicing_v2\\extract_v19noised.pth",
+      "--insert_checkpoint",
+      "D:\\portfolio\\.lab-work\\orbital-improvement\\worker-final\\policies\\servicing_v2\\insert_v13m130.pth",
+      "--perception_backend",
+      "fiducial_pnp",
+      "--module_velocity_source",
+      "kinematics",
+      "--fiducial_guard_bounds",
+      "lead_in",
+      "--insert_controller",
+      "guarded",
+      "--transit_motion_profile",
+      "quintic",
+      "--transit_joint_trim",
+      "--extraction_finish",
+      "guarded",
+      "--guarded_insert_solver",
+      "absolute_ik",
+      "--latch_on_release",
+      "--latch_joint_mode",
+      "fixed",
+      "--latch_rated_force_n",
+      "20000.0",
+      "--latch_rated_torque_nm",
+      "1000.0",
+      "--latch_position_stiffness_n_per_m",
+      "40000",
+      "--latch_rotation_stiffness_nm_per_rad",
+      "20000",
+      "--mating_mode",
+      "compliant",
+      "--mating_force_cap_n",
+      "1000.0",
+      "--destination_channel_relief_m",
+      "0.0046125",
+      "--release_sequence",
+      "simultaneous",
+      "--rack_retention",
+      "--num_envs",
+      "1",
+      "--seed",
+      "6070",
+      "--steps",
+      "1900",
+      "--stable_lighting",
+      "--inspection_view",
+      "workcell",
+      "--video",
+      "--video_dir",
+      "D:\\portfolio\\.lab-work\\orbital-improvement\\worker-final\\artifacts\\stability-worker-seed6070\\jobs\\775eaa6d-f87d-4e78-8c7b-7e62884468bf\\artifacts\\video",
+      "--handoff_trace",
+      "D:\\portfolio\\.lab-work\\orbital-improvement\\worker-final\\artifacts\\stability-worker-seed6070\\jobs\\775eaa6d-f87d-4e78-8c7b-7e62884468bf\\artifacts\\handoff_trace.npz",
+      "--report",
+      "D:\\portfolio\\.lab-work\\orbital-improvement\\worker-final\\artifacts\\stability-worker-seed6070\\jobs\\775eaa6d-f87d-4e78-8c7b-7e62884468bf\\artifacts\\workflow_report.json"
+    ],
+    "inputs": [
+      {
+        "role": "workflow_driver",
+        "path": "scripts/run_workflow_demo.py",
+        "sha256": "0eaefa9e8394a8214d4826559fcdeb5543bedbb276c1de057b98bbd8ea5928d7",
+        "size_bytes": 408152
+      },
+      {
+        "role": "capture_policy",
+        "path": "policies/servicing_v2/capture_v7m130.pth",
+        "sha256": "db5b2887c8bb70d92d604220efc6bc747695c8e18a2fb7f405f047d132cd975e",
+        "size_bytes": 1342781
+      },
+      {
+        "role": "extract_policy",
+        "path": "policies/servicing_v2/extract_v19noised.pth",
+        "sha256": "5971a916c9c7b8f77a2973e25eb504c9b31794bc9c3f2e64eacf83eb7fdc0b95",
+        "size_bytes": 1341301
+      },
+      {
+        "role": "insert_policy",
+        "path": "policies/servicing_v2/insert_v13m130.pth",
+        "sha256": "cfbb09e2ddc7af11e180dd772c42f5d86ab20ea56bd0a00f2feb2ea378b4ec69",
+        "size_bytes": 1356733
+      },
+      {
+        "role": "perception_evidence",
+        "path": "evidence/fiducial_rgbd_service_current_seed287.json",
+        "sha256": "3d58c4199a8b61ef0a85015bc33a4a328c0d8267d6cfb600b219805b3dfd57a0",
+        "size_bytes": 6588
+      },
+      {
+        "role": "workflow_evidence",
+        "path": "evidence/live_service_stability_validation_seed6070.json",
+        "sha256": "60282f99922d578cee543cc939839c364a5b9f7abc226c48d540afac098ffa6e",
+        "size_bytes": 28608
+      },
+      {
+        "role": "fiducial_estimator",
+        "path": "src/zero_g_blade_swap/fiducial.py",
+        "sha256": "90a60841f0df7f07e43fbd919eb4e88c6d6f0126ff5eea8b5a25a45f7ea1249e",
+        "size_bytes": 15609
+      },
+      {
+        "role": "service_plate_asset",
+        "path": "src/zero_g_blade_swap/tasks/blade_swap/assets.py",
+        "sha256": "198838a2d8e5becfe5d1a56455449ad8a7ed61d8e2c8c15f4cc1e59d3afd7d4c",
+        "size_bytes": 107185
+      },
+      {
+        "role": "perception_integration",
+        "path": "src/zero_g_blade_swap/tasks/blade_swap/mdp/perception.py",
+        "sha256": "a216e5ac71a3d7eb9bf226e48a69b2446c417d221ae7a3d1740121fa76d8efde",
+        "size_bytes": 44256
+      },
+      {
+        "role": "camera_config",
+        "path": "src/zero_g_blade_swap/tasks/blade_swap/scene_cfg.py",
+        "sha256": "ec15e6f7e1468a5a7bdc30ce48e7fc1906047af60b9360dd55fd607fa789b978",
+        "size_bytes": 11115
+      },
+      {
+        "role": "workcell_config",
+        "path": "src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py",
+        "sha256": "5f0e6b8c6288057346b1b41892c69ad374417494ca1d79438e643b4042652024",
+        "size_bytes": 81173
+      },
+      {
+        "role": "service_latch_geometry",
+        "path": "src/zero_g_blade_swap/service_latch.py",
+        "sha256": "7b66e4c2fa4942f548a1757439a777806b580d186f370ec5834f440bfc85b786",
+        "size_bytes": 13802
+      },
+      {
+        "role": "camera_calibration",
+        "path": "src/zero_g_blade_swap/servicing_camera.py",
+        "sha256": "cbde8ed024a30dddb0e93289ba60168208db40617a1c57d831d0b466f2fb5db0",
+        "size_bytes": 2708
+      },
+      {
+        "role": "rack_retention",
+        "path": "src/zero_g_blade_swap/rack_retention.py",
+        "sha256": "3dff0259862bd2ace193c8b66f69dd5ec0394939f57d2df253c8b8d2498d88f6",
+        "size_bytes": 2695
+      },
+      {
+        "role": "provenance_source",
+        "path": "src/zero_g_blade_swap/provenance.py",
+        "sha256": "30882e4a43f19fba9b497db2d032fa64f048b563a8635db66651118d85c6919c",
+        "size_bytes": 2520
+      },
+      {
+        "role": "insert_reset_bank",
+        "path": "src/zero_g_blade_swap/tasks/blade_swap/insert_reset_bank.py",
+        "sha256": "93e75f523256c4ed0030326b7f5fc4056951b44534b3e306e916d3778f1c1b67",
+        "size_bytes": 2455
+      },
+      {
+        "role": "two_slot_config",
+        "path": "src/zero_g_blade_swap/tasks/blade_swap/two_slot_env_cfg.py",
+        "sha256": "f06010dd0e22dfad55cc92045ec09a426ed2f15fc0a882755b75111cecac8a45",
+        "size_bytes": 15992
+      },
+      {
+        "role": "motion_profile",
+        "path": "src/zero_g_blade_swap/motion_profile.py",
+        "sha256": "82adc839b79a4b26fc4473f92180f6f0cbdf462000a048b08790f5214c563afa",
+        "size_bytes": 5824
+      }
+    ]
+  }
+}

@@ -1,8 +1,8 @@
 # Run and verify a servicing mission
 
-The application runs one camera-driven module transfer, records it, and checks
-its physical completion and artifact hashes. It uses the same worker as the
-optional local API; a browser is not required.
+The application runs one camera-driven module transfer from a stationary robot
+base, records it, and checks physical completion and artifact hashes. The v3
+recipe uses the same worker as the optional local API; a browser is not required.
 
 ## Terminal commands
 
@@ -24,11 +24,16 @@ Preflight checks the NVIDIA GPU, Isaac launcher, packaged policy hashes, the
 contract used by the successful profile validation. It returns reasons if any
 requirement is missing or stale. `ZGBS_ISAAC_PYTHON` selects a non-default launcher.
 
-The mission uses the existing v7m130 capture and v19noised extraction policies.
+The mission uses the existing v7m130 capture and v19noised extraction policies,
+with a guarded terminal tool path finishing extraction near the clearance plane.
 Its module pose comes from RGB-D; velocity is zero before capture and derived
-from wrist motion after capture. The existing lead-in guard controls insertion.
-Final seating tolerances and the rack-only hold requirement are unchanged.
-The loaded v13m130 insertion policy does not produce actions.
+from wrist motion after capture. Transfer uses synchronized quintic setpoints
+and bounded joint-encoder trim without translating the base. The existing
+lead-in guard controls insertion through absolute IK and filtered
+spring-deflection compensation. Final seating tolerances, actuator effort
+limits and the rack-only hold requirement are unchanged. The loaded v13m130
+insertion policy does not produce actions.
+[Why these controller changes were made](TRANSFER_STABILITY.md)
 
 ## Completion and outputs
 
@@ -69,11 +74,30 @@ from the container and integrity checks.
 
 ## Verified runs
 
-The [profile validation](../evidence/live_service_current_validation_seed6070.json)
+The fresh-checkout [fixed-base profile validation](../evidence/live_service_stability_validation_seed6070.json)
+passed all nine checks on clean source `4a433e0`. It binds the exact
+`isaac-rgbd-strict-mission-v3` command and byte-stable runtime files. Its
+measurements are 1,173/1,173 detections, 0.517 mm maximum transit drift,
+0.045 mm final lateral error, 1.543 mrad final orientation error and
+0.733333 seconds rack-only hold.
+
+The isolated [normal v3 worker run](../evidence/live_service_stability_application_seed6070.json)
+passed all nine mission checks and all five artifact hashes on clean source
+`e501500`. It recorded 1,218/1,218 detections, 0.164 mm maximum transit drift and
+0.733333 seconds rack-only hold. An earlier worker run alongside a GPU cohort
+recorded zero detections and failed; its artifacts are preserved. The cause
+has not been established, so the isolated pass does not qualify concurrent
+camera operation.
+
+The selected [portfolio recording](DEMOS.md) is a separate V5 episode with its
+own measurements. Neither recording is an independent generalization test:
+seed 6070 was used during controller development.
+
+The earlier v2 [profile validation](../evidence/live_service_current_validation_seed6070.json)
 ran from clean commit `5387cbf`. The
 [normal application run](../evidence/live_service_application_seed6070_v1.json)
 ran from clean commit `f7cdf23`, using the packaged checkpoints and service worker.
-Both passed. The latter recorded 1,320/1,320 detections, 1.370 mm maximum transit
+Both v2 runs passed. The latter recorded 1,320/1,320 detections, 1.370 mm maximum transit
 drift, and 0.733333 s of rack-only hold. Both use seed 6070, one environment and
 stable lighting; they are not independent seeds or a new pooled certificate.
 
@@ -96,7 +120,12 @@ service job: its purpose is to produce the evidence required for admission. It
 requires a clean tracked checkout and preserves failed outcomes. Promote only
 passing reports, retain their source and dataset provenance, then rebuild the
 evidence manifest. Changing the controller or guard requires a new comparison;
-changing only checkpoint location requires identical file hashes.
+changing only checkpoint location requires identical file hashes. The current
+profile's admission record is
+`evidence/live_service_stability_validation_seed6070.json`; preserve the v2
+record instead of overwriting it. When validating an isolated checkout, set
+`ZGBS_PROJECT_ROOT` to that checkout and `PYTHONPATH` to its `src` directory so
+the installed package cannot silently select another worktree.
 
 ## Optional local API
 

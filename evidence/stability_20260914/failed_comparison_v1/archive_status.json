@@ -1,0 +1,4 @@
+{
+  "status": "stopped_after_detected_regression",
+  "scope": "Only existing artifacts are preserved. Missing runs or terminal artifacts are not successes or failures and are not invented."
+}

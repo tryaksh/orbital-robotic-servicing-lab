@@ -37,6 +37,7 @@ runs/
 *.onnx
 *.hdf5
 *.mp4
+!docs/media/orbital-stable-demo.mp4
 
 # Local machine state
 environment-lock.local.json

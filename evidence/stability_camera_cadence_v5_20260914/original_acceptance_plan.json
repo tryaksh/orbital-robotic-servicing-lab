@@ -1,0 +1,23 @@
+{
+  "recorded_before_paired_run": "2026-09-14",
+  "baseline_source": "a2e017b79e18d9d58106aaf0dcc943471b468920",
+  "candidate_source": "88235d8",
+  "protocol": {
+    "seeds": [4070, 5070, 6070],
+    "environments_per_seed": 8,
+    "control_steps": 1900,
+    "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+    "lighting": "randomized",
+    "video": false,
+    "weights": "Same frozen capture, extraction, and loaded-but-unused insertion checkpoints in both arms"
+  },
+  "acceptance": [
+    "The demonstration passes every existing mission-verifier check, including original pre-latch retention reference and 2.5 mm drift bound.",
+    "Robot base position is stationary throughout the demonstration.",
+    "Demonstration transfer speed, acceleration, payload drift, and extraction stationary dwell improve over the preserved original capture.",
+    "Compare original NPZ outcome counts and an additional audit of per-environment payload retention/release using existing mission limits.",
+    "Require no loss of aggregate or per-seed successes; inspect every paired condition that changes from pass to fail before promotion.",
+    "Do not change geometry, frozen checkpoints, success tolerances, settling windows, or episode horizon to obtain a passing result."
+  ],
+  "scope": "Development regression comparison, not a hardware qualification or new independent 95% reliability claim. Seed 6070 was used during development; failed experiments remain preserved."
+}

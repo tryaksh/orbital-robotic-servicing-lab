@@ -45,6 +45,31 @@ RETRACTED = EVIDENCE / "RETRACTED.md"
 #: filename alone does not say which sentence in the README it holds up.
 CANONICAL: tuple[tuple[str, str], ...] = (
     (
+        "live_service_stability_application_seed6070.json",
+        "Normal isolated mission-worker run on clean e501500: all nine checks and all five artifact "
+        "hashes pass. 1218/1218 detections, 0.164 mm transit drift, 0.733333 s rack-only hold. "
+        "One recording at reused seed 6070, not a reliability rate. An earlier preflight failure "
+        "under concurrent rendering is retained separately; its cause is not established.",
+    ),
+    (
+        "workflow_stability_paired_summary.json",
+        "Completed development regression check at seed 4070: previous controller 5/8, fixed-base "
+        "controller 6/8 under the same physical audit, with no paired losses. Only eight conditions "
+        "per arm completed; the planned 24-condition rerun was stopped when the owner requested wrap-up. "
+        "Not a reliability qualification; original thresholds remain unchanged.",
+    ),
+    (
+        "workflow_stability_latch_handoff_v5_seed6070.json",
+        "Selected continuous fixed-base demonstration on source 88235d8: all nine mission checks pass, "
+        "1302/1302 detections, 0.221 mm transit drift and 0.733333 s rack-only hold. One development "
+        "episode; later source 4a433e0 also fixes target ownership between fresh camera observations.",
+    ),
+    (
+        "workflow_stability_session_index.json",
+        "Exact archived reports, measured body states, motion analyses and failed controller variants "
+        "behind the fixed-base refinement. Distinguishes recordings from the incomplete cohort campaign.",
+    ),
+    (
         "live_service_stability_validation_seed6070.json",
         "Fixed-base v3 service profile validated from fresh checkout 4a433e0: all nine original checks pass, "
         "1173/1173 camera detections, 0.517 mm maximum transit drift and 0.733333 s rack-only hold. "

@@ -1,0 +1,23 @@
+{
+  "passed": false,
+  "checks": {
+    "single_camera_episode": true,
+    "terminal_seating": false,
+    "both_robot_supports_released": false,
+    "rack_only_hold": false,
+    "bounded_robot_carried_transit": true,
+    "live_rgbd": true,
+    "visual_occupancy_plan": true,
+    "executed_controllers": true,
+    "saved_video": true
+  },
+  "failed_checks": [
+    "terminal_seating",
+    "both_robot_supports_released",
+    "rack_only_hold"
+  ],
+  "transit_position_drift_mm": 1.862,
+  "rack_only_hold_s": 0.0,
+  "detections": 1909,
+  "detection_attempts": 1909
+}

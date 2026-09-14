@@ -1,0 +1,946 @@
+{
+  "schema": "workflow_motion_analysis_v1",
+  "scope_and_limitations": [
+    "One captured simulation episode; descriptive motion metrics do not certify reliability or physical success.",
+    "Unsmooth finite differences at the recorded control frequency; no filtering, interpolation or video retiming.",
+    "Substep contact impulses and actuator forces cannot be reconstructed from sampled body poses.",
+    "Largest pose step is measured displacement, not proof of teleportation or a collision.",
+    "Per-phase transform changes use phase-local anchors and need not equal the driver's lock-engagement drift.",
+    "Reported source provenance is retained for attribution, not independently verified by this analyzer."
+  ],
+  "environment": 0,
+  "seed": 6070,
+  "completed_in_source_report": false,
+  "source_revision_reported_by_simulation": {
+    "available": true,
+    "commit": "3d74b6b7bddde41c869b31a2ea27e0ec2b4398a7",
+    "branch": "improve/orbital-transfer-stability",
+    "dirty": false,
+    "code_dirty": false,
+    "tracked_changes": [],
+    "error": null
+  },
+  "runtime_source_bindings_reported_by_simulation": [
+    {
+      "path": "src/zero_g_blade_swap/motion_profile.py",
+      "sha256": "5e3837116d5f731e447ca1c553c29fcbc75a008b10793655d479a132f0805b7d"
+    },
+    {
+      "path": "src/zero_g_blade_swap/rack_retention.py",
+      "sha256": "7ecbf6156774fcf73a23c7ba169ccc99f2b49b182bfd75c4979091a65a9d76a3"
+    },
+    {
+      "path": "src/zero_g_blade_swap/servicing_camera.py",
+      "sha256": "2951154a749101876bdaedde6ef38be012573ef6dd0b95ad52eae81aa3f39310"
+    },
+    {
+      "path": "scripts/run_workflow_demo.py",
+      "sha256": "3a26fe4aff029e2e1b167177b3eef5323f0cc650dba1daa78d56b3b3a0876ef5"
+    },
+    {
+      "path": "src/zero_g_blade_swap/provenance.py",
+      "sha256": "1ff3f1ab5ac18634391be3679e907bb29ed161e352306e3ee8d023ff1de5c16a"
+    },
+    {
+      "path": "src/zero_g_blade_swap/fiducial.py",
+      "sha256": "9b3cc8dff252b8836c43eaf02b772f375fead994d2e588517a3e140ddd840ca1"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/assets.py",
+      "sha256": "e861e1473cf6593402c657a0692af2ddd9ddf9d2d6e4fd4ff512175b0ba96840"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/mdp/perception.py",
+      "sha256": "6d06b9bb08589598d8049d40cad47ee8ce36cdec1ea4c46f92481875ae1ed17b"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/scene_cfg.py",
+      "sha256": "ce7fb169a099210ffbb59a26e4696bf2b71975a0157a631e53d642fb5a154824"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py",
+      "sha256": "a84ab31911fdf9416c0e9bc76315fa4ff030e36a6682136838a5ed86c90fbb3a"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/insert_reset_bank.py",
+      "sha256": "bd68186bce19144d838642c307819c22443473de009e7e42f03e8fe4ced0ceb6"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/two_slot_env_cfg.py",
+      "sha256": "cc3372a530cbf795b6c7413584fe10c73f7ec2bbe3833c29a857ce47b86e1352"
+    }
+  ],
+  "timing": {
+    "captured_states": 1901,
+    "simulated_control_intervals": 1900,
+    "control_fps_from_capture": 30.0,
+    "simulation_duration_s": 63.333333333333336,
+    "requested_presentation_speed": 1.5,
+    "presentation_motion_duration_s": 42.22222222222222,
+    "presentation_scope": "Continuous-time mapping only; encoder frame rounding and decorative ending holds are excluded.",
+    "state_convention": "State 0 is initial; driver action s produces captured state s+1. Timeline steps are pre-action.",
+    "derivative_convention": "Backward finite differences assigned to ending state; phase-boundary changes retained."
+  },
+  "body_paths": {
+    "module": "/World/envs/env_0/SpareBlade",
+    "tool_parent_wrist": "/World/envs/env_0/Robot/wrist_3_link",
+    "base": "/World/envs/env_0/Robot/base_link"
+  },
+  "tool_offset_in_wrist_frame_m": [
+    0.0,
+    0.0,
+    0.1335
+  ],
+  "all_motion": {
+    "module": {
+      "step_translation_m": {
+        "samples": 1900,
+        "max": 0.009595227202423782,
+        "p95": 0.0034695918494181484,
+        "rms": 0.0015405901848995953
+      },
+      "speed_mps": {
+        "samples": 1900,
+        "max": 0.28785681607271346,
+        "p95": 0.10408775548254445,
+        "rms": 0.04621770554698786
+      },
+      "acceleration_mps2": {
+        "samples": 1899,
+        "max": 7.171544706597518,
+        "p95": 0.5782880967854458,
+        "rms": 0.312197799874581
+      },
+      "jerk_mps3": {
+        "samples": 1898,
+        "max": 215.10024061566338,
+        "p95": 19.141690829443238,
+        "rms": 10.045006799369155
+      },
+      "angular_speed_radps": {
+        "samples": 1900,
+        "max": 1.1670193581826473,
+        "p95": 0.1644908110196446,
+        "rms": 0.07630772375172398
+      }
+    },
+    "tool": {
+      "step_translation_m": {
+        "samples": 1900,
+        "max": 0.005280166768583349,
+        "p95": 0.0034582198133408268,
+        "rms": 0.0015120626549587747
+      },
+      "speed_mps": {
+        "samples": 1900,
+        "max": 0.15840500305750047,
+        "p95": 0.10374659440022481,
+        "rms": 0.04536187964876324
+      },
+      "acceleration_mps2": {
+        "samples": 1899,
+        "max": 2.4627057439223847,
+        "p95": 0.8710789784206953,
+        "rms": 0.3807075353541815
+      },
+      "jerk_mps3": {
+        "samples": 1898,
+        "max": 93.1030162732888,
+        "p95": 32.2567163243792,
+        "rms": 14.758363580328085
+      },
+      "angular_speed_radps": {
+        "samples": 1900,
+        "max": 0.3118582652174362,
+        "p95": 0.1603629363981111,
+        "rms": 0.06682703081138623
+      }
+    },
+    "base": {
+      "step_translation_m": {
+        "samples": 1900,
+        "max": 0.0,
+        "p95": 0.0,
+        "rms": 0.0
+      },
+      "speed_mps": {
+        "samples": 1900,
+        "max": 0.0,
+        "p95": 0.0,
+        "rms": 0.0
+      },
+      "acceleration_mps2": {
+        "samples": 1899,
+        "max": 0.0,
+        "p95": 0.0,
+        "rms": 0.0
+      },
+      "jerk_mps3": {
+        "samples": 1898,
+        "max": 0.0,
+        "p95": 0.0,
+        "rms": 0.0
+      },
+      "angular_speed_radps": {
+        "samples": 1900,
+        "max": 0.0,
+        "p95": 0.0,
+        "rms": 0.0
+      }
+    }
+  },
+  "base_translation": {
+    "net_xyz_m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "path_length_m": 0.0,
+    "max_distance_from_initial_m": 0.0,
+    "largest_per_step_translation_m": 0.0,
+    "largest_step_ending_state": 1,
+    "largest_step_ending_simulation_time_s": 0.03333333333333333
+  },
+  "actuator_target_continuity": {
+    "available": true,
+    "largest_vector_step_rad": 3.887922168461961,
+    "largest_single_joint_step_rad": 2.613867998123169,
+    "largest_vector_step_ending_state": 1,
+    "largest_vector_step_ending_simulation_time_s": 0.03333333333333333,
+    "per_joint_max_step_rad": [
+      0.23603317141532898,
+      1.1291548013687134,
+      1.6508561372756958,
+      2.613867998123169,
+      1.3459011316299438,
+      1.554398536682129
+    ],
+    "joint_angles_unwrapped": false,
+    "scope": "Adjacent sampled actuator targets; a commanded step is not an instantaneous physical displacement."
+  },
+  "sparse_trace_metrics": {
+    "transit": {
+      "samples": 137,
+      "column": "tool_to_module_drift_m",
+      "max_recorded_value": 0.0019559250213205814,
+      "same_step_adjacent_samples": 0
+    },
+    "insert": {
+      "samples": 267,
+      "column": "target_x_m",
+      "max_recorded_value": 0.6759999990463257,
+      "same_step_adjacent_samples": 1,
+      "largest_observed_target_change_m": 0.005000010132789612,
+      "largest_sample_gap_s": 0.16666666666666666,
+      "scope": "Changes between sparse trace samples; intervening per-control-step target changes are not recorded."
+    }
+  },
+  "phases": [
+    {
+      "phase": "capture",
+      "start_driver_step": 0,
+      "end_driver_step_exclusive": 40,
+      "duration_s": 1.3333333333333333,
+      "presentation_duration_s_at_requested_speed": 0.8888888888888888,
+      "first_state_after_phase_action": 1,
+      "motion": {
+        "module": {
+          "step_translation_m": {
+            "samples": 40,
+            "max": 0.009595227202423782,
+            "p95": 0.0035401337677826526,
+            "rms": 0.0023011515593794746
+          },
+          "speed_mps": {
+            "samples": 40,
+            "max": 0.28785681607271346,
+            "p95": 0.10620401303347958,
+            "rms": 0.06903454678138424
+          },
+          "acceleration_mps2": {
+            "samples": 39,
+            "max": 7.171544706597518,
+            "p95": 0.8497124760051231,
+            "rms": 1.2014722920355692
+          },
+          "jerk_mps3": {
+            "samples": 38,
+            "max": 215.10024061566338,
+            "p95": 44.04567056199338,
+            "rms": 37.15932202269371
+          },
+          "angular_speed_radps": {
+            "samples": 40,
+            "max": 0.4066723107705665,
+            "p95": 0.28739775510775095,
+            "rms": 0.20459240531522477
+          }
+        },
+        "tool": {
+          "step_translation_m": {
+            "samples": 40,
+            "max": 0.002483774459208937,
+            "p95": 0.001978317130650225,
+            "rms": 0.001468324035497135
+          },
+          "speed_mps": {
+            "samples": 40,
+            "max": 0.07451323377626812,
+            "p95": 0.05934951391950675,
+            "rms": 0.04404972106491405
+          },
+          "acceleration_mps2": {
+            "samples": 39,
+            "max": 1.4971947983156197,
+            "p95": 1.103574432300488,
+            "rms": 0.613324786036778
+          },
+          "jerk_mps3": {
+            "samples": 38,
+            "max": 37.80083253490288,
+            "p95": 34.88460988609423,
+            "rms": 22.408240100511755
+          },
+          "angular_speed_radps": {
+            "samples": 40,
+            "max": 0.1358187292781771,
+            "p95": 0.11164657453944045,
+            "rms": 0.08359385877418596
+          }
+        },
+        "base": {
+          "step_translation_m": {
+            "samples": 40,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "speed_mps": {
+            "samples": 40,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "acceleration_mps2": {
+            "samples": 39,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "jerk_mps3": {
+            "samples": 38,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "angular_speed_radps": {
+            "samples": 40,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          }
+        }
+      },
+      "tool_to_module_transform_change_from_phase_start": {
+        "max_position_m": 0.040076036629483766,
+        "max_orientation_rad": 0.1100505532452813,
+        "reference_state": 0,
+        "scope": "Phase-local reference; capture and compliant mating intentionally change this transform."
+      }
+    },
+    {
+      "phase": "seat",
+      "start_driver_step": 40,
+      "end_driver_step_exclusive": 70,
+      "duration_s": 1.0,
+      "presentation_duration_s_at_requested_speed": 0.6666666666666666,
+      "first_state_after_phase_action": 41,
+      "motion": {
+        "module": {
+          "step_translation_m": {
+            "samples": 30,
+            "max": 0.001762899919151001,
+            "p95": 0.0015822184239205634,
+            "rms": 0.000793781667775826
+          },
+          "speed_mps": {
+            "samples": 30,
+            "max": 0.05288699757453003,
+            "p95": 0.0474665527176169,
+            "rms": 0.02381345003327478
+          },
+          "acceleration_mps2": {
+            "samples": 30,
+            "max": 0.7779073854647046,
+            "p95": 0.5227882538704229,
+            "rms": 0.23160229273337324
+          },
+          "jerk_mps3": {
+            "samples": 30,
+            "max": 26.341948203170052,
+            "p95": 12.852881908210673,
+            "rms": 6.4765292922705555
+          },
+          "angular_speed_radps": {
+            "samples": 30,
+            "max": 1.1670193581826473,
+            "p95": 0.7130914752558069,
+            "rms": 0.30448000383486445
+          }
+        },
+        "tool": {
+          "step_translation_m": {
+            "samples": 30,
+            "max": 0.002245276660646421,
+            "p95": 0.0018716980692152396,
+            "rms": 0.0011757419603661446
+          },
+          "speed_mps": {
+            "samples": 30,
+            "max": 0.06735829981939262,
+            "p95": 0.05615094207645719,
+            "rms": 0.03527225881098433
+          },
+          "acceleration_mps2": {
+            "samples": 30,
+            "max": 2.4627057439223847,
+            "p95": 1.3788498768825903,
+            "rms": 0.6408514503355164
+          },
+          "jerk_mps3": {
+            "samples": 30,
+            "max": 76.41856037113999,
+            "p95": 64.59684923074249,
+            "rms": 25.574974268694106
+          },
+          "angular_speed_radps": {
+            "samples": 30,
+            "max": 0.26890603165796034,
+            "p95": 0.18504859770180918,
+            "rms": 0.12703162488017242
+          }
+        },
+        "base": {
+          "step_translation_m": {
+            "samples": 30,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "speed_mps": {
+            "samples": 30,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "acceleration_mps2": {
+            "samples": 30,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "jerk_mps3": {
+            "samples": 30,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "angular_speed_radps": {
+            "samples": 30,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          }
+        }
+      },
+      "tool_to_module_transform_change_from_phase_start": {
+        "max_position_m": 0.013349694166833617,
+        "max_orientation_rad": 0.08496830371068097,
+        "reference_state": 40,
+        "scope": "Phase-local reference; capture and compliant mating intentionally change this transform."
+      }
+    },
+    {
+      "phase": "extract",
+      "start_driver_step": 70,
+      "end_driver_step_exclusive": 295,
+      "duration_s": 7.5,
+      "presentation_duration_s_at_requested_speed": 5.0,
+      "first_state_after_phase_action": 71,
+      "motion": {
+        "module": {
+          "step_translation_m": {
+            "samples": 225,
+            "max": 0.004780799661969117,
+            "p95": 0.004200694837896597,
+            "rms": 0.002800773853545353
+          },
+          "speed_mps": {
+            "samples": 225,
+            "max": 0.1434239898590735,
+            "p95": 0.1260208451368979,
+            "rms": 0.0840232156063606
+          },
+          "acceleration_mps2": {
+            "samples": 225,
+            "max": 1.1032240974425538,
+            "p95": 0.7968179549541436,
+            "rms": 0.3859590729017554
+          },
+          "jerk_mps3": {
+            "samples": 225,
+            "max": 37.20182082862928,
+            "p95": 30.77341485535161,
+            "rms": 14.160413821079343
+          },
+          "angular_speed_radps": {
+            "samples": 225,
+            "max": 0.2654796887014661,
+            "p95": 0.16501975968420574,
+            "rms": 0.08962544956429574
+          }
+        },
+        "tool": {
+          "step_translation_m": {
+            "samples": 225,
+            "max": 0.005280166768583349,
+            "p95": 0.004275750291890953,
+            "rms": 0.002901351311269349
+          },
+          "speed_mps": {
+            "samples": 225,
+            "max": 0.15840500305750047,
+            "p95": 0.12827250875672858,
+            "rms": 0.08704053933808047
+          },
+          "acceleration_mps2": {
+            "samples": 225,
+            "max": 2.229209086137401,
+            "p95": 1.5508884578903646,
+            "rms": 0.7807293627619336
+          },
+          "jerk_mps3": {
+            "samples": 225,
+            "max": 93.1030162732888,
+            "p95": 62.70716822559686,
+            "rms": 32.772966497869135
+          },
+          "angular_speed_radps": {
+            "samples": 225,
+            "max": 0.3118582652174362,
+            "p95": 0.19599823518563203,
+            "rms": 0.11450226941204156
+          }
+        },
+        "base": {
+          "step_translation_m": {
+            "samples": 225,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "speed_mps": {
+            "samples": 225,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "acceleration_mps2": {
+            "samples": 225,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "jerk_mps3": {
+            "samples": 225,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "angular_speed_radps": {
+            "samples": 225,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          }
+        }
+      },
+      "tool_to_module_transform_change_from_phase_start": {
+        "max_position_m": 0.027712332773027665,
+        "max_orientation_rad": 0.07610837057653069,
+        "reference_state": 70,
+        "scope": "Phase-local reference; capture and compliant mating intentionally change this transform."
+      },
+      "stall_dwell": {
+        "plane_x_m": 0.225,
+        "band_radius_m": 0.005,
+        "speed_limit_mps": 0.005,
+        "near_plane_duration_s": 0.7,
+        "low_speed_near_plane_duration_s": 0.0,
+        "longest_low_speed_near_plane_interval_s": 0.0,
+        "definition": "Whole extraction intervals with both endpoints in the band; low speed uses 3-D displacement.",
+        "is_success_criterion": false
+      }
+    },
+    {
+      "phase": "transit",
+      "start_driver_step": 295,
+      "end_driver_step_exclusive": 568,
+      "duration_s": 9.1,
+      "presentation_duration_s_at_requested_speed": 6.066666666666666,
+      "first_state_after_phase_action": 296,
+      "motion": {
+        "module": {
+          "step_translation_m": {
+            "samples": 273,
+            "max": 0.003561816643988753,
+            "p95": 0.0034590961754723567,
+            "rms": 0.001980603821028051
+          },
+          "speed_mps": {
+            "samples": 273,
+            "max": 0.1068544993196626,
+            "p95": 0.1037728852641707,
+            "rms": 0.059418114630841526
+          },
+          "acceleration_mps2": {
+            "samples": 273,
+            "max": 0.28550574764014197,
+            "p95": 0.23157253498480998,
+            "rms": 0.11589361602170199
+          },
+          "jerk_mps3": {
+            "samples": 273,
+            "max": 13.383518387700807,
+            "p95": 1.0175905764665616,
+            "rms": 1.1660753820204446
+          },
+          "angular_speed_radps": {
+            "samples": 273,
+            "max": 0.2589150319489216,
+            "p95": 0.24184327608058223,
+            "rms": 0.09250750393248709
+          }
+        },
+        "tool": {
+          "step_translation_m": {
+            "samples": 273,
+            "max": 0.0035103497593407247,
+            "p95": 0.0034289296939585606,
+            "rms": 0.0019443736955016473
+          },
+          "speed_mps": {
+            "samples": 273,
+            "max": 0.10531049278022174,
+            "p95": 0.10286789081875683,
+            "rms": 0.05833121086504942
+          },
+          "acceleration_mps2": {
+            "samples": 273,
+            "max": 0.5885750214590753,
+            "p95": 0.1996625356365893,
+            "rms": 0.10539516962744393
+          },
+          "jerk_mps3": {
+            "samples": 273,
+            "max": 32.438871269067334,
+            "p95": 0.8612617535063195,
+            "rms": 2.6529068628282033
+          },
+          "angular_speed_radps": {
+            "samples": 273,
+            "max": 0.2587933730394856,
+            "p95": 0.24185395794849768,
+            "rms": 0.09274788070914122
+          }
+        },
+        "base": {
+          "step_translation_m": {
+            "samples": 273,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "speed_mps": {
+            "samples": 273,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "acceleration_mps2": {
+            "samples": 273,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "jerk_mps3": {
+            "samples": 273,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "angular_speed_radps": {
+            "samples": 273,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          }
+        }
+      },
+      "tool_to_module_transform_change_from_phase_start": {
+        "max_position_m": 0.0019560520090388545,
+        "max_orientation_rad": 0.0053110445212275325,
+        "reference_state": 295,
+        "scope": "Phase-local reference; capture and compliant mating intentionally change this transform."
+      }
+    },
+    {
+      "phase": "insert",
+      "start_driver_step": 568,
+      "end_driver_step_exclusive": 1890,
+      "duration_s": 44.06666666666667,
+      "presentation_duration_s_at_requested_speed": 29.37777777777778,
+      "first_state_after_phase_action": 569,
+      "motion": {
+        "module": {
+          "step_translation_m": {
+            "samples": 1322,
+            "max": 0.0052109022735283,
+            "p95": 0.0012997125579763695,
+            "rms": 0.0010447196437524137
+          },
+          "speed_mps": {
+            "samples": 1322,
+            "max": 0.156327068205849,
+            "p95": 0.03899137673929108,
+            "rms": 0.03134158931257241
+          },
+          "acceleration_mps2": {
+            "samples": 1322,
+            "max": 1.3654248556600035,
+            "p95": 0.5694234148672471,
+            "rms": 0.26082108429757045
+          },
+          "jerk_mps3": {
+            "samples": 1322,
+            "max": 45.91098452180461,
+            "p95": 17.977306996752088,
+            "rms": 8.34269511103414
+          },
+          "angular_speed_radps": {
+            "samples": 1322,
+            "max": 0.3130151608379272,
+            "p95": 0.08067032454703447,
+            "rms": 0.04317477358265485
+          }
+        },
+        "tool": {
+          "step_translation_m": {
+            "samples": 1322,
+            "max": 0.005113941989180195,
+            "p95": 0.0012805368259948208,
+            "rms": 0.0009879024080108878
+          },
+          "speed_mps": {
+            "samples": 1322,
+            "max": 0.15341825967540584,
+            "p95": 0.038416104779844626,
+            "rms": 0.029637072240326634
+          },
+          "acceleration_mps2": {
+            "samples": 1322,
+            "max": 1.3380707009845272,
+            "p95": 0.6116401130203291,
+            "rms": 0.2858459083825564
+          },
+          "jerk_mps3": {
+            "samples": 1322,
+            "max": 43.843228584593305,
+            "p95": 21.22411254372729,
+            "rms": 9.950038412723995
+          },
+          "angular_speed_radps": {
+            "samples": 1322,
+            "max": 0.3106982829796719,
+            "p95": 0.07954186086545458,
+            "rms": 0.04281281244369308
+          }
+        },
+        "base": {
+          "step_translation_m": {
+            "samples": 1322,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "speed_mps": {
+            "samples": 1322,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "acceleration_mps2": {
+            "samples": 1322,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "jerk_mps3": {
+            "samples": 1322,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "angular_speed_radps": {
+            "samples": 1322,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          }
+        }
+      },
+      "tool_to_module_transform_change_from_phase_start": {
+        "max_position_m": 0.0003333826317268651,
+        "max_orientation_rad": 0.00031913747375026763,
+        "reference_state": 568,
+        "scope": "Phase-local reference; capture and compliant mating intentionally change this transform."
+      }
+    },
+    {
+      "phase": "done",
+      "start_driver_step": 1890,
+      "end_driver_step_exclusive": 1900,
+      "duration_s": 0.3333333333333333,
+      "presentation_duration_s_at_requested_speed": 0.2222222222222222,
+      "first_state_after_phase_action": 1891,
+      "motion": {
+        "module": {
+          "step_translation_m": {
+            "samples": 10,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "speed_mps": {
+            "samples": 10,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "acceleration_mps2": {
+            "samples": 10,
+            "max": 0.25953173382245454,
+            "p95": 0.14274245360234972,
+            "rms": 0.08207114039715142
+          },
+          "jerk_mps3": {
+            "samples": 10,
+            "max": 14.92629694600827,
+            "p95": 11.713141726907677,
+            "rms": 5.32367719997387
+          },
+          "angular_speed_radps": {
+            "samples": 10,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          }
+        },
+        "tool": {
+          "step_translation_m": {
+            "samples": 10,
+            "max": 2.1199739424971405e-05,
+            "p95": 1.9148014145373546e-05,
+            "rms": 1.1716678810220784e-05
+          },
+          "speed_mps": {
+            "samples": 10,
+            "max": 0.0006359921827491421,
+            "p95": 0.0005744404243612064,
+            "rms": 0.0003515003643066235
+          },
+          "acceleration_mps2": {
+            "samples": 10,
+            "max": 0.2182128022684386,
+            "p95": 0.1320600962564379,
+            "rms": 0.07069766430561576
+          },
+          "jerk_mps3": {
+            "samples": 10,
+            "max": 13.630164400437451,
+            "p95": 10.298478696546756,
+            "rms": 4.795174177678332
+          },
+          "angular_speed_radps": {
+            "samples": 10,
+            "max": 0.005079356129423797,
+            "p95": 0.003691168433712516,
+            "rms": 0.0018036747424915135
+          }
+        },
+        "base": {
+          "step_translation_m": {
+            "samples": 10,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "speed_mps": {
+            "samples": 10,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "acceleration_mps2": {
+            "samples": 10,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "jerk_mps3": {
+            "samples": 10,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          },
+          "angular_speed_radps": {
+            "samples": 10,
+            "max": 0.0,
+            "p95": 0.0,
+            "rms": 0.0
+          }
+        }
+      },
+      "tool_to_module_transform_change_from_phase_start": {
+        "max_position_m": 2.179575755593087e-05,
+        "max_orientation_rad": 0.00016931187098083382,
+        "reference_state": 1890,
+        "scope": "Phase-local reference; capture and compliant mating intentionally change this transform."
+      }
+    }
+  ],
+  "input_artifacts": {
+    "body_poses": {
+      "path": "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v2\\body_poses.npz",
+      "sha256": "6b5ba660788ee7c06e4f1a90817ebce8fd14cd7b69792f8032275d0221ab48a1"
+    },
+    "workflow_report": {
+      "path": "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v2\\workflow_report.json",
+      "sha256": "e7053cb0cbf8100d9555743f497d911d54cf45426f754c2f59e704983035e008"
+    },
+    "handoff_trace": {
+      "path": "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v2\\handoff_trace.npz",
+      "sha256": "3db496a35394db40280a75701496c90698fd1d85d350de7cf75c60516fcc493d"
+    }
+  },
+  "analysis_source": {
+    "analyzer": {
+      "path": "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\scripts\\analyze_workflow_motion.py",
+      "sha256": "dfc52f7933f62c3ff05803355552be95412e80c9ff7653030777531cc1d5101e"
+    },
+    "geometry": {
+      "path": "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\src\\zero_g_blade_swap\\grapple_geometry.py",
+      "sha256": "ac67057b1aa6f66763b7ca80b7c75607b2f564f3b25acd3d74c64b386387108c"
+    }
+  }
+}

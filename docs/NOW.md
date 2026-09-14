@@ -7,7 +7,7 @@ bounded follow-up tasks. Earlier detailed investigations are preserved in
 
 ## Current application
 
-`zero-g-mission` runs the current camera-driven recipe through the compute
+`zero-g-mission` runs the fixed-base v3 camera-driven recipe through the compute
 service worker. It checks source and checkpoint hashes before admission, records
 video and traces, and independently verifies the report before reporting success.
 `verify` rechecks every artifact hash and the physical completion fields offline.
@@ -17,7 +17,7 @@ The packaged policies are byte-identical to the original training artifacts:
 | Role | Included checkpoint | Executes actions? |
 | --- | --- | --- |
 | Capture | `policies/servicing_v2/capture_v7m130.pth` | Yes, PPO |
-| Extraction | `policies/servicing_v2/extract_v19noised.pth` | Yes, PPO, trained with estimator noise |
+| Initial extraction | `policies/servicing_v2/extract_v19noised.pth` | Yes, PPO, trained with estimator noise; guarded control finishes the pull |
 | Insertion | `policies/servicing_v2/insert_v13m130.pth` | No; loaded for policy-set compatibility |
 
 [Checkpoint hashes and original training paths](../policies/servicing_v2/MANIFEST.json)
@@ -25,40 +25,69 @@ are in git. Other experimental checkpoints remain under gitignored `logs/` and
 `checkpoints/`; a clone does not include those training archives.
 
 The live recipe uses RGB-D module pose, robot-kinematic velocity, the existing
-lead-in guard, solved-IK transit, compliant mating, simultaneous release, and
-rack retention. These are existing controllers combined into a reproducible
-application. No physical success criterion or tolerance changed.
+lead-in guard, compliant mating, simultaneous release and rack retention. The
+base is stationary. A scripted terminal extraction path follows PPO; synchronized
+quintic setpoints and bounded joint trim guide transfer; guarded insertion uses
+absolute IK with filtered spring-deflection compensation. No physical success
+criterion, tolerance, policy weight or actuator effort limit changed.
+[Controller changes and measured motion](TRANSFER_STABILITY.md)
 
-### Recorded profile validation
+### Fixed-base profile validation
 
-[Seed 6070 validation](../evidence/live_service_current_validation_seed6070.json),
-clean commit `5387cbf`, one environment with stable lighting:
+The [fresh-checkout admission validation](../evidence/live_service_stability_validation_seed6070.json)
+ran on clean source `4a433e0`, service revision `isaac-rgbd-strict-mission-v3`.
+It passed all nine checks with **1,173/1,173 detections**, **0.517 mm maximum
+transit drift**, **0.045 mm final lateral error**, **1.543 mrad final orientation
+error** and **0.733333 seconds rack-only hold**. Its exact current command and
+raw runtime source hashes match the byte-stable checkout.
 
-| Measurement | Result |
-| --- | ---: |
-| Strict verification | All nine checks passed |
-| Camera detections | 1,304/1,304; no misses |
-| Maximum tool-to-module transit drift | 1.436 mm |
-| Final lateral / axial error | 1.672 / 0.590 mm |
-| Final orientation error | 44.081 mrad |
-| Hold after both robot supports released | 0.733333 s, rack only |
+The [initial candidate-checkout validation](../evidence/live_service_stability_initial_validation_seed6070.json)
+on `88235d8` also passed all nine checks:
+1,192/1,192 detections, 0.138 mm transit drift, 0.577 / 0.750 mm final lateral /
+axial error, 0.119 mrad orientation error and 0.733333 seconds rack-only hold.
+A fresh checkout changed raw line-ending bytes in the driver without changing
+its Python text. Its exact-source admission is validated separately; the earlier
+candidate result must not be relabelled as that fresh-clone validation.
 
 The rack pawls engage after measured seating. Their load path is an idealized
 600 N / 30 N-m Rack-to-module fixed joint, not pawl contact. The robot-side lock
 uses a break-rated joint during transit and a bounded spring-damper during mating.
-A video and trace accompany this report locally. This is a demonstrated episode,
-not a statistical reliability qualification.
+A video and trace accompany this report. Its command, checkpoint and runtime
+source bindings determine service admission. This is a demonstrated episode,
+not a statistical reliability qualification; seed 6070 was reused in development.
 
-### Normal application execution
+### Normal v3 application execution
 
-The [normal worker run](../evidence/live_service_application_seed6070_v1.json)
+The [isolated normal worker execution](../evidence/live_service_stability_application_seed6070.json)
+passed all nine mission checks and all five artifact hashes on clean source
+`e501500`. It recorded **1,218/1,218 detections**, **0.164 mm maximum transit
+drift** and **0.733333 seconds rack-only hold**. These are this worker run's
+measurements, separate from the profile validation and selected V5 video.
+
+### Selected fixed-base demonstration
+
+The continuous [video](media/orbital-stable-demo.mp4) is the separate V5 recording
+from clean commit `88235d8`: 1,302/1,302 detections, 0.221 mm maximum transit drift,
+and 0.733333 seconds rack-only hold. All nine mission checks passed. Its 1,293
+physical control intervals span 43.1 seconds; playback is real time with a
+1.5-second terminal still. This is not an additional physical hold or a new
+independent seed. [Recorded demonstration](../evidence/workflow_stability_latch_handoff_v5_seed6070.json)
+
+### Preserved v2 application recordings
+
+The earlier [profile validation](../evidence/live_service_current_validation_seed6070.json)
+used clean commit `5387cbf`: 1,304/1,304 detections, 1.436 mm transit drift,
+1.672 / 0.590 mm final lateral / axial error, 44.081 mrad orientation error and
+0.733333 seconds rack-only hold. It belongs to the earlier moving-carriage recipe.
+
+The earlier [normal worker run](../evidence/live_service_application_seed6070_v1.json)
 used clean commit `f7cdf23`, the packaged weights and the readiness checks. It
 passed all nine mission checks and verified all five output hashes. It recorded
 **1,320/1,320 detections**, **1.370 mm maximum transit drift**, final lateral error
 **0.729 mm**, and **0.733333 s rack-only hold**. This is a second recording at
 seed 6070, not an independent evaluation seed or a new success rate.
 
-### Fresh perception validation
+### Unchanged perception validation
 
 [Seed 287 certificate](../evidence/fiducial_rgbd_service_current_seed287.json):
 1,024 rendered held-out poses on the deployed 640 x 640 camera and flush datum
@@ -80,7 +109,24 @@ The 327 MB corpus remains local at
 
 ## Research cohorts
 
-### Full-chain results
+### Fixed-base regression comparison
+
+The [completed seed-4070 pair](../evidence/workflow_stability_paired_summary.json)
+on clean source `4a433e0` records **5/8 legacy** and **6/8 corrected fixed-base**
+successes. The existing physical retention/release audit agrees, with no
+matched success-to-failure changes. These are eight conditions per arm, not 24.
+
+The planned three-seed comparison was shortened at the owner's request.
+Seed 5070 was interrupted; seed 6070 was not run. Incomplete work is retained
+and unscored. The completed pair used randomized lighting and 1,900 control
+steps. Several controller choices and base transport change together, and both
+4070 and 6070 informed development. This is a partial regression check, not an
+independent holdout or a completed qualification of the unchanged 95% gate.
+
+### Earlier full-chain results
+
+The following cohorts retain their original configurations and completion rules.
+They are historical comparisons, not recertification of the new fixed-base recipe.
 
 | Configuration | Successes | Rate | Wilson 95% interval |
 | --- | ---: | ---: | --- |
@@ -88,13 +134,13 @@ The 327 MB corpus remains local at
 | Paired state-task control without rack retention | 17/24 | 70.83% | [50.8%, 85.1%] |
 | Vision task, oracle module pose | 20/24 | 83.33% | [64.1%, 93.3%] |
 | Vision task, original camera pose pipeline | 4/24 | 16.67% | [6.7%, 35.9%] |
-| Vision task, noise-trained extraction + kinematic velocity + lead-in guard | 17/24 | 70.83% | [50.8%, 85.1%] |
+| Previous v2 application: noise-trained extraction + kinematic velocity + lead-in guard | 17/24 | 70.83% | [50.8%, 85.1%] |
 
 Sources: [strict state chain](../evidence/workflow_robot_carried_release_rack_retention_v1_certification.json),
 [no-rack control](../evidence/workflow_robot_carried_release_rack_retention_control_v1_certification.json),
 [oracle control](../evidence/workflow_robot_carried_m130pin_vision_oracle_control_v2_certification.json),
 [original camera cohort](../evidence/workflow_robot_carried_m130pin_vision_datum_pair_certification.json),
-[current application recipe cohort](../evidence/workflow_robot_carried_vision_noised_extract_kinematic_leadin_certification.json).
+[previous v2 application recipe cohort](../evidence/workflow_robot_carried_vision_noised_extract_kinematic_leadin_certification.json).
 
 Each cohort has three held-out evaluation seeds, eight environments per seed.
 The state task and vision task differ in observation and camera timing; compare
@@ -102,7 +148,7 @@ the two vision arms to isolate the pose-source substitution. The combined camera
 recipe changes three factors from the original. Its result is not attributable
 to retraining alone.
 
-All full-chain rates remain below the unchanged 95% gate. An older camera
+All of these earlier full-chain rates remain below the unchanged 95% gate. An older camera
 milestone used a 50% target; passing that milestone did not qualify the chain.
 The recovered factorial contains further arms that still need a provenance and
 scope audit (T21), so the selected canonical recipe is not claimed to be optimal.
@@ -186,12 +232,16 @@ rendered detections separately.
 
 ## Evidence and reproducibility
 
-The manifest contains **75 canonical, 12 retracted and 218 historical** reports.
+The manifest contains **80 canonical, 12 retracted and 228 historical** reports.
 Quote canonical reports with their scope. Failed and superseded results are kept;
 [evidence/RETRACTED.md](../evidence/RETRACTED.md) records withdrawn claims.
 
-**35 reports carry** source-file bindings. Eight recover fully from reachable
-git revisions; 27 have at least one unrecoverable binding from uncommitted code.
+**45 reports carry** source-file bindings. Seventeen are recovered through
+reachable git revisions or exact committed source-snapshot overlays;
+**28 cannot be fully recovered**. Those comprise 27 inherited gaps from uncommitted code
+and the preserved failed axial-only extraction probe, whose exact mixed-line-ending
+runtime source was not recovered. Normalized text is not substituted for its
+recorded bytes.
 [T0](NEXT_WORK.md#t0) remains open for those older experiments. The new mission
 and perception reports bind current source, and the mission weights are included.
 
@@ -216,6 +266,7 @@ qualification gates remain open despite passing application tests.
 ## What is not modelled
 
 No hardware validation, spacecraft reaction dynamics, free-flying base,
-electrical reconnection, or realistic lock/pawl contact. The robot carriage's
-own compliant load path is not simulated. Every headline learned checkpoint
+electrical reconnection, or realistic lock/pawl contact. The current base is
+stationary; the old moving carriage's compliant load path was not simulated.
+Every headline learned checkpoint
 comes from one training seed. [Detailed limits](sim_to_real.md)

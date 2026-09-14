@@ -1,0 +1,11 @@
+{
+  "recorded_utc": "2026-09-14T21:01:00Z",
+  "reason": "Independent fixed-step cohorts can share available GPU memory; serial camera evaluation takes approximately twelve minutes per cohort.",
+  "preserved_runs": ["legacy_rail/seed4070", "refined_fixed_base/seed4070"],
+  "continuation_runs": ["legacy_rail/seed5070", "refined_fixed_base/seed5070", "legacy_rail/seed6070", "refined_fixed_base/seed6070"],
+  "maximum_concurrent_cohorts": 2,
+  "original_supervisor_handoff": "An empty reserved legacy_rail/seed5070 directory stops its next mkdir only after both seed4070 runs have completed. No active simulator process is interrupted. Preserve the original supervisor log and manifest.",
+  "unchanged": ["source commit", "controller flags", "seeds", "environment count", "control-step horizon", "checkpoints", "camera configuration", "lighting", "completion thresholds", "predeclared acceptance criteria"],
+  "no_outcome_selection": "Reuse exactly the first seed4070 run of each arm, regardless of physical outcome. Execute every remaining arm once; preserve failures.",
+  "scope": "A scheduling change only. Physics uses fixed simulation steps. No wall-clock performance comparison or bitwise simulation determinism is claimed."
+}

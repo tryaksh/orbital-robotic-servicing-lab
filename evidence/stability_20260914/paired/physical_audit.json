@@ -1,0 +1,620 @@
+{
+  "evidence_type": "supplemental_bounded_cohort_physical_audit",
+  "status": "partial_stopped_on_explicit_user_request",
+  "source_commit": "4a433e048b954e88360242fd78e5bb8e5399a988",
+  "planned_seeds": [
+    4070,
+    5070,
+    6070
+  ],
+  "completed_seeds": [
+    4070
+  ],
+  "planned_episodes_per_arm": 24,
+  "completed_episodes_per_arm": 8,
+  "excluded_runs": [
+    {
+      "seed": 5070,
+      "status": "interrupted_without_terminal_report_or_NPZ",
+      "included_in_counts": false
+    },
+    {
+      "seed": 6070,
+      "status": "not_run",
+      "included_in_counts": false
+    }
+  ],
+  "arms": {
+    "legacy_rail": {
+      "episodes": 8,
+      "npz_successes": 5,
+      "npz_success_rate": 0.625,
+      "strict_physical_successes": 5,
+      "strict_physical_success_rate": 0.625,
+      "npz_passes_rejected_by_physical_audit": []
+    },
+    "refined_fixed_base": {
+      "episodes": 8,
+      "npz_successes": 6,
+      "npz_success_rate": 0.75,
+      "strict_physical_successes": 6,
+      "strict_physical_success_rate": 0.75,
+      "npz_passes_rejected_by_physical_audit": []
+    }
+  },
+  "paired_changes": {
+    "npz_pass_to_fail": [],
+    "npz_fail_to_pass": [
+      {
+        "seed": 4070,
+        "env": 5,
+        "baseline_failed_checks": [
+          "npz_terminal_success",
+          "rack_engaged_after_seating",
+          "rack_recheck_observed",
+          "rack_hold_duration",
+          "latch_released",
+          "hand_released"
+        ],
+        "refined_failed_checks": []
+      }
+    ],
+    "strict_physical_pass_to_fail": [],
+    "strict_physical_fail_to_pass": [
+      {
+        "seed": 4070,
+        "env": 5,
+        "baseline_failed_checks": [
+          "npz_terminal_success",
+          "rack_engaged_after_seating",
+          "rack_recheck_observed",
+          "rack_hold_duration",
+          "latch_released",
+          "hand_released"
+        ],
+        "refined_failed_checks": []
+      }
+    ]
+  },
+  "episode_results": {
+    "legacy_rail": [
+      {
+        "seed": 4070,
+        "env": 0,
+        "npz_success": true,
+        "strict_physical_success": true,
+        "checks": {
+          "npz_terminal_success": true,
+          "robot_carrier": true,
+          "entered_transit": true,
+          "retained_throughout": true,
+          "transit_samples": true,
+          "tool_travel": true,
+          "module_travel": true,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": true,
+          "rack_recheck_observed": true,
+          "rack_hold_duration": true,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": true,
+          "hand_released": true
+        },
+        "failed_checks": []
+      },
+      {
+        "seed": 4070,
+        "env": 1,
+        "npz_success": false,
+        "strict_physical_success": false,
+        "checks": {
+          "npz_terminal_success": false,
+          "robot_carrier": true,
+          "entered_transit": false,
+          "retained_throughout": false,
+          "transit_samples": false,
+          "tool_travel": false,
+          "module_travel": false,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": false,
+          "rack_recheck_observed": false,
+          "rack_hold_duration": false,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": false,
+          "hand_released": false
+        },
+        "failed_checks": [
+          "npz_terminal_success",
+          "entered_transit",
+          "retained_throughout",
+          "transit_samples",
+          "tool_travel",
+          "module_travel",
+          "rack_engaged_after_seating",
+          "rack_recheck_observed",
+          "rack_hold_duration",
+          "latch_released",
+          "hand_released"
+        ]
+      },
+      {
+        "seed": 4070,
+        "env": 2,
+        "npz_success": true,
+        "strict_physical_success": true,
+        "checks": {
+          "npz_terminal_success": true,
+          "robot_carrier": true,
+          "entered_transit": true,
+          "retained_throughout": true,
+          "transit_samples": true,
+          "tool_travel": true,
+          "module_travel": true,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": true,
+          "rack_recheck_observed": true,
+          "rack_hold_duration": true,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": true,
+          "hand_released": true
+        },
+        "failed_checks": []
+      },
+      {
+        "seed": 4070,
+        "env": 3,
+        "npz_success": false,
+        "strict_physical_success": false,
+        "checks": {
+          "npz_terminal_success": false,
+          "robot_carrier": true,
+          "entered_transit": false,
+          "retained_throughout": false,
+          "transit_samples": false,
+          "tool_travel": false,
+          "module_travel": false,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": false,
+          "rack_recheck_observed": false,
+          "rack_hold_duration": false,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": false,
+          "hand_released": false
+        },
+        "failed_checks": [
+          "npz_terminal_success",
+          "entered_transit",
+          "retained_throughout",
+          "transit_samples",
+          "tool_travel",
+          "module_travel",
+          "rack_engaged_after_seating",
+          "rack_recheck_observed",
+          "rack_hold_duration",
+          "latch_released",
+          "hand_released"
+        ]
+      },
+      {
+        "seed": 4070,
+        "env": 4,
+        "npz_success": true,
+        "strict_physical_success": true,
+        "checks": {
+          "npz_terminal_success": true,
+          "robot_carrier": true,
+          "entered_transit": true,
+          "retained_throughout": true,
+          "transit_samples": true,
+          "tool_travel": true,
+          "module_travel": true,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": true,
+          "rack_recheck_observed": true,
+          "rack_hold_duration": true,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": true,
+          "hand_released": true
+        },
+        "failed_checks": []
+      },
+      {
+        "seed": 4070,
+        "env": 5,
+        "npz_success": false,
+        "strict_physical_success": false,
+        "checks": {
+          "npz_terminal_success": false,
+          "robot_carrier": true,
+          "entered_transit": true,
+          "retained_throughout": true,
+          "transit_samples": true,
+          "tool_travel": true,
+          "module_travel": true,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": false,
+          "rack_recheck_observed": false,
+          "rack_hold_duration": false,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": false,
+          "hand_released": false
+        },
+        "failed_checks": [
+          "npz_terminal_success",
+          "rack_engaged_after_seating",
+          "rack_recheck_observed",
+          "rack_hold_duration",
+          "latch_released",
+          "hand_released"
+        ]
+      },
+      {
+        "seed": 4070,
+        "env": 6,
+        "npz_success": true,
+        "strict_physical_success": true,
+        "checks": {
+          "npz_terminal_success": true,
+          "robot_carrier": true,
+          "entered_transit": true,
+          "retained_throughout": true,
+          "transit_samples": true,
+          "tool_travel": true,
+          "module_travel": true,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": true,
+          "rack_recheck_observed": true,
+          "rack_hold_duration": true,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": true,
+          "hand_released": true
+        },
+        "failed_checks": []
+      },
+      {
+        "seed": 4070,
+        "env": 7,
+        "npz_success": true,
+        "strict_physical_success": true,
+        "checks": {
+          "npz_terminal_success": true,
+          "robot_carrier": true,
+          "entered_transit": true,
+          "retained_throughout": true,
+          "transit_samples": true,
+          "tool_travel": true,
+          "module_travel": true,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": true,
+          "rack_recheck_observed": true,
+          "rack_hold_duration": true,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": true,
+          "hand_released": true
+        },
+        "failed_checks": []
+      }
+    ],
+    "refined_fixed_base": [
+      {
+        "seed": 4070,
+        "env": 0,
+        "npz_success": true,
+        "strict_physical_success": true,
+        "checks": {
+          "npz_terminal_success": true,
+          "robot_carrier": true,
+          "entered_transit": true,
+          "retained_throughout": true,
+          "transit_samples": true,
+          "tool_travel": true,
+          "module_travel": true,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": true,
+          "rack_recheck_observed": true,
+          "rack_hold_duration": true,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": true,
+          "hand_released": true
+        },
+        "failed_checks": []
+      },
+      {
+        "seed": 4070,
+        "env": 1,
+        "npz_success": false,
+        "strict_physical_success": false,
+        "checks": {
+          "npz_terminal_success": false,
+          "robot_carrier": true,
+          "entered_transit": false,
+          "retained_throughout": false,
+          "transit_samples": false,
+          "tool_travel": false,
+          "module_travel": false,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": false,
+          "rack_recheck_observed": false,
+          "rack_hold_duration": false,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": false,
+          "hand_released": false
+        },
+        "failed_checks": [
+          "npz_terminal_success",
+          "entered_transit",
+          "retained_throughout",
+          "transit_samples",
+          "tool_travel",
+          "module_travel",
+          "rack_engaged_after_seating",
+          "rack_recheck_observed",
+          "rack_hold_duration",
+          "latch_released",
+          "hand_released"
+        ]
+      },
+      {
+        "seed": 4070,
+        "env": 2,
+        "npz_success": true,
+        "strict_physical_success": true,
+        "checks": {
+          "npz_terminal_success": true,
+          "robot_carrier": true,
+          "entered_transit": true,
+          "retained_throughout": true,
+          "transit_samples": true,
+          "tool_travel": true,
+          "module_travel": true,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": true,
+          "rack_recheck_observed": true,
+          "rack_hold_duration": true,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": true,
+          "hand_released": true
+        },
+        "failed_checks": []
+      },
+      {
+        "seed": 4070,
+        "env": 3,
+        "npz_success": false,
+        "strict_physical_success": false,
+        "checks": {
+          "npz_terminal_success": false,
+          "robot_carrier": true,
+          "entered_transit": false,
+          "retained_throughout": false,
+          "transit_samples": false,
+          "tool_travel": false,
+          "module_travel": false,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": false,
+          "rack_recheck_observed": false,
+          "rack_hold_duration": false,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": false,
+          "hand_released": false
+        },
+        "failed_checks": [
+          "npz_terminal_success",
+          "entered_transit",
+          "retained_throughout",
+          "transit_samples",
+          "tool_travel",
+          "module_travel",
+          "rack_engaged_after_seating",
+          "rack_recheck_observed",
+          "rack_hold_duration",
+          "latch_released",
+          "hand_released"
+        ]
+      },
+      {
+        "seed": 4070,
+        "env": 4,
+        "npz_success": true,
+        "strict_physical_success": true,
+        "checks": {
+          "npz_terminal_success": true,
+          "robot_carrier": true,
+          "entered_transit": true,
+          "retained_throughout": true,
+          "transit_samples": true,
+          "tool_travel": true,
+          "module_travel": true,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": true,
+          "rack_recheck_observed": true,
+          "rack_hold_duration": true,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": true,
+          "hand_released": true
+        },
+        "failed_checks": []
+      },
+      {
+        "seed": 4070,
+        "env": 5,
+        "npz_success": true,
+        "strict_physical_success": true,
+        "checks": {
+          "npz_terminal_success": true,
+          "robot_carrier": true,
+          "entered_transit": true,
+          "retained_throughout": true,
+          "transit_samples": true,
+          "tool_travel": true,
+          "module_travel": true,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": true,
+          "rack_recheck_observed": true,
+          "rack_hold_duration": true,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": true,
+          "hand_released": true
+        },
+        "failed_checks": []
+      },
+      {
+        "seed": 4070,
+        "env": 6,
+        "npz_success": true,
+        "strict_physical_success": true,
+        "checks": {
+          "npz_terminal_success": true,
+          "robot_carrier": true,
+          "entered_transit": true,
+          "retained_throughout": true,
+          "transit_samples": true,
+          "tool_travel": true,
+          "module_travel": true,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": true,
+          "rack_recheck_observed": true,
+          "rack_hold_duration": true,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": true,
+          "hand_released": true
+        },
+        "failed_checks": []
+      },
+      {
+        "seed": 4070,
+        "env": 7,
+        "npz_success": true,
+        "strict_physical_success": true,
+        "checks": {
+          "npz_terminal_success": true,
+          "robot_carrier": true,
+          "entered_transit": true,
+          "retained_throughout": true,
+          "transit_samples": true,
+          "tool_travel": true,
+          "module_travel": true,
+          "transit_position": true,
+          "transit_orientation": true,
+          "rack_enabled": true,
+          "rack_load_path": true,
+          "rack_engaged_after_seating": true,
+          "rack_recheck_observed": true,
+          "rack_hold_duration": true,
+          "rack_position": true,
+          "rack_orientation": true,
+          "latch_released": true,
+          "hand_released": true
+        },
+        "failed_checks": []
+      }
+    ]
+  },
+  "inputs": [
+    {
+      "path": "comparison.json",
+      "size_bytes": 45003,
+      "sha256": "490d48d13a20047e0f910c835e0a84b0e94c3a69480577a1f8550d2368e1805c"
+    },
+    {
+      "path": "legacy_rail/seed4070/workflow_report.json",
+      "size_bytes": 58079,
+      "sha256": "c3f3e2fc4041a5d66c4991d8819b65915c7c8b6d9e02d5966315ec1db0612c37"
+    },
+    {
+      "path": "legacy_rail/seed4070/episodes.npz",
+      "size_bytes": 2421,
+      "sha256": "cb29caf95997a0d320b9bbf476304ab65603a5e083fa5ef5702d63f85a94f356"
+    },
+    {
+      "path": "legacy_rail/seed4070/execution.log",
+      "size_bytes": 24622,
+      "sha256": "57ceb39601344a976ea4d4e73b9aac1330698d7c28bc1e1c4b87599dd9a450ef"
+    },
+    {
+      "path": "refined_fixed_base/seed4070/workflow_report.json",
+      "size_bytes": 57585,
+      "sha256": "051c7e2702f85035d416471ce805ae7c7a13d1fff489211c5f6995af604b9eb6"
+    },
+    {
+      "path": "refined_fixed_base/seed4070/episodes.npz",
+      "size_bytes": 2413,
+      "sha256": "d93cd10815ca03872ea6514066effb00a40e813341322e9b094a4014cd4c7b44"
+    },
+    {
+      "path": "refined_fixed_base/seed4070/execution.log",
+      "size_bytes": 24952,
+      "sha256": "cbaa4855d4726f8c18583a6181688baab931249361785e8fce6c99f01e5e6900"
+    }
+  ],
+  "qualification": {
+    "passed": null,
+    "reason": "The planned 24-episode-per-arm comparison was not completed."
+  },
+  "scope_and_limitations": [
+    "Only the completed seed4070 bounded cohort, eight environments per arm, is counted.",
+    "The user explicitly requested wrapping up. Seed5070 processes were stopped; seed6070 was not run. Partial logs are preserved but excluded from every outcome count.",
+    "Original NPZ outcomes and existing mission retention, release and rack-only-hold checks are reported separately without changing thresholds.",
+    "No six-run aggregate or 24-episode reliability claim exists for this interrupted comparison.",
+    "Simulation only. Controller and transport changes are combined; this is a limited regression comparison, not hardware qualification."
+  ]
+}

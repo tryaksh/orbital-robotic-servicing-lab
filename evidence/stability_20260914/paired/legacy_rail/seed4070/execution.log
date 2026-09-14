@@ -1,0 +1,407 @@
+[INFO][AppLauncher]: Using device: cuda:0
+[INFO][AppLauncher]: Loading experience file: D:\6axis-space-robotics\.deps\IsaacLab\apps\isaaclab.python.headless.rendering.kit
+Loading user config located at: 'c:/isaac-sim/kit/data/Kit/Isaac-Sim/5.1/user.config.json'
+[Info] [carb] Logging to file: c:/isaac-sim/kit/logs/Kit/Isaac-Sim/5.1/kit_20260914_151155.log
+2026-09-14T21:11:56Z [1,273ms] [Warning] [gpu.foundation.plugin] Skipping unsupported non-NVIDIA GPU: Intel(R) Graphics
+2026-09-14T21:11:56Z [1,274ms] [Warning] [gpu.foundation.plugin] Skipping unsupported non-NVIDIA GPU: Intel(R) Graphics
+
+|---------------------------------------------------------------------------------------------|
+| Driver Version: 592.01        | Graphics API: Vulkan
+|=============================================================================================|
+| GPU | Name                             | Active | LDA | GPU Memory | Vendor-ID | LUID       |
+|     |                                  |        |     |            | Device-ID | UUID       |
+|     |                                  |        |     |            | Bus-ID    |            |
+|---------------------------------------------------------------------------------------------|
+| 0   | NVIDIA GeForce RTX 5070 Ti Lap.. | Yes: 0 |     | 11944   MB | 10de      | 36680100.. |
+|     |                                  |        |     |            | 2f58      | 4281cb34.. |
+|     |                                  |        |     |            | 2         |            |
+|---------------------------------------------------------------------------------------------|
+| 1   | Intel(R) Graphics                |        |     | 18347   MB | 8086      | 63630100.. |
+|     |                                  |        |     |            | 7d67      | 8680677d.. |
+|     |                                  |        |     |            | N/A       |            |
+|=============================================================================================|
+| OS: Windows 11 Pro, Version: 10.0 (25H2), Build: 26200, Kernel: 10.0.26100.9444
+| Processor: Intel(R) Core(TM) Ultra 9 275HX
+| Cores: 24 | Logical Cores: 24
+|---------------------------------------------------------------------------------------------|
+| Total Memory (MB): 32189 | Free Memory: 10161
+| Total Page/Swap (MB): 48573 | Free Page/Swap: 5965
+|---------------------------------------------------------------------------------------------|
+2026-09-14T21:11:57Z [2,050ms] [Warning] [carb] Acquiring non optional plugin interface which is not listed as dependency: [omni::physx::IPhysxBenchmarks v1.0] (plugin: <default plugin>), by client: omni.physics.physx.plugin. Add it to CARB_PLUGIN_IMPL_DEPS() macro of a client.
+2026-09-14T21:11:57Z [2,063ms] [Warning] [omni.isaac.dynamic_control] omni.isaac.dynamic_control is deprecated as of Isaac Sim 4.5. No action is needed from end-users.
+2026-09-14T21:11:59Z [4,498ms] [Warning] [pxr.Semantics] pxr.Semantics is deprecated - please use Semantics instead
+2026-09-14T21:11:59Z [4,600ms] [Warning] [omni.graph.core.plugin] Found duplicate of category 'Replicator' - was 'Annotators', adding 'Fabric Reader'
+2026-09-14T21:11:59Z [4,600ms] [Warning] [omni.graph.core.plugin] Category 'Replicator' not accepted on node type 'omni.replicator.core.FabricReader' in extension 'omni.replicator.core'
+2026-09-14T21:11:59Z [4,601ms] [Warning] [omni.replicator.core.scripts.extension] No material configuration file, adding configuration to material settings directly.
+2026-09-14T21:12:01Z [5,794ms] [Warning] [omni.kvdb.plugin] Disabling key-value database because another kit process is locking it
+2026-09-14T21:12:04Z [9,323ms] [Warning] [omni.fabric.plugin] Warning: attribute overrideClipRange not found for bucket id 7
+
+[INFO]: Parsing configuration from: zero_g_blade_swap.tasks.blade_swap.vision_two_slot_env_cfg:ZeroGBladeGrappleVisionTwoSlotWorkflowEnvCfg
+[INFO] Destination bay fitted with its vertical lead-in (16.6 mm per side, accepting 0.074 rad of delivered attitude error); channel relief 4.61 mm per side
+[INFO] Destination rack fitted with two visible passive pawls; break rating 600.0 N / 30.0 N-m
+[INFO] Latch ARMED ON RELEASE at 20000.0 N / 1000.0 N-m; two-body fixed joint with reaction wrench (engages when the driver retains the grip, not on capture)
+[INFO] Module velocity channel from kinematics: zero before capture, the wrist's own velocity after it. This is not the shipped path.
+[INFO] relocate: phase budgets ['capture=10.0s', 'seat=1.0s', 'extract=25.0s', 'transit=75.0s', 'insert=30.0s'] -> episode 92.7 s
+[INFO] capture  obs= 40 act=7 epoch=3100 <- capture_v7m130.pth
+[INFO] extract  obs= 40 act=6 epoch=14600 <- extract_v19noised.pth
+[INFO] insert   obs= 45 act=6 epoch=8000 <- insert_v13m130.pth
+
+[36m===================================================================================================================[0m
+[36m[1m[INFO][IsaacLab]: Logging to file: C:\Users\tryak\AppData\Local\Temp\isaaclab\logs\isaaclab_2026-09-14_15-12-06.log[0m
+[36m===================================================================================================================[0m
+
+[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : 4070
+	Physics step-size     : 0.008333333333333333
+	Rendering step-size   : 0.06666666666666667
+	Environment step-size : 0.03333333333333333
+[INFO]: Time taken for scene creation : 2.613242 seconds
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 8
+	Environment spacing   : 2.6
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : []
+	Replicate physics     : False
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+2026-09-14T21:12:09Z [14,114ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_0/ReleaseLatchJoint/Joint
+2026-09-14T21:12:09Z [14,114ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_0/RackRetentionJoint/Joint
+2026-09-14T21:12:09Z [14,115ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_1/ReleaseLatchJoint/Joint
+2026-09-14T21:12:09Z [14,115ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_1/RackRetentionJoint/Joint
+2026-09-14T21:12:09Z [14,115ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_2/ReleaseLatchJoint/Joint
+2026-09-14T21:12:09Z [14,115ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_2/RackRetentionJoint/Joint
+2026-09-14T21:12:09Z [14,115ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_3/ReleaseLatchJoint/Joint
+2026-09-14T21:12:09Z [14,115ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_3/RackRetentionJoint/Joint
+2026-09-14T21:12:09Z [14,115ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_4/ReleaseLatchJoint/Joint
+2026-09-14T21:12:09Z [14,115ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_4/RackRetentionJoint/Joint
+2026-09-14T21:12:09Z [14,115ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_5/ReleaseLatchJoint/Joint
+2026-09-14T21:12:09Z [14,115ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_5/RackRetentionJoint/Joint
+2026-09-14T21:12:09Z [14,115ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_6/ReleaseLatchJoint/Joint
+2026-09-14T21:12:09Z [14,115ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_6/RackRetentionJoint/Joint
+2026-09-14T21:12:09Z [14,115ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_7/ReleaseLatchJoint/Joint
+2026-09-14T21:12:09Z [14,115ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_7/RackRetentionJoint/Joint
+2026-09-14T21:12:10Z [14,721ms] [Warning] [omni.fabric.plugin] getAttributeCount called on non-existent path /World/envs/env_7/Robot/wrist_3_link/collisions/wrist3
+2026-09-14T21:12:10Z [14,721ms] [Warning] [omni.fabric.plugin] getTypes called on non-existent path /World/envs/env_7/Robot/wrist_3_link/collisions/wrist3
+[INFO]: Time taken for simulation start : 3.727099 seconds
+[INFO] Command Manager:  <CommandManager> contains 1 active terms.
++-----------------------------------------------+
+|              Active Command Terms             |
++-------+----------------+----------------------+
+| Index | Name           |         Type         |
++-------+----------------+----------------------+
+|   0   | insertion_goal | InsertionGoalCommand |
++-------+----------------+----------------------+
+
+[INFO] Event Manager:  <EventManager> contains 3 active terms.
++--------------------------------------+
+| Active Event Terms in Mode: 'reset'  |
++---------+----------------------------+
+|  Index  | Name                       |
++---------+----------------------------+
+|    0    | reset_scene                |
+|    1    | reset_progress             |
+|    2    | reset_arm                  |
+|    3    | reset_blade                |
+|    4    | orbital_sun                |
+|    5    | jitter_module              |
+|    6    | open_gripper_on_reset      |
+|    7    | remember_blade_pose        |
+|    8    | reset_grapple              |
++---------+----------------------------+
++-------------------------------------+
+| Active Event Terms in Mode: 'prestartup' |
++------------+------------------------+
+|   Index    | Name                   |
++------------+------------------------+
+|     0      | rack_albedo            |
++------------+------------------------+
++--------------------------------------------------------------------+
+|               Active Event Terms in Mode: 'interval'               |
++-------+---------------+--------------------------------------------+
+| Index | Name          |          Interval time range (s)           |
++-------+---------------+--------------------------------------------+
+|   0   | grapple_latch | (0.03333333333333333, 0.03333333333333333) |
++-------+---------------+--------------------------------------------+
+
+[INFO] Recorder Manager:  <RecorderManager> contains 0 active terms.
++---------------------+
+| Active Recorder Terms |
++-----------+---------+
+|   Index   | Name    |
++-----------+---------+
++-----------+---------+
+
+[INFO] Action Manager:  <ActionManager> contains 2 active terms.
++----------------------------------+
+|  Active Action Terms (shape: 7)  |
++--------+-----------+-------------+
+| Index  | Name      |   Dimension |
++--------+-----------+-------------+
+|   0    | arm       |           6 |
+|   1    | gripper   |           1 |
++--------+-----------+-------------+
+
+[INFO] Observation Manager: <ObservationManager> contains 3 groups.
++--------------------------------------------------------+
+| Active Observation Terms in Group: 'grasp' (shape: (40,)) |
++------------+------------------------------+------------+
+|   Index    | Name                         |   Shape    |
++------------+------------------------------+------------+
+|     0      | joint_pos                    |    (6,)    |
+|     1      | joint_vel                    |    (6,)    |
+|     2      | end_effector                 |    (7,)    |
+|     3      | grip_error                   |    (6,)    |
+|     4      | gripper_state                |    (2,)    |
+|     5      | blade_velocity               |    (6,)    |
+|     6      | previous_action              |    (7,)    |
++------------+------------------------------+------------+
++----------------------------------------------------------+
+| Active Observation Terms in Group: 'extract' (shape: (40,)) |
++------------+--------------------------------+------------+
+|   Index    | Name                           |   Shape    |
++------------+--------------------------------+------------+
+|     0      | joint_pos                      |    (6,)    |
+|     1      | joint_vel                      |    (6,)    |
+|     2      | end_effector                   |    (7,)    |
+|     3      | grip_error                     |    (6,)    |
+|     4      | gripper_state                  |    (2,)    |
+|     5      | blade_velocity                 |    (6,)    |
+|     6      | previous_action                |    (6,)    |
+|     7      | remaining_travel               |    (1,)    |
++------------+--------------------------------+------------+
++----------------------------------------------------------+
+| Active Observation Terms in Group: 'insert' (shape: (45,)) |
++------------+--------------------------------+------------+
+|   Index    | Name                           |   Shape    |
++------------+--------------------------------+------------+
+|     0      | joint_pos                      |    (6,)    |
+|     1      | joint_vel                      |    (6,)    |
+|     2      | end_effector                   |    (7,)    |
+|     3      | grip_error                     |    (6,)    |
+|     4      | gripper_state                  |    (2,)    |
+|     5      | blade_velocity                 |    (6,)    |
+|     6      | previous_action                |    (6,)    |
+|     7      | blade_goal_error               |    (6,)    |
++------------+--------------------------------+------------+
+
+[INFO] Termination Manager:  <TerminationManager> contains 2 active terms.
++-------------------------------+
+|    Active Termination Terms   |
++-------+------------+----------+
+| Index | Name       | Time Out |
++-------+------------+----------+
+|   0   | time_out   |   True   |
+|   1   | non_finite |  False   |
++-------+------------+----------+
+
+[INFO] Reward Manager:  <RewardManager> contains 0 active terms.
++-----------------------+
+|  Active Reward Terms  |
++-------+------+--------+
+| Index | Name | Weight |
++-------+------+--------+
++-------+------+--------+
+
+[INFO] Curriculum Manager:  <CurriculumManager> contains 0 active terms.
++----------------------+
+| Active Curriculum Terms |
++-----------+----------+
+|   Index   | Name     |
++-----------+----------+
++-----------+----------+
+
+[INFO]: Completed setting up the environment...
+[PLAN] visual occupancy preflight passed=8/8 source=bay0 destination=bay1 scores=[1.0000,0.0000] threshold=0.50
+2026-09-14T21:14:17Z [142,526ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_7/ReleaseLatchJoint/Joint
+2026-09-14T21:14:34Z [159,265ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_2/ReleaseLatchJoint/Joint
+2026-09-14T21:14:38Z [163,560ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_4/ReleaseLatchJoint/Joint
+2026-09-14T21:15:07Z [192,234ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_0/ReleaseLatchJoint/Joint
+2026-09-14T21:15:15Z [200,380ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_6/ReleaseLatchJoint/Joint
+2026-09-14T21:16:09Z [254,425ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_5/ReleaseLatchJoint/Joint
+2026-09-14T21:17:03Z [308,247ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_7/ReleaseLatchJoint/Joint
+2026-09-14T21:17:07Z [312,385ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_2/ReleaseLatchJoint/Joint
+2026-09-14T21:17:16Z [321,063ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_4/ReleaseLatchJoint/Joint
+2026-09-14T21:17:34Z [339,371ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_6/ReleaseLatchJoint/Joint
+2026-09-14T21:17:46Z [351,527ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_0/ReleaseLatchJoint/Joint
+2026-09-14T21:18:37Z [402,312ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_5/ReleaseLatchJoint/Joint
+2026-09-14T21:21:05Z [550,184ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_7/RackRetentionJoint/Joint
+2026-09-14T21:21:07Z [552,570ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_2/RackRetentionJoint/Joint
+2026-09-14T21:21:13Z [557,825ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_4/RackRetentionJoint/Joint
+2026-09-14T21:21:34Z [578,925ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_0/RackRetentionJoint/Joint
+2026-09-14T21:21:48Z [592,728ms] [Warning] [omni.physx.plugin] PhysicsUSD: CreateJoint - found a joint with disjointed body transforms, the simulation will most likely snap objects together: /World/envs/env_6/RackRetentionJoint/Joint
+{
+  "workflow": "relocate",
+  "episodes": 8,
+  "successes": 5,
+  "success_rate": 0.625,
+  "success_rate_wilson_95": {
+    "low": 0.305742,
+    "high": 0.863156
+  },
+  "predicate_fired": 5,
+  "held_after_settling": 5,
+  "every_condition_after_settling": 5,
+  "settle_seconds": 0.7,
+  "furthest_phase_reached": {
+    "insert": 1,
+    "done": 7
+  },
+  "phase_budget_overruns": {
+    "capture": 1,
+    "extract": 1
+  },
+  "phase_budget_s": {
+    "capture": 10.0,
+    "seat": 1.0,
+    "extract": 25.0,
+    "transit": 25.0,
+    "insert": 30.0
+  },
+  "termination_reasons": {
+    "insertion_success": 5,
+    "time_out": 3
+  },
+  "instability_terminations": 0,
+  "non_finite_metric_episodes": 0,
+  "terminal_metrics": {
+    "axial_error_m": {
+      "count": 8,
+      "non_finite": 0,
+      "mean": 0.283671,
+      "p50": 0.000636,
+      "p95": 1.399625,
+      "max": 2.027063,
+      "min": 0.000176
+    },
+    "lateral_error_m": {
+      "count": 8,
+      "non_finite": 0,
+      "mean": 0.202538,
+      "p50": 0.001965,
+      "p95": 0.952825,
+      "max": 1.295726,
+      "min": 0.000233
+    },
+    "orientation_error_rad": {
+      "count": 8,
+      "non_finite": 0,
+      "mean": 0.447858,
+      "p50": 0.044532,
+      "p95": 2.047561,
+      "max": 2.822017,
+      "min": 0.001159
+    },
+    "blade_linear_velocity_mps": {
+      "count": 8,
+      "non_finite": 0,
+      "mean": 0.046367,
+      "p50": 1.8e-05,
+      "p95": 0.223188,
+      "max": 0.328312,
+      "min": 0.0
+    },
+    "blade_angular_velocity_radps": {
+      "count": 8,
+      "non_finite": 0,
+      "mean": 0.104692,
+      "p50": 0.000212,
+      "p95": 0.529578,
+      "max": 0.794717,
+      "min": 0.0
+    },
+    "tool_to_handle_error_m": {
+      "count": 8,
+      "non_finite": 0,
+      "mean": 0.01305,
+      "p50": 0.012389,
+      "p95": 0.016147,
+      "max": 0.017285,
+      "min": 0.0115
+    },
+    "tool_to_handle_orientation_rad": {
+      "count": 8,
+      "non_finite": 0,
+      "mean": 0.16122,
+      "p50": 0.059929,
+      "p95": 0.539621,
+      "max": 0.669938,
+      "min": 0.015008
+    },
+    "control_steps": {
+      "count": 8,
+      "non_finite": 0,
+      "mean": 1168.0,
+      "p50": 1226.0,
+      "p95": 1701.55,
+      "max": 1900.0,
+      "min": 303.0
+    },
+    "cycle_time_s": {
+      "count": 8,
+      "non_finite": 0,
+      "mean": 38.933333,
+      "p50": 40.866667,
+      "p95": 56.718333,
+      "max": 63.333333,
+      "min": 10.1
+    }
+  }
+}
+[INFO] Wrote D:\portfolio\.lab-work\orbital-improvement\paired-24-v2\legacy_rail\seed4070\episodes.npz
+{
+  "destination_rack_retention": {
+    "enabled": true,
+    "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+    "joint_body0": "Rack",
+    "joint_body1": "SpareBlade",
+    "world_constraint": false,
+    "engagement": "after the unchanged insertion success predicate fires",
+    "module_pose_write": false,
+    "rated_force_n": 600.0,
+    "rated_torque_nm": 30.0,
+    "reaction_load_path_modelled": true,
+    "reaction_magnitude_exposed": false,
+    "load_measurement": "break threshold plus measured rack-to-module drift",
+    "hardware_geometry": {
+      "pawls": 2,
+      "face_clearance_mm": 0.5,
+      "rear_face_overlap_mm": 2.5,
+      "open_inner_half_gap_mm": 81.632936,
+      "close_stroke_mm": 19.132936,
+      "pawl_section_mm": [
+        2.5,
+        20.0,
+        20.0
+      ],
+      "collision_geometry": "visual pawl surfaces; the disclosed fixed joint carries load"
+    },
+    "observed_per_environment": [
+      {
+        "env": 0,
+        "engaged_after_measured_seating": true,
+        "engaged_at_driver_step": 1292,
+        "rack_only_control_steps": 587,
+        "rack_only_interval_s": 19.566667,
+        "full_rack_only_recheck_observed": true,
+        "max_rack_to_module_position_drift_m": 0.0,
+        "max_rack_to_module_orientation_drift_rad": 0.0
+      },
+      {
+        "env": 1,
+        "engaged_after_measured_seating": false,
+        "engaged_at_driver_step": null,
+        "rack_only_control_steps": 0,
+        "rack_only_interval_s": 0.0,
+        "full_rack_only_recheck_observed": false,
+        "max_rack_to_module_position_drift_m": 0.0,
+        "max_rack_to_module_orientation_drift_rad": 0.0
+      },
+      {
+        "env": 2,
+        "engaged_after_measured_seating": true,
+        "engaged_at_driver_step": 1218,
+        "rack_only_control_steps": 661,
+        "rack_only_interval_s": 22.033333,
+        "full_rack_only_recheck_observed": true,
+        "max_rack_to_module_position_drift_m": 0.0,
+        "max_rack

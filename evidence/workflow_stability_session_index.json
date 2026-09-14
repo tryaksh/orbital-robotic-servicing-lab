@@ -1,0 +1,1193 @@
+{
+  "evidence_type": "workflow_stability_session_artifact_index",
+  "status": "user_requested_wrap_with_partial_comparison",
+  "session_directory": "evidence/stability_20260914",
+  "experiments": [
+    {
+      "experiment": "baseline_recording",
+      "report": {
+        "path": "evidence/workflow_stability_baseline_recording_seed6070.json",
+        "size_bytes": 24187,
+        "sha256": "36a2ce09f8142554622ea4749ed5197cda9a02a7a3d7f3cea3875f632e6f11ae"
+      },
+      "recorded_source_revision": {
+        "available": true,
+        "commit": "a2e017b79e18d9d58106aaf0dcc943471b468920",
+        "branch": "main",
+        "dirty": false,
+        "code_dirty": false,
+        "tracked_changes": [],
+        "error": null
+      },
+      "source_inference": null,
+      "command_argv": [
+        "--headless",
+        "--workflow",
+        "relocate",
+        "--task",
+        "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+        "--curriculum_stage",
+        "0",
+        "--grasp_checkpoint",
+        "D:\\6axis-space-robotics\\policies\\servicing_v2\\capture_v7m130.pth",
+        "--extract_checkpoint",
+        "D:\\6axis-space-robotics\\policies\\servicing_v2\\extract_v19noised.pth",
+        "--insert_checkpoint",
+        "D:\\6axis-space-robotics\\policies\\servicing_v2\\insert_v13m130.pth",
+        "--perception_backend",
+        "fiducial_pnp",
+        "--module_velocity_source",
+        "kinematics",
+        "--fiducial_guard_bounds",
+        "lead_in",
+        "--insert_controller",
+        "guarded",
+        "--robot_rail_on_relocation",
+        "--latch_on_release",
+        "--latch_joint_mode",
+        "fixed",
+        "--latch_rated_force_n",
+        "20000.0",
+        "--latch_rated_torque_nm",
+        "1000.0",
+        "--latch_position_stiffness_n_per_m",
+        "40000",
+        "--latch_rotation_stiffness_nm_per_rad",
+        "20000",
+        "--mating_mode",
+        "compliant",
+        "--mating_force_cap_n",
+        "1000.0",
+        "--destination_channel_relief_m",
+        "0.0046125",
+        "--release_sequence",
+        "simultaneous",
+        "--rack_retention",
+        "--num_envs",
+        "1",
+        "--seed",
+        "6070",
+        "--steps",
+        "1900",
+        "--stable_lighting",
+        "--inspection_view",
+        "workcell",
+        "--video",
+        "--video_dir",
+        "D:\\portfolio\\.lab-work\\orbital\\capture\\video",
+        "--handoff_trace",
+        "D:\\portfolio\\.lab-work\\orbital\\capture\\handoff_trace.npz",
+        "--report",
+        "D:\\portfolio\\.lab-work\\orbital\\capture\\workflow_report.json"
+      ],
+      "reported_completed": true,
+      "files": [
+        {
+          "path": "evidence/stability_20260914/baseline_recording/body_poses.npz",
+          "size_bytes": 580321,
+          "sha256": "7efdcafdd9153cb3b460851ab5198b1e686f6a299080f3f2972867c500b78a57"
+        },
+        {
+          "path": "evidence/stability_20260914/baseline_recording/handoff_trace.npz",
+          "size_bytes": 31587,
+          "sha256": "c252ef14d0d6c47db71d4fc5cf02cd1ce803e52e544869d45c22a6027725f87b"
+        },
+        {
+          "path": "evidence/stability_20260914/baseline_recording/capture_provenance.json",
+          "size_bytes": 2263,
+          "sha256": "80dd5d92d1bcdc91a9b8cae624beddce88212998729262870b594790ca8b7001"
+        },
+        {
+          "path": "evidence/stability_20260914/baseline_recording/verification.json",
+          "size_bytes": 496,
+          "sha256": "5126ff83d707ab112ff3cae36ce073c9d7246c65c246ace1cdccdef5ca10c21c"
+        },
+        {
+          "path": "evidence/stability_20260914/baseline_recording/motion_analysis.json",
+          "size_bytes": 29511,
+          "sha256": "346a3e79494ec15cea2494328a649e6d31620c7e1b2054604381fae112ac910b"
+        }
+      ],
+      "scope": "One simulated development episode; all original reports and failures retained. No hardware or reliability claim."
+    },
+    {
+      "experiment": "fixed_base_legacy",
+      "report": {
+        "path": "evidence/workflow_stability_fixed_base_legacy_seed6070.json",
+        "size_bytes": 24042,
+        "sha256": "9ea65fc8975e2c5ef85456f8c92d011043fe0f299b858790252c3ea528a32e91"
+      },
+      "recorded_source_revision": {
+        "available": false,
+        "commit": null,
+        "branch": null,
+        "dirty": null,
+        "code_dirty": null,
+        "tracked_changes": [],
+        "error": "fatal: detected dubious ownership in repository at 'D:/portfolio/.lab-work/orbital-improvement/source'\n'D:/portfolio/.lab-work/orbital-improvement/source' is owned by:\n\tTryakshGTX/CodexSandboxOffline (S-1-5-21-583868058-371001797-3939062587-1003)\nbut the current user is:\n\tTRYAKSHGTX/tryak (S-1-5-21-583868058-371001797-3939062587-1001)\nTo add an exception for this directory, call:\n\n\tgit config --global --add safe.directory D:/portfolio/.lab-work/orbital-improvement/source"
+      },
+      "source_inference": {
+        "runtime_bindings_match_preserved_baseline": true,
+        "inferred_commit": "a2e017b79e18d9d58106aaf0dcc943471b468920",
+        "limitation": "Original Git source probe failed and is preserved unchanged. This is an inference from exact recorded source hashes."
+      },
+      "command_argv": [
+        "--headless",
+        "--workflow",
+        "relocate",
+        "--task",
+        "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+        "--curriculum_stage",
+        "0",
+        "--grasp_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\source\\policies\\servicing_v2\\capture_v7m130.pth",
+        "--extract_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\source\\policies\\servicing_v2\\extract_v19noised.pth",
+        "--insert_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\source\\policies\\servicing_v2\\insert_v13m130.pth",
+        "--perception_backend",
+        "fiducial_pnp",
+        "--module_velocity_source",
+        "kinematics",
+        "--fiducial_guard_bounds",
+        "lead_in",
+        "--insert_controller",
+        "guarded",
+        "--latch_on_release",
+        "--latch_joint_mode",
+        "fixed",
+        "--latch_rated_force_n",
+        "20000.0",
+        "--latch_rated_torque_nm",
+        "1000.0",
+        "--latch_position_stiffness_n_per_m",
+        "40000",
+        "--latch_rotation_stiffness_nm_per_rad",
+        "20000",
+        "--mating_mode",
+        "compliant",
+        "--mating_force_cap_n",
+        "1000.0",
+        "--destination_channel_relief_m",
+        "0.0046125",
+        "--release_sequence",
+        "simultaneous",
+        "--rack_retention",
+        "--num_envs",
+        "1",
+        "--seed",
+        "6070",
+        "--steps",
+        "1900",
+        "--stable_lighting",
+        "--inspection_view",
+        "workcell",
+        "--video",
+        "--video_dir",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\no-rail-original\\video",
+        "--handoff_trace",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\no-rail-original\\handoff_trace.npz",
+        "--report",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\no-rail-original\\workflow_report.json"
+      ],
+      "reported_completed": false,
+      "files": [
+        {
+          "path": "evidence/stability_20260914/fixed_base_legacy/body_poses.npz",
+          "size_bytes": 518620,
+          "sha256": "c265d708de64656458c5e2bd975865fe14776bf5bebd3358aaf8f52d81d276b6"
+        },
+        {
+          "path": "evidence/stability_20260914/fixed_base_legacy/handoff_trace.npz",
+          "size_bytes": 47648,
+          "sha256": "474524025c2f6660966828ab9266384fcccf7d046e2e62143cea906427015543"
+        },
+        {
+          "path": "evidence/stability_20260914/fixed_base_legacy/capture_provenance.json",
+          "size_bytes": 2378,
+          "sha256": "1ab946adb76c6b1d0063c399ba8d1243ee22853e0a1727077c88fd6fdc943020"
+        },
+        {
+          "path": "evidence/stability_20260914/fixed_base_legacy/capture_wrapper.py",
+          "size_bytes": 5482,
+          "sha256": "c2c8ed3d34fb1ba777cc9c5e133c940cc462e00cc7bb143050bc7477f432ec5f"
+        }
+      ],
+      "scope": "One simulated development episode; all original reports and failures retained. No hardware or reliability claim."
+    },
+    {
+      "experiment": "axial_finish_probe",
+      "report": {
+        "path": "evidence/workflow_stability_axial_finish_probe_seed6070.json",
+        "size_bytes": 21492,
+        "sha256": "1fbfd781d7045371b627c3b3efb8bca12500ad8414fb9d36dd13b1a5b527a60f"
+      },
+      "recorded_source_revision": {
+        "available": true,
+        "commit": "febfca8d19982a12dab434ffc48b306f69e1d813",
+        "branch": "improve/orbital-transfer-stability",
+        "dirty": false,
+        "code_dirty": false,
+        "tracked_changes": [],
+        "error": null
+      },
+      "source_inference": null,
+      "command_argv": [
+        "--headless",
+        "--workflow",
+        "relocate",
+        "--task",
+        "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+        "--curriculum_stage",
+        "0",
+        "--grasp_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\capture_v7m130.pth",
+        "--extract_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\extract_v19noised.pth",
+        "--insert_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\insert_v13m130.pth",
+        "--perception_backend",
+        "fiducial_pnp",
+        "--module_velocity_source",
+        "kinematics",
+        "--fiducial_guard_bounds",
+        "lead_in",
+        "--insert_controller",
+        "guarded",
+        "--latch_on_release",
+        "--latch_joint_mode",
+        "fixed",
+        "--latch_rated_force_n",
+        "20000.0",
+        "--latch_rated_torque_nm",
+        "1000.0",
+        "--latch_position_stiffness_n_per_m",
+        "40000",
+        "--latch_rotation_stiffness_nm_per_rad",
+        "20000",
+        "--mating_mode",
+        "compliant",
+        "--mating_force_cap_n",
+        "1000.0",
+        "--destination_channel_relief_m",
+        "0.0046125",
+        "--release_sequence",
+        "simultaneous",
+        "--rack_retention",
+        "--num_envs",
+        "1",
+        "--seed",
+        "6070",
+        "--steps",
+        "1900",
+        "--stable_lighting",
+        "--inspection_view",
+        "workcell",
+        "--video_dir",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-probe\\video",
+        "--handoff_trace",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-probe\\handoff_trace.npz",
+        "--report",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-probe\\workflow_report.json",
+        "--transit_motion_profile",
+        "quintic",
+        "--extraction_finish",
+        "guarded",
+        "--transit_joint_trim",
+        "--enable_cameras"
+      ],
+      "reported_completed": false,
+      "files": [
+        {
+          "path": "evidence/stability_20260914/axial_finish_probe/body_poses.npz",
+          "size_bytes": 347251,
+          "sha256": "2b5c3e00dc439866ccff21ac4a4933d678d703584ba919f40a333580e162e704"
+        },
+        {
+          "path": "evidence/stability_20260914/axial_finish_probe/handoff_trace.npz",
+          "size_bytes": 4448,
+          "sha256": "92d247f06119677a7a3eec22ab7aebb5d58cf666639570bdb07fff0618485ae1"
+        },
+        {
+          "path": "evidence/stability_20260914/axial_finish_probe/capture_provenance.json",
+          "size_bytes": 2524,
+          "sha256": "785246f5acd89d0d30ceeb3e1bb3e36c9a4a7aced13221aa2304afd35423760e"
+        },
+        {
+          "path": "evidence/stability_20260914/axial_finish_probe/capture_wrapper.py",
+          "size_bytes": 5762,
+          "sha256": "3e40fc1454659f321de451ff6048fa566f32a3e3d0358a94311f0e04984c510e"
+        },
+        {
+          "path": "evidence/stability_20260914/axial_finish_probe/run.log",
+          "size_bytes": 30140,
+          "sha256": "4197f988b038483b07f224b2de9fbd7451ce7314552523f60d7e8cae23481683"
+        }
+      ],
+      "scope": "One simulated development episode; all original reports and failures retained. No hardware or reliability claim."
+    },
+    {
+      "experiment": "full_pose_finish_v2",
+      "report": {
+        "path": "evidence/workflow_stability_full_pose_finish_v2_seed6070.json",
+        "size_bytes": 24774,
+        "sha256": "e7053cb0cbf8100d9555743f497d911d54cf45426f754c2f59e704983035e008"
+      },
+      "recorded_source_revision": {
+        "available": true,
+        "commit": "3d74b6b7bddde41c869b31a2ea27e0ec2b4398a7",
+        "branch": "improve/orbital-transfer-stability",
+        "dirty": false,
+        "code_dirty": false,
+        "tracked_changes": [],
+        "error": null
+      },
+      "source_inference": null,
+      "command_argv": [
+        "--headless",
+        "--workflow",
+        "relocate",
+        "--task",
+        "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+        "--curriculum_stage",
+        "0",
+        "--grasp_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\capture_v7m130.pth",
+        "--extract_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\extract_v19noised.pth",
+        "--insert_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\insert_v13m130.pth",
+        "--perception_backend",
+        "fiducial_pnp",
+        "--module_velocity_source",
+        "kinematics",
+        "--fiducial_guard_bounds",
+        "lead_in",
+        "--insert_controller",
+        "guarded",
+        "--latch_on_release",
+        "--latch_joint_mode",
+        "fixed",
+        "--latch_rated_force_n",
+        "20000.0",
+        "--latch_rated_torque_nm",
+        "1000.0",
+        "--latch_position_stiffness_n_per_m",
+        "40000",
+        "--latch_rotation_stiffness_nm_per_rad",
+        "20000",
+        "--mating_mode",
+        "compliant",
+        "--mating_force_cap_n",
+        "1000.0",
+        "--destination_channel_relief_m",
+        "0.0046125",
+        "--release_sequence",
+        "simultaneous",
+        "--rack_retention",
+        "--num_envs",
+        "1",
+        "--seed",
+        "6070",
+        "--steps",
+        "1900",
+        "--stable_lighting",
+        "--inspection_view",
+        "workcell",
+        "--video",
+        "--video_dir",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v2\\video",
+        "--handoff_trace",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v2\\handoff_trace.npz",
+        "--report",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v2\\workflow_report.json",
+        "--transit_motion_profile",
+        "quintic",
+        "--extraction_finish",
+        "guarded",
+        "--transit_joint_trim"
+      ],
+      "reported_completed": false,
+      "files": [
+        {
+          "path": "evidence/stability_20260914/full_pose_finish_v2/body_poses.npz",
+          "size_bytes": 768269,
+          "sha256": "6b5ba660788ee7c06e4f1a90817ebce8fd14cd7b69792f8032275d0221ab48a1"
+        },
+        {
+          "path": "evidence/stability_20260914/full_pose_finish_v2/handoff_trace.npz",
+          "size_bytes": 38080,
+          "sha256": "3db496a35394db40280a75701496c90698fd1d85d350de7cf75c60516fcc493d"
+        },
+        {
+          "path": "evidence/stability_20260914/full_pose_finish_v2/capture_provenance.json",
+          "size_bytes": 2506,
+          "sha256": "33fec9a7d8b0ac94499b9bb206d3fce583f9f79c674989b6e98ce28592854718"
+        },
+        {
+          "path": "evidence/stability_20260914/full_pose_finish_v2/capture_wrapper.py",
+          "size_bytes": 5699,
+          "sha256": "3e9ac7c50a8d16827e6febf343b81410baaaaac0b3323e43930b5514aa648d44"
+        },
+        {
+          "path": "evidence/stability_20260914/full_pose_finish_v2/run.log",
+          "size_bytes": 34330,
+          "sha256": "649078239a738a4e4146148d2c1fed4e80421b3b6a939b12e188e437d04acae6"
+        },
+        {
+          "path": "evidence/stability_20260914/full_pose_finish_v2/verification.json",
+          "size_bytes": 583,
+          "sha256": "7717b042b36cbd61ad46e517351b4a1693f34e10a64fd68903d32c8e314b36d1"
+        },
+        {
+          "path": "evidence/stability_20260914/full_pose_finish_v2/motion_analysis.json",
+          "size_bytes": 29876,
+          "sha256": "4b4d33839350fdf46d4926d948b00748241f96d4da31b8e59181cc3be9b9106d"
+        }
+      ],
+      "scope": "One simulated development episode; all original reports and failures retained. No hardware or reliability claim."
+    },
+    {
+      "experiment": "absolute_insert_v3",
+      "report": {
+        "path": "evidence/workflow_stability_absolute_insert_v3_seed6070.json",
+        "size_bytes": 24625,
+        "sha256": "8807404be218ae9647234ad5f1f01350577577d800ce62f1ab35bb4d01dd15c9"
+      },
+      "recorded_source_revision": {
+        "available": true,
+        "commit": "1d3714616f60ca6d6e254cc18bac94ca77fc0d7e",
+        "branch": "improve/orbital-transfer-stability",
+        "dirty": false,
+        "code_dirty": false,
+        "tracked_changes": [],
+        "error": null
+      },
+      "source_inference": null,
+      "command_argv": [
+        "--headless",
+        "--workflow",
+        "relocate",
+        "--task",
+        "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+        "--curriculum_stage",
+        "0",
+        "--grasp_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\capture_v7m130.pth",
+        "--extract_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\extract_v19noised.pth",
+        "--insert_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\insert_v13m130.pth",
+        "--perception_backend",
+        "fiducial_pnp",
+        "--module_velocity_source",
+        "kinematics",
+        "--fiducial_guard_bounds",
+        "lead_in",
+        "--insert_controller",
+        "guarded",
+        "--latch_on_release",
+        "--latch_joint_mode",
+        "fixed",
+        "--latch_rated_force_n",
+        "20000.0",
+        "--latch_rated_torque_nm",
+        "1000.0",
+        "--latch_position_stiffness_n_per_m",
+        "40000",
+        "--latch_rotation_stiffness_nm_per_rad",
+        "20000",
+        "--mating_mode",
+        "compliant",
+        "--mating_force_cap_n",
+        "1000.0",
+        "--destination_channel_relief_m",
+        "0.0046125",
+        "--release_sequence",
+        "simultaneous",
+        "--rack_retention",
+        "--num_envs",
+        "1",
+        "--seed",
+        "6070",
+        "--steps",
+        "1900",
+        "--stable_lighting",
+        "--inspection_view",
+        "workcell",
+        "--video",
+        "--video_dir",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v3\\video",
+        "--handoff_trace",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v3\\handoff_trace.npz",
+        "--report",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v3\\workflow_report.json",
+        "--transit_motion_profile",
+        "quintic",
+        "--extraction_finish",
+        "guarded",
+        "--transit_joint_trim",
+        "--guarded_insert_solver",
+        "absolute_ik"
+      ],
+      "reported_completed": false,
+      "files": [
+        {
+          "path": "evidence/stability_20260914/absolute_insert_v3/body_poses.npz",
+          "size_bytes": 756446,
+          "sha256": "89129759ae91fb3cc91295fbfbe4f80b51e86cce607fc35b0438c5bee5d53348"
+        },
+        {
+          "path": "evidence/stability_20260914/absolute_insert_v3/handoff_trace.npz",
+          "size_bytes": 32384,
+          "sha256": "a4f8e06de409bc70acec68542ab78df08328916c9a00f9955819c5b9038ef7d2"
+        },
+        {
+          "path": "evidence/stability_20260914/absolute_insert_v3/capture_provenance.json",
+          "size_bytes": 2558,
+          "sha256": "ff8763b9148c4973adba33b6fbc1ac31107a1be1c2151eab298af46ec8a47906"
+        },
+        {
+          "path": "evidence/stability_20260914/absolute_insert_v3/capture_wrapper.py",
+          "size_bytes": 5800,
+          "sha256": "9a882369a39d45b123ff603b48032ae7133de435a3a9c36f97c7a041b401f600"
+        },
+        {
+          "path": "evidence/stability_20260914/absolute_insert_v3/run.log",
+          "size_bytes": 34572,
+          "sha256": "a35a6b37666202c49117e627293ca6550c7a2fdf4b2078e5843f95c3e97e7c0f"
+        },
+        {
+          "path": "evidence/stability_20260914/absolute_insert_v3/verification.json",
+          "size_bytes": 583,
+          "sha256": "867976bb624627b13a29aa7f9b268557a36bccc5edce8b4475adf61dfb4cf671"
+        },
+        {
+          "path": "evidence/stability_20260914/absolute_insert_v3/motion_analysis.json",
+          "size_bytes": 26624,
+          "sha256": "9eae13c64ef2351745f11cad8dc5e751a5030065a79c7cdd5cfbfcf7950018c0"
+        }
+      ],
+      "scope": "One simulated development episode; all original reports and failures retained. No hardware or reliability claim."
+    },
+    {
+      "experiment": "absolute_insert_v4",
+      "report": {
+        "path": "evidence/workflow_stability_absolute_insert_v4_seed6070.json",
+        "size_bytes": 25220,
+        "sha256": "812dada0dd309bea9f43d44066baf8ebadfe6f660916829425b9f5326d54e372"
+      },
+      "recorded_source_revision": {
+        "available": true,
+        "commit": "7029ad5cd8d6aa35c803bcd9eb2bd0d0d423fb3e",
+        "branch": "improve/orbital-transfer-stability",
+        "dirty": false,
+        "code_dirty": false,
+        "tracked_changes": [],
+        "error": null
+      },
+      "source_inference": null,
+      "command_argv": [
+        "--headless",
+        "--workflow",
+        "relocate",
+        "--task",
+        "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+        "--curriculum_stage",
+        "0",
+        "--grasp_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\capture_v7m130.pth",
+        "--extract_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\extract_v19noised.pth",
+        "--insert_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\insert_v13m130.pth",
+        "--perception_backend",
+        "fiducial_pnp",
+        "--module_velocity_source",
+        "kinematics",
+        "--fiducial_guard_bounds",
+        "lead_in",
+        "--insert_controller",
+        "guarded",
+        "--latch_on_release",
+        "--latch_joint_mode",
+        "fixed",
+        "--latch_rated_force_n",
+        "20000.0",
+        "--latch_rated_torque_nm",
+        "1000.0",
+        "--latch_position_stiffness_n_per_m",
+        "40000",
+        "--latch_rotation_stiffness_nm_per_rad",
+        "20000",
+        "--mating_mode",
+        "compliant",
+        "--mating_force_cap_n",
+        "1000.0",
+        "--destination_channel_relief_m",
+        "0.0046125",
+        "--release_sequence",
+        "simultaneous",
+        "--rack_retention",
+        "--num_envs",
+        "1",
+        "--seed",
+        "6070",
+        "--steps",
+        "1900",
+        "--stable_lighting",
+        "--inspection_view",
+        "workcell",
+        "--video",
+        "--video_dir",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v4\\video",
+        "--handoff_trace",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v4\\handoff_trace.npz",
+        "--report",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v4\\workflow_report.json",
+        "--transit_motion_profile",
+        "quintic",
+        "--extraction_finish",
+        "guarded",
+        "--transit_joint_trim",
+        "--guarded_insert_solver",
+        "absolute_ik"
+      ],
+      "reported_completed": true,
+      "files": [
+        {
+          "path": "evidence/stability_20260914/absolute_insert_v4/body_poses.npz",
+          "size_bytes": 484287,
+          "sha256": "780eeaa2c3d2b22b0b1b5ca60f4b3f52807a9f3c93cc726a8a634c1451171e3b"
+        },
+        {
+          "path": "evidence/stability_20260914/absolute_insert_v4/handoff_trace.npz",
+          "size_bytes": 27689,
+          "sha256": "9d82195631b1d531fed5438eadea639d287d7ad6b94b99ca64b5e2dea5feb8d4"
+        },
+        {
+          "path": "evidence/stability_20260914/absolute_insert_v4/capture_provenance.json",
+          "size_bytes": 2558,
+          "sha256": "f82e09a871ec09a1419170bc90f964e62cfda9460ab039a61070c6d64782179f"
+        },
+        {
+          "path": "evidence/stability_20260914/absolute_insert_v4/capture_wrapper.py",
+          "size_bytes": 5800,
+          "sha256": "d833679642de644ffbf87e1c6e5d9ad9925dca5c6518335112bb00b4baca411a"
+        },
+        {
+          "path": "evidence/stability_20260914/absolute_insert_v4/run.log",
+          "size_bytes": 35484,
+          "sha256": "20262f788f6a6642b5fbe248413252713457b1cddd8a3d3664936fe3393796bb"
+        },
+        {
+          "path": "evidence/stability_20260914/absolute_insert_v4/verification.json",
+          "size_bytes": 539,
+          "sha256": "8834f4886fdfbd1f0eb0c139d312238d91dda1a8584f7e49375b06b62f065d9d"
+        },
+        {
+          "path": "evidence/stability_20260914/absolute_insert_v4/motion_analysis.json",
+          "size_bytes": 29810,
+          "sha256": "6df0f2ef38d237f2432d28bb83682b9b677931c55586f4ec10dfa1ce8634d4be"
+        }
+      ],
+      "scope": "One simulated development episode; all original reports and failures retained. No hardware or reliability claim."
+    },
+    {
+      "experiment": "latch_handoff_v5",
+      "report": {
+        "path": "evidence/workflow_stability_latch_handoff_v5_seed6070.json",
+        "size_bytes": 25085,
+        "sha256": "57f8c9fc8a00ce688434b01ef58324f34a910ea8b69e72f6f7f298178b63cb3c"
+      },
+      "recorded_source_revision": {
+        "available": true,
+        "commit": "88235d8c27314b6092b0aac38506af9526ceea40",
+        "branch": "improve/orbital-transfer-stability",
+        "dirty": false,
+        "code_dirty": false,
+        "tracked_changes": [],
+        "error": null
+      },
+      "source_inference": null,
+      "command_argv": [
+        "--headless",
+        "--workflow",
+        "relocate",
+        "--task",
+        "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+        "--curriculum_stage",
+        "0",
+        "--grasp_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\capture_v7m130.pth",
+        "--extract_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\extract_v19noised.pth",
+        "--insert_checkpoint",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\candidate\\policies\\servicing_v2\\insert_v13m130.pth",
+        "--perception_backend",
+        "fiducial_pnp",
+        "--module_velocity_source",
+        "kinematics",
+        "--fiducial_guard_bounds",
+        "lead_in",
+        "--insert_controller",
+        "guarded",
+        "--latch_on_release",
+        "--latch_joint_mode",
+        "fixed",
+        "--latch_rated_force_n",
+        "20000.0",
+        "--latch_rated_torque_nm",
+        "1000.0",
+        "--latch_position_stiffness_n_per_m",
+        "40000",
+        "--latch_rotation_stiffness_nm_per_rad",
+        "20000",
+        "--mating_mode",
+        "compliant",
+        "--mating_force_cap_n",
+        "1000.0",
+        "--destination_channel_relief_m",
+        "0.0046125",
+        "--release_sequence",
+        "simultaneous",
+        "--rack_retention",
+        "--num_envs",
+        "1",
+        "--seed",
+        "6070",
+        "--steps",
+        "1900",
+        "--stable_lighting",
+        "--inspection_view",
+        "workcell",
+        "--video",
+        "--video_dir",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v5\\video",
+        "--handoff_trace",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v5\\handoff_trace.npz",
+        "--report",
+        "D:\\portfolio\\.lab-work\\orbital-improvement\\smooth-fixed-v5\\workflow_report.json",
+        "--transit_motion_profile",
+        "quintic",
+        "--extraction_finish",
+        "guarded",
+        "--transit_joint_trim",
+        "--guarded_insert_solver",
+        "absolute_ik"
+      ],
+      "reported_completed": true,
+      "files": [
+        {
+          "path": "evidence/stability_20260914/latch_handoff_v5/body_poses.npz",
+          "size_bytes": 503816,
+          "sha256": "190a699a8ac4a21d31ced92e879358fa9173679370647571bf26d9360d70c7da"
+        },
+        {
+          "path": "evidence/stability_20260914/latch_handoff_v5/handoff_trace.npz",
+          "size_bytes": 25688,
+          "sha256": "2d5d99569393b76cc3ceb1d3472027afdee2da6f8174fc0f536f90876350225b"
+        },
+        {
+          "path": "evidence/stability_20260914/latch_handoff_v5/capture_provenance.json",
+          "size_bytes": 2558,
+          "sha256": "f29eb42b13e0d001c36c7cff655f78b04133bca5f83159db0f2a3d2a2cef4400"
+        },
+        {
+          "path": "evidence/stability_20260914/latch_handoff_v5/capture_wrapper.py",
+          "size_bytes": 5800,
+          "sha256": "e2c9e91b730da6c13f7383642d5145b0a01b9c155ef714ce37526f330c344545"
+        },
+        {
+          "path": "evidence/stability_20260914/latch_handoff_v5/run.log",
+          "size_bytes": 34340,
+          "sha256": "c6b9b623b36947fc927df7d3c483cc8ff55470fa1d3dd54d602b502bdc9b4a5c"
+        },
+        {
+          "path": "evidence/stability_20260914/latch_handoff_v5/verification.json",
+          "size_bytes": 496,
+          "sha256": "e8f832098d8152f6d157596187507e804582b7ce20054b7a92aeb15eabfa2b4f"
+        },
+        {
+          "path": "evidence/stability_20260914/latch_handoff_v5/motion_analysis.json",
+          "size_bytes": 29893,
+          "sha256": "7175d88a4b41bf780e67c9aba21ab99c8b0ff235fcbe0befda24d416fc2f2606"
+        },
+        {
+          "path": "evidence/stability_20260914/latch_handoff_v5/motion_analysis_realtime.json",
+          "size_bytes": 29836,
+          "sha256": "5a1a8a7bcdc472ebc024d76d915b581d278b4ec5b51f0b84fb1357df38d7bbfe"
+        }
+      ],
+      "scope": "One simulated development episode; all original reports and failures retained. No hardware or reliability claim."
+    }
+  ],
+  "paired_summary": {
+    "path": "evidence/workflow_stability_paired_summary.json",
+    "size_bytes": 2939,
+    "sha256": "5f86a10bb6de65a16e9b9bd8fe30d9e94e3308f8fa0adaa8a9a796a681b02417"
+  },
+  "scope_and_limitations": [
+    "Exact-byte archival only. Failed and successful development reports, compressed real body poses, traces and capture metadata are retained.",
+    "The corrected paired comparison contains only one completed eight-environment cohort per arm; no 24-episode claim is made.",
+    "The earlier failed comparison and interrupted logs are preserved separately and do not enter final corrected counts.",
+    "Large scenes, video files and rendered-frame directories remain outside this small evidence archive."
+  ],
+  "files": [
+    {
+      "path": "evidence/workflow_stability_baseline_recording_seed6070.json",
+      "size_bytes": 24187,
+      "sha256": "36a2ce09f8142554622ea4749ed5197cda9a02a7a3d7f3cea3875f632e6f11ae"
+    },
+    {
+      "path": "evidence/stability_20260914/baseline_recording/body_poses.npz",
+      "size_bytes": 580321,
+      "sha256": "7efdcafdd9153cb3b460851ab5198b1e686f6a299080f3f2972867c500b78a57"
+    },
+    {
+      "path": "evidence/stability_20260914/baseline_recording/handoff_trace.npz",
+      "size_bytes": 31587,
+      "sha256": "c252ef14d0d6c47db71d4fc5cf02cd1ce803e52e544869d45c22a6027725f87b"
+    },
+    {
+      "path": "evidence/stability_20260914/baseline_recording/capture_provenance.json",
+      "size_bytes": 2263,
+      "sha256": "80dd5d92d1bcdc91a9b8cae624beddce88212998729262870b594790ca8b7001"
+    },
+    {
+      "path": "evidence/stability_20260914/baseline_recording/verification.json",
+      "size_bytes": 496,
+      "sha256": "5126ff83d707ab112ff3cae36ce073c9d7246c65c246ace1cdccdef5ca10c21c"
+    },
+    {
+      "path": "evidence/stability_20260914/baseline_recording/motion_analysis.json",
+      "size_bytes": 29511,
+      "sha256": "346a3e79494ec15cea2494328a649e6d31620c7e1b2054604381fae112ac910b"
+    },
+    {
+      "path": "evidence/workflow_stability_fixed_base_legacy_seed6070.json",
+      "size_bytes": 24042,
+      "sha256": "9ea65fc8975e2c5ef85456f8c92d011043fe0f299b858790252c3ea528a32e91"
+    },
+    {
+      "path": "evidence/stability_20260914/fixed_base_legacy/body_poses.npz",
+      "size_bytes": 518620,
+      "sha256": "c265d708de64656458c5e2bd975865fe14776bf5bebd3358aaf8f52d81d276b6"
+    },
+    {
+      "path": "evidence/stability_20260914/fixed_base_legacy/handoff_trace.npz",
+      "size_bytes": 47648,
+      "sha256": "474524025c2f6660966828ab9266384fcccf7d046e2e62143cea906427015543"
+    },
+    {
+      "path": "evidence/stability_20260914/fixed_base_legacy/capture_provenance.json",
+      "size_bytes": 2378,
+      "sha256": "1ab946adb76c6b1d0063c399ba8d1243ee22853e0a1727077c88fd6fdc943020"
+    },
+    {
+      "path": "evidence/stability_20260914/fixed_base_legacy/capture_wrapper.py",
+      "size_bytes": 5482,
+      "sha256": "c2c8ed3d34fb1ba777cc9c5e133c940cc462e00cc7bb143050bc7477f432ec5f"
+    },
+    {
+      "path": "evidence/workflow_stability_axial_finish_probe_seed6070.json",
+      "size_bytes": 21492,
+      "sha256": "1fbfd781d7045371b627c3b3efb8bca12500ad8414fb9d36dd13b1a5b527a60f"
+    },
+    {
+      "path": "evidence/stability_20260914/axial_finish_probe/body_poses.npz",
+      "size_bytes": 347251,
+      "sha256": "2b5c3e00dc439866ccff21ac4a4933d678d703584ba919f40a333580e162e704"
+    },
+    {
+      "path": "evidence/stability_20260914/axial_finish_probe/handoff_trace.npz",
+      "size_bytes": 4448,
+      "sha256": "92d247f06119677a7a3eec22ab7aebb5d58cf666639570bdb07fff0618485ae1"
+    },
+    {
+      "path": "evidence/stability_20260914/axial_finish_probe/capture_provenance.json",
+      "size_bytes": 2524,
+      "sha256": "785246f5acd89d0d30ceeb3e1bb3e36c9a4a7aced13221aa2304afd35423760e"
+    },
+    {
+      "path": "evidence/stability_20260914/axial_finish_probe/capture_wrapper.py",
+      "size_bytes": 5762,
+      "sha256": "3e40fc1454659f321de451ff6048fa566f32a3e3d0358a94311f0e04984c510e"
+    },
+    {
+      "path": "evidence/stability_20260914/axial_finish_probe/run.log",
+      "size_bytes": 30140,
+      "sha256": "4197f988b038483b07f224b2de9fbd7451ce7314552523f60d7e8cae23481683"
+    },
+    {
+      "path": "evidence/workflow_stability_full_pose_finish_v2_seed6070.json",
+      "size_bytes": 24774,
+      "sha256": "e7053cb0cbf8100d9555743f497d911d54cf45426f754c2f59e704983035e008"
+    },
+    {
+      "path": "evidence/stability_20260914/full_pose_finish_v2/body_poses.npz",
+      "size_bytes": 768269,
+      "sha256": "6b5ba660788ee7c06e4f1a90817ebce8fd14cd7b69792f8032275d0221ab48a1"
+    },
+    {
+      "path": "evidence/stability_20260914/full_pose_finish_v2/handoff_trace.npz",
+      "size_bytes": 38080,
+      "sha256": "3db496a35394db40280a75701496c90698fd1d85d350de7cf75c60516fcc493d"
+    },
+    {
+      "path": "evidence/stability_20260914/full_pose_finish_v2/capture_provenance.json",
+      "size_bytes": 2506,
+      "sha256": "33fec9a7d8b0ac94499b9bb206d3fce583f9f79c674989b6e98ce28592854718"
+    },
+    {
+      "path": "evidence/stability_20260914/full_pose_finish_v2/capture_wrapper.py",
+      "size_bytes": 5699,
+      "sha256": "3e9ac7c50a8d16827e6febf343b81410baaaaac0b3323e43930b5514aa648d44"
+    },
+    {
+      "path": "evidence/stability_20260914/full_pose_finish_v2/run.log",
+      "size_bytes": 34330,
+      "sha256": "649078239a738a4e4146148d2c1fed4e80421b3b6a939b12e188e437d04acae6"
+    },
+    {
+      "path": "evidence/stability_20260914/full_pose_finish_v2/verification.json",
+      "size_bytes": 583,
+      "sha256": "7717b042b36cbd61ad46e517351b4a1693f34e10a64fd68903d32c8e314b36d1"
+    },
+    {
+      "path": "evidence/stability_20260914/full_pose_finish_v2/motion_analysis.json",
+      "size_bytes": 29876,
+      "sha256": "4b4d33839350fdf46d4926d948b00748241f96d4da31b8e59181cc3be9b9106d"
+    },
+    {
+      "path": "evidence/workflow_stability_absolute_insert_v3_seed6070.json",
+      "size_bytes": 24625,
+      "sha256": "8807404be218ae9647234ad5f1f01350577577d800ce62f1ab35bb4d01dd15c9"
+    },
+    {
+      "path": "evidence/stability_20260914/absolute_insert_v3/body_poses.npz",
+      "size_bytes": 756446,
+      "sha256": "89129759ae91fb3cc91295fbfbe4f80b51e86cce607fc35b0438c5bee5d53348"
+    },
+    {
+      "path": "evidence/stability_20260914/absolute_insert_v3/handoff_trace.npz",
+      "size_bytes": 32384,
+      "sha256": "a4f8e06de409bc70acec68542ab78df08328916c9a00f9955819c5b9038ef7d2"
+    },
+    {
+      "path": "evidence/stability_20260914/absolute_insert_v3/capture_provenance.json",
+      "size_bytes": 2558,
+      "sha256": "ff8763b9148c4973adba33b6fbc1ac31107a1be1c2151eab298af46ec8a47906"
+    },
+    {
+      "path": "evidence/stability_20260914/absolute_insert_v3/capture_wrapper.py",
+      "size_bytes": 5800,
+      "sha256": "9a882369a39d45b123ff603b48032ae7133de435a3a9c36f97c7a041b401f600"
+    },
+    {
+      "path": "evidence/stability_20260914/absolute_insert_v3/run.log",
+      "size_bytes": 34572,
+      "sha256": "a35a6b37666202c49117e627293ca6550c7a2fdf4b2078e5843f95c3e97e7c0f"
+    },
+    {
+      "path": "evidence/stability_20260914/absolute_insert_v3/verification.json",
+      "size_bytes": 583,
+      "sha256": "867976bb624627b13a29aa7f9b268557a36bccc5edce8b4475adf61dfb4cf671"
+    },
+    {
+      "path": "evidence/stability_20260914/absolute_insert_v3/motion_analysis.json",
+      "size_bytes": 26624,
+      "sha256": "9eae13c64ef2351745f11cad8dc5e751a5030065a79c7cdd5cfbfcf7950018c0"
+    },
+    {
+      "path": "evidence/workflow_stability_absolute_insert_v4_seed6070.json",
+      "size_bytes": 25220,
+      "sha256": "812dada0dd309bea9f43d44066baf8ebadfe6f660916829425b9f5326d54e372"
+    },
+    {
+      "path": "evidence/stability_20260914/absolute_insert_v4/body_poses.npz",
+      "size_bytes": 484287,
+      "sha256": "780eeaa2c3d2b22b0b1b5ca60f4b3f52807a9f3c93cc726a8a634c1451171e3b"
+    },
+    {
+      "path": "evidence/stability_20260914/absolute_insert_v4/handoff_trace.npz",
+      "size_bytes": 27689,
+      "sha256": "9d82195631b1d531fed5438eadea639d287d7ad6b94b99ca64b5e2dea5feb8d4"
+    },
+    {
+      "path": "evidence/stability_20260914/absolute_insert_v4/capture_provenance.json",
+      "size_bytes": 2558,
+      "sha256": "f82e09a871ec09a1419170bc90f964e62cfda9460ab039a61070c6d64782179f"
+    },
+    {
+      "path": "evidence/stability_20260914/absolute_insert_v4/capture_wrapper.py",
+      "size_bytes": 5800,
+      "sha256": "d833679642de644ffbf87e1c6e5d9ad9925dca5c6518335112bb00b4baca411a"
+    },
+    {
+      "path": "evidence/stability_20260914/absolute_insert_v4/run.log",
+      "size_bytes": 35484,
+      "sha256": "20262f788f6a6642b5fbe248413252713457b1cddd8a3d3664936fe3393796bb"
+    },
+    {
+      "path": "evidence/stability_20260914/absolute_insert_v4/verification.json",
+      "size_bytes": 539,
+      "sha256": "8834f4886fdfbd1f0eb0c139d312238d91dda1a8584f7e49375b06b62f065d9d"
+    },
+    {
+      "path": "evidence/stability_20260914/absolute_insert_v4/motion_analysis.json",
+      "size_bytes": 29810,
+      "sha256": "6df0f2ef38d237f2432d28bb83682b9b677931c55586f4ec10dfa1ce8634d4be"
+    },
+    {
+      "path": "evidence/workflow_stability_latch_handoff_v5_seed6070.json",
+      "size_bytes": 25085,
+      "sha256": "57f8c9fc8a00ce688434b01ef58324f34a910ea8b69e72f6f7f298178b63cb3c"
+    },
+    {
+      "path": "evidence/stability_20260914/latch_handoff_v5/body_poses.npz",
+      "size_bytes": 503816,
+      "sha256": "190a699a8ac4a21d31ced92e879358fa9173679370647571bf26d9360d70c7da"
+    },
+    {
+      "path": "evidence/stability_20260914/latch_handoff_v5/handoff_trace.npz",
+      "size_bytes": 25688,
+      "sha256": "2d5d99569393b76cc3ceb1d3472027afdee2da6f8174fc0f536f90876350225b"
+    },
+    {
+      "path": "evidence/stability_20260914/latch_handoff_v5/capture_provenance.json",
+      "size_bytes": 2558,
+      "sha256": "f29eb42b13e0d001c36c7cff655f78b04133bca5f83159db0f2a3d2a2cef4400"
+    },
+    {
+      "path": "evidence/stability_20260914/latch_handoff_v5/capture_wrapper.py",
+      "size_bytes": 5800,
+      "sha256": "e2c9e91b730da6c13f7383642d5145b0a01b9c155ef714ce37526f330c344545"
+    },
+    {
+      "path": "evidence/stability_20260914/latch_handoff_v5/run.log",
+      "size_bytes": 34340,
+      "sha256": "c6b9b623b36947fc927df7d3c483cc8ff55470fa1d3dd54d602b502bdc9b4a5c"
+    },
+    {
+      "path": "evidence/stability_20260914/latch_handoff_v5/verification.json",
+      "size_bytes": 496,
+      "sha256": "e8f832098d8152f6d157596187507e804582b7ce20054b7a92aeb15eabfa2b4f"
+    },
+    {
+      "path": "evidence/stability_20260914/latch_handoff_v5/motion_analysis.json",
+      "size_bytes": 29893,
+      "sha256": "7175d88a4b41bf780e67c9aba21ab99c8b0ff235fcbe0befda24d416fc2f2606"
+    },
+    {
+      "path": "evidence/stability_20260914/latch_handoff_v5/motion_analysis_realtime.json",
+      "size_bytes": 29836,
+      "sha256": "5a1a8a7bcdc472ebc024d76d915b581d278b4ec5b51f0b84fb1357df38d7bbfe"
+    },
+    {
+      "path": "evidence/stability_20260914/paired/comparison.json",
+      "size_bytes": 45003,
+      "sha256": "490d48d13a20047e0f910c835e0a84b0e94c3a69480577a1f8550d2368e1805c"
+    },
+    {
+      "path": "evidence/stability_20260914/paired/legacy_rail/seed4070/episodes.npz",
+      "size_bytes": 2421,
+      "sha256": "cb29caf95997a0d320b9bbf476304ab65603a5e083fa5ef5702d63f85a94f356"
+    },
+    {
+      "path": "evidence/stability_20260914/paired/legacy_rail/seed4070/execution.log",
+      "size_bytes": 24622,
+      "sha256": "57ceb39601344a976ea4d4e73b9aac1330698d7c28bc1e1c4b87599dd9a450ef"
+    },
+    {
+      "path": "evidence/stability_20260914/paired/legacy_rail/seed4070/workflow_report.json",
+      "size_bytes": 58079,
+      "sha256": "c3f3e2fc4041a5d66c4991d8819b65915c7c8b6d9e02d5966315ec1db0612c37"
+    },
+    {
+      "path": "evidence/stability_20260914/paired/legacy_rail/seed5070/execution.log",
+      "size_bytes": 21189,
+      "sha256": "ba28ab0819bcd40904face8bbf280d9d8f313b670d1857dfdb99e359b7cd9cc9"
+    },
+    {
+      "path": "evidence/stability_20260914/paired/refined_fixed_base/seed4070/episodes.npz",
+      "size_bytes": 2413,
+      "sha256": "d93cd10815ca03872ea6514066effb00a40e813341322e9b094a4014cd4c7b44"
+    },
+    {
+      "path": "evidence/stability_20260914/paired/refined_fixed_base/seed4070/execution.log",
+      "size_bytes": 24952,
+      "sha256": "cbaa4855d4726f8c18583a6181688baab931249361785e8fce6c99f01e5e6900"
+    },
+    {
+      "path": "evidence/stability_20260914/paired/refined_fixed_base/seed4070/workflow_report.json",
+      "size_bytes": 57585,
+      "sha256": "051c7e2702f85035d416471ce805ae7c7a13d1fff489211c5f6995af604b9eb6"
+    },
+    {
+      "path": "evidence/stability_20260914/paired/refined_fixed_base/seed5070/execution.log",
+      "size_bytes": 19794,
+      "sha256": "35dcb5ecd222cc7e766c716883a0a2d09f51fa99bea44aa208f2058b915249cd"
+    },
+    {
+      "path": "evidence/stability_20260914/paired/archive_status.json",
+      "size_bytes": 199,
+      "sha256": "4a7e202e055e0e2eb9a33b1d0f10c5168ed6ad1a4b7b21508153cf66f723be76"
+    },
+    {
+      "path": "evidence/stability_20260914/failed_comparison_v1/comparison.json",
+      "size_bytes": 5432,
+      "sha256": "95ee840a571b2171007d2df955f78296f1d39d46e5d8c6c60dfd3a69b946d745"
+    },
+    {
+      "path": "evidence/stability_20260914/failed_comparison_v1/legacy_rail/seed4070/episodes.npz",
+      "size_bytes": 2419,
+      "sha256": "db243487b275dc38f288b5f538a66143d26a26a5816c03b8617c8b57a74e9e92"
+    },
+    {
+      "path": "evidence/stability_20260914/failed_comparison_v1/legacy_rail/seed4070/execution.log",
+      "size_bytes": 24120,
+      "sha256": "280527d2bedc69e4ccc918c805ea35a5a8a42dfdf09e5fcc9a0da204909676df"
+    },
+    {
+      "path": "evidence/stability_20260914/failed_comparison_v1/legacy_rail/seed4070/workflow_report.json",
+      "size_bytes": 57935,
+      "sha256": "59484803742c892f02405f482716fc0c1401fe22ecda6d8a1ae462faacd7b12e"
+    },
+    {
+      "path": "evidence/stability_20260914/failed_comparison_v1/refined_fixed_base/seed4070/episodes.npz",
+      "size_bytes": 2415,
+      "sha256": "e782b7aa393e06d5c95818c82efdbca660f434bd71d580f0f27e97fe678137b1"
+    },
+    {
+      "path": "evidence/stability_20260914/failed_comparison_v1/refined_fixed_base/seed4070/execution.log",
+      "size_bytes": 22728,
+      "sha256": "8b07cef000421d4f74182045870b321ab51e512e6acf9ef41fba5dc950d791c3"
+    },
+    {
+      "path": "evidence/stability_20260914/failed_comparison_v1/refined_fixed_base/seed4070/workflow_report.json",
+      "size_bytes": 57291,
+      "sha256": "6d36f2aeafc1f54477b12cc7e5a6d01b9b2d9addb0640fa1c25131d5e1c09a28"
+    },
+    {
+      "path": "evidence/stability_20260914/failed_comparison_v1/archive_status.json",
+      "size_bytes": 192,
+      "sha256": "9232afe4bd9109bdf56d11276129ef3753f99c4a20dcc81e3b51133848a7af58"
+    },
+    {
+      "path": "evidence/stability_20260914/acceptance-plan.json",
+      "size_bytes": 1477,
+      "sha256": "af8e305844d6ca35562e347b06e9f931ee375a1c51695054f1ee57c1877b2fe2"
+    },
+    {
+      "path": "evidence/stability_20260914/paired/physical_audit.json",
+      "size_bytes": 19068,
+      "sha256": "4cf20d8224d521526a34c6c80164e8ee70760c2fb9164e94e18e5aa2b43523f0"
+    },
+    {
+      "path": "evidence/workflow_stability_paired_summary.json",
+      "size_bytes": 2939,
+      "sha256": "5f86a10bb6de65a16e9b9bd8fe30d9e94e3308f8fa0adaa8a9a796a681b02417"
+    }
+  ]
+}

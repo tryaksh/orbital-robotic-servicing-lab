@@ -1,0 +1,27 @@
+{
+  "passed": false,
+  "checks": {
+    "single_camera_episode": true,
+    "terminal_seating": false,
+    "both_robot_supports_released": false,
+    "rack_only_hold": false,
+    "bounded_robot_carried_transit": false,
+    "live_rgbd": false,
+    "visual_occupancy_plan": false,
+    "executed_controllers": false,
+    "saved_video": true
+  },
+  "failed_checks": [
+    "terminal_seating",
+    "both_robot_supports_released",
+    "rack_only_hold",
+    "bounded_robot_carried_transit",
+    "live_rgbd",
+    "visual_occupancy_plan",
+    "executed_controllers"
+  ],
+  "transit_position_drift_mm": 0.0,
+  "rack_only_hold_s": 0.0,
+  "detections": 0,
+  "detection_attempts": 331
+}

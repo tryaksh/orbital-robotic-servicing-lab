@@ -6,8 +6,9 @@ Robotiq 2F-85-class parallel gripper on a 6-axis arm.**
 The setting is on-orbit servicing: replacing a failed compute module on a
 satellite, station or orbital compute platform without an astronaut EVA. That
 matters to the requirements below rather than being background. Every measurement
-here was taken at zero gravity, where nothing settles and the only thing holding
-a module is the robot, so the module's own weight and friction are not available
+here was taken at zero gravity, where gravity does not hold a module in its bay:
+the robot or rack retention must provide that support. The module's own weight
+and weight-dependent friction are not available
 to do any of the fixturing a ground assembly takes for granted.
 
 This is the design output of this project. Every number below is derived from a
@@ -33,6 +34,15 @@ It is long because it is the evidence trail, not a summary. Three ways in:
 
 For current measured state rather than requirements, read
 [`NOW.md`](NOW.md).
+
+The fixed-base v3 recipe described in [TRANSFER_STABILITY.md](TRANSFER_STABILITY.md)
+changes controller execution, not the module/rack geometry or seating predicates.
+It demonstrates one continuous transfer without moving the robot base. Rail
+indexing results below remain measurements of earlier configurations; they are
+not a requirement that every successful transfer use a moving carriage. The
+new terminal extraction finish is scripted, and the last insertion phase
+continues to use guarded control. Earlier skill and cohort rates are not
+recertification of this refined recipe.
 
 ---
 
@@ -1447,14 +1457,19 @@ The rule is one sentence.
   Section 8 is four failed attempts to constrain that mechanically and section
   2.1 is why the interface has the shape it does. Nothing here is modelled well
   enough to plan through.
-- **The last millimetres of seating.** Section 6 establishes that this rack's
+- **The last millimetres of seating, as a learned-controller candidate.** Section 6 establishes that this rack's
   lead-in does not assist the insertion, it *performs* it: the flares walk the
   module into the channel by contact, and contact can only walk a module that is
   free to be walked. A stroke whose outcome is decided by which lead-in the
   module's corner touches first is the same class of problem as the capture.
+  That motivates testing learned seating; it does not establish that a learned
+  policy outperforms guarded control. The current v3 recipe still uses guarded
+  absolute-IK insertion, and its terminal extraction finish is also scripted.
 
-**Deterministic owns known geometry.** The seat dwell, the retreat, the rail
-crossing, the two squaring legs, and the long free-space approach. Every one of
+**Deterministic owns known geometry.** The seat dwell, the retreat, the cross-bay
+transfer, the two squaring legs, and the long free-space approach. Earlier
+configurations used a rail for crossing; the v3 demonstration uses the stationary
+arm. Every one of
 them is a pose-to-pose move through a workcell whose kinematics
 `scripts/check_workcell_geometry.py` solves in closed form and agrees with the
 simulator to **0.006 mm**. There is no uncertainty for a policy to be robust to,
@@ -1551,7 +1566,8 @@ Report: `evidence/grapple_insert_v16pin_certification.json`.
 These hold for every claim this project makes about the chain.
 
 Current measurements are intentionally not duplicated in this requirement
-document; [`NOW.md`](NOW.md) is their single source. As of 2026-08-31 the strict
+document; [`NOW.md`](NOW.md) is their single source. The following is a preserved
+historical snapshot, not current validation status: as of 2026-08-31 the strict
 chain is 17/24 after independent robot-support release, both learned contact
 skills miss 95%, the flush-tag perception gate fails, and the serviceability
 boundary is not qualified. The legacy 97.92% chain result used an earlier

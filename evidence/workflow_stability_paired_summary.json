@@ -1,0 +1,95 @@
+{
+  "evidence_type": "supplemental_bounded_cohort_physical_audit",
+  "status": "partial_stopped_on_explicit_user_request",
+  "source_commit": "4a433e048b954e88360242fd78e5bb8e5399a988",
+  "planned_seeds": [
+    4070,
+    5070,
+    6070
+  ],
+  "completed_seeds": [
+    4070
+  ],
+  "planned_episodes_per_arm": 24,
+  "completed_episodes_per_arm": 8,
+  "excluded_runs": [
+    {
+      "seed": 5070,
+      "status": "interrupted_without_terminal_report_or_NPZ",
+      "included_in_counts": false
+    },
+    {
+      "seed": 6070,
+      "status": "not_run",
+      "included_in_counts": false
+    }
+  ],
+  "arms": {
+    "legacy_rail": {
+      "episodes": 8,
+      "npz_successes": 5,
+      "npz_success_rate": 0.625,
+      "strict_physical_successes": 5,
+      "strict_physical_success_rate": 0.625,
+      "npz_passes_rejected_by_physical_audit": []
+    },
+    "refined_fixed_base": {
+      "episodes": 8,
+      "npz_successes": 6,
+      "npz_success_rate": 0.75,
+      "strict_physical_successes": 6,
+      "strict_physical_success_rate": 0.75,
+      "npz_passes_rejected_by_physical_audit": []
+    }
+  },
+  "paired_changes": {
+    "npz_pass_to_fail": [],
+    "npz_fail_to_pass": [
+      {
+        "seed": 4070,
+        "env": 5,
+        "baseline_failed_checks": [
+          "npz_terminal_success",
+          "rack_engaged_after_seating",
+          "rack_recheck_observed",
+          "rack_hold_duration",
+          "latch_released",
+          "hand_released"
+        ],
+        "refined_failed_checks": []
+      }
+    ],
+    "strict_physical_pass_to_fail": [],
+    "strict_physical_fail_to_pass": [
+      {
+        "seed": 4070,
+        "env": 5,
+        "baseline_failed_checks": [
+          "npz_terminal_success",
+          "rack_engaged_after_seating",
+          "rack_recheck_observed",
+          "rack_hold_duration",
+          "latch_released",
+          "hand_released"
+        ],
+        "refined_failed_checks": []
+      }
+    ]
+  },
+  "qualification": {
+    "passed": null,
+    "reason": "The planned 24-episode-per-arm comparison was not completed."
+  },
+  "scope_and_limitations": [
+    "Only the completed seed4070 bounded cohort, eight environments per arm, is counted.",
+    "The user explicitly requested wrapping up. Seed5070 processes were stopped; seed6070 was not run. Partial logs are preserved but excluded from every outcome count.",
+    "Original NPZ outcomes and existing mission retention, release and rack-only-hold checks are reported separately without changing thresholds.",
+    "No six-run aggregate or 24-episode reliability claim exists for this interrupted comparison.",
+    "Simulation only. Controller and transport changes are combined; this is a limited regression comparison, not hardware qualification."
+  ],
+  "audit": {
+    "path": "evidence/stability_20260914/paired/physical_audit.json",
+    "size_bytes": 19068,
+    "sha256": "4cf20d8224d521526a34c6c80164e8ee70760c2fb9164e94e18e5aa2b43523f0"
+  }
+}

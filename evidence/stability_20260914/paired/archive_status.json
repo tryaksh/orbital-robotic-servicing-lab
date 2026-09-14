@@ -1,0 +1,4 @@
+{
+  "status": "partial_stopped_on_explicit_user_request",
+  "scope": "Only existing artifacts are preserved. Missing runs or terminal artifacts are not successes or failures and are not invented."
+}

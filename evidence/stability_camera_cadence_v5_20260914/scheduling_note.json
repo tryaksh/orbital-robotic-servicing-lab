@@ -1,0 +1,21 @@
+{
+  "original_scheduling_plan_utc": "2026-09-14T21:01:00Z",
+  "reserved_directory": "paired-24-v1/legacy_rail/seed5070",
+  "reserved_directory_was_empty": true,
+  "original_supervisor_stop": "FileExistsError at the next seed5070 mkdir, after both seed4070 cohorts completed normally.",
+  "planned_reason": "Scheduling handoff to two independent cohorts; this plan preceded the refined4070 result.",
+  "subsequent_decision": "The completed first pair regressed. V5 was rejected before any remaining cohort launched; the scheduling continuation was not executed.",
+  "completed_seeds": [
+    4070
+  ],
+  "not_run_seeds": [
+    5070,
+    6070
+  ],
+  "partial_comparison": true,
+  "episodes_per_arm_observed": 8,
+  "episodes_per_arm_originally_planned": 24,
+  "no_active_cohort_interrupted": true,
+  "no_result_rescoring": true,
+  "new_comparison": "All six seed/arm cohorts rerun from the separate corrected clean revision; no V5 first-pair reuse."
+}

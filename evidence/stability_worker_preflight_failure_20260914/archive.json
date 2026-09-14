@@ -1,0 +1,24 @@
+{
+  "artifacts": [
+    {
+      "path": "stability_worker_preflight_failure_20260914/job.json",
+      "sha256": "11a3a02a0d3afc5cf6065addd2347f2582d9c7ce4b9ecf0aa0a79c7c05349e2a"
+    },
+    {
+      "path": "stability_worker_preflight_failure_20260914/artifacts/workflow_report.json",
+      "sha256": "d2b5ed496c8960203f11e6d9fb42340e8bedad0cbdc3a85ec9a257844d8bf46d"
+    },
+    {
+      "path": "stability_worker_preflight_failure_20260914/artifacts/mission_verification.json",
+      "sha256": "39485a14b78b4b0ba37d076b5e7456131fb195eac70e9a6645f31bb1101a4af7"
+    },
+    {
+      "path": "stability_worker_preflight_failure_20260914/artifacts/handoff_trace.npz",
+      "sha256": "d9b0f2024b3867e97c7d3323a1d5ad5051e6edb272b0081876cab75bb8d040b3"
+    },
+    {
+      "path": "stability_worker_preflight_failure_20260914/artifacts/execution.log",
+      "sha256": "4f7fd53da46737b80688a63d672befabeab7ce0eb4347253a4c53868d8e7fb92"
+    }
+  ]
+}

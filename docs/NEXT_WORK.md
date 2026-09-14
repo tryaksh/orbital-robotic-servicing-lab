@@ -1,7 +1,8 @@
 # Next work
 
-Priority follows the measured gates in [NOW.md](NOW.md). The application works;
-the 95% full-chain gate and the broader serviceability envelope remain open.
+Priority follows the measured results in [NOW.md](NOW.md). The fixed-base v3
+profile passes its recorded mission checks. A successful development episode
+does not close reliability or the broader serviceability envelope.
 Detailed earlier experiments and commands are preserved in the
 [backlog archive](handover/backlog_before_mission_application.md). That archive
 contains superseded status statements; use this file for current priority.
@@ -25,10 +26,13 @@ The [repository map](REPO_MAP.md) records which generators and reports came back
 
 ## T0
 
-Twenty-seven older source-bound reports cannot be fully recovered because at
-least one runtime file came from uncommitted code. The new application and
-perception reports have reachable source, and the live mission weights ship in
-git; this does not repair the older experiments.
+Of 45 source-bound reports, **28 cannot be fully recovered**: 27 inherited
+provenance gaps and the preserved
+[failed axial-only extraction probe](../evidence/workflow_stability_axial_finish_probe_seed6070.json),
+whose exact mixed-line-ending runtime bytes remain unavailable. The other 17
+recover through reachable git revisions or exact committed source snapshots.
+The current application has byte-stable source and shipped mission weights;
+that does not repair the missing historical bytes.
 
 ```powershell
 python scripts/check_source_provenance.py --depth 200
@@ -42,12 +46,21 @@ Cost: minutes for the audit; hours per selected GPU certification.
 
 ## T1: stronger camera-driven evaluation
 
-The canonical combined camera recipe scores 17/24 and misses the 95% gate.
-The new mission is a successful recording at seed 6070, not another pooled
-certificate. Its stable lighting and single environment differ from the
-randomized, eight-environment research cohorts.
+The previous v2 combined camera recipe scored 17/24 and missed the 95% gate.
+The fixed-base v3 development recording and profile validation are separate
+single-episode demonstrations. Their stable lighting and single environment
+differ from the randomized, eight-environment regression comparison.
+Seed 6070 informed the new controller's development; reusing it beside 4070 and
+5070 does not create an independent controller-development holdout.
 
-After the recovered factorial audit, preregister a larger set of held-out seeds,
+The shortened corrected comparison completed only seed 4070: 6/8 versus 5/8
+legacy, with no paired losses. Seed 5070 was interrupted and 6070 was not run.
+Both 4070 and 6070 have now informed development; the remaining validation
+requires fresh, declared conditions rather than treating this partial check
+as a complete 24-condition result or a closed 95% gate.
+
+After the recovered factorial and fixed-base comparison audits, preregister a
+larger set of new held-out seeds,
 keep the same checkpoints and final predicates, and run the selected camera arm
 beside its oracle-pose control. Record success, failures by phase, confidence
 intervals, pose-source and velocity-source flags, and source hashes. Preserve
@@ -74,15 +87,41 @@ Check residuals, cadence, missed detections and derived velocity. The selected
 v19noised checkpoint remains unchanged. Recalibrating the surrogate would create
 a new training-distribution arm, which must be measured separately.
 
-## T7: live mission application - complete
+## T7: live mission application
 
-The service now uses the included v7m130 / v19noised / v13m130 checkpoint set,
+The v3 service uses the included v7m130 / v19noised / v13m130 checkpoint set,
 checks its hashes against current validation, and executes the camera pipeline
 through `zero-g-mission run`. Tests reject stale source, changed commands,
 changed weights, incomplete rack hold and altered output files.
 
-Both a clean-source profile validation and a normal worker execution passed.
+The initial candidate profile validation passed all nine checks on clean source
+`88235d8`. The earlier v2 profile and worker validations remain preserved.
+The [fresh-checkout profile validation](../evidence/live_service_stability_validation_seed6070.json)
+passed all nine checks on `4a433e0`, with exact current command and raw source
+bindings. It includes the guarded-extraction observation-gap hold correction.
+The [isolated normal v3 worker](../evidence/live_service_stability_application_seed6070.json)
+passed all nine checks and all five output hashes on clean source `e501500`.
 [Application guide and revalidation commands](compute_service_demo.md)
+
+## T23: supported-settling command ownership
+
+The absolute-IK insertion path computes corrections during the first supported
+settling window, but the final joint-override mask drops DONE environments.
+The accepted biased command therefore gives way to zero-action relative IK.
+In the selected V5 recording, the transition at step 1250 produced a maximum
+joint-target step of 3.868 mrad, 0.084 mm wrist translation on that step and
+0.070 mm net wrist motion through the supported interval. Both supports released
+at step 1271 and all nine mission checks passed. This is a measured ownership
+transition, not a demonstrated failure of the completed mission.
+
+Retain the validated controller while assessing whether this small effect
+matters. A proposed follow-up preserves the last accepted absolute target and
+freezes further trim while the rack already owns the module, then disables that
+override when release occurs. It must preserve the open-hand command and the
+passive rack-only recheck. Test the actual control methods, then compare fresh
+physical runs under identical criteria before changing the deployed recipe.
+The existing paired cohort remains evidence for its original source revision.
+[Refinement scope](TRANSFER_STABILITY.md)
 
 ## T13: learned seating transfer
 
