@@ -4046,7 +4046,12 @@ class WorkflowDriver:
         ready &= established
         blocked = active & ~ready
         self.actions[blocked, :6] = 0.0
-        self.solved_joint_hold[blocked] = False
+        # A missing camera update pauses this profile; it does not transfer
+        # actuator ownership back to relative IK. Dropping the override here
+        # alternated measured-pose targets with biased absolute targets at the
+        # batched camera's lower cadence, preventing the payload from settling.
+        # Keep the last accepted target and freeze both profile time and trim.
+        self.solved_joint_hold[blocked] = True
         self.extract_finish_holds[blocked] += 1
         moving = active & ready
         if not bool(moving.any()):
