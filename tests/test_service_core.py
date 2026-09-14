@@ -592,3 +592,23 @@ def test_live_capability_requires_successful_full_chain_evidence(tmp_path: Path)
     live = registry.capabilities().presets[1]
     assert live.available is False
     assert any("not a settled successful relocation" in reason for reason in live.unavailable_reasons)
+
+
+def test_live_capability_rejects_changed_mission_command(tmp_path: Path) -> None:
+    registry, settings = _live_registry(tmp_path)
+    path = settings.project_root / FULL_CHAIN_EVIDENCE
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["service_command_contract"].remove("--rack_retention")
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    live = registry.capabilities().presets[1]
+    assert not live.available
+    assert any("mission command" in reason for reason in live.unavailable_reasons)
+
+
+def test_live_capability_rejects_changed_checkpoint(tmp_path: Path) -> None:
+    registry, settings = _live_registry(tmp_path)
+    path = settings.project_root / LIVE_INPUT_REQUIREMENTS[2][2]
+    path.write_bytes(b"different weights")
+    live = registry.capabilities().presets[1]
+    assert not live.available
+    assert any("extract policy" in reason for reason in live.unavailable_reasons)

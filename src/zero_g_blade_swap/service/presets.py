@@ -19,18 +19,9 @@ from .config import ServiceSettings
 from .models import BackendKind, Capabilities, InputProvenance, JobProvenance, PresetCapability
 from .verification import verify_mission
 
-GRASP = Path(
-    "logs/rl_games/zero_g_blade_insertion_contact/grapple_grasp_l0_seed70_v7m130/nn/"
-    "last_zero_g_blade_insertion_contact_ep_3100_rew_30.262873.pth"
-)
-EXTRACT = Path(
-    "logs/rl_games/zero_g_blade_insertion_contact/grapple_extract_l0_seed70_v19noised/nn/"
-    "last_zero_g_blade_insertion_contact_ep_14600_rew_166.19054.pth"
-)
-INSERT_CHECKPOINT = Path(
-    "logs/rl_games/zero_g_blade_insertion_contact/grapple_insert_l0_seed70_v13m130/nn/"
-    "last_zero_g_blade_insertion_contact_ep_8000_rew_-42.01845.pth"
-)
+GRASP = Path("policies/servicing_v2/capture_v7m130.pth")
+EXTRACT = Path("policies/servicing_v2/extract_v19noised.pth")
+INSERT_CHECKPOINT = Path("policies/servicing_v2/insert_v13m130.pth")
 FIDUCIAL_EVIDENCE = Path("evidence/fiducial_rgbd_service_current_seed287.json")
 FULL_CHAIN_EVIDENCE = Path("evidence/live_service_current_validation_seed6070.json")
 FIDUCIAL_SOURCE = Path("src/zero_g_blade_swap/fiducial.py")

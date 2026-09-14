@@ -8,7 +8,7 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 72,
+    "canonical": 74,
     "retracted": 12,
     "historical": 218
   },
@@ -122,6 +122,15 @@
       "title": "Calibrated RGB-D fiducial perception qualification",
       "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
       "holds_up": "Static gripper-clear camera arm: unchanged gates pass over 1,024 held-out module poses, pending the continuous workflow."
+    },
+    "fiducial_rgbd_service_current_seed287.json": {
+      "title": "Calibrated RGB-D fiducial perception qualification",
+      "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
+      "source_revision": {
+        "commit": "5387cbf87136b207b6106823b93d7e5ceb01efea",
+        "dirty": false
+      },
+      "holds_up": "Fresh current-camera certificate: 983/1024 detections, 682/683 critical-bay detections, position p95 1.931 mm and orientation p95 11.973 mrad, under unchanged gates. Rendered held poses with the robot still; error statistics are conditional on detection."
     },
     "full_chain_state_16_report.json": {
       "task": "Isaac-ZeroG-Blade-GrapplePin-TwoSlotWorkflow-v0",
@@ -326,6 +335,20 @@
         "dirty": false
       },
       "holds_up": "Paired v24 and guarded insertion at all nine reset stations and real chain handoffs; every losing arm retained."
+    },
+    "live_service_current_validation_seed6070.json": {
+      "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "source_revision": {
+        "commit": "5387cbf87136b207b6106823b93d7e5ceb01efea",
+        "dirty": false
+      },
+      "policy_sha256": "1AFE41D3AFBC8C6B6A26C3A426863F37ADF8C44B3B10849ECF0F4B88FBEFAEA3",
+      "checkpoints_sha256": {
+        "capture": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+        "extract": "5971A916C9C7B8F77A2973E25EB504C9B31794BC9C3F2E64EACF83EB7FDC0B95",
+        "insert": "CFBB09E2DDC7AF11E180DD772C42F5D86AB20EA56BD0A00F2FEB2EA378B4EC69"
+      },
+      "holds_up": "Current service recipe, clean-source recorded validation at seed 6070: all nine strict checks pass. 1304/1304 RGB-D detections, 1.436 mm maximum transit drift and 0.733333 s rack-only hold. One environment with stable lighting; not a success rate. Noised extraction, kinematic velocity and the existing lead-in guard; final seating criteria unchanged. Idealized joint load paths."
     },
     "rack_requirement_sweep_v1.json": {
       "title": "The rack requirement as a function of the manipulator's delivered attitude",

@@ -190,7 +190,7 @@ put the hand where you want it instead of learning them.
 
 - **Every report is classified, mechanically.**
   [`evidence/MANIFEST.json`](evidence/MANIFEST.json) is generated from the files
-  themselves and currently holds **72 canonical, 12 retracted and 218 historical**
+  themselves and currently holds **74 canonical, 12 retracted and 218 historical**
   reports. Quote canonical. Never quote retracted.
   [`evidence/RETRACTED.md`](evidence/RETRACTED.md) says why each retraction
   happened. `canonical` is a hand-written list with a sentence per entry saying
@@ -204,7 +204,7 @@ put the hand where you want it instead of learning them.
   to 92.87% over 1,024 frames.
 - **Some reports cannot be reproduced, and say so.** They were produced from
   **uncommitted** code: the runs happened, but the exact bytes behind them do not
-  exist any more. **33 reports carry** a hash of every source file as it was on
+  exist any more. **35 reports carry** a hash of every source file as it was on
   disk when the run happened, and six of those are fully **recovered**: every file
   matches a commit that is still here, so checking it out gives back the exact
   source the run used. The rest have at least one
@@ -234,7 +234,7 @@ put the hand where you want it instead of learning them.
 Install steps and the exact Isaac Lab version are in
 [`docs/INSTALL.md`](docs/INSTALL.md).
 
-The checks that need no simulator, no GPU and no graphics — **1,202 tests in
+The checks that need no simulator, no GPU and no graphics — **1,205 tests in
 about twenty seconds**, which is what the continuous-integration build runs on
 every push:
 

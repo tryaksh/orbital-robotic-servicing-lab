@@ -144,3 +144,14 @@ def test_recipe_binding_includes_controller_and_geometry_but_is_portable(tmp_pat
     assert "--rack_retention" in command_contract(first)
     assert "v7m130" in first[first.index("--grasp_checkpoint") + 1]
     assert "v19noised" in first[first.index("--extract_checkpoint") + 1]
+
+
+def test_shipped_checkpoints_match_the_validated_policy_set():
+    manifest = json.loads((ROOT / "policies/servicing_v2/MANIFEST.json").read_text(encoding="utf-8"))
+    validated = json.loads((ROOT / "evidence/live_service_current_validation_seed6070.json").read_text(encoding="utf-8"))
+    for row in manifest["checkpoints"]:
+        path = ROOT / "policies/servicing_v2" / row["file"]
+        assert path.stat().st_size == row["size_bytes"]
+        assert sha256_file(path) == row["sha256"]
+        role = "insert" if row["role"] == "insert_loaded_only" else row["role"]
+        assert row["sha256"] == validated["checkpoint_sha256"][role].lower()

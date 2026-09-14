@@ -1,0 +1,29 @@
+{
+  "description": "Frozen inference checkpoint set for the verified live mission. Files are byte-identical to the training artifacts.",
+  "algorithm": "PPO (RL-Games)",
+  "training_seed": 70,
+  "scope": "Simulation only. Capture and extraction execute; insertion uses guarded control, so the loaded insert policy does not produce actions.",
+  "checkpoints": [
+    {
+      "role": "capture",
+      "file": "capture_v7m130.pth",
+      "sha256": "db5b2887c8bb70d92d604220efc6bc747695c8e18a2fb7f405f047d132cd975e",
+      "size_bytes": 1342781,
+      "original_training_path": "logs/rl_games/zero_g_blade_insertion_contact/grapple_grasp_l0_seed70_v7m130/nn/last_zero_g_blade_insertion_contact_ep_3100_rew_30.262873.pth"
+    },
+    {
+      "role": "extract",
+      "file": "extract_v19noised.pth",
+      "sha256": "5971a916c9c7b8f77a2973e25eb504c9b31794bc9c3f2e64eacf83eb7fdc0b95",
+      "size_bytes": 1341301,
+      "original_training_path": "logs/rl_games/zero_g_blade_insertion_contact/grapple_extract_l0_seed70_v19noised/nn/last_zero_g_blade_insertion_contact_ep_14600_rew_166.19054.pth"
+    },
+    {
+      "role": "insert_loaded_only",
+      "file": "insert_v13m130.pth",
+      "sha256": "cfbb09e2ddc7af11e180dd772c42f5d86ab20ea56bd0a00f2feb2ea378b4ec69",
+      "size_bytes": 1356733,
+      "original_training_path": "logs/rl_games/zero_g_blade_insertion_contact/grapple_insert_l0_seed70_v13m130/nn/last_zero_g_blade_insertion_contact_ep_8000_rew_-42.01845.pth"
+    }
+  ]
+}

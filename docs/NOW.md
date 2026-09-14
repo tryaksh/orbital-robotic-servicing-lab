@@ -16,8 +16,8 @@ Everything is simulated. Nothing has run on hardware.
 
 | Item | Verified state |
 | --- | --- |
-| Evidence | 72 canonical, 12 retracted, 218 historical; quote only canonical |
-| Source provenance | **33 reports carry** a hash of every source file as it was on disk at run time. Six recover completely from git; the rest have at least one file that matches nothing, 119 of 266 bindings in all, because the run used uncommitted code |
+| Evidence | 74 canonical, 12 retracted, 218 historical; quote only canonical |
+| Source provenance | **35 reports carry** a hash of every source file as it was on disk at run time. Six recover completely from git; the rest have at least one file that matches nothing, 119 of 266 bindings in all, because the run used uncommitted code |
 | Current completion result | 22/24, **91.67%**, after visible rack retention engages, both robot-side supports release, and the rack alone holds for at least 0.70 s |
 | Boundary decision | **not qualified**; only entry attitude is supported. The rack-clearance axis was re-measured after a sweep defect: `--rack_lateral_clearance_mm` moved each bay's guides and left its lips and entry flares behind, and 6 mm per side goes from 0/64 to 36/64 once the mouth moves with the walls |
 | Live RGB-D service | complete but fragile: one continuous episode does the whole changeout with 1,772/1,772 detections, and the pooled cohort scores **4/24** against a paired oracle-pose control at **20/24** on the same code path |

@@ -1,0 +1,218 @@
+{
+  "status": "passed",
+  "title": "Calibrated RGB-D fiducial perception qualification",
+  "evidence_type": "rendered_rgbd_fiducial_pose_heldout_gate",
+  "dataset": "datasets\\fiducial_rgbd_service_current_seed287.npz",
+  "dataset_sha256": "fbe50f39963f64a45d19ace6c6faa935be9a7187ae5b7ec4163b45bab2c8456b",
+  "frames": 1024,
+  "detected_frames": 983,
+  "detection_rate": 0.9599609375,
+  "critical_bay_frames": 683,
+  "critical_bay_detections": 682,
+  "critical_bay_detection_rate": 0.9985358711566618,
+  "position_error_mm": {
+    "mean": 0.7943518611308077,
+    "p50": 0.6562379553210878,
+    "p95": 1.9306712454300146,
+    "max": 5.602759796388493
+  },
+  "orientation_error_rad": {
+    "mean": 0.004972940177341226,
+    "p50": 0.003868977447685642,
+    "p95": 0.011972533258956026,
+    "max": 0.03295639748395536
+  },
+  "reprojection_error_px": {
+    "mean": 0.5191869070449082,
+    "p50": 0.475400270362693,
+    "p95": 0.9454843890412209,
+    "max": 3.810909442613827
+  },
+  "detector_quality_score": {
+    "mean": 0.778256647861747,
+    "p50": 0.788439080791503,
+    "p95": 0.8972654247020343,
+    "max": 0.9495749141931003
+  },
+  "occupancy_exact_match": 1.0,
+  "occupancy_exact_match_detected_full_envelope": 1.0,
+  "gates": {
+    "critical_bay_detection_rate_min": 0.99,
+    "overall_detection_rate_min": 0.9,
+    "position_p95_limit_mm": 20.0,
+    "orientation_p95_limit_rad": 0.05,
+    "occupancy_exact_min": 0.95
+  },
+  "calibration": {
+    "camera_position_m": [
+      0.52,
+      -0.11,
+      2.15
+    ],
+    "camera_quaternion_wxyz_ros": [
+      0.029590823511594526,
+      0.7064873552753126,
+      -0.7064873552753126,
+      -0.029590823511594526
+    ],
+    "intrinsic_matrix": [
+      [
+        960.0,
+        0.0,
+        319.5
+      ],
+      [
+        0.0,
+        960.0,
+        319.5
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "resolution_px": [
+      640,
+      640
+    ],
+    "source": "scene_cfg.make_tiled_camera_cfg"
+  },
+  "deployment_boundary": {
+    "runtime_inputs": [
+      "rgb",
+      "registered_metric_depth",
+      "camera_intrinsics",
+      "camera_extrinsics",
+      "known_fiducial_geometry"
+    ],
+    "simulator_pose_used_by_estimator": false,
+    "simulator_pose_used_only_for_error_metrics": true,
+    "dropout_behavior": "hold-last before verified robot capture; tool forward-kinematics propagation only after capture; hold-last and guarded-motion pause after handoff",
+    "critical_bay_definition": "source occupancy preflight and destination insertion alignment; the collector holds the robot still, so continuous robot occlusion is exercised only by the strict RGB-D chain"
+  },
+  "runtime_source_bindings": [
+    {
+      "path": "src/zero_g_blade_swap/servicing_camera.py",
+      "sha256": "2951154a749101876bdaedde6ef38be012573ef6dd0b95ad52eae81aa3f39310"
+    },
+    {
+      "path": "src/zero_g_blade_swap/fiducial.py",
+      "sha256": "9b3cc8dff252b8836c43eaf02b772f375fead994d2e588517a3e140ddd840ca1"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/assets.py",
+      "sha256": "e861e1473cf6593402c657a0692af2ddd9ddf9d2d6e4fd4ff512175b0ba96840"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/mdp/perception.py",
+      "sha256": "6d06b9bb08589598d8049d40cad47ee8ce36cdec1ea4c46f92481875ae1ed17b"
+    },
+    {
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/scene_cfg.py",
+      "sha256": "ce7fb169a099210ffbb59a26e4696bf2b71975a0157a631e53d642fb5a154824"
+    }
+  ],
+  "failure_examples": [
+    {
+      "index": 8,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 38,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 89,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 110,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 137,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 182,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 227,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 230,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 251,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 299,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 305,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 341,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 350,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 353,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 356,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 401,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 413,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 485,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 518,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    },
+    {
+      "index": 539,
+      "error": "no ArUco service datum in (23, 15) was detected"
+    }
+  ],
+  "source_revision": {
+    "available": true,
+    "commit": "5387cbf87136b207b6106823b93d7e5ceb01efea",
+    "branch": "main",
+    "dirty": false,
+    "code_dirty": false,
+    "tracked_changes": [],
+    "error": null
+  },
+  "collection_source_revision": {
+    "commit": "0f9961626efce8eca454090226edc3d2809b4cb1",
+    "dirty": false
+  },
+  "scope_and_limitations": [
+    "Rendered simulation frames, not real camera measurements.",
+    "1024 held-out poses at seed 287, with the robot held still. This certificate does not measure moving-robot occlusion.",
+    "983 detections; pose-error statistics are conditional on detection. Critical-bay detection is 682 of 683 frames.",
+    "The recorded live mission separately checks the complete moving-robot sequence.",
+    "The 327 MB rendered corpus remains local under datasets/; its SHA-256 and the exact collection command are documented."
+  ]
+}

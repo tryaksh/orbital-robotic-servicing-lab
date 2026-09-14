@@ -47,3 +47,8 @@ environment-lock.local.json
 
 # MuJoCo writes this beside whatever it is run from.
 MUJOCO_LOG.TXT
+
+# Small frozen checkpoint set required by the verified mission application.
+!policies/servicing_v2/capture_v7m130.pth
+!policies/servicing_v2/extract_v19noised.pth
+!policies/servicing_v2/insert_v13m130.pth

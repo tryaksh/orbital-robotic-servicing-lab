@@ -57,6 +57,19 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "Current-source paired no-rack control: 17/24 (70.83%), exactly reproducing the pre-retention baseline.",
     ),
     (
+        "fiducial_rgbd_service_current_seed287.json",
+        "Fresh current-camera certificate: 983/1024 detections, 682/683 critical-bay detections, "
+        "position p95 1.931 mm and orientation p95 11.973 mrad, under unchanged gates. "
+        "Rendered held poses with the robot still; error statistics are conditional on detection.",
+    ),
+    (
+        "live_service_current_validation_seed6070.json",
+        "Current service recipe, clean-source recorded validation at seed 6070: all nine strict checks pass. "
+        "1304/1304 RGB-D detections, 1.436 mm maximum transit drift and 0.733333 s rack-only hold. "
+        "One environment with stable lighting; not a success rate. Noised extraction, kinematic velocity "
+        "and the existing lead-in guard; final seating criteria unchanged. Idealized joint load paths.",
+    ),
+    (
         "workflow_robot_carried_release_rack_retention_v1_certification.json",
         "Strict chain with visible destination retention: 22/24 (91.67%); below the unchanged 95% full-chain gate.",
     ),
