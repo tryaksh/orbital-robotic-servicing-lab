@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-105 scripts. Grouped by the verb their filename starts with.
+107 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -17,6 +17,7 @@ These are the ones to run first and the ones that run in CI. A requirement only 
 | --- | --- |
 | `check_attribution_scale.py` | Is the channel interaction an artifact of the scale it was measured on? |
 | `check_camera_scale.py` | Render one frame and measure what the servicing camera can actually resolve. |
+| `check_channel_holds_its_tolerance.py` | Can this channel hold this module inside its own acceptance criterion? |
 | `check_criterion_currency.py` | Fail if an evidence report predates the code that defines what it measured. |
 | `check_destination_channel.py` | What channel does each entry point actually put the module in? |
 | `check_estimate_stability.py` | Is the pose estimate steady, or does it jitter the policy around? |
@@ -89,6 +90,7 @@ These read `.npz` episode metrics and write `evidence/*.json`.
 | `report_rack_retention.py` | Pair strict no-rack and rack-retention cohorts and report load transfer. |
 | `report_robot_carried_interface.py` | Pool the robot-carried transit runs into one interface result. |
 | `report_seating_head_to_head.py` | Which seating controller does the chain keep, decided arithmetically. |
+| `report_skill_gate_attrition.py` | Which condition the capture and extraction skills fail on, episode by episode. |
 
 ## Analyses — diagnose a specific failure
 

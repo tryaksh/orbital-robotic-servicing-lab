@@ -8,7 +8,7 @@
     "pose_head_checkpoints": "checkpoints/"
   },
   "counts": {
-    "canonical": 64,
+    "canonical": 66,
     "retracted": 12,
     "historical": 221
   },
@@ -71,6 +71,12 @@
         "dirty": false
       },
       "holds_up": "The module-section axis at three held-out seeds, 192 episodes a point, pooled from archives that already existed. Nominal 57.29% [50.2, 64.1], 120x16 45.83% [38.9, 52.9], 140x26 40.62% [33.9, 47.7]. The pooled rates still overlap nominal, which is the point: tripling n narrows the interval from about twenty-four points to fourteen and the *pooled rate* still does not separate this axis. Every other point is unchanged from chain_robustness_sweep_n64_channel_v1 and the report names which is which."
+    },
+    "channel_verdict_shipped_bay_v1.json": {
+      "title": "Whether a channel can hold its module inside its own acceptance criterion",
+      "evidence_type": "closed_form_geometry_no_simulator",
+      "generated_utc": "2026-09-14T01:52:42.878860+00:00",
+      "holds_up": "**The design rule, run on the bay this repository ships, and it fails.** Relieved, the destination channel is 15.678 mm per side laterally and 12.613 mm vertically, so a module resting in it can lie over 69.68 mrad in yaw and 56.06 mrad in pitch while the acceptance criterion allows 52.36 mrad, and can rest 15.678 mm off the centre line against a 2.5 mm gate. The bay is asking for something its own geometry forbids. Removing the relief brings the attitude inside with 3.18 mrad in hand and leaves the offset failing at 11.065 mm against 2.5 mm -- so no clearance that admits this module also guarantees seating, which is `active_centring` stated in millimetres. Closed form, no simulator; `tests/test_channel_verdict.py` binds it to the scene measurement in `destination_channel_geometry.json`."
     },
     "destination_channel_geometry.json": {
       "title": "What channel each entry point actually builds for the destination bay",
@@ -459,6 +465,12 @@
       "title": "Fixed servicing-camera coverage of the flush fiducial workflow envelope",
       "evidence_type": "geometric_derivation_no_simulator",
       "holds_up": "Unchanged camera, lens and resolution over the workflow envelope with the flush datum pair: 64/64 sampled poses keep one usable plate."
+    },
+    "skill_gate_attrition_v1.json": {
+      "title": "Which condition the capture and extraction skills fail on",
+      "evidence_type": "second_reading_of_existing_episodes",
+      "generated_utc": "2026-09-14T01:42:18.252130+00:00",
+      "holds_up": "**Why the two skills miss the gate, not just by how much.** Each success predicate is a conjunction and its terms are episode columns, so the certified failures partition. Capture is 8.10 points short and 1,170 of its 1,180 failures have the pads outside the 10 mm the chain demands -- 1,020 of them on that term alone, at a median 95.9 mm from the pin, so the hand never arrived rather than arriving imprecisely. Extraction is 7.36 points short and 1,024 of its 1,113 failures carry residual linear velocity above the derived settling limit, in every one of the four largest failure combinations. **Which condition was false is not which condition caused it**: residual motion and grip loss co-occur and the ordering is not recorded, so read this as a partition of the failures and never as a prediction of them."
     },
     "workcell_geometry_check.json": {
       "title": "Where the arm stands, what authority it has there, and what the channel admits",

@@ -10,7 +10,8 @@ have moved its criterion" -- a prompt, and often a false one, because a session
 runs its measurements and commits the code afterwards. This compares *content*,
 so its answer is not a prompt:
 
-``recovered``   the recorded hash matches the file at some commit. The run is
+``recovered``   the recorded hash matches the file at some commit reachable from
+                any ref here -- ``HEAD``, a branch or a tag. The run is
                 reproducible: check that commit out and the source is the source.
 ``working``     the recorded hash matches the working tree but no commit. The
                 run happened on uncommitted state that is still on disk.
@@ -35,8 +36,9 @@ CPU only. Reads JSON and ``git show``; imports nothing from Isaac Lab.
 
 Usage::
 
-    python scripts/check_source_provenance.py            # every report
-    python scripts/check_source_provenance.py --depth 60 # search further back
+    python scripts/check_source_provenance.py             # every report, every ref
+    python scripts/check_source_provenance.py --depth 60  # search further back per ref
+    python scripts/check_source_provenance.py --head_only # HEAD's history alone
     python scripts/check_source_provenance.py --json out.json
 """
 
@@ -96,18 +98,46 @@ def _matches(blob: bytes, recorded: str) -> bool:
     )
 
 
-def _commits(depth: int) -> list[tuple[str, str]]:
-    out = subprocess.run(
-        ["git", "log", f"-{depth}", "--format=%h\t%s"],
+def _refs() -> list[str]:
+    """``HEAD`` first, then every tag and branch, each searched to its own depth.
+
+    **Not ``git log --all``, and the difference is why this exists.** ``--all``
+    interleaves every ref by date and then truncates, so a deep ref can crowd
+    ``HEAD``'s own history out of the window while a shallow one contributes
+    almost nothing. Walking each ref separately gives every ref the full depth.
+
+    Searching more than ``HEAD`` is what recovered the 2026-09-04 campaign. Its
+    commits live only in ``archive/assembly-recovery-training``, which is a tag
+    in this repository, so ``git checkout`` reaches the bytes and the run *is*
+    reproducible. Reporting those bindings as lost said the opposite.
+    """
+
+    refs = ["HEAD"]
+    listing = subprocess.run(
+        ["git", "for-each-ref", "--format=%(refname)", "refs/tags", "refs/heads", "refs/remotes"],
         capture_output=True,
         text=True,
         cwd=ROOT,
     ).stdout
-    rows = []
-    for line in out.splitlines():
-        short, _, subject = line.partition("\t")
-        if short:
-            rows.append((short, subject))
+    refs.extend(name.strip() for name in listing.splitlines() if name.strip())
+    return refs
+
+
+def _commits(depth: int, refs: list[str] | None = None) -> list[tuple[str, str]]:
+    rows: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for ref in refs if refs is not None else ["HEAD"]:
+        out = subprocess.run(
+            ["git", "log", f"-{depth}", "--format=%h\t%s", ref],
+            capture_output=True,
+            text=True,
+            cwd=ROOT,
+        ).stdout
+        for line in out.splitlines():
+            short, _, subject = line.partition("\t")
+            if short and short not in seen:
+                seen.add(short)
+                rows.append((short, subject))
     return rows
 
 
@@ -146,7 +176,13 @@ def classify(path: str, recorded: str, commits: list[tuple[str, str]]) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify recorded source hashes against git.")
     parser.add_argument("reports", nargs="*", help="Reports to check (default: all of evidence/).")
-    parser.add_argument("--depth", type=int, default=40, help="How many commits back to search.")
+    parser.add_argument("--depth", type=int, default=40, help="How many commits back to search, per ref.")
+    parser.add_argument(
+        "--head_only",
+        action="store_true",
+        help="Search only HEAD's history. The default searches every tag and branch too, because a "
+        "commit reachable from any ref in this repository is one a reader can check out.",
+    )
     parser.add_argument("--json", type=Path, default=None, help="Write the result as JSON.")
     parser.add_argument(
         "--fail_on_lost",
@@ -157,7 +193,7 @@ def main() -> int:
     args = parser.parse_args()
 
     paths = [Path(name) for name in args.reports] or sorted(EVIDENCE.glob("*.json"))
-    commits = _commits(args.depth)
+    commits = _commits(args.depth, None if args.head_only else _refs())
 
     summary: dict[str, dict] = {}
     any_lost = False

@@ -82,7 +82,9 @@ import math
 from dataclasses import dataclass, field
 
 __all__ = [
+    "ChannelVerdict",
     "ManipulatorPerformance",
+    "channel_verdict",
     "engagement_depth_limit_m",
     "requires_a_correcting_lead_in",
     "RackRequirement",
@@ -493,6 +495,217 @@ def interface_regime(
             else "Within the alignment limit a plain channel guarantees the lateral gate on its own."
         ),
     }
+
+
+@dataclass(frozen=True)
+class ChannelVerdict:
+    """What one channel can hold a module to, and whether its own gate accepts it.
+
+    Every other entry point in this file starts from a *manipulator*: measure
+    what the arm delivers, derive the rack. This one starts from the channel,
+    which is the question a hardware engineer has before any arm exists -- the
+    slot is on a drawing and nobody has built a robot yet.
+    """
+
+    module_length_m: float
+    module_width_m: float
+    module_height_m: float
+    lateral_clearance_per_side_m: float
+    vertical_clearance_per_side_m: float
+    seating_stroke_m: float
+    #: ``2c/L`` about each axis. The module can lie over in either plane
+    #: independently, so these are two separate limits and not components of one.
+    resting_yaw_rad: float
+    resting_pitch_rad: float
+    #: The tolerance this channel *demands*, which is the LOOSER of the two, not
+    #: the tighter. A resting module may take either attitude, so a gate that
+    #: accepts only the tighter one rejects a module the channel is entitled to
+    #: leave it in. Reading the tighter figure as the requirement is how a bay
+    #: passes a check it should fail.
+    attitude_the_gate_must_accept_rad: float
+    offset_the_gate_must_accept_m: float
+    #: What the interface actually accepts.
+    seating_tolerance_rad: float
+    lateral_seating_tolerance_m: float
+    #: The entry half, from ``2c/theta`` at the delivered attitude, when one is
+    #: supplied. ``None`` when no manipulator is named -- the channel question
+    #: stands on its own and does not need one.
+    delivered_attitude_rad: float | None
+    engagement_depth_limit_m: float | None
+    correcting_lead_in_required: bool | None
+    regime: str | None
+
+    @property
+    def attitude_margin_rad(self) -> float:
+        """Positive when the gate accepts every attitude the channel can hold."""
+
+        return self.seating_tolerance_rad - self.attitude_the_gate_must_accept_rad
+
+    @property
+    def offset_margin_m(self) -> float:
+        """Positive when the gate accepts every offset the channel can hold."""
+
+        return self.lateral_seating_tolerance_m - self.offset_the_gate_must_accept_m
+
+    @property
+    def attitude_is_compatible(self) -> bool:
+        return self.attitude_margin_rad >= -1.0e-12
+
+    @property
+    def offset_is_compatible(self) -> bool:
+        return self.offset_margin_m >= -1.0e-12
+
+    @property
+    def compatible(self) -> bool:
+        """Whether this channel and this acceptance gate can both be satisfied.
+
+        False means the bay is asking for something its own geometry forbids: the
+        module it is holding is outside the criterion it uses to decide the module
+        is seated. No controller closes that, because the module is already at
+        rest when the gate is read.
+        """
+
+        return self.attitude_is_compatible and self.offset_is_compatible
+
+    @property
+    def limiting_axis(self) -> str:
+        """Which clearance sets the demand, which is the one a designer changes."""
+
+        return "lateral" if self.resting_yaw_rad >= self.resting_pitch_rad else "vertical"
+
+    def describe(self) -> dict[str, object]:
+        """A JSON-safe record, for a report that has to say where a number came from."""
+
+        return {
+            "module_m": {
+                "length": self.module_length_m,
+                "width": self.module_width_m,
+                "height": self.module_height_m,
+            },
+            "channel_m": {
+                "lateral_clearance_per_side": self.lateral_clearance_per_side_m,
+                "vertical_clearance_per_side": self.vertical_clearance_per_side_m,
+                "seating_stroke": self.seating_stroke_m,
+            },
+            "what_the_channel_can_hold": {
+                "resting_yaw_rad": self.resting_yaw_rad,
+                "resting_pitch_rad": self.resting_pitch_rad,
+                "limiting_axis": self.limiting_axis,
+            },
+            "what_the_gate_would_have_to_accept": {
+                "attitude_rad": self.attitude_the_gate_must_accept_rad,
+                "lateral_offset_m": self.offset_the_gate_must_accept_m,
+            },
+            "what_the_gate_does_accept": {
+                "attitude_rad": self.seating_tolerance_rad,
+                "lateral_offset_m": self.lateral_seating_tolerance_m,
+            },
+            "compatible": self.compatible,
+            "attitude_margin_rad": self.attitude_margin_rad,
+            "offset_margin_m": self.offset_margin_m,
+            "entry": {
+                "delivered_attitude_rad": self.delivered_attitude_rad,
+                "engagement_depth_limit_m": self.engagement_depth_limit_m,
+                "correcting_lead_in_required": self.correcting_lead_in_required,
+                "regime": self.regime,
+            },
+        }
+
+
+def channel_verdict(
+    *,
+    module_length_m: float,
+    module_width_m: float,
+    module_height_m: float,
+    channel_inner_face_half_width_m: float,
+    channel_height_m: float,
+    relief_per_side_m: float = 0.0,
+    seating_stroke_m: float,
+    seating_tolerance_rad: float,
+    lateral_seating_tolerance_m: float = DEFAULT_LATERAL_SEATING_TOLERANCE_M,
+    delivered_attitude_rad: float | None = None,
+    pad_half_bearing_offset_m: float | None = None,
+) -> ChannelVerdict:
+    """Answer, for one channel, whether its geometry and its gate agree.
+
+    The single question this library exists for, asked the way a designer asks it:
+    here is a slot and here is the module that goes in it -- how square can the
+    slot hold that module, how square does the acceptance test demand it be, and
+    are those two numbers compatible.
+
+    **The repository's own bay is the case where they are not.** Relieved, its
+    channel is 15.678 mm per side laterally and 12.613 mm vertically, so a module
+    resting in it can lie over 69.68 mrad in yaw and 56.06 mrad in pitch, while
+    ``INSERTION_ORIENTATION_TOLERANCE_RAD`` accepts 52.36 mrad. Both exceed it.
+    The bay is asking for something its own geometry forbids, and no controller
+    fixes that, because the module is already at rest when the gate is read.
+
+    **Two clearances, two limits, and the looser one is the requirement.** A
+    module can lie over in either plane independently, so the attitude the gate
+    has to accept is the *larger* of the two -- taking the smaller is how a bay
+    passes a check it should fail. ``channel_inner_face_half_width_m`` is the face
+    the module runs against, not the guide body's centre; reading the centre as
+    the face turns a 0.75 mm channel into a 9.75 mm one.
+
+    ``delivered_attitude_rad`` is optional, and that is the point of separating
+    this from :func:`interface_regime`. Without it the answer is still complete:
+    whether a channel can hold a module inside its own gate is a property of the
+    channel and the module, and it can be settled before any arm exists. Supply
+    it -- with the gripper's measured pad offset, which the entry half needs -- and
+    ``2c/theta`` comes too: whether a correcting lead-in is required, and which of
+    the three interface regimes the pair falls in.
+    """
+
+    if module_length_m <= 0.0:
+        raise ValueError("module_length_m must be positive")
+    lateral = channel_inner_face_half_width_m - 0.5 * module_width_m + relief_per_side_m
+    vertical = 0.5 * (channel_height_m - module_height_m) + relief_per_side_m
+    # ``2c/L``. The same arithmetic as ``2c/theta`` read the other way round: one
+    # solves the wedging condition for depth at a known attitude, this one for
+    # attitude at a known length. Written out rather than routed through
+    # ``engagement_depth_limit_m``, because passing a length where that function
+    # names an attitude would be numerically right and unreadable.
+    resting_yaw = 2.0 * lateral / module_length_m if lateral > 0.0 else 0.0
+    resting_pitch = 2.0 * vertical / module_length_m if vertical > 0.0 else 0.0
+
+    entry: dict[str, object] | None = None
+    if delivered_attitude_rad is not None:
+        if pad_half_bearing_offset_m is None:
+            raise ValueError(
+                "pad_half_bearing_offset_m is required when delivered_attitude_rad is given: the "
+                "entry half of the answer is a manipulator question and needs the real pad offset, "
+                "not a stand-in"
+            )
+        entry = interface_regime(
+            ManipulatorPerformance(
+                delivered_attitude_rad=delivered_attitude_rad,
+                seating_tolerance_rad=seating_tolerance_rad,
+                pad_half_bearing_offset_m=pad_half_bearing_offset_m,
+            ),
+            module_length_m=module_length_m,
+            seating_stroke_m=seating_stroke_m,
+            clearance_per_side_m=min(lateral, vertical),
+            lateral_seating_tolerance_m=lateral_seating_tolerance_m,
+        )
+
+    return ChannelVerdict(
+        module_length_m=module_length_m,
+        module_width_m=module_width_m,
+        module_height_m=module_height_m,
+        lateral_clearance_per_side_m=lateral,
+        vertical_clearance_per_side_m=vertical,
+        seating_stroke_m=seating_stroke_m,
+        resting_yaw_rad=resting_yaw,
+        resting_pitch_rad=resting_pitch,
+        attitude_the_gate_must_accept_rad=max(resting_yaw, resting_pitch),
+        offset_the_gate_must_accept_m=max(lateral, vertical),
+        seating_tolerance_rad=seating_tolerance_rad,
+        lateral_seating_tolerance_m=lateral_seating_tolerance_m,
+        delivered_attitude_rad=delivered_attitude_rad,
+        engagement_depth_limit_m=None if entry is None else float(entry["lead_in"]["engagement_depth_limit_m"]),
+        correcting_lead_in_required=None if entry is None else bool(entry["correcting_lead_in_required"]),
+        regime=None if entry is None else str(entry["regime"]),
+    )
 
 
 @dataclass(frozen=True)

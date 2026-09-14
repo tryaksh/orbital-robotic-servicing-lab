@@ -1,0 +1,50 @@
+{
+  "title": "Whether a channel can hold its module inside its own acceptance criterion",
+  "evidence_type": "closed_form_geometry_no_simulator",
+  "generated_utc": "2026-09-14T01:52:42.878860+00:00",
+  "question": "How square can this channel hold a module resting in it, how square does the acceptance test demand it be, and are those compatible?",
+  "read_from": [
+    "src/zero_g_blade_swap/tasks/blade_swap/assets.py",
+    "src/zero_g_blade_swap/tasks/blade_swap/mdp/insertion.py"
+  ],
+  "verdict": {
+    "module_m": {
+      "length": 0.45,
+      "width": 0.13,
+      "height": 0.02
+    },
+    "channel_m": {
+      "lateral_clearance_per_side": 0.015677500000000004,
+      "vertical_clearance_per_side": 0.012612500000000016,
+      "seating_stroke": 0.529
+    },
+    "what_the_channel_can_hold": {
+      "resting_yaw_rad": 0.0696777777777778,
+      "resting_pitch_rad": 0.05605555555555562,
+      "limiting_axis": "lateral"
+    },
+    "what_the_gate_would_have_to_accept": {
+      "attitude_rad": 0.0696777777777778,
+      "lateral_offset_m": 0.015677500000000004
+    },
+    "what_the_gate_does_accept": {
+      "attitude_rad": 0.0523599,
+      "lateral_offset_m": 0.0025
+    },
+    "compatible": false,
+    "attitude_margin_rad": -0.017317877777777796,
+    "offset_margin_m": -0.013177500000000003,
+    "entry": {
+      "delivered_attitude_rad": 0.046,
+      "engagement_depth_limit_m": 0.548369565217392,
+      "correcting_lead_in_required": false,
+      "regime": "active_centring"
+    }
+  },
+  "scope_and_limitations": [
+    "Closed form. No simulator, no policy, no checkpoint.",
+    "Quasi-static wedging geometry for a rigid part in a rectangular channel. It bounds the attitude a module AT REST can take; it says nothing about what a module in motion does, and this repository has measured that the two differ -- a module is squared during the stroke rather than carrying its hand-over attitude through it.",
+    "The bound is confirmed in functional form and not in coefficient. A swept measurement over eight clearances fits attitude = 3.609 * relief + 6.217 mrad with R^2 = 0.99979 against the law's 2/L = 4.444 per mm, so it holds as an upper limit at six of eight points and is 2.2 to 2.5% optimistic at the two tightest -- which is the wrong way round, because the design point is at the tight end.",
+    "Lateral and vertical are separate limits, not components of one. The looser governs the acceptance criterion because a resting module may take either."
+  ]
+}

@@ -398,6 +398,35 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "serviceability_boundary_validation_v2.json",
         "The current fail-closed boundary result: entry attitude supported; five dimensions unresolved or contradicted.",
     ),
+    (
+        "channel_verdict_shipped_bay_v1.json",
+        (
+            "**The design rule, run on the bay this repository ships, and it fails.** Relieved, the "
+            "destination channel is 15.678 mm per side laterally and 12.613 mm vertically, so a module "
+            "resting in it can lie over 69.68 mrad in yaw and 56.06 mrad in pitch while the acceptance "
+            "criterion allows 52.36 mrad, and can rest 15.678 mm off the centre line against a 2.5 mm "
+            "gate. The bay is asking for something its own geometry forbids. Removing the relief brings "
+            "the attitude inside with 3.18 mrad in hand and leaves the offset failing at 11.065 mm "
+            "against 2.5 mm -- so no clearance that admits this module also guarantees seating, which is "
+            "`active_centring` stated in millimetres. Closed form, no simulator; "
+            "`tests/test_channel_verdict.py` binds it to the scene measurement in "
+            "`destination_channel_geometry.json`."
+        ),
+    ),
+    (
+        "skill_gate_attrition_v1.json",
+        (
+            "**Why the two skills miss the gate, not just by how much.** Each success predicate is a "
+            "conjunction and its terms are episode columns, so the certified failures partition. Capture "
+            "is 8.10 points short and 1,170 of its 1,180 failures have the pads outside the 10 mm the "
+            "chain demands -- 1,020 of them on that term alone, at a median 95.9 mm from the pin, so the "
+            "hand never arrived rather than arriving imprecisely. Extraction is 7.36 points short and "
+            "1,024 of its 1,113 failures carry residual linear velocity above the derived settling limit, "
+            "in every one of the four largest failure combinations. **Which condition was false is not "
+            "which condition caused it**: residual motion and grip loss co-occur and the ordering is not "
+            "recorded, so read this as a partition of the failures and never as a prediction of them."
+        ),
+    ),
 )
 
 
