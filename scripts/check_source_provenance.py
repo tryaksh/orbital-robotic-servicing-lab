@@ -13,6 +13,8 @@ so its answer is not a prompt:
 ``recovered``   the recorded hash matches the file at some commit reachable from
                 any ref here -- ``HEAD``, a branch or a tag. The run is
                 reproducible: check that commit out and the source is the source.
+                An explicitly marked ``source_snapshot_overlay`` recovery also
+                requires overlaying the exact committed raw source artifact.
 ``working``     the recorded hash matches the working tree but no commit. The
                 run happened on uncommitted state that is still on disk.
 ``lost``        the recorded hash matches neither. **The bytes that produced the
@@ -23,6 +25,12 @@ so its answer is not a prompt:
 episodes are the episodes. It is a claim that the relationship between the
 published number and the committed code is unverified, which is a different
 thing and has to be said out loud rather than assumed benign.
+
+The optional committed registry ``evidence/source_snapshots.json`` preserves raw
+mixed-line-ending source that Git normalized. Such recovery requires an exact
+artifact hash and equality to the referenced source blob after CRLF-to-LF only.
+The source commit must be reachable. Uncommitted artifacts or registry changes
+cannot establish recovery; normal checkout and snapshot overlay remain distinct.
 
 Line endings are handled, and handling them wrongly is what made most of this
 look unrecoverable. The repository is checked out with ``core.autocrlf`` true, so
@@ -46,11 +54,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "evidence"
+SNAPSHOT_REGISTRY = "evidence/source_snapshots.json"
 
 
 def _find(node: object, key: str):
@@ -136,6 +146,83 @@ def _blob(commit: str, path: str) -> bytes | None:
     return result.stdout if result.returncode == 0 else None
 
 
+def _relative_path(value: object) -> str:
+    if not isinstance(value, str) or not value or any(char in value for char in ("\\", ":", "\0")):
+        raise ValueError("Source snapshot paths must be canonical repository-relative POSIX paths")
+    path = PurePosixPath(value)
+    if path.is_absolute() or ".." in path.parts or str(path) != value or value == ".":
+        raise ValueError("Source snapshot paths must not escape or alias repository paths")
+    return value
+
+
+def _reachable(commit: str, all_refs: bool) -> bool:
+    ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", commit, "HEAD"], cwd=ROOT, capture_output=True)
+    if ancestor.returncode == 0:
+        return True
+    if not all_refs:
+        return False
+    refs = subprocess.run(["git", "for-each-ref", "--format=%(refname)", f"--contains={commit}"],
+                          cwd=ROOT, capture_output=True)
+    return refs.returncode == 0 and bool(refs.stdout.strip())
+
+
+def _snapshot_recovery(path: str, recorded: str, all_refs: bool) -> dict | None:
+    """Recover exact bytes from an explicit committed, content-checked overlay.
+
+    This does not replace a hash check with text similarity: the snapshot must
+    match the original raw digest, and its only difference from the separately
+    identified source blob may be CRLF versus LF. Both objects and the registry
+    are read from Git, so working-tree files cannot promote an unrecovered run.
+    """
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True)
+    snapshot_commit = head.stdout.strip()
+    if head.returncode != 0 or re.fullmatch(r"[0-9a-f]{40}", snapshot_commit) is None:
+        return None
+    raw_registry = _blob(snapshot_commit, SNAPSHOT_REGISTRY)
+    if raw_registry is None:
+        return None
+    registry = json.loads(raw_registry)
+    if not isinstance(registry, dict) or registry.get("version") != 1 or not isinstance(registry.get("snapshots"), list):
+        raise ValueError("Invalid committed source snapshot registry")
+    seen = set()
+    matches = []
+    for row in registry["snapshots"]:
+        if not isinstance(row, dict):
+            raise ValueError("Invalid source snapshot entry")
+        source = _relative_path(row.get("source_path"))
+        artifact = _relative_path(row.get("snapshot_path"))
+        sha, commit = row.get("sha256"), row.get("source_commit")
+        if (not artifact.startswith("evidence/source_snapshots/")
+                or not isinstance(sha, str) or re.fullmatch(r"[0-9a-f]{64}", sha) is None
+                or not isinstance(commit, str) or re.fullmatch(r"[0-9a-f]{40}", commit) is None):
+            raise ValueError("Invalid source snapshot location, SHA-256, or full source commit")
+        key = (source, sha)
+        if key in seen:
+            raise ValueError("Duplicate source snapshot binding")
+        seen.add(key)
+        if key == (path, recorded):
+            matches.append((artifact, commit))
+    if not matches:
+        return None
+    artifact, commit = matches[0]
+    if not _reachable(commit, all_refs):
+        return None
+    snapshot, original = _blob(snapshot_commit, artifact), _blob(commit, path)
+    if snapshot is None or original is None:
+        return None
+    if hashlib.sha256(snapshot).hexdigest() != recorded:
+        return None
+    if snapshot.replace(b"\r\n", b"\n") != original.replace(b"\r\n", b"\n"):
+        return None
+    return {
+        "path": path, "state": "recovered", "commit": commit,
+        "recovery": "source_snapshot_overlay", "snapshot_path": artifact,
+        "snapshot_sha256": recorded, "snapshot_registry": SNAPSHOT_REGISTRY,
+        "snapshot_commit": snapshot_commit, "source_equivalence": "exact bytes after CRLF-to-LF normalization only",
+        "reproduction": "Check out the source commit, then restore this source path from the exact committed snapshot before execution.",
+    }
+
+
 def classify(path: str, recorded: str, depth: int, all_refs: bool) -> dict:
     """Where, if anywhere, do these bytes still exist."""
     on_disk = ROOT / path
@@ -158,6 +245,9 @@ def classify(path: str, recorded: str, depth: int, all_refs: bool) -> dict:
             continue
         if _matches(blob, recorded):
             return {"path": path, "state": "recovered", "commit": short, "subject": subject}
+    snapshot = _snapshot_recovery(path, recorded, all_refs)
+    if snapshot is not None:
+        return snapshot
     return {"path": path, "state": "working" if still_on_disk else "lost"}
 
 
@@ -211,7 +301,9 @@ def main() -> int:
         for row in rows:
             where = row.get("commit", "")
             note = f"  {where} {row.get('subject', '')}".rstrip() if where else ""
-            if row["state"] != "recovered":
+            if row.get("recovery") == "source_snapshot_overlay":
+                print(f"           [snapshot overlay] {row['path']} <- {row['snapshot_path']}{note}")
+            elif row["state"] != "recovered":
                 print(f"           [{row['state']}] {row['path']}{note}")
 
     total = len(summary)

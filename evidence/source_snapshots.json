@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "snapshots": [
+    {
+      "source_path": "scripts/run_workflow_demo.py",
+      "sha256": "502443e1e0775d7af2c16113aba86c52e7b82eb3f37e6b1dcb8db980316ed269",
+      "snapshot_path": "evidence/source_snapshots/88235d8c27314b6092b0aac38506af9526ceea40/run_workflow_demo.py.raw",
+      "source_commit": "88235d8c27314b6092b0aac38506af9526ceea40",
+      "scope": "Exact mixed-line-ending runtime bytes. Only CRLF-to-LF normalization is needed to match the committed source blob; replay requires this disclosed overlay."
+    },
+    {
+      "source_path": "scripts/run_workflow_demo.py",
+      "sha256": "cc90cde5332fa9e66618fbc990b378423467875f759f9203bc207f99a0404d92",
+      "snapshot_path": "evidence/source_snapshots/7029ad5cd8d6aa35c803bcd9eb2bd0d0d423fb3e/run_workflow_demo.py.raw",
+      "source_commit": "7029ad5cd8d6aa35c803bcd9eb2bd0d0d423fb3e",
+      "scope": "Historical newline layout reconstructed from committed text, exact later snapshot and modified-hunk context; retained only after full raw SHA-256 equals the independently recorded experiment binding."
+    },
+    {
+      "source_path": "scripts/run_workflow_demo.py",
+      "sha256": "1c8455de000718e57d42e7d6030856a2ddfe5d566e49158134f6b340b66adda0",
+      "snapshot_path": "evidence/source_snapshots/1d3714616f60ca6d6e254cc18bac94ca77fc0d7e/run_workflow_demo.py.raw",
+      "source_commit": "1d3714616f60ca6d6e254cc18bac94ca77fc0d7e",
+      "scope": "Historical newline layout reconstructed from committed text, exact later snapshot and modified-hunk context; retained only after full raw SHA-256 equals the independently recorded experiment binding."
+    },
+    {
+      "source_path": "scripts/run_workflow_demo.py",
+      "sha256": "3a26fe4aff029e2e1b167177b3eef5323f0cc650dba1daa78d56b3b3a0876ef5",
+      "snapshot_path": "evidence/source_snapshots/3d74b6b7bddde41c869b31a2ea27e0ec2b4398a7/run_workflow_demo.py.raw",
+      "source_commit": "3d74b6b7bddde41c869b31a2ea27e0ec2b4398a7",
+      "scope": "Historical newline layout reconstructed from committed text, exact later snapshot and modified-hunk context; retained only after full raw SHA-256 equals the independently recorded experiment binding."
+    }
+  ]
+}

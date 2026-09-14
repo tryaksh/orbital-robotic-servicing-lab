@@ -1,0 +1,49 @@
+{
+  "recovered_snapshots": [
+    {
+      "source_commit": "88235d8c27314b6092b0aac38506af9526ceea40",
+      "sha256": "502443e1e0775d7af2c16113aba86c52e7b82eb3f37e6b1dcb8db980316ed269",
+      "size_bytes": 414598,
+      "crlf_count": 6836,
+      "lf_count": 7167,
+      "exact_recorded_sha256_match": true,
+      "normalized_source_blob_match": true
+    },
+    {
+      "source_commit": "7029ad5cd8d6aa35c803bcd9eb2bd0d0d423fb3e",
+      "sha256": "cc90cde5332fa9e66618fbc990b378423467875f759f9203bc207f99a0404d92",
+      "size_bytes": 412703,
+      "crlf_count": 6839,
+      "lf_count": 7133,
+      "exact_recorded_sha256_match": true,
+      "normalized_source_blob_match": true
+    },
+    {
+      "source_commit": "1d3714616f60ca6d6e254cc18bac94ca77fc0d7e",
+      "sha256": "1c8455de000718e57d42e7d6030856a2ddfe5d566e49158134f6b340b66adda0",
+      "size_bytes": 410523,
+      "crlf_count": 6839,
+      "lf_count": 7097,
+      "exact_recorded_sha256_match": true,
+      "normalized_source_blob_match": true
+    },
+    {
+      "source_commit": "3d74b6b7bddde41c869b31a2ea27e0ec2b4398a7",
+      "sha256": "3a26fe4aff029e2e1b167177b3eef5323f0cc650dba1daa78d56b3b3a0876ef5",
+      "size_bytes": 408658,
+      "crlf_count": 6845,
+      "lf_count": 7064,
+      "exact_recorded_sha256_match": true,
+      "normalized_source_blob_match": true
+    }
+  ],
+  "not_recovered": [
+    {
+      "experiment": "smooth-fixed-probe",
+      "source_commit": "febfca8d19982a12dab434ffc48b306f69e1d813",
+      "recorded_sha256": "d748d428f4721b0e434898f5c1540d05a68ee32aa12d44bd1b22f2035023d9a7",
+      "status": "Exact runtime driver bytes were not recovered by bounded newline-layout reconstruction. No snapshot was accepted."
+    }
+  ],
+  "scope": "Recovered artifacts are accepted only when their complete raw SHA-256 equals an independently recorded runtime binding and CRLF-to-LF-normalized bytes equal the canonical source blob. Failed reconstruction attempts are not source evidence."
+}
