@@ -125,9 +125,11 @@ specification.
    Not yet measured: whether a fourth concurrent training still adds. The cheap
    way to find out is to median the period when the campaign naturally drops to
    one run, rather than stopping work to stage it.
-8. **Never claim a capability whose checkpoint is not reachable.** `logs/` and
-   `checkpoints/` are gitignored, so a clone has the reports and none of the
-   weights. Say where a checkpoint lives when quoting what it scored.
+8. **Never claim a capability whose checkpoint is not reachable.** Full `logs/`
+   and `checkpoints/` archives are gitignored. The three frozen live-mission
+   checkpoints are included in `policies/servicing_v2/`, with SHA-256 values and
+   original training paths. Other experimental weights remain local. Say where
+   a checkpoint lives when quoting what it scored.
 
 ## Before you change anything
 
@@ -223,8 +225,9 @@ compute service must save a clear video and hashed artifacts. If part of this
 cannot be completed, report the measured blocker; never fall back to the hidden
 payload stage and call it success.
 
-This is met at the pooled rate. The same rule applied to the individual *skills*
-is not — see `docs/NOW.md` §2 and §5.
+Recorded live missions meet this completion rule. The unchanged 95% pooled
+full-chain gate and several individual skill gates remain open; see the research
+cohorts in `docs/NOW.md`.
 
 ## Main files
 
@@ -247,7 +250,8 @@ is not — see `docs/NOW.md` §2 and §5.
 | `src/zero_g_blade_swap/tasks/blade_swap/assets.py` | Rack, module, pin, rails, lead-ins |
 | `src/zero_g_blade_swap/tasks/blade_swap/mdp/grapple.py` | Every predicate and reward the skills use |
 | `src/zero_g_blade_swap/tasks/blade_swap/insert_reset_bank.py` | Generated; do not hand-edit |
-| `src/zero_g_blade_swap/service/presets.py` | What the live service runs (currently a superseded set — `NEXT_WORK.md` T7) |
+| `src/zero_g_blade_swap/service/mission_cli.py` | Run a recorded mission or verify a saved job bundle without a web server |
+| `src/zero_g_blade_swap/service/presets.py` | Current mission recipe, packaged checkpoints and evidence-based readiness checks |
 
 **Before adding a test that reads a path, check the path is in git.**
 `artifacts/` is gitignored, so a clean checkout -- which is exactly what CI has
