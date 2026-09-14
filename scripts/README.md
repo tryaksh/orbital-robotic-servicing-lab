@@ -4,7 +4,7 @@
 summary is the script's own first documentation line, so fix the script's
 docstring and regenerate.
 
-125 scripts. Grouped by the verb their filename starts with.
+126 scripts. Grouped by the verb their filename starts with.
 
 The few that matter most are in [`../AGENTS.md`](../AGENTS.md); this is the
 complete list, for when the one you need is not there.
@@ -186,6 +186,7 @@ Each takes `--check` so CI can prove the artifact is current.
 | `compare_paired_arms.py` | Compare two arms that were run on the same cohort, as the paired data they are. |
 | `compare_residual_estimators.py` | Does reading the residual beat counting successes, at the same episode cost? |
 | `compare_workcells.py` | Print the before/after table straight from the evidence files. |
+| `compare_workflow_stability.py` | Run preserved and refined controllers on the same 24 seeded initial conditions. |
 | `correct_paired_direction.py` | Re-read every published paired comparison with a directional test. |
 | `derive_rack_requirement.py` | Compute a rack requirement from a manipulator's measured performance. |
 | `diagnose_extract_section.sh` | Why did 900 epochs of fine-tuning move extract 1.4 points? |

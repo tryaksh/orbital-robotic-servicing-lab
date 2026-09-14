@@ -23,7 +23,7 @@ GRASP = Path("policies/servicing_v2/capture_v7m130.pth")
 EXTRACT = Path("policies/servicing_v2/extract_v19noised.pth")
 INSERT_CHECKPOINT = Path("policies/servicing_v2/insert_v13m130.pth")
 FIDUCIAL_EVIDENCE = Path("evidence/fiducial_rgbd_service_current_seed287.json")
-FULL_CHAIN_EVIDENCE = Path("evidence/live_service_current_validation_seed6070.json")
+FULL_CHAIN_EVIDENCE = Path("evidence/live_service_stability_validation_seed6070.json")
 FIDUCIAL_SOURCE = Path("src/zero_g_blade_swap/fiducial.py")
 ASSET_SOURCE = Path("src/zero_g_blade_swap/tasks/blade_swap/assets.py")
 PERCEPTION_SOURCE = Path("src/zero_g_blade_swap/tasks/blade_swap/mdp/perception.py")
@@ -38,12 +38,14 @@ WORKFLOW_SCRIPT = Path("scripts/run_workflow_demo.py")
 LATCH_SOURCE = Path("src/zero_g_blade_swap/service_latch.py")
 CAMERA_CALIBRATION_SOURCE = Path("src/zero_g_blade_swap/servicing_camera.py")
 RACK_RETENTION_SOURCE = Path("src/zero_g_blade_swap/rack_retention.py")
+MOTION_PROFILE_SOURCE = Path("src/zero_g_blade_swap/motion_profile.py")
 WORKFLOW_BINDINGS = (
     WORKFLOW_SCRIPT, FIDUCIAL_SOURCE, ASSET_SOURCE, PERCEPTION_SOURCE,
     CAMERA_CONFIG_SOURCE, WORKCELL_CONFIG_SOURCE, CAMERA_CALIBRATION_SOURCE,
     RACK_RETENTION_SOURCE, Path("src/zero_g_blade_swap/provenance.py"),
     Path("src/zero_g_blade_swap/tasks/blade_swap/insert_reset_bank.py"),
     Path("src/zero_g_blade_swap/tasks/blade_swap/two_slot_env_cfg.py"),
+    MOTION_PROFILE_SOURCE,
 )
 #: Rating the live run gives the robot-side form lock, in newtons and
 #: newton-metres. Not a preference: ``scripts/run_robot_carried.sh sweep``
@@ -109,6 +111,7 @@ LIVE_INPUT_REQUIREMENTS = (
     ("provenance implementation", "provenance_source", WORKFLOW_BINDINGS[8]),
     ("insert reset bank", "insert_reset_bank", WORKFLOW_BINDINGS[9]),
     ("two-slot configuration", "two_slot_config", WORKFLOW_BINDINGS[10]),
+    ("Cartesian motion profile", "motion_profile", MOTION_PROFILE_SOURCE),
 )
 
 
@@ -187,12 +190,13 @@ class PresetRegistry:
                 title="Live RGB-D compute-module service run",
                 description=(
                     "Runs the measured two-bay Isaac workflow: calibrated RGB-D fiducial perception, "
-                    "visual occupancy planning, learned capture and extraction, a robot-carried transit "
-                    "on a visible robot-side form lock, guarded robot-driven insertion, release after "
+                    "visual occupancy planning, learned capture and extraction with a guarded terminal finish, "
+                    "a smooth robot-carried transit from a stationary base on a visible robot-side form lock, "
+                    "guarded insertion through absolute inverse kinematics, release after "
                     "strict rack-only verification, telemetry, video, and hashed artifacts. "
                     "One recorded simulation episode with stable lighting; not a reliability certificate."
                 ),
-                revision="isaac-rgbd-strict-mission-v2",
+                revision="isaac-rgbd-strict-mission-v3",
                 backend=BackendKind.ISAAC,
                 estimated_runtime_s=480,
                 produces_video=True,
@@ -649,7 +653,9 @@ def live_workflow_argv(settings: ServiceSettings, seed: int, artifact_dir: Path)
         "--perception_backend", "fiducial_pnp",
         "--module_velocity_source", "kinematics",
         "--fiducial_guard_bounds", "lead_in", "--insert_controller", "guarded",
-        "--robot_rail_on_relocation", "--latch_on_release", "--latch_joint_mode", "fixed",
+        "--transit_motion_profile", "quintic", "--transit_joint_trim",
+        "--extraction_finish", "guarded", "--guarded_insert_solver", "absolute_ik",
+        "--latch_on_release", "--latch_joint_mode", "fixed",
         "--latch_rated_force_n", str(LATCH_RATED_FORCE_N),
         "--latch_rated_torque_nm", str(LATCH_RATED_TORQUE_NM),
         "--latch_position_stiffness_n_per_m", "40000",

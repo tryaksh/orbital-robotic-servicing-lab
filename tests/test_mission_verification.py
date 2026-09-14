@@ -8,7 +8,7 @@ import pytest
 
 from zero_g_blade_swap.service.mission_cli import verify_job
 from zero_g_blade_swap.service.models import BackendKind, InputProvenance, Job, JobProvenance, JobStatus
-from zero_g_blade_swap.service.presets import command_contract, live_workflow_argv, sha256_file
+from zero_g_blade_swap.service.presets import FULL_CHAIN_EVIDENCE, command_contract, live_workflow_argv, sha256_file
 from zero_g_blade_swap.service.store import JobStore, utc_now
 from zero_g_blade_swap.service.verification import verify_mission
 
@@ -142,13 +142,20 @@ def test_recipe_binding_includes_controller_and_geometry_but_is_portable(tmp_pat
     assert "lead_in" in command_contract(first)
     assert "kinematics" in command_contract(first)
     assert "--rack_retention" in command_contract(first)
+    assert "--robot_rail_on_relocation" not in first
+    assert "quintic" in command_contract(first)
+    assert "--transit_joint_trim" in command_contract(first)
+    assert "absolute_ik" in command_contract(first)
+    changed = list(first)
+    changed[changed.index("--guarded_insert_solver") + 1] = "differential_ik"
+    assert command_contract(tuple(changed)) != command_contract(first)
     assert "v7m130" in first[first.index("--grasp_checkpoint") + 1]
     assert "v19noised" in first[first.index("--extract_checkpoint") + 1]
 
 
 def test_shipped_checkpoints_match_the_validated_policy_set():
     manifest = json.loads((ROOT / "policies/servicing_v2/MANIFEST.json").read_text(encoding="utf-8"))
-    validated = json.loads((ROOT / "evidence/live_service_current_validation_seed6070.json").read_text(encoding="utf-8"))
+    validated = json.loads((ROOT / FULL_CHAIN_EVIDENCE).read_text(encoding="utf-8"))
     for row in manifest["checkpoints"]:
         path = ROOT / "policies/servicing_v2" / row["file"]
         assert path.stat().st_size == row["size_bytes"]

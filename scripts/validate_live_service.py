@@ -77,10 +77,11 @@ def main() -> int:
             "One recorded simulation episode at one seed; not a success rate or hardware qualification.",
             "Stable lighting for video, one environment. Published pooled cohorts use eight environments per seed.",
             "Module pose is RGB-D-derived; module velocity is zero before capture and robot-kinematic after capture.",
-            "Capture uses v7m130 and extraction v19noised. The insert checkpoint is loaded but guarded advance produces the insertion actions.",
+            "Capture uses v7m130; extraction uses v19noised followed near rest by a camera-defined terminal tool path. The insert checkpoint is loaded but does not execute.",
+            "The stationary-base arm uses synchronized quintic transit and bounded joint-encoder trim. Guarded insertion uses absolute inverse kinematics through physical joint-drive targets.",
             "The guard uses the previously derived lead-in catch; final seating and the 0.70 s rack-only recheck are unchanged.",
             "Robot-side and rack-side fixed joints are idealized load paths; visible pawls have no contact colliders.",
-            "The robot base is world-fixed. Spacecraft reaction and carriage compliance are not simulated.",
+            "The robot base is stationary and world-fixed. No moving robot carriage or world-mounted payload shuttle is used; spacecraft reaction dynamics are not simulated.",
         ],
     )
     (output / "service_validation.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

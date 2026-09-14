@@ -745,7 +745,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--extraction_finish", choices=("policy", "guarded"), default="policy",
-        help="Keep PPO alone or blend in a camera-guarded final axial pull without changing extraction success.",
+        help="Keep PPO alone or finish near rest with a camera-defined fixed-attitude path; success criteria are unchanged.",
     )
     parser.add_argument(
         "--robot_rail_step_m",
@@ -1659,6 +1659,7 @@ class WorkflowDriver:
         self.profile_trim_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.profile_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.absolute_insert_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.latch_wait_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.absolute_insert_sensor_holds = torch.zeros(count, dtype=torch.long, device=device)
         self.absolute_mating_trim = torch.zeros((count, 3), device=device)
         self.extract_finish_active = torch.zeros(count, dtype=torch.bool, device=device)
@@ -4338,6 +4339,27 @@ class WorkflowDriver:
         anchor_pose[:, 1] += stride
         anchor.write_root_pose_to_sim(anchor_pose, env_ids=moving_ids)
 
+    def _hold_pending_latch(self, transiting: torch.Tensor) -> torch.Tensor:
+        """Retain the accepted arm command until the physical lock is engaged.
+
+        The latch interval event runs after physics. A phase change therefore
+        must not switch to relative IK for that one still-unlatched step. Keep
+        measuring retention from the original pre-latch reference; remove the
+        command pulse rather than moving the reference past its consequence.
+        """
+        pending = transiting & ~grapple_latched(self.task)
+        ids = torch.nonzero(pending, as_tuple=False).squeeze(-1)
+        if ids.numel() > 0:
+            from_policy = ids[~self.solved_joint_hold[ids]]
+            if from_policy.numel() > 0:
+                self.solved_joint_targets[from_policy] = self.task.scene["robot"].data.joint_pos_target[
+                    from_policy
+                ][:, self.arm_joint_ids]
+            self.solved_joint_hold[ids] = True
+            self.actions[ids, :6] = 0.0
+            self.latch_wait_steps[ids] += 1
+        return transiting & ~pending
+
     def _step_rigid_transit(self, transiting: torch.Tensor, step: int, tool: torch.Tensor, tool_rot: torch.Tensor) -> torch.Tensor:
         """Fly the carried module through three waypoints, in module space.
 
@@ -4352,6 +4374,10 @@ class WorkflowDriver:
         """
 
         task = self.task
+        if args.transit_motion_profile == "quintic" or args.extraction_finish == "guarded":
+            transiting = self._hold_pending_latch(transiting)
+            if not bool(transiting.any()):
+                return torch.zeros_like(transiting)
         ids = torch.nonzero(transiting, as_tuple=False).squeeze(-1)
         # **The holding closure stays on through the carry, and that is
         # measured rather than assumed.**
@@ -6603,13 +6629,18 @@ def main() -> dict[str, object]:
             "motion_refinement": {
                 "transit_profile": args.transit_motion_profile,
                 "quintic_control_steps": driver.profile_steps.cpu().tolist(),
+                "latch_engagement_hold_steps": driver.latch_wait_steps.cpu().tolist(),
                 "joint_trim_enabled": args.transit_joint_trim,
                 "joint_trim_steps": driver.profile_trim_steps.cpu().tolist(),
                 "guarded_insert_solver": args.guarded_insert_solver,
                 "absolute_insert_steps": driver.absolute_insert_steps.cpu().tolist(),
                 "absolute_insert_sensor_holds": driver.absolute_insert_sensor_holds.cpu().tolist(),
-                "mating_feedback": "desired-attitude feedforward plus filtered camera-observed spring deflection; not doubled module tracking error",
-                "mating_feedback_filter_alpha": 0.15,
+                "mating_feedback": (
+                    "desired-attitude feedforward plus filtered camera-observed spring deflection"
+                    if bool((driver.absolute_insert_steps > 0).any())
+                    else "legacy current-attitude inversion plus bounded module tracking error"
+                ),
+                "mating_feedback_filter_alpha": 0.15 if bool((driver.absolute_insert_steps > 0).any()) else None,
                 "joint_trim_max_abs_bias_rad": driver.profile_joint_bias_max.cpu().tolist(),
                 "joint_trim_bounds": {
                     "max_bias_rad": JOINT_TRIM_BIAS_LIMIT_RAD,
@@ -6628,7 +6659,10 @@ def main() -> dict[str, object]:
                 "extraction_finish_steps": driver.extract_finish_steps.cpu().tolist(),
                 "extraction_finish_sensor_holds": driver.extract_finish_holds.cpu().tolist(),
                 "extraction_finish_started_at_step": driver.extract_finish_started.cpu().tolist(),
-                "extraction_finish_scope": "PPO extraction followed near rest by a fresh-camera-defined fixed-attitude tool path through physical joint drives; unchanged success and lock-engagement predicates.",
+                "extraction_finish_scope": (
+                    "PPO extraction followed near rest by a fresh-camera-defined fixed-attitude tool path through physical joint drives; unchanged success and lock-engagement predicates."
+                    if bool((driver.extract_finish_steps > 0).any()) else "No guarded extraction finish executed."
+                ),
             },
             # Whether the robot carried the module, as a number rather than as
             # a claim. Present on every workflow that has a transit, including

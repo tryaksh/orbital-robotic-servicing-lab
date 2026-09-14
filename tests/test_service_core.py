@@ -22,6 +22,7 @@ from zero_g_blade_swap.service.presets import (
     INSERT_CHECKPOINT,
     LIVE_INPUT_REQUIREMENTS,
     LIVE_TASK_ID,
+    MOTION_PROFILE_SOURCE,
     PERCEPTION_SOURCE,
     WORKFLOW_BINDINGS,
     ExecutionSpec,
@@ -124,7 +125,7 @@ def _live_registry(
                 "predicate_fired": True,
                 "seated_conditions_still_held_after_settling": True,
                 "visual_randomization": "off (recording)",
-                "service_preset_revision": "isaac-rgbd-strict-mission-v2",
+                "service_preset_revision": "isaac-rgbd-strict-mission-v3",
                 "service_command_contract": command_contract(live_workflow_argv(
                     ServiceSettings(project_root=project_root, runtime_dir=tmp_path / "runtime",
                                     static_dir=tmp_path / "static", isaac_python=tmp_path / "isaac-python.bat"),
@@ -410,10 +411,13 @@ def test_live_preset_uses_fixed_argv_and_runtime_outputs(tmp_path: Path) -> None
     # control steps on this workcell, so the old 3,600 could only ever end by
     # running out of clock.
     assert int(spec.argv[spec.argv.index("--steps") + 1]) == 1900
-    # And on the rail, which is the configuration that squares the module. The
-    # rail carries the robot; --base_rail_on_relocation carries the module and is
-    # asserted absent below.
-    assert "--robot_rail_on_relocation" in spec.argv
+    # The refined recipe keeps the base stationary and commands the arm through
+    # the same motion controllers that the source-bound validation exercised.
+    assert "--robot_rail_on_relocation" not in spec.argv
+    assert spec.argv[spec.argv.index("--transit_motion_profile") + 1] == "quintic"
+    assert "--transit_joint_trim" in spec.argv
+    assert spec.argv[spec.argv.index("--extraction_finish") + 1] == "guarded"
+    assert spec.argv[spec.argv.index("--guarded_insert_solver") + 1] == "absolute_ik"
     assert spec.argv[spec.argv.index("--perception_backend") + 1] == "fiducial_pnp"
     # The robot carries the module: the form lock is commanded, and the
     # world-mounted payload stage that used to appear here is not.
@@ -445,6 +449,7 @@ def test_live_preset_uses_fixed_argv_and_runtime_outputs(tmp_path: Path) -> None
         "camera_config",
         "workcell_config", "camera_calibration", "rack_retention", "provenance_source",
         "insert_reset_bank", "two_slot_config",
+        "motion_profile",
     }
     provenance = provenance_for(spec)
     evidence_input = next(item for item in provenance.inputs if item.role == "perception_evidence")
@@ -612,3 +617,35 @@ def test_live_capability_rejects_changed_checkpoint(tmp_path: Path) -> None:
     live = registry.capabilities().presets[1]
     assert not live.available
     assert any("extract policy" in reason for reason in live.unavailable_reasons)
+
+
+def test_live_capability_rejects_missing_motion_profile(tmp_path: Path) -> None:
+    registry, settings = _live_registry(tmp_path)
+    (settings.project_root / MOTION_PROFILE_SOURCE).unlink()
+
+    live = registry.capabilities().presets[1]
+    assert not live.available
+    assert any("Missing Cartesian motion profile" in reason for reason in live.unavailable_reasons)
+
+
+def test_live_capability_rejects_stale_motion_profile(tmp_path: Path) -> None:
+    registry, settings = _live_registry(tmp_path)
+    (settings.project_root / MOTION_PROFILE_SOURCE).write_bytes(b"changed motion limits")
+
+    live = registry.capabilities().presets[1]
+    assert not live.available
+    assert any("stale" in reason and "motion_profile.py" in reason for reason in live.unavailable_reasons)
+
+
+def test_live_capability_rejects_unbound_motion_profile(tmp_path: Path) -> None:
+    registry, settings = _live_registry(tmp_path)
+    path = settings.project_root / FULL_CHAIN_EVIDENCE
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["runtime_source_bindings"] = [
+        row for row in payload["runtime_source_bindings"] if row["path"] != MOTION_PROFILE_SOURCE.as_posix()
+    ]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    live = registry.capabilities().presets[1]
+    assert not live.available
+    assert any("does not bind" in reason and "motion_profile.py" in reason for reason in live.unavailable_reasons)
