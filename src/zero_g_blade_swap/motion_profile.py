@@ -108,3 +108,36 @@ def profile_duration(
     if not math.isfinite(duration):
         raise ValueError("motion and limits produce a nonfinite duration")
     return duration
+
+
+JOINT_TRIM_INTEGRAL_GAIN_PER_S = 1.5
+JOINT_TRIM_RATE_LIMIT_RAD_PER_S = 0.03
+JOINT_TRIM_BIAS_LIMIT_RAD = 0.06
+
+
+def update_joint_trim(error, bias, dt: float, active):
+    """Return the next bias; inactive entries keep their previous value.
+
+    ``error`` and ``bias`` have identical (..., joints) shapes and contain finite
+    floating-point values. ``active`` is a boolean scalar, a per-joint mask, or
+    a per-environment mask matching the leading array dimensions. For Torch,
+    array arguments share a device. No input is mutated or converted to NumPy.
+
+    Rate limiting acts before the bias cap. Clamping the integrator state itself
+    avoids accumulating hidden windup while a sustained error saturates the trim.
+    This trim cannot eliminate offsets requiring more torque than its bias cap
+    provides; that remains a physical controller limitation.
+    """
+    seconds = float(dt)
+    if not math.isfinite(seconds) or seconds <= 0:
+        raise ValueError("Joint-trim dt must be positive and finite")
+    if len(error.shape) < 1 or error.shape != bias.shape:
+        raise ValueError("Joint-trim error and bias must have identical (..., joints) shapes")
+    if getattr(active, "shape", None) == bias.shape[:-1] and len(bias.shape) > 1:
+        active = active[..., None]
+    max_step = JOINT_TRIM_RATE_LIMIT_RAD_PER_S * seconds
+    increment = (error * (JOINT_TRIM_INTEGRAL_GAIN_PER_S * seconds)).clip(-max_step, max_step)
+    candidate = (bias + increment).clip(-JOINT_TRIM_BIAS_LIMIT_RAD, JOINT_TRIM_BIAS_LIMIT_RAD)
+    return bias + active * (candidate - bias)
+
+

@@ -990,9 +990,13 @@ from zero_g_blade_swap.arm_kinematics import (
 from zero_g_blade_swap.checkpoint_policy import CheckpointPolicy
 from zero_g_blade_swap.motion_profile import (
     DEFAULT_MOTION_LIMITS,
+    JOINT_TRIM_BIAS_LIMIT_RAD,
+    JOINT_TRIM_INTEGRAL_GAIN_PER_S,
+    JOINT_TRIM_RATE_LIMIT_RAD_PER_S,
     MotionLimits,
     QUINTIC_PEAK_ACCELERATION,
     QUINTIC_PEAK_VELOCITY,
+    update_joint_trim,
 )
 from zero_g_blade_swap.provenance import git_source_revision
 from zero_g_blade_swap.grapple_geometry import (
@@ -1655,6 +1659,8 @@ class WorkflowDriver:
         self.profile_trim_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.profile_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.absolute_insert_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.absolute_insert_sensor_holds = torch.zeros(count, dtype=torch.long, device=device)
+        self.absolute_mating_trim = torch.zeros((count, 3), device=device)
         self.extract_finish_active = torch.zeros(count, dtype=torch.bool, device=device)
         self.extract_finish_target_pos = torch.zeros((count, 3), device=device)
         self.extract_finish_target_rot = torch.zeros((count, 4), device=device)
@@ -1934,6 +1940,7 @@ class WorkflowDriver:
         self.transit_started[env_ids] = 0
         self.profile_elapsed[env_ids] = -1.0
         self.profile_joint_bias[env_ids] = 0.0
+        self.absolute_mating_trim[env_ids] = 0.0
         self.extract_finish_active[env_ids] = False
         self.extract_finish_age[env_ids] = 0
         # Only the *reference* is per-episode. The accumulators below it are
@@ -4180,6 +4187,8 @@ class WorkflowDriver:
             self.profile_steps[ids] += (reached & (self.phase[ids] == TRANSIT)).to(torch.long)
             refused_ids = ids[~reached]
             self.profile_elapsed[refused_ids] -= float(self.task.step_dt)
+        if smooth or tracking:
+            refused_ids = ids[~reached]
             self.solved_setpoint_pos[refused_ids] = previous_pos[~reached]
             self.solved_setpoint_rot[refused_ids] = previous_rot[~reached]
         if args.transit_joint_trim:
@@ -4193,9 +4202,9 @@ class WorkflowDriver:
             measured_joints = robot.data.joint_pos[ids][:, self.arm_joint_ids]
             error = targets - measured_joints
             error = torch.atan2(torch.sin(error), torch.cos(error))
-            increment = (1.5 * error).clamp(-0.03, 0.03) * float(self.task.step_dt)
-            increment *= settled_target.unsqueeze(-1)
-            self.profile_joint_bias[ids] = (self.profile_joint_bias[ids] + increment).clamp(-0.06, 0.06)
+            self.profile_joint_bias[ids] = update_joint_trim(
+                error, self.profile_joint_bias[ids], float(self.task.step_dt), settled_target,
+            )
             self.profile_joint_bias_max[ids] = torch.maximum(
                 self.profile_joint_bias_max[ids], self.profile_joint_bias[ids].abs().amax(dim=-1),
             )
@@ -4959,10 +4968,30 @@ class WorkflowDriver:
             # compliant module-space feedback. Change only the arm servo: an
             # absolute bounded setpoint does not repeatedly integrate the
             # current-pose-relative IK error near a folded wrist.
-            self._command_solved_tool_pose(
-                ids, target_tool_pos, target_tool_rot, self.scales[INSERT], tracking=True,
-            )
-            self.absolute_insert_steps[ids] += 1
+            ready_ids = ids[sensor_ready]
+            self.solved_joint_hold[ids] = True
+            self.absolute_insert_sensor_holds[ids[~sensor_ready]] += 1
+            if ready_ids.numel() > 0:
+                relative_pos = self.relocation_blade_relative_to_tool[ready_ids]
+                desired_rot = quat_mul(
+                    staging_rot[sensor_ready], quat_inv(self.relocation_blade_relative_rot_to_tool[ready_ids]),
+                )
+                nominal_pos = (
+                    target_module_pos[sensor_ready] + task.scene.env_origins[ready_ids]
+                    - quat_apply(desired_rot, relative_pos)
+                )
+                # Separate physical spring deflection from robot tracking
+                # error. Adding the entire module error to feed-forward would
+                # double the outer position gain and excite a delayed loop.
+                expected_module = tool[ready_ids] + quat_apply(tool_rot[ready_ids], relative_pos)
+                measured_module = module_pos[sensor_ready] + task.scene.env_origins[ready_ids]
+                deflection = (expected_module - measured_module).clamp(-MATING_TRIM_LIMIT_M, MATING_TRIM_LIMIT_M)
+                self.absolute_mating_trim[ready_ids] += 0.15 * (deflection - self.absolute_mating_trim[ready_ids])
+                self._command_solved_tool_pose(
+                    ready_ids, nominal_pos + self.absolute_mating_trim[ready_ids], desired_rot,
+                    self.scales[INSERT], tracking=True,
+                )
+                self.absolute_insert_steps[ready_ids] += 1
             self.actions[ids, :6] = 0.0
         else:
             self._drive_tool_to(
@@ -6578,8 +6607,15 @@ def main() -> dict[str, object]:
                 "joint_trim_steps": driver.profile_trim_steps.cpu().tolist(),
                 "guarded_insert_solver": args.guarded_insert_solver,
                 "absolute_insert_steps": driver.absolute_insert_steps.cpu().tolist(),
+                "absolute_insert_sensor_holds": driver.absolute_insert_sensor_holds.cpu().tolist(),
+                "mating_feedback": "desired-attitude feedforward plus filtered camera-observed spring deflection; not doubled module tracking error",
+                "mating_feedback_filter_alpha": 0.15,
                 "joint_trim_max_abs_bias_rad": driver.profile_joint_bias_max.cpu().tolist(),
-                "joint_trim_bounds": {"max_bias_rad": 0.06, "max_bias_rate_radps": 0.03, "integral_gain_per_s": 1.5},
+                "joint_trim_bounds": {
+                    "max_bias_rad": JOINT_TRIM_BIAS_LIMIT_RAD,
+                    "max_bias_rate_radps": JOINT_TRIM_RATE_LIMIT_RAD_PER_S,
+                    "integral_gain_per_s": JOINT_TRIM_INTEGRAL_GAIN_PER_S,
+                },
                 "profile_limits": {
                     "linear_velocity_mps": DEFAULT_MOTION_LIMITS.linear_velocity_mps,
                     "linear_acceleration_mps2": DEFAULT_MOTION_LIMITS.linear_acceleration_mps2,
