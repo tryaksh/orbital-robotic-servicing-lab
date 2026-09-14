@@ -9,7 +9,7 @@ claim; where the two disagree, that file wins. The gates below still hold -- a
 claim does not enter the paper until its gate closes -- but the instruction that
 followed them, *do not draft until every gate passes*, does not: drafting began
 on 2026-09-03 in a separate repository, section by section, on the gates that
-have closed. See [`manuscript_prompt.md`](manuscript_prompt.md).
+have closed. See [`handover/manuscript_prompt.md`](handover/manuscript_prompt.md).
 
 ## Research question
 

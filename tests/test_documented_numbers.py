@@ -22,6 +22,9 @@ Source-level and CPU-only: no simulator, no GPU, no checkpoints.
 from __future__ import annotations
 
 import json
+import re
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -124,12 +127,84 @@ def test_the_insert_diagnosis_is_quoted_against_the_tolerance_it_missed() -> Non
 
 
 def test_the_provenance_caveat_is_stated_where_the_number_is() -> None:
-    """One source-bound chain run recovers while ten older reports remain lost."""
+    """The caveat travels with the number, and the number is counted rather than remembered.
+
+    This used to assert the word "ten" appeared, which pinned a count in prose and
+    nothing else. Recovering the 2026-09-04 campaign moved it -- twenty more reports
+    with source bindings arrived at once -- and a test that asserts a spelled-out
+    numeral cannot notice that. So the count is read off the reports.
+    """
+
+    bound = [
+        path
+        for path in sorted(EVIDENCE.glob("*.json"))
+        if "runtime_source_bindings" in path.read_text(encoding="utf-8")
+    ]
+    assert len(bound) >= 30, (
+        f"only {len(bound)} reports carry runtime source bindings; the documents describe a larger "
+        "provenance gap than the evidence now shows"
+    )
     for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
         assert "uncommitted" in document, f"{label} drops the provenance caveat (NEXT_WORK T0)"
         assert "T0" in document, f"{label} does not point at the task that closes it"
         assert "recovered" in document.lower(), f"{label} drops the recovered current run"
-        assert "ten" in document.lower(), f"{label} drops the ten lost source-bound reports"
+        assert f"{len(bound)} reports carry" in document, (
+            f"{label} does not state how many reports carry a source binding; the count is "
+            f"{len(bound)}"
+        )
+
+
+def test_the_manifest_counts_are_quoted_as_generated() -> None:
+    """The counts drifted and nothing caught it, which is what this exists for.
+
+    ``docs/NOW.md`` said 53 canonical, 11 retracted and 159 historical while the
+    generated manifest said 64, 12 and 167. Both numbers were true once. Only one
+    was current, and the difference is exactly the failure mode the rest of this
+    file is about -- so the mechanically generated counts are now pinned in the two
+    documents that quote them.
+    """
+
+    counts = json.loads((EVIDENCE / "MANIFEST.json").read_text(encoding="utf-8"))["counts"]
+    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+        for group in ("canonical", "retracted", "historical"):
+            number = counts[group]
+            assert f"{number} {group}" in document or f"**{number} {group}" in document, (
+                f"{label} does not quote the generated count of {number} {group} reports"
+            )
+
+
+def test_the_cpu_suite_size_is_quoted_as_collected() -> None:
+    """The README names a test count, so the count is collected rather than trusted.
+
+    Collection takes about a second and runs in its own process. If this fails with
+    a number a little larger than the README's, the usual cause is an optional
+    dependency: ``tests/test_fiducial.py`` skips at import without OpenCV, and
+    installing it adds its tests to the collection. The README states the figure for
+    the dependency set ``docs/INSTALL.md`` installs.
+    """
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "--collect-only",
+            "-p",
+            "no:cacheprovider",
+            "-m",
+            "not isaac and not camera and not benchmark",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+    )
+    match = re.search(r"(\d[\d,]*) tests collected", result.stdout)
+    assert match, f"could not read a collected count from pytest:\n{result.stdout[-2000:]}"
+    collected = int(match.group(1).replace(",", ""))
+    assert f"{collected:,} tests" in README, (
+        f"README does not quote the collected CPU suite size of {collected:,} tests"
+    )
 
 
 def test_the_boundary_is_not_overstated() -> None:
@@ -140,3 +215,69 @@ def test_the_boundary_is_not_overstated() -> None:
     for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
         assert "not qualified" in document.lower(), f"{label} overstates the current boundary"
         assert "idealized" in document.lower(), f"{label} hides the load-path limitation"
+
+
+def test_the_contact_feeling_seating_policy_is_reported_as_a_rate_not_a_reward() -> None:
+    """The one experiment that could still overturn a standing result, pinned.
+
+    Its training reward reached 98.2 against the blind policy's 43.9 and **a reward
+    is not a rate**. Both halves are now measured, so the documents must quote the
+    rates and must not quote the reward as one.
+    """
+
+    skill = _overall("grapple_insert_v33force_c11065_certification.json")
+    assert skill["successes"] == 2977 and skill["episodes"] == 3001
+    skill_rate = f"{skill['success_rate'] * 100:.2f}%"
+
+    guarded = _overall("workflow_robot_carried_insert_v33force_c11065_chain_guarded_n96_certification.json")
+    policy = _overall("workflow_robot_carried_insert_v33force_c11065_chain_policy_n96_certification.json")
+    assert guarded["episodes"] == 96 and policy["episodes"] == 96
+    assert guarded["successes"] == 23 and policy["successes"] == 24
+
+    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+        assert skill_rate in document, (
+            f"{label} does not quote the contact-feeling skill rate {skill_rate}"
+        )
+        assert "23/96" in document and "24/96" in document, (
+            f"{label} does not carry the paired chain arms, which are what decide the seating phase"
+        )
+        assert "not a rate" in document or "is not a success rate" in document, (
+            f"{label} quotes the training reward without saying it is not a rate"
+        )
+
+
+def test_the_skill_gate_attribution_is_quoted_with_its_denominator() -> None:
+    """A failure mode without its count is a story, so both are pinned."""
+
+    report = json.loads((EVIDENCE / "skill_gate_attrition_v1.json").read_text(encoding="utf-8"))
+    capture = report["capture"]["pooled"]
+    extraction = report["extraction"]["pooled"]
+    grip = capture["terms"]["grip_position"]["broken_by"]
+    settling = extraction["terms"]["linear_settling"]["broken_by"]
+
+    assert capture["failures"] == 1180 and grip == 1170
+    assert extraction["failures"] == 1113 and settling == 1024
+    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+        assert f"{grip:,} of its {capture['failures']:,}" in document or (
+            f"{grip:,}" in document and f"{capture['failures']:,}" in document
+        ), f"{label} does not give the capture attribution its denominator"
+        assert f"{settling:,}" in document and f"{extraction['failures']:,}" in document, (
+            f"{label} does not give the extraction attribution its denominator"
+        )
+
+
+def test_the_shipped_bay_verdict_is_quoted_as_the_tool_computes_it() -> None:
+    """The design rule's own verdict on this repository's bay: incompatible."""
+
+    report = json.loads(
+        (EVIDENCE / "channel_verdict_shipped_bay_v1.json").read_text(encoding="utf-8")
+    )
+    verdict = report["verdict"]
+    assert verdict["compatible"] is False
+    held = verdict["what_the_gate_would_have_to_accept"]["attitude_rad"] * 1000.0
+    allowed = verdict["what_the_gate_does_accept"]["attitude_rad"] * 1000.0
+    assert round(allowed, 2) == 52.36, f"the acceptance tolerance moved to {allowed:.2f} mrad"
+    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+        assert f"{held:.2f} mrad" in document, (
+            f"{label} does not quote the {held:.2f} mrad this bay can hold a resting module at"
+        )

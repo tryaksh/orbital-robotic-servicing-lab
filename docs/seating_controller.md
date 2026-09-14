@@ -64,24 +64,21 @@ seated   ( 93)   46.9 mrad attitude   2.46 mm lateral     0.8 mm short
 grip is 11.5 mm along the pin on both, to a tenth of a millimetre
 ```
 
-`2c/theta` at 96.8 mrad is **260.6 mm** against this bay's vertical relieved
-clearance and **323.9 mm** against its lateral one. The stalled episodes stop
-174.5 mm short of a 436 mm stroke, so they travel **261.5 mm** -- the tight end
-of that bracket.
+**The channel has two clearances and the law gives two answers.** Per side the
+relieved bay is 12.613 mm vertically and 15.678 mm laterally, so `2c/theta` at
+96.8 mrad is **260.6 mm** against the vertical gap and **323.9 mm** against the
+lateral one. The stalled episodes stop 174.5 mm short of a 436 mm stroke, so they
+travel **261.5 mm** -- the tight end of that bracket.
 
-The channel has two clearances and the law gives two answers.
-Per side the relieved bay is 12.613 mm vertically and 15.678 mm laterally, so
-`2c/theta` at 96.8 mrad is **260.6 mm** against the vertical gap and **323.9 mm**
-against the lateral one. The quoted agreement uses the vertical figure. That is
-the right rule -- a wedge forms at the first constraint reached, so the bound is
-the minimum over the constraining directions -- but it is a rule that has to be
-stated, because choosing the tighter of two numbers after seeing the answer is
-not a prediction. It is also contingent: it holds if the stalled attitude is
-about the axis that closes the vertical gap, which is consistent with the
-geometry and is not separately shown. `insert_depth_is_attitude.json` says the
-same in its own limitations -- the arithmetic brackets the observed travel
-rather than predicting it to a millimetre -- and that sentence, not this
-paragraph, is the one to defend.
+The agreement is quoted against the vertical figure, and that is the right rule: a
+wedge forms at the first constraint reached, so the bound is the minimum over the
+constraining directions. It is a rule that has to be *stated*, because choosing the
+tighter of two numbers after seeing the answer is not a prediction. It is also
+contingent -- it holds if the stalled attitude is about the axis that closes the
+vertical gap, which is consistent with the geometry and is not separately shown.
+`insert_depth_is_attitude.json` says the same in its own limitations: the
+arithmetic brackets the observed travel rather than predicting it to a millimetre,
+and that sentence is the one to defend.
 
 Stated that way it is still the strongest number in this note: it is a
 mechanistic agreement between a bound and a measured population, and unlike the

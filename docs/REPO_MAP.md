@@ -1,8 +1,7 @@
 # Repository map
 
 What this repository holds, what its branches are, and where everything that used
-to be here went. If you are an agent or a person picking this up cold, read this
-before anything except [README.md](../README.md).
+to be here went. Read it before anything except [README.md](../README.md).
 
 Measured on 2026-09-13 with `git ls-remote`, `git merge-base` and `git rev-list`.
 Nothing below is assumed.
@@ -11,8 +10,8 @@ Nothing below is assumed.
 
 ## The two repositories, and which is which
 
-There are two, and until 2026-09-13 they held three projects between them across
-six branches, with no way to tell which branch was what. That is fixed.
+There are two. Until 2026-09-13 they held three projects between them across six
+branches, with no way to tell which branch was what.
 
 | Repository | Question it answers |
 | --- | --- |
@@ -31,10 +30,10 @@ reported.
 | --- | --- | --- |
 | `main` | **alive — the only branch** | Everything. The zero-gravity servicing chain, the serviceability qualification work, 245 evidence reports and the full history. |
 
-**One branch, on purpose.** Before this session there were five, three of which
-were a different project or already merged, and a newcomer had no way to tell
-which was current. The sister repository has exactly one branch and is easier to
-understand for it.
+**One branch, on purpose.** There were five until 2026-09-13, three of which were
+a different project or already merged, and a newcomer had no way to tell which was
+current. The sister repository has exactly one branch and is easier to understand
+for it.
 
 The remote is `https://github.com/tryaksh/orbital-robotic-servicing-lab.git`.
 
@@ -121,8 +120,7 @@ tests and only the first one was run.
 
 ## Layout
 
-The same shape as the sister repository, so an agent knows where to look in
-either.
+The same shape as the sister repository, so one map covers both.
 
 | Path | What is in it |
 | --- | --- |
@@ -132,7 +130,7 @@ either.
 | `docs/REPO_MAP.md` | This file |
 | `docs/NOW.md` | Verified current state, in detail |
 | `docs/NEXT_WORK.md` | The long-form open task list, by task number |
-| `docs/handover/` | Session handovers, kept as history. Not maintained: each describes the repository as it was the day it was written. |
+| `docs/handover/` | Handover notes, kept as history. Not maintained: each describes the repository as it was the day it was written. |
 | `src/zero_g_blade_swap/` | The importable package |
 | `scripts/` | Entry points, one job each, indexed in `scripts/README.md` |
 | `configs/` | Frozen contracts |

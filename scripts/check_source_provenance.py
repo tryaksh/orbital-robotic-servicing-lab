@@ -37,7 +37,6 @@ CPU only. Reads JSON and ``git show``; imports nothing from Isaac Lab.
 Usage::
 
     python scripts/check_source_provenance.py             # every report, every ref
-    python scripts/check_source_provenance.py --depth 60  # search further back per ref
     python scripts/check_source_provenance.py --head_only # HEAD's history alone
     python scripts/check_source_provenance.py --json out.json
 """
@@ -98,46 +97,35 @@ def _matches(blob: bytes, recorded: str) -> bool:
     )
 
 
-def _refs() -> list[str]:
-    """``HEAD`` first, then every tag and branch, each searched to its own depth.
+def _history(path: str, depth: int, all_refs: bool) -> list[tuple[str, str]]:
+    """The commits that changed this one path, newest first, and their subjects.
 
-    **Not ``git log --all``, and the difference is why this exists.** ``--all``
-    interleaves every ref by date and then truncates, so a deep ref can crowd
-    ``HEAD``'s own history out of the window while a shallow one contributes
-    almost nothing. Walking each ref separately gives every ref the full depth.
+    **Only the commits that touched the path, because the blob cannot differ at
+    any other.** Walking whole history and running ``git show`` per commit per
+    file is the same answer at a hundred times the cost: with a thousand commits
+    across every ref and four bindings a report, that is a hundred thousand git
+    invocations and the check stops being something you run before a push.
 
-    Searching more than ``HEAD`` is what recovered the 2026-09-04 campaign. Its
-    commits live only in ``archive/assembly-recovery-training``, which is a tag
-    in this repository, so ``git checkout`` reaches the bytes and the run *is*
-    reproducible. Reporting those bindings as lost said the opposite.
+    ``--all`` here is every ref in the repository, and that breadth is what
+    recovered the 2026-09-04 campaign. Its commits live only in
+    ``archive/assembly-recovery-training``, which is a tag here, so
+    ``git checkout`` reaches the bytes and the run *is* reproducible. Reporting
+    those bindings as lost said the opposite. The interleaving problem that makes
+    ``git log --all`` a bad idea for a whole-history walk does not apply once the
+    walk is path-scoped: a path is touched by few enough commits that the depth
+    limit is not reached.
     """
 
-    refs = ["HEAD"]
-    listing = subprocess.run(
-        ["git", "for-each-ref", "--format=%(refname)", "refs/tags", "refs/heads", "refs/remotes"],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-    ).stdout
-    refs.extend(name.strip() for name in listing.splitlines() if name.strip())
-    return refs
-
-
-def _commits(depth: int, refs: list[str] | None = None) -> list[tuple[str, str]]:
-    rows: list[tuple[str, str]] = []
-    seen: set[str] = set()
-    for ref in refs if refs is not None else ["HEAD"]:
-        out = subprocess.run(
-            ["git", "log", f"-{depth}", "--format=%h\t%s", ref],
-            capture_output=True,
-            text=True,
-            cwd=ROOT,
-        ).stdout
-        for line in out.splitlines():
-            short, _, subject = line.partition("\t")
-            if short and short not in seen:
-                seen.add(short)
-                rows.append((short, subject))
+    command = ["git", "log", f"-{depth}", "--format=%h\t%s"]
+    if all_refs:
+        command.append("--all")
+    command.extend(["--", path])
+    out = subprocess.run(command, capture_output=True, text=True, cwd=ROOT).stdout
+    rows = []
+    for line in out.splitlines():
+        short, _, subject = line.partition("\t")
+        if short:
+            rows.append((short, subject))
     return rows
 
 
@@ -148,7 +136,7 @@ def _blob(commit: str, path: str) -> bytes | None:
     return result.stdout if result.returncode == 0 else None
 
 
-def classify(path: str, recorded: str, commits: list[tuple[str, str]]) -> dict:
+def classify(path: str, recorded: str, depth: int, all_refs: bool) -> dict:
     """Where, if anywhere, do these bytes still exist."""
     on_disk = ROOT / path
     still_on_disk = (
@@ -164,7 +152,7 @@ def classify(path: str, recorded: str, commits: list[tuple[str, str]]) -> dict:
     # was reported unrecoverable purely because HEAD had moved since. The commit
     # walk below is what answers the question; "working" is only the right
     # answer when it finds nothing.
-    for short, subject in commits:
+    for short, subject in _history(path, depth, all_refs):
         blob = _blob(short, path)
         if blob is None:
             continue
@@ -176,7 +164,13 @@ def classify(path: str, recorded: str, commits: list[tuple[str, str]]) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify recorded source hashes against git.")
     parser.add_argument("reports", nargs="*", help="Reports to check (default: all of evidence/).")
-    parser.add_argument("--depth", type=int, default=40, help="How many commits back to search, per ref.")
+    parser.add_argument(
+        "--depth",
+        type=int,
+        default=200,
+        help="How many commits that touched a path to search back through. Only commits that "
+        "changed the file are candidates, so this is a deep window rather than a costly one.",
+    )
     parser.add_argument(
         "--head_only",
         action="store_true",
@@ -193,7 +187,7 @@ def main() -> int:
     args = parser.parse_args()
 
     paths = [Path(name) for name in args.reports] or sorted(EVIDENCE.glob("*.json"))
-    commits = _commits(args.depth, None if args.head_only else _refs())
+    all_refs = not args.head_only
 
     summary: dict[str, dict] = {}
     any_lost = False
@@ -205,7 +199,9 @@ def main() -> int:
         bindings = _find(report, "runtime_source_bindings")
         if not bindings:
             continue
-        rows = [classify(entry["path"], entry["sha256"], commits) for entry in bindings]
+        rows = [
+            classify(entry["path"], entry["sha256"], args.depth, all_refs) for entry in bindings
+        ]
         states = {row["state"] for row in rows}
         verdict = "lost" if "lost" in states else ("working" if "working" in states else "recovered")
         any_lost |= verdict == "lost"

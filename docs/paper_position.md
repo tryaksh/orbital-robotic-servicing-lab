@@ -495,19 +495,10 @@ system, and a methods venue will ask for two.
    population -- but it is a bracket, and the paper must not narrow it to a
    millimetre by quoting only the clearance that happens to match.
 
-   The channel has two clearances and the law gives two answers.
-Per side the relieved bay is 12.613 mm vertically and 15.678 mm laterally, so
-`2c/theta` at 96.8 mrad is **260.6 mm** against the vertical gap and **323.9 mm**
-against the lateral one. The quoted agreement uses the vertical figure. That is
-the right rule -- a wedge forms at the first constraint reached, so the bound is
-the minimum over the constraining directions -- but it is a rule that has to be
-stated, because choosing the tighter of two numbers after seeing the answer is
-not a prediction. It is also contingent: it holds if the stalled attitude is
-about the axis that closes the vertical gap, which is consistent with the
-geometry and is not separately shown. `insert_depth_is_attitude.json` says the
-same in its own limitations -- the arithmetic brackets the observed travel
-rather than predicting it to a millimetre -- and that sentence, not this
-paragraph, is the one to defend.
+   The two clearances and the contingency the bracket rests on are set out in
+   [`seating_controller.md`](seating_controller.md), which owns that argument;
+   `insert_depth_is_attitude.json` states the same limitation in its own scope
+   block, and that sentence is the one to defend.
 
    So the paper leads claim 1 with the mechanism, uses the three objectives as
    corroboration that the angle does not respond to reward shaping, and states

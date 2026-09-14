@@ -2,8 +2,13 @@
 
 Verified repository state. Evidence status is mechanical in
 [`evidence/MANIFEST.json`](../evidence/MANIFEST.json); bounded tasks are in
-[`NEXT_WORK.md`](NEXT_WORK.md). Last verified: 2026-09-03 on
-`paper/serviceability-qualification`, based on `main` at `bccce6d`.
+[`NEXT_WORK.md`](NEXT_WORK.md). What the project is and what it found for a reader
+who has never seen it is [`README.md`](../README.md); what is open and what each
+open thing costs is [`ROADMAP.md`](../ROADMAP.md); where the branches went is
+[`REPO_MAP.md`](REPO_MAP.md). This file is the detail those three point at.
+
+Last verified 2026-09-13 on `main`. The most recent simulator measurement is dated
+2026-09-06.
 
 Everything is simulated. Nothing has run on hardware.
 
@@ -11,17 +16,19 @@ Everything is simulated. Nothing has run on hardware.
 
 | Item | Verified state |
 | --- | --- |
-| Evidence | 53 canonical, 11 retracted, 159 historical; quote only canonical |
-| Source provenance | 13 reports carry runtime source bindings; two match the working source, one is mechanically recovered, and ten older reports remain lost because they used uncommitted code |
+| Evidence | 66 canonical, 12 retracted, 221 historical; quote only canonical |
+| Source provenance | **33 reports carry** a hash of every source file as it was on disk at run time. Six recover completely from git; the rest have at least one file that matches nothing, 119 of 266 bindings in all, because the run used uncommitted code |
 | Current completion result | 22/24, **91.67%**, after visible rack retention engages, both robot-side supports release, and the rack alone holds for at least 0.70 s |
 | Boundary decision | **not qualified**; only entry attitude is supported. The rack-clearance axis was re-measured after a sweep defect: `--rack_lateral_clearance_mm` moved each bay's guides and left its lips and entry flares behind, and 6 mm per side goes from 0/64 to 36/64 once the mouth moves with the walls |
 | Live RGB-D service | complete but fragile: one continuous episode does the whole changeout with 1,772/1,772 detections, and the pooled cohort scores **4/24** against a paired oracle-pose control at **20/24** on the same code path |
 | CI architecture | core modules and CPU tests do not require optional FastAPI imports |
 | Checkpoints | reports contain hashes, but weights under `logs/` and `checkpoints/` are absent from a clone |
+| Learned seating | The first policy able to feel contact certifies at **99.20%** alone, 2,977/3,001, and scores **24/96** in the chain against the scripted advance's **23/96** on the same rack. The skill passes its gate; the chain does not notice |
+| Why the two skills miss | capture: 1,170 of 1,180 failures never get the gripper within the 10 mm the chain allows. extraction: 1,024 of 1,113 leave the module moving faster than the derived settling limit |
 | Hardware claim | none |
 
-**`check_criterion_currency.py --all` now flags all 121 reports, and that is the
-tool working rather than 121 invalidated numbers.** It flags any report generated
+**`check_criterion_currency.py --all` flags 151 of 153 reports, and that is the
+tool working rather than 151 invalidated numbers.** It flags any report generated
 before a change to a file that *can* define its criterion, and
 `scripts/run_workflow_demo.py` changed four times on 2026-09-03. Every one of
 those changes is additive with a behaviour-preserving default:
@@ -32,9 +39,11 @@ into an argument error for a combination no published report used successfully.
 `tests/test_guard_bounds_arm.py` holds the first three defaults in CI. No
 published number moves.
 
-T0 remains open for the ten source-bound reports whose exact uncommitted code
-cannot be recovered. New strict-chain and RGB-D evidence starts from clean
-commits; the bounded audit finds no lost binding in either new RGB-D report.
+T0 remains open for the 27 source-bound reports whose exact uncommitted code
+cannot be recovered. New strict-chain and RGB-D evidence starts from clean commits,
+and searching every tag rather than only `HEAD` recovers six reports completely
+instead of one -- a commit reachable from any ref here is one a reader can check
+out.
 
 ## What runs
 
@@ -100,13 +109,11 @@ now held near 98 for four hundred epochs. The blind policy needed 2,100 epochs
 to reach 43.9 and never left it. This is a converged plateau at more than twice
 the height, reached in a quarter of the epochs, on an identical reward.
 
-**This is a training reward and not a rate, and it must not be quoted as one.**
-Reward is not success and no episode has been certified; a policy can collect
-reward in ways that never seat a module. `verify_insert_skill.sh` is queued on both halves -- the skill on three
-held-out seeds and the same weights inside the chain against the scripted
-advance, which is the arm that decides. Until that runs, the honest claim is that
-the first seating policy able to feel contact is learning much faster than every
-one that could not.
+**A training reward is not a rate and must not be quoted as one.** Both halves
+have since been measured and the section below carries them: the skill certifies at
+**99.20%** on 3,001 episodes and the chain arm scores **24/96** against the
+scripted advance's **23/96**. The reward was the reason to buy the experiment, not
+the result of it.
 
 Insertion was not extended blindly. The audit corrected action scaling, matched
 the skill and chain handoff geometry, added handoff-conditioned resets, projected
@@ -761,13 +768,46 @@ has been given, so the claim of a fixed cohort travels with the number. The
 unpaired intervals stay in every report, because "how far apart are these two
 arms" and "what is this arm's rate" are different questions.
 
+## Fifty-four reports came back out of a retired branch
+
+The two-repository reorganisation retired `research/assembly-recovery-training` as
+a different project, which it mostly was. It was not only that: when
+`paper/serviceability-qualification` stopped being written to on 2026-09-04, the
+servicing campaign carried on committing to what later became that branch, so two
+days of this project's own measurements went into the archive tag with it.
+
+Reachability was checked before the branch was removed and it passed -- every
+commit is alive through `archive/assembly-recovery-training`. What that check could
+not see is that `evidence/` is the directory the manifest, every consistency check
+and every document actually read, and none of them look inside a tag. The reports
+were reachable and absent at the same time.
+
+Recovered byte-for-byte on 2026-09-13: the seating experiment above (7), the
+camera-driven chain factorial and its guard and gate arms (18), prediction
+scorecards and mechanism reports (16), a gravity ladder (5), paired n=192 arms (5),
+and the rack-requirement sweep re-run under the seating bound with its pre-fix arms
+(3). [`REPO_MAP.md`](REPO_MAP.md) carries the inventory.
+
+**All fifty-four arrived classified `historical`, and most are still there.** The
+seating set and the two new reports below are promoted; the rest have not been read
+into this document and that is an open item rather than a silence
+([NEXT_WORK T21](NEXT_WORK.md)). `canonical` is a hand-written list with a sentence
+per entry, so a report becomes quotable by someone reading it.
+
+The library correction that came back with them closes a contradiction this file
+has carried as an open defect: `section_verdict` read one of the two bounds
+`lateral_clearance_window` publishes, so the tool accepted the shipped relieved
+destination while the same file called its clearance 3.897 mm too wide. The seating
+bound is now a criterion in both places, accepted cross-sections fall from 7 of 36
+to 4, and regenerating `workcell_geometry_check.json` from the recovered source
+reproduces the archived report byte for byte apart from its timestamp.
+
 ## Four of the unprovenanced reports were shown to rebuild from source
 
-The manifest now records `source_revision` for every report that has one: of 60
-canonical reports, 20 carry a clean commit, none is dirty, and 37 predate the
-field. That last group is the provenance gap ([T0](NEXT_WORK.md#t0)), and for
-reports whose generator needs no simulator and no checkpoint it can be closed by
-demonstration rather than by a recorded commit -- run the generator and compare.
+The manifest records `source_revision` for every report that has one, and the
+counts are in the paragraph below. For reports whose generator needs no simulator
+and no checkpoint the gap ([T0](NEXT_WORK.md#t0)) can be closed by demonstration
+rather than by a recorded commit -- run the generator and compare.
 
 `scripts/check_reproducible_from_source.py` does that and restores `evidence/`
 afterwards. On 2026-09-03, from committed source:
@@ -778,15 +818,16 @@ afterwards. On 2026-09-03, from committed source:
 | identical but for the regenerated timestamp | `insert_depth_is_attitude.json` |
 | **diverged** | none |
 
-All four are from the 37 with no recorded commit, so four of that group are now
+All four are from the group with no recorded commit, so four of that group are
 demonstrably reproducible -- including the report claim 1's opening number comes
-from. The check refuses to run over an uncommitted `evidence/`, because the way
-it restores the tree is `git checkout -- evidence`.
+from. The check refuses to run over an uncommitted `evidence/`, because the way it
+restores the tree is `git checkout -- evidence`.
 
-This does not close T0. The reports that matter most for the chain -- the skill
-certifications and the workflow runs -- need a checkpoint and a simulator, so
-their provenance still has to be recorded rather than demonstrated, and the 33
-that remain are exactly those.
+This does not close T0. Of 66 canonical reports, 27 record a clean commit, none is
+dirty, and 39 predate the field. The reports that matter most for the chain -- the
+skill certifications and the workflow runs -- need a checkpoint and a simulator, so
+their provenance has to be recorded rather than demonstrated, and the remainder are
+exactly those.
 
 ## No passive rack satisfies this interface, and the tool can prove it
 
@@ -884,31 +925,55 @@ it does not depend on our rack, and it says a skill-level robustness benchmark i
 not evidence about a chain under a real estimator, with the error always
 optimistic.
 
-## The force-feedback seating verification is inconclusive, and one half never ran
+## The force-feedback seating policy is measured, and the skill passes while the chain does not care
 
-**Do not read this as "learned seating does not work".** Two things went wrong
-with the test before the result means anything.
+**The experiment that could have overturned a standing result has run.** For the
+project's whole history the seating policy had no force channel in
+`InsertPolicyObsCfg` and the grapple-pin scene had no contact sensor, so ten
+checkpoints of contact-rich assembly were trained without the signal the task is
+about. `Isaac-ZeroG-Blade-GrapplePin-InsertForce-v0` is one change -- same reward,
+same actions, seven added observation values -- and `v33force` epoch 3000,
+sha256 `86599FC2...`, is the checkpoint. Every arm below is that one checkpoint.
 
-* **The skill half crashed.** `Isaac-ZeroG-Blade-GrapplePin-InsertForce-Play-v0`
-  raises `TypeError: super(type, obj): obj must be an instance or subtype of
-  type` at construction. All three seed runs exited in ten seconds and wrote no
-  episodes, so the policy has never been scored in isolation. The training task
-  and the chain task both construct; only the Play variant is broken.
-* **The chain half ran in a rack that is 3.897 mm outside its own requirement.**
-  It scored 4/24 against the scripted guarded advance's 20/24 in the same cell.
-  That cell is in the regime where the geometry cannot guarantee the lateral
-  gate, and the seating policy is the thing being asked to close 7.850 mm the
-  channel gives away.
+| arm | episodes | result | gate |
+| --- | ---: | ---: | --- |
+| the skill alone, `InsertForce-Play-v0`, seeds 1070/2070/3070, 128 environments | 3,001 | **2,977 = 99.20%**, Wilson [98.81, 99.46] | **passes** 95% |
+| the chain, 11.065 mm channel, seeds 4070/5070/6070, 32 environments, learned seating | 96 | **24 = 25.00%** | fails |
+| the same, scripted guarded advance | 96 | **23 = 23.96%** | fails |
+| the chain at 8 environments, learned seating | 24 | 8 = 33.33% | fails |
+| the same, scripted guarded advance | 24 | 7 = 29.17% | fails |
+| the chain at the shipped relieved throat, learned seating | 24 | 4 = 16.67% | fails |
 
-So the honest statement is that **the first seating policy able to feel contact
-has not been fairly tested**: half the test is broken, the other half ran on a
-misconfigured bay, and it is one seed. Its training reward plateaued at 95-101
-from epoch 500 to 3,000 against the blind policy's 43.9, which is why it is worth
-testing properly rather than filing as a negative result.
+**This is the first learned seating skill in this repository to pass its own
+gate**, against v24's 36.77% isolated and v20chain's 0.00%. And it changes nothing
+about the chain: one episode in ninety-six separates it from the hand-written
+controller it was meant to beat, and both sit near a quarter.
 
-The three things that would make the test fair, in order: fix the Play task; run
-the chain arm at zero relief once `supervise_relief.sh` says whether that is the
-better bay; and seed it, which `supervise_training2.sh` is doing.
+**The seating phase does not change hands, and the rule is the reason rather than
+the margin.** A policy takes the phase only by winning pooled *and* on every shared
+seed. At 8 environments it wins pooled, 8 against 7, and loses seed 4070 at 1/8
+against 2/8. A controller better on average and worse on one seed has a failure
+mode nobody has looked at.
+
+**Read the pair, not either arm alone.** Both controllers collapse in the
+11.065 mm bay, which is the bay built to the design library's own prescription,
+while the scripted advance scores 20/24 and 22/24 in the *relieved* bay every
+published chain number comes from. The relief is 3.897 mm past the library's upper
+bound and it is worth about fifty points to the scripted controller. That is this
+project's thesis measured directly -- the rack decides, not the controller -- and
+the guarded arm at the relieved throat on the same force task is the one cell of
+that 2x2 that had not been run.
+
+**The training reward was never the result and must not be quoted as one.** It
+reached 98.2 against the blind policy's 43.9 plateau on an identical reward
+function, in a quarter of the epochs, which is why the experiment was worth buying.
+A reward is not a rate: a policy can collect reward in ways that never seat a
+module, and here it both collects the reward *and* seats the module 99.20% of the
+time on its own, and still does not move the chain.
+
+`evidence/grapple_insert_v33force_c11065_certification.json` is the skill;
+`workflow_robot_carried_insert_v33force_c11065_chain_{guarded,policy}_n96_certification.json`
+are the paired chain arms.
 
 ## The camera-driven gate is closed, and the combination is the whole effect
 
@@ -1031,6 +1096,80 @@ figure in the repository.
 Every losing arm is retained. No tolerance was widened. The envelope is **not
 qualified**.
 
+## Why the two skills miss their gate
+
+Capture is 8.10 points short and extraction 7.36, and until now that was the whole
+statement. Both success predicates are conjunctions whose terms are recorded per
+episode, so the certified failures partition -- no simulator, from archives that
+were already on disk. [`skill_gate_attrition_v1.json`](../evidence/skill_gate_attrition_v1.json)
+
+| capture, 1,180 failures of 9,009 | count |
+| --- | ---: |
+| gripper outside the 10 mm the chain demands, and nothing else | **1,020** |
+| that and the grip attitude | 150 |
+| grip attitude alone | 1 |
+| inside every recorded bound | 9 |
+
+**1,170 of 1,180 fail on grip position**, at a median 95.9 mm from the pin against
+the successes' 4.0 mm and a 9.88 mm worst case. The hand did not arrive. This is
+not a precision failure and nothing about the grasp itself would move it.
+
+| extraction, 1,113 failures of 9,004 | count |
+| --- | ---: |
+| grip lost on the pin + linear + angular settling | **392** |
+| grip attitude + linear + angular settling | 352 |
+| grip attitude + linear settling | 114 |
+| grip lost on the pin + linear settling | 106 |
+| inside every recorded bound | 56 |
+
+**1,024 of 1,113 carry residual linear velocity above the derived 14.29 mm/s
+limit**, and it appears in all four of the largest combinations. The module comes
+out and does not stop moving, which zero gravity never fixes. That is the third
+independent place this project has found the same mechanism: the rail stop-error
+axis fails the same way, and its closed-form bound is a static grip bound that
+cannot see it.
+
+**Which condition was false is not which condition caused it.** Residual motion and
+grip loss co-occur in 498 of the failures and the ordering is not recorded. Three
+predicate terms are not episode columns either -- the grip drive torque, the 0.30 s
+hold, and extraction's "clear of the slot" -- so episodes inside every recorded
+bound are reported as such rather than assigned to a term the reading cannot see.
+
+## The design rule an engineer can run
+
+`2c/L` and `2c/theta` were a library nobody could run.
+`servicing_design.channel_verdict` and
+`scripts/check_channel_holds_its_tolerance.py` ask the question a designer has
+while the slot is still a drawing: how square can this channel hold this module,
+how square does the acceptance test demand it be, and are those compatible. No
+manipulator needed, which is why it is separate from `interface_regime`.
+
+On the bay this repository ships:
+
+| | lateral | vertical |
+| --- | ---: | ---: |
+| clearance per side, relieved | 15.678 mm | 12.613 mm |
+| attitude a resting module can take, `2c/L` | **69.68 mrad** | 56.06 mrad |
+| what the seating gate accepts | 52.36 mrad | 52.36 mrad |
+
+Both axes exceed it, so the answer is **incompatible**, and the demand is the
+*looser* axis: a resting module may take either attitude, so reading the tighter
+figure is how a bay passes a check it should fail. The lateral offset is worse
+still, 15.678 mm against a 2.5 mm gate.
+
+**Removing the relief is not enough, and that is the useful half.** At the
+11.065 mm design point the attitude comes inside with 3.18 mrad in hand and the
+offset still fails at 11.065 mm against 2.5 mm. Narrow the channel until a resting
+module is inside the gate -- 0.5 mm per side -- and the entry bound closes: the
+module reaches 21.7 mm of a 529 mm stroke before it wedges. So no clearance that
+admits this module also guarantees seating, which is `active_centring` stated in
+millimetres instead of regimes.
+
+`tests/test_channel_verdict.py` pins all of it against
+[`destination_channel_geometry.json`](../evidence/destination_channel_geometry.json),
+which measured the same bay in the scene.
+[`channel_verdict_shipped_bay_v1.json`](../evidence/channel_verdict_shipped_bay_v1.json)
+
 ### The design derivation, as a callable tool
 
 [`servicing_design.py`](../src/zero_g_blade_swap/servicing_design.py) is the
@@ -1133,19 +1272,15 @@ POINTS="rack_lat_6mm rack_lat_16mm" ENVS=64 EPISODES=64 STEPS=6000 `
 
 Never overwrite evidence; use a new versioned filename.
 
-## Branches
+## Where this leaves the open gates
 
-| Branch | Status |
-| --- | --- |
-| `paper/serviceability-qualification` | active: strict release, insertion handoff audit, current RGB-D gate and boundary validation |
-| `main` | baseline at `bccce6d`; unchanged |
-| `industrial-relocation` | preserved earlier work; not identical to `main` |
-| `keyed-interface` | preserved losing keyed-interface exploration; do not delete |
-| `origin/agent/zero-g-blade-swap` | preserved historical line; superseded |
+Destination transfer is closed with a narrowed claim: 22/22 eligible episodes hold,
+while the full chain remains 22/24 and below 95% because two fail before seating.
+The flush-tag camera gate passes. The next gate is the strict RGB-D chain, pooled
+over three held-out seeds. Learned insertion is a separate interface-transfer
+problem and more GPU on it is not justified until its reset and real-handoff
+distributions are identical by construction -- the 99.20% skill certificate above
+is the strongest possible statement that the skill is not what is wrong.
 
-Destination transfer is closed with a narrowed claim: 22/22 eligible episodes
-hold, while the full chain remains 22/24 and below 95% because two fail before
-seating. The flush-tag camera gate now passes; the next gate is the strict RGB-D
-chain and a recording. Learned insertion remains a separate interface-transfer
-problem; do not spend more GPU until its reset and real-handoff distributions
-are the same by construction.
+There is one branch, `main`. [`REPO_MAP.md`](REPO_MAP.md) says what the others were
+and where they went.

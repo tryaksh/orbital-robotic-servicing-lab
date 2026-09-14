@@ -7,7 +7,7 @@ collection stays open to 2027-02-28, so the venue is not the constraint.
 
 **Read `docs/paper_position.md` first.** Its top block carries the corrections
 and the sharpened thesis; the manuscript is being drafted in a separate
-repository against it (`docs/manuscript_prompt.md`).
+repository against it (`docs/handover/manuscript_prompt.md`).
 
 ### What landed today
 
@@ -612,7 +612,7 @@ is **not reproducible from this repository**, and nobody can say what differed
 between the code that produced the number and the code that is committed.
 
 **And the difference is not safely assumed cosmetic.** The natural hypothesis is
-that the previous session ran its measurements and then wrote explanatory comments
+that the measurements were run first and the explanatory comments written
 before committing — this repository comments heavily. But the commit that followed
 the certification, `7b3e719`, changed `FIDUCIAL_TAG_CENTER_M` from
 `(0.0, -0.015, 0.100)` to a flush top-face plate and changed
@@ -624,7 +624,7 @@ irrelevant" is an assumption, and this project's rules exist because assumptions
 of that shape have been wrong five times.
 
 **This was systemic, not one lapse.** Nine older reports fail across three
-sessions. The workflow now records the source commit and tracked dirty state,
+runs. The workflow now records the source commit and tracked dirty state,
 and new evidence generators refuse dirty tracked worktrees.
 
 **Code.** `scripts/check_source_provenance.py` (new, this audit) is the checker.
@@ -849,7 +849,7 @@ point of measuring.
 
 **Cost.** Four training runs. Extract is the long one (~12,600 epochs to the
 current checkpoint). Batch them; do not run two at once on 12 GB. Budget several
-overnight sessions, or reduce scope to extract only and say that is what was done.
+overnight batches, or reduce scope to extract only and say that is what was done.
 
 ---
 
@@ -1551,63 +1551,16 @@ Carry the level-4 caveat explicitly: the base compliance is authored and not in
 the load path, so a level-4 number would imply a mount compliance that is not
 being simulated.
 
-## P6 — What sim-to-real would take, written out
+## P6 — What sim-to-real would take
 
-**This section is required for a space-robotics venue, and until now it was a
-task rather than a text. It is written here so the paper can quote it.** It is
-analysis, not experiments: every item is a known property of this simulation,
-and the last subsection says which single hardware experiment would falsify the
-specification most cheaply.
+Written, and it lives in [`sim_to_real.md`](sim_to_real.md): what is modelled and
+to what standard, the three claims that would move first on hardware, the one
+caveat that is easy to misread, and the two bench experiments that would falsify
+the specification most cheaply on a linear stage with no robot at all.
 
-### What is modelled, and to what standard
-
-| Element | Modelled as | What that does and does not license |
-| --- | --- | --- |
-| Gravity | `gravity=(0, 0, 0)` throughout | The load-bearing assumption. A free-floating mass does not settle, and closing pads on a taper ejects it before they grip; that is why capture and extraction are learned and the free-space motion is not. It does not model orbital rate, gravity gradient, or a tumbling client. |
-| Robot base | Fixed to the world | No spacecraft reaction, no attitude control coupling, no compliant mount. A free-flying servicer changes the problem qualitatively: momentum is conserved through the arm, and the arm's own motion moves the base. |
-| Robot rail | Indexes a base already fixed to the world | The carriage's own stiffness, backlash and stopping error are not in the load path. The sweep's `base_y_+10mm` point is the closest thing to a stopping-error measurement and it loses. |
-| Robot-side form lock | Break-rated PhysX fixed joint (rigid) and bounded spring-damper (compliant) between `wrist_3_link` and the module | Disclosed in every report. Geometry is authored and its clearances are checked; the *load path* is idealised. No pad-on-pin contact is simulated: the jaws carry no collider. |
-| Rack-side retention | Two visible 2.5 x 20 x 20 mm pawls with a 600 N / 30 N-m `Rack`-to-module fixed joint, enabled only after the measured seating predicate | Visible geometry without contact colliders. The reaction magnitude is not exposed, so no pawl load can be quoted. |
-| Contact | PhysX rigid contact with authored friction pairs | Forces are a relative damage proxy, not an absolute budget. Friction values are chosen per surface and are not measured from any material pair. |
-| Perception | Rendered RGB-D, 640 px, 45 mm lens, 15 Hz, with a radiation-noise model on RGB | No lens distortion, no motion blur, no exposure control, no specular behaviour of real anodised aluminium, no sun-angle sweep, no eclipse transition. The flush ArUco datum is authored as code-native geometry, not printed and photographed. |
-| Not modelled at all | connector mating, cabling, thermal expansion, vacuum cold-welding, outgassing, plume, dust, radiation-induced sensor upsets | Any of these can dominate a real changeout. |
-
-### The three claims that would move first on hardware
-
-1. **The 2c/L admissibility bound would survive, and the numbers feeding it would
-   not.** The bound is Whitney's classical wedging geometry and does not depend on
-   the simulator. What depends on the simulator is the *delivered* attitude that
-   goes into it -- 20.5 mrad measured here -- and a real UR10e with a real
-   gripper on a real rail will not deliver that. The specification's shape is
-   robust; its constants are not.
-2. **The form lock is the biggest single idealisation.** Everything downstream of
-   capture assumes the module is rigidly attached to the wrist to within 2.5 mm
-   and 52 mrad, and that assumption is enforced by a joint rather than earned by
-   contact. On hardware the lock is a mechanism with backlash, and the transit
-   retention numbers (1.8 mm maximum drift here) are the first thing that would
-   degrade.
-3. **Perception would degrade differently, not uniformly.** The rendered marker
-   has perfect contrast and no blur. The failure the derivation found -- the bay's
-   own lead-in covering the datum -- is *geometric* and would reproduce exactly on
-   hardware; the detection rate on the frames where the datum is visible would not.
-
-### The cheapest falsifying experiment
-
-**Do not start with the arm.** Start with a bench mock-up of one bay and one
-module, on a linear stage, in 1 g, with the flush datum pair and the shipped
-camera calibration:
-
-- push the module in on the stage at a commanded tilt swept through the derived
-  `2c/L` bound and record where it wedges. That falsifies or confirms the
-  admissibility law and the lead-in geometry for the price of a fixture.
-- with the same fixture, record the datum through the full stroke and compare the
-  measured occlusion band against `evidence/rack_sightline_datum_pair_v1.json`.
-  The sight-line derivation makes a specific, falsifiable prediction about where
-  each plate is readable, and it needs no robot at all.
-
-Both are single-afternoon experiments on a stage that costs less than an arm, and
-between them they test the two claims the paper actually rests on. The
-manipulation result is the third experiment, not the first.
+It used to be copied out in full here, and the copy had gone stale -- it still
+quoted a 20.5 mrad delivered attitude, which is the *settled* figure and not the
+hand-over one. The hand-over attitude is 46 mrad. One file owns this.
 
 ## P7 — Make the artifact citable
 
@@ -1626,7 +1579,7 @@ manipulation result is the third experiment, not the first.
 | --- | --- |
 | 1–2 | P1 provenance. Start P2 seed runs immediately — they are the long pole, and everything else can proceed while the GPU is busy. |
 | 3–5 | P2 completes. P3 ablation table assembled from re-run evidence. |
-| 4–6 | P4 vision-chain certification (overlaps P3; different GPU sessions). |
+| 4–6 | P4 vision-chain certification (overlaps P3; a separate GPU batch). |
 | 6–7 | P5 degradation curve. T11 media. |
 | 7–9 | Write. P6 sim-to-real section. Figures from `evidence/`. |
 | 9–11 | Internal review against the two non-negotiable rules, then submit. |

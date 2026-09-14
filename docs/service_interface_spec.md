@@ -439,7 +439,7 @@ between them; `tests/test_workcell_geometry.py` and
 cross-section, so the cell can state its family rather than its one part. Of a
 6 × 6 grid from 110 to 160 mm wide and 14 to 35 mm tall, six sections are
 accepted; the module this project used to run fails **entry** and several
-thinner ones fail **grip**, in the same rack, and until this session the only
+thinner ones fail **grip**, in the same rack, and until 2026-08-25 the only
 instrument that measured either was a training run. Seven are accepted at the
 derived clearance, because narrowing the channel buys back a section that used
 to fail grip. The map is printed by the
@@ -578,7 +578,7 @@ section 8. This section is the other half of the same finding: **some of the
 attitude error attributed to the interface was the arm buying depth with it.**
 Extraction on the old cell had to finish 88.7 mm past the boundary and ended with
 about 0.13 rad of grip attitude error, which this project read as the interface
-failing for three sessions.
+failing through three rounds of retraining.
 
 How much of that 0.13 rad the workcell owns is a separate measurement and is not
 claimed here from the kinematics alone. The honest form is the one the sweep
@@ -906,7 +906,7 @@ occupy — between the palm face at 90 mm and the seated pads at 105 mm:
 > or a powered latch. It cannot come from the module.
 
 **The corollary is the useful half, and it reverses a judgement this project held
-for three sessions.** The 2F-85's throat is itself cone-shaped, and the tapered
+through three rounds of retraining.** The 2F-85's throat is itself cone-shaped, and the tapered
 pin's profile is close to it — 33.6 mm of half-height where the pads begin,
 falling to 8 mm at the collar, against a throat that opens the same way. The taper
 stops the pads at 0.186 rad and clears every closure at or below that. The taper
@@ -1106,7 +1106,7 @@ it. So the mechanism that makes the flight possible makes the mating impossible.
 **Released, it mates and cannot carry.** The pads do not resist lateral load,
 which section 8 measures and which this section's own control run demonstrates.
 
-Measured, in one session, three ways:
+Measured three ways, on one day:
 
 | Lock state during mating | What the seating did |
 | --- | --- |
@@ -1212,7 +1212,7 @@ interface losing the module — rather than smoothed away.
 
 ### 9.6.1 Three faults, and a grid that has to be read as their consequence
 
-The table above was measured over one session and most of it is now known to
+The table above was measured on one day and most of it is now known to
 have been measuring the same three faults rather than the mating interface.
 They are recorded here because a swept grid that turned out to be sweeping a bug
 is a result about the method, and deleting it would leave the conclusions it
@@ -1356,7 +1356,7 @@ the rack before the module does. Derived:
 ### 9.8 The hand-off attitude, and the three different numbers it is not
 
 The transit has to put the module in front of the destination bay square enough
-to go in. Until this session it was allowed to hand over at
+to go in. Until 2026-08-25 it was allowed to hand over at
 `INSERTION_ORIENTATION_TOLERANCE_RAD` — 52.36 mrad — which is the **seated
 success predicate**, the test for whether a module that is already in counts as
 installed. It is not an entry requirement, and using it as one is what let the
@@ -1494,7 +1494,7 @@ Stated plainly, because a hybrid that is not stated is decoration:
 
 So the contact-rich seating stroke — the phase §10.1 assigns to RL — is driven
 deterministically. That is a **deviation from this section**, and two things
-about it changed in the last session.
+about it has changed since.
 
 The first is that the deviation is now real rather than nominal. Until then the
 phase labelled "insert" was not performing the insertion at all: the transit's
