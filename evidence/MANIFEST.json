@@ -10,7 +10,7 @@
   "counts": {
     "canonical": 64,
     "retracted": 12,
-    "historical": 167
+    "historical": 221
   },
   "canonical": {
     "boundary_failure_modes_n192_v1.json": {
@@ -965,6 +965,18 @@
     "camera_scale_grapple_w65.json": {
       "title": "Servicing camera scale and framing, measured by rendering"
     },
+    "capture_attrition_v1.json": {
+      "title": "What remains once the bay holds the module, and what records it",
+      "generated_utc": "2026-09-05T23:43:49.322380+00:00"
+    },
+    "delivered_attitude_from_traces_v1.json": {
+      "title": "The attitude the transit hands the insertion over at, from recorded traces",
+      "generated_utc": "2026-09-04T22:39:54.210870+00:00"
+    },
+    "entry_swing_v1.json": {
+      "title": "The destination channel's relief bounds the entry swing",
+      "generated_utc": "2026-09-05T22:57:46.644537+00:00"
+    },
     "estimate_stability.json": {
       "title": "Pose estimate stability, with the module held still"
     },
@@ -984,6 +996,11 @@
       "title": "Extraction on an unchanged checkpoint: ExtractVelocityNoised",
       "generated_utc": "2026-09-03T21:42:14+00:00"
     },
+    "factorial_paired_bothchannels_NK0.json": {},
+    "factorial_paired_guard_00L.json": {},
+    "factorial_paired_NKL.json": {},
+    "factorial_paired_noisedguard_N0L.json": {},
+    "factorial_paired_velguard_0KL.json": {},
     "fiducial_detector_late_approach_replay_v1.json": {
       "title": "Fiducial decoder replay on continuous late-approach RGB frames"
     },
@@ -1131,6 +1148,10 @@
       "title": "Rack-mouth-only insertion training intervention",
       "generated_utc": "2026-08-28T04:55:36.672673+00:00"
     },
+    "grapple_insert_v33force_c11065_certification.json": {
+      "title": "Head-on grapple-pin insert skill, insert_v33force_c11065, orientation scaled to the channel",
+      "generated_utc": "2026-09-04T23:27:41+00:00"
+    },
     "grapple_insert_v3_certification.json": {
       "title": "Head-on grapple-pin insert skill",
       "generated_utc": "2026-08-10T16:55:37+00:00"
@@ -1195,6 +1216,12 @@
     "gripper_collision_envelope.json": {
       "title": "Robotiq 2F-85 collision envelope in the wrist_3_link frame"
     },
+    "guard_bounds_axis_paired_n24.json": {},
+    "handoff_gate_ablation_paired_n48.json": {},
+    "handoff_qualification_residual_v1.json": {
+      "title": "Handoff qualification read from the residual distribution",
+      "generated_utc": "2026-09-05T19:40:39.025261+00:00"
+    },
     "inference_budget.json": {
       "title": "Onboard compute budget of the learned components"
     },
@@ -1204,6 +1231,10 @@
     },
     "insertion_chain_handoff_controller_v1.json": {
       "generated_utc": "2026-08-27T06:07:43+00:00"
+    },
+    "jam_mechanism_v1.json": {
+      "title": "Which axis the module rotates about when the prescribed channel jams it",
+      "generated_utc": "2026-09-06T00:54:51.933791+00:00"
     },
     "mating_compliance.json": {
       "title": "Mating compliance for a robot-carried module",
@@ -1242,6 +1273,47 @@
     "perturbations_bite.json": {
       "title": "Do the perception perturbations reach the image at all"
     },
+    "pre_handoff_predictability_v1.json": {
+      "title": "Whether pre-handoff state predicts the residual the seating step leaves",
+      "generated_utc": "2026-09-05T19:40:38.798396+00:00"
+    },
+    "prediction_scorecard_v1.json": {
+      "title": "Three predictors scored against configurations none had seen",
+      "generated_utc": "2026-09-06T02:21:42.741849+00:00"
+    },
+    "prediction_thicker_130x26_v1.json": {
+      "title": "Predicted phase response to a proposed configuration change",
+      "generated_utc": "2026-09-06T00:43:31.932630+00:00"
+    },
+    "prediction_wider_140x20_v1.json": {
+      "title": "Predicted phase response to a proposed configuration change",
+      "generated_utc": "2026-09-06T00:43:31.486931+00:00"
+    },
+    "prescription_factorial_v1.json": {
+      "title": "The rack prescription crossed with the retention fixture",
+      "generated_utc": "2026-09-05T22:23:17.589520+00:00"
+    },
+    "rack_prescription_paired_n192.json": {},
+    "rack_prescription_retained_paired_n192.json": {},
+    "rack_requirement_sweep_v1_before_the_seating_criterion.json": {
+      "title": "The rack requirement as a function of the manipulator's delivered attitude"
+    },
+    "rack_requirement_sweep_v2.json": {
+      "title": "The rack requirement as a function of the manipulator's delivered attitude"
+    },
+    "rack_retention_paired_n192_v2.json": {},
+    "reference_workcell_reproduction_v1.json": {
+      "title": "Whether recording the handoff trace changes the run",
+      "generated_utc": "2026-09-06T00:19:48.823414+00:00"
+    },
+    "release_drift_retention_v1.json": {
+      "title": "The error that fails the task appears after the hand lets go",
+      "generated_utc": "2026-09-05T21:39:00.130314+00:00"
+    },
+    "release_drift_v1.json": {
+      "title": "The error that fails the task appears after the hand lets go",
+      "generated_utc": "2026-09-05T19:50:37.516282+00:00"
+    },
     "relocate_handoff_to_insert.json": {},
     "relocate_handoff_to_insert_w65.json": {},
     "relocate_handoff_to_transit.json": {},
@@ -1252,6 +1324,18 @@
     },
     "relocation_rrt_path.json": {
       "generated_utc": "2026-08-21T01:39:23+00:00"
+    },
+    "residual_transfer_v1.json": {
+      "title": "Criterion-curve reliability within a configuration, and ordering across three",
+      "generated_utc": "2026-09-05T19:40:26.125228+00:00"
+    },
+    "residual_vs_counted_power_v1.json": {
+      "title": "Reading the residual against counting successes, at matched episode cost",
+      "generated_utc": "2026-09-05T19:40:40.193776+00:00"
+    },
+    "retention_configuration_v1.json": {
+      "title": "Which cohorts had the destination rack's retention fitted",
+      "generated_utc": "2026-09-05T21:13:00.430189+00:00"
     },
     "rgbd_strict_rack_retention_640px_burst_full_seed5070.json": {},
     "rgbd_strict_rack_retention_640px_burst_full_seed6070.json": {},
@@ -1302,12 +1386,23 @@
       "title": "Destination-bay clearance sweep: why the robot-carried seating does not close",
       "generated_utc": "2026-08-23T11:25:39.027766+00:00"
     },
+    "seating_controller_head_to_head_n96.json": {
+      "title": "Which controller seats the module: the guarded advance or the learned policy",
+      "generated_utc": "2026-09-05T02:30:19.575272+00:00"
+    },
+    "seating_controller_paired_n96.json": {},
+    "section_section_120x16_retained_paired_n192.json": {},
+    "section_section_140x26_retained_paired_n192.json": {},
     "serviceability_boundary_validation_v1.json": {
       "title": "Serviceability boundary validation against simulation",
       "generated_utc": "2026-08-27T01:13:24.458530+00:00"
     },
     "servicing_camera_geometry_v3_640px.json": {
       "title": "Fixed servicing-camera coverage of the flush fiducial workflow envelope"
+    },
+    "trace_non_perturbing_v1.json": {
+      "title": "Whether recording the handoff trace changes the run",
+      "generated_utc": "2026-09-05T19:40:37.543348+00:00"
     },
     "uncertain_force_threshold_aware.json": {
       "title": "Commanded contact-force budget, force-aware",
@@ -1404,6 +1499,10 @@
     "vision_workflow_payload_80kg_certification.json": {
       "title": "Vision servicing workflow at a 80 kg module",
       "generated_utc": "2026-08-16T01:38:34+00:00"
+    },
+    "workcell_geometry_check_before_the_seating_criterion.json": {
+      "title": "Where the arm stands, what authority it has there, and what the channel admits",
+      "generated_utc": "2026-08-25T22:22:28.139095+00:00"
     },
     "workcell_reach_solution.json": {
       "title": "A workcell in which the arm holds the capture attitude at every pose the relocation needs",
@@ -1505,6 +1604,42 @@
       "title": "Chained servicing workflow: remove",
       "generated_utc": "2026-08-20T02:37:27+00:00"
     },
+    "workflow_robot_carried_gravity_00_n48_certification.json": {
+      "title": "Robot-carried relocation, module gravity 0.0 m/s^2, released unheld, 48 episodes",
+      "generated_utc": "2026-09-05T12:32:09+00:00"
+    },
+    "workflow_robot_carried_gravity_162_n48_certification.json": {
+      "title": "Robot-carried relocation, module gravity -1.62 m/s^2, released unheld, 48 episodes",
+      "generated_utc": "2026-09-05T12:43:12+00:00"
+    },
+    "workflow_robot_carried_gravity_371_n48_certification.json": {
+      "title": "Robot-carried relocation, module gravity -3.71 m/s^2, released unheld, 48 episodes",
+      "generated_utc": "2026-09-05T12:54:45+00:00"
+    },
+    "workflow_robot_carried_gravity_981_n48_certification.json": {
+      "title": "Robot-carried relocation, module gravity -9.81 m/s^2, released unheld, 48 episodes",
+      "generated_utc": "2026-09-05T13:06:18+00:00"
+    },
+    "workflow_robot_carried_gravity__n48_certification.json": {
+      "title": "Robot-carried relocation, module gravity -9.81 m/s^2, released unheld, 48 episodes",
+      "generated_utc": "2026-09-05T13:06:18+00:00"
+    },
+    "workflow_robot_carried_insert_v33force_c11065_chain_guarded_certification.json": {
+      "title": "Robot-carried relocation, scripted guarded advance, force task, channel throat 11.065 mm per side",
+      "generated_utc": "2026-09-04T23:01:03+00:00"
+    },
+    "workflow_robot_carried_insert_v33force_c11065_chain_guarded_n96_certification.json": {
+      "title": "Robot-carried relocation, scripted guarded advance, force task, 11.065 mm channel, 32 environments",
+      "generated_utc": "2026-09-05T02:07:38+00:00"
+    },
+    "workflow_robot_carried_insert_v33force_c11065_chain_policy_certification.json": {
+      "title": "Robot-carried relocation, seating driven by the learned insert policy (insert_v33force_c11065)",
+      "generated_utc": "2026-09-04T23:47:47+00:00"
+    },
+    "workflow_robot_carried_insert_v33force_c11065_chain_policy_n96_certification.json": {
+      "title": "Robot-carried relocation, learned force-feedback seating, force task, 11.065 mm channel, 32 environments",
+      "generated_utc": "2026-09-05T02:30:19+00:00"
+    },
     "workflow_robot_carried_insert_v33force_chain_policy_certification.json": {
       "title": "Robot-carried relocation, seating driven by the learned insert policy (insert_v33force)",
       "generated_utc": "2026-09-04T20:17:08+00:00"
@@ -1517,9 +1652,49 @@
       "title": "Robot-carried relocation, one seed, after the criterion and rack changes",
       "generated_utc": "2026-08-24T20:57:19+00:00"
     },
+    "workflow_robot_carried_vision_dose_base85_gate_lead_in_n48_certification.json": {
+      "title": "RGB-D chain, robot base x=-0.85, handoff gate = lead_in, 48 episodes",
+      "generated_utc": "2026-09-05T17:03:41+00:00"
+    },
     "workflow_robot_carried_vision_factorial_base_000_certification.json": {
       "title": "RGB-D chain, factorial cell base_000",
       "generated_utc": "2026-09-04T20:54:38+00:00"
+    },
+    "workflow_robot_carried_vision_factorial_base_000_first_run_certification.json": {
+      "title": "RGB-D chain, factorial cell base_000",
+      "generated_utc": "2026-09-04T20:54:38+00:00"
+    },
+    "workflow_robot_carried_vision_factorial_bothchannels_NK0_certification.json": {
+      "title": "RGB-D chain, factorial cell bothchannels_NK0",
+      "generated_utc": "2026-09-05T05:21:55+00:00"
+    },
+    "workflow_robot_carried_vision_factorial_guard_00L_certification.json": {
+      "title": "RGB-D chain, factorial cell guard_00L",
+      "generated_utc": "2026-09-04T23:45:31+00:00"
+    },
+    "workflow_robot_carried_vision_factorial_noisedguard_N0L_certification.json": {
+      "title": "RGB-D chain, factorial cell noisedguard_N0L",
+      "generated_utc": "2026-09-05T03:44:55+00:00"
+    },
+    "workflow_robot_carried_vision_factorial_velguard_0KL_certification.json": {
+      "title": "RGB-D chain, factorial cell velguard_0KL",
+      "generated_utc": "2026-09-05T01:43:59+00:00"
+    },
+    "workflow_robot_carried_vision_gate_lead_in_n48_certification.json": {
+      "title": "RGB-D chain, handoff gate = lead_in, 16 environments, 48 episodes",
+      "generated_utc": "2026-09-05T11:11:14+00:00"
+    },
+    "workflow_robot_carried_vision_gate_none_n48_certification.json": {
+      "title": "RGB-D chain, handoff gate = none, 16 environments, 48 episodes",
+      "generated_utc": "2026-09-05T12:10:41+00:00"
+    },
+    "workflow_robot_carried_vision_noised_capture_extract_kinematic_leadin_certification.json": {
+      "title": "RGB-D chain, both skills trained on the estimator's error, kinematic velocity, lead-in guard",
+      "generated_utc": "2026-09-05T01:43:38+00:00"
+    },
+    "workflow_robot_carried_vision_noised_capture_extract_kinematic_leadin_n48_certification.json": {
+      "title": "RGB-D chain, both skills trained on the estimator's error, 16 environments, 48 episodes",
+      "generated_utc": "2026-09-05T04:08:32+00:00"
     },
     "workflow_robot_carried_vision_rack_retention_640px_v2_certification.json": {
       "title": "Strict 640-pixel camera-guided workflow with visible destination retention",

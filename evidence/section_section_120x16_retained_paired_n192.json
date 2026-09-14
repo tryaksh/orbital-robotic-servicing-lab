@@ -1,0 +1,30 @@
+{
+  "episodes": 192,
+  "baseline": {
+    "successes": 88,
+    "rate": 0.458333,
+    "wilson_95": [
+      0.3894,
+      0.5289
+    ]
+  },
+  "treatment": {
+    "successes": 152,
+    "rate": 0.791667,
+    "wilson_95": [
+      0.7288,
+      0.8431
+    ]
+  },
+  "paired": {
+    "gained": 64,
+    "lost": 0,
+    "discordant": 64,
+    "improvement_p": 5.421010862427522e-20,
+    "deterioration_p": 1.0,
+    "two_sided_p": 1.0842021724855044e-19,
+    "direction": "gained"
+  },
+  "wilson_intervals_overlap": false,
+  "label": "section_120x16, pawls fitted against absent, 192 paired episodes"
+}

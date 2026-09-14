@@ -1,0 +1,99 @@
+{
+  "title": "The rack prescription crossed with the retention fixture",
+  "evidence_type": "simulation_only",
+  "generated_utc": "2026-09-05T22:23:17.589520+00:00",
+  "question": "The published refutation of the design library's prescribed clearance was measured with the destination bay's retention pawls absent, against a failure mode the fixture is now known to remove. What does the prescription do once the bay holds the module?",
+  "criterion_m": 0.0025,
+  "source_revision": {
+    "available": true,
+    "commit": "f25033adef14a900781b385896207492f9c0ea68",
+    "branch": "research/correction-aware-handoffs",
+    "dirty": false,
+    "code_dirty": false,
+    "tracked_changes": [],
+    "error": null
+  },
+  "seeds": [
+    4070,
+    5070,
+    6070
+  ],
+  "cells": {
+    "relief 4.61 mm, retention absent": {
+      "relief": "4.61 mm",
+      "retention": "absent",
+      "episodes": 192,
+      "passes": 110,
+      "delivered": 187,
+      "precision_given_delivery": 0.5882352941176471,
+      "residual_median_m": 0.0021602725610136986,
+      "residual_max_m": 0.005733627825975418,
+      "bands": {
+        "passes": 110,
+        "near miss 2.5-6 mm": 77,
+        "off 6-10 mm": 0,
+        "gross 10-50 mm": 0
+      },
+      "never_delivered": 5
+    },
+    "relief 0.00 mm, retention absent": {
+      "relief": "0.00 mm",
+      "retention": "absent",
+      "episodes": 192,
+      "passes": 64,
+      "delivered": 187,
+      "precision_given_delivery": 0.3422459893048128,
+      "residual_median_m": 0.0031921062618494034,
+      "residual_max_m": 0.03292768448591232,
+      "bands": {
+        "passes": 64,
+        "near miss 2.5-6 mm": 109,
+        "off 6-10 mm": 2,
+        "gross 10-50 mm": 12
+      },
+      "never_delivered": 5
+    },
+    "relief 4.61 mm, retention pawls": {
+      "relief": "4.61 mm",
+      "retention": "pawls",
+      "episodes": 192,
+      "passes": 187,
+      "delivered": 187,
+      "precision_given_delivery": 1.0,
+      "residual_median_m": 0.0007313760579563677,
+      "residual_max_m": 0.0018743822583928704,
+      "bands": {
+        "passes": 187,
+        "near miss 2.5-6 mm": 0,
+        "off 6-10 mm": 0,
+        "gross 10-50 mm": 0
+      },
+      "never_delivered": 5
+    },
+    "relief 0.00 mm, retention pawls": {
+      "relief": "0.00 mm",
+      "retention": "pawls",
+      "episodes": 192,
+      "passes": 175,
+      "delivered": 187,
+      "precision_given_delivery": 0.9358288770053476,
+      "residual_median_m": 0.0007699198904447258,
+      "residual_max_m": 0.03292765095829964,
+      "bands": {
+        "passes": 175,
+        "near miss 2.5-6 mm": 0,
+        "off 6-10 mm": 0,
+        "gross 10-50 mm": 12
+      },
+      "never_delivered": 5
+    }
+  },
+  "cells_not_yet_run": [],
+  "scope_and_limitations": [
+    "Simulation only. No result here was produced on real hardware.",
+    "One point of the sweep -- nominal -- at three seeds. The other boundary points are still retention-absent and are not covered by this.",
+    "The historical relief-0 cohort ran at STEPS=6000 where the others use the default; the per-phase budgets are identical across all four cells and bind first, so the step cap is not the operative difference.",
+    "The 50 mm boundary separating a delivered module from one that never left the source bay was fixed before these cells were read and is not tuned to them. Residuals between 10 and 50 mm are counted as delivered and are reported as their own band rather than folded into either end.",
+    "Pawls engage after the unchanged insertion predicate fires. They preserve whatever seating they are given and are not a correction mechanism."
+  ]
+}

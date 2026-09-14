@@ -1,0 +1,1311 @@
+{
+  "title": "Which cohorts had the destination rack's retention fitted",
+  "evidence_type": "second_reading_of_existing_reports",
+  "generated_utc": "2026-09-05T21:13:00.430189+00:00",
+  "question": "Every workflow report records whether the destination bay had its retention mechanism. Which published cohorts were run without it?",
+  "source_revision": {
+    "available": true,
+    "commit": "cf8f6114ab06e8baaabe3a5e7c78e6946b754a90",
+    "branch": "research/correction-aware-handoffs",
+    "dirty": false,
+    "code_dirty": false,
+    "tracked_changes": [],
+    "error": null
+  },
+  "reports_with_pawls": 69,
+  "reports_without_pawls": 73,
+  "environments_engaged_where_fitted": 264,
+  "environments_where_fitted": 647,
+  "worst_drift_while_rack_only_m": 1e-06,
+  "mechanisms_seen": {
+    "two visible passive rack pawls with a break-rated fixed-joint abstraction": 69,
+    "none": 73
+  },
+  "per_report": [
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/dose/base85_lead_in_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/dose/base85_lead_in_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 2,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/dose/base85_lead_in_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 2,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/dose/base85_none_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/dose/base85_none_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 1,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/dose/base85_none_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 1,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/dose/smoke_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 4,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/base_000_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 2,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/base_000_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/base_000_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 2,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/bothchannels_NK0_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 1,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/bothchannels_NK0_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 1,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/bothchannels_NK0_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 1,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/guard_00L_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 2,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/guard_00L_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 2,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/guard_00L_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 2,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/noisedguard_N0L_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 7,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/noisedguard_N0L_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 7,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/noisedguard_N0L_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 6,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/velguard_0KL_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 5,
+      "max_drift_while_rack_only_m": 1e-06
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/velguard_0KL_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 4,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/factorial/velguard_0KL_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 6,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gate_ablation/guard_lead_in_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 9,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gate_ablation/guard_lead_in_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 10,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gate_ablation/guard_lead_in_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 13,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gate_ablation/guard_none_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 8,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gate_ablation/guard_none_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 11,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gate_ablation/guard_none_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 9,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/diag_moon_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 4,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g00_seed4070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g00_seed5070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g00_seed6070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g162_seed4070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g162_seed5070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g162_seed6070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g371_seed4070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g371_seed5070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g371_seed6070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g981_seed4070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g981_seed5070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g981_seed6070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g_seed4070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g_seed5070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/gravity/g_seed6070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/guardbounds/leadin_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 3,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/guardbounds/leadin_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 4,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/guardbounds/leadin_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 5,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/noisedchain/noisedcap_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 5,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/noisedchain/noisedcap_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 6,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/noisedchain/noisedcap_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 6,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/noisedchain48/noisedcap48_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 10,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/noisedchain48/noisedcap48_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 15,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/noisedchain48/noisedcap48_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 16,
+      "environments_engaged": 12,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/rgbdcohorts/kinematic_velocity_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 1,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/rgbdcohorts/kinematic_velocity_seed4070_stale_6139fdac_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 3,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/rgbdcohorts/kinematic_velocity_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/rgbdcohorts/kinematic_velocity_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 1,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/rgbdcohorts/noised_extract_kinematic_leadin_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 4,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/rgbdcohorts/noised_extract_kinematic_leadin_seed4070_stale_6139fdac_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 7,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/rgbdcohorts/noised_extract_kinematic_leadin_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 6,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/rgbdcohorts/noised_extract_kinematic_leadin_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 7,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/rgbdcohorts/noised_extract_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 2,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/rgbdcohorts/noised_extract_seed4070_stale_6139fdac_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/rgbdcohorts/noised_extract_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 1,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/rgbdcohorts/noised_extract_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/secondtask/install_lead_in_seed4070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/secondtask/smoke_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 4,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/campaign/visionprobe/probe_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 5,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/envcount_16x5000/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/envcount_16x6000/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 16,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/envcount_32x6000/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 32,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/envcount_64x1900/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/relief0_seed4070/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/relief0_seed5070/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/relief0_seed6070/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_c11065_chain_guarded_n96_seed4070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 32,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_c11065_chain_guarded_n96_seed5070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 32,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_c11065_chain_guarded_n96_seed6070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 32,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_c11065_chain_guarded_seed4070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_c11065_chain_guarded_seed5070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_c11065_chain_guarded_seed6070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_c11065_chain_policy_n96_seed4070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 32,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_c11065_chain_policy_n96_seed5070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 32,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_c11065_chain_policy_n96_seed6070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 32,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_c11065_chain_policy_seed4070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_c11065_chain_policy_seed5070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_c11065_chain_policy_seed6070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_chain_policy_seed4070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_chain_policy_seed5070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_insert_v33force_chain_policy_seed6070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_m130pin_vision_datum_pair_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 2,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_m130pin_vision_datum_pair_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 1,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_m130pin_vision_datum_pair_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 1,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_m130pin_vision_oracle_control_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_m130pin_vision_oracle_control_v2_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 7,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_m130pin_vision_oracle_control_v2_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 5,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_m130pin_vision_oracle_control_v2_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 8,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_release_rack_retention_control_v1_seed4070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_release_rack_retention_control_v1_seed5070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_release_rack_retention_control_v1_seed6070_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_release_rack_retention_v1_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 6,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_release_rack_retention_v1_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 8,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_release_rack_retention_v1_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 8,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_vision_rack_retention_640px_v2_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_vision_rack_retention_640px_v2_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_vision_rack_retention_640px_v2_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_vision_rack_retention_overhead_v1_seed4070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_vision_rack_retention_overhead_v1_seed5070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/certify_vision_rack_retention_overhead_v1_seed6070_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 8,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/rack_retention_smoke_v1_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 1,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/rack_retention_smoke_v2_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 1,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robotcarried/rack_retention_smoke_v3_report.json",
+      "enabled": true,
+      "mechanism": "two visible passive rack pawls with a break-rated fixed-joint abstraction",
+      "rated_force_n": 600.0,
+      "environments": 1,
+      "environments_engaged": 1,
+      "max_drift_while_rack_only_m": 0.0
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64/base_x_-0.70_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64/base_y_+10mm_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64/rack_lat_16mm_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64/rack_lat_6mm_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64/section_120x16_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64/section_140x26_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_baseladder/base_y_+2mm_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_baseladder/base_y_+4mm_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_baseladder/base_y_+6mm_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_channel/rack_lat_16mm_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_channel/rack_lat_6mm_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_corrected/base_x_-0.70_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_corrected/base_y_+10mm_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_corrected/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_corrected/rack_lat_16mm_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_corrected/rack_lat_6mm_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_corrected/section_120x16_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_corrected/section_140x26_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_noflare/rack_lat_6mm_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_noflare_nominal/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_seed5070/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_seed5070/section_120x16_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_seed5070/section_140x26_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_seed6070/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_seed6070/section_120x16_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/robustness64_seed6070/section_140x26_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/traced_nominal/seed4070/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/traced_nominal/seed5070/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    },
+    {
+      "report": "D:/6axis-space-robotics/artifacts/traced_nominal/seed6070/nominal_report.json",
+      "enabled": false,
+      "mechanism": "none",
+      "rated_force_n": null,
+      "environments": 64,
+      "environments_engaged": 0,
+      "max_drift_while_rack_only_m": null
+    }
+  ],
+  "scope_and_limitations": [
+    "Simulation only. No result here was produced on real hardware.",
+    "This is a second reading of existing reports, not a new measurement.",
+    "A cohort run without pawls is not thereby wrong. It measured what it measured; the point is that its scope is narrower than the prose citing it has assumed, because the destination bay had no retention at all.",
+    "The pawls engage only after the unchanged insertion predicate fires, so they preserve a good insertion and do not rescue a bad one. A zero drift figure is conditional on engagement, not a claim that every episode holds.",
+    "The fixed-joint abstraction for the pawls is disclosed in every report and is not a validated hardware load capacity."
+  ]
+}

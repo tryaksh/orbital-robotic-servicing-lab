@@ -52,7 +52,7 @@ that survives.
 | Removed | Why | Where it is now |
 | --- | --- | --- |
 | `paper/serviceability-qualification` | It *was* the current work, 188 commits ahead of `main` and 0 behind, while `main` sat on a README quoting a result that branch had already retracted. A reader landing on `main` saw a number nobody stood behind any more. | **Fast-forwarded into `main`.** Not a rewrite and not a merge commit: `main` was a strict ancestor, so `main` now points at exactly what that branch pointed at. |
-| `research/assembly-recovery-training` | 623 commits of a different project — peg insertion, a reinforcement-learning training stack, and the cable studies. Its 35 unpushed commits were pushed first, so nothing was lost before it moved. | Tagged **`archive/assembly-recovery-training`**. Its evidence and frozen contracts were copied into the cable repository, where the subject matter belongs; the code and the full history stay reachable through the tag. |
+| `research/assembly-recovery-training` | 623 commits, most of a different project — peg insertion, a reinforcement-learning training stack, and the cable studies. Its 35 unpushed commits were pushed first. **But it was not only that project, and see the section below.** | Tagged **`archive/assembly-recovery-training`**. Its evidence and frozen contracts were copied into the cable repository, where the subject matter belongs; the code and the full history stay reachable through the tag. |
 | `industrial-relocation` | A fully merged ancestor of `main`: 0 commits ahead, 15 behind. Nothing was on it that was not already on `main`. | Reachable from `main`. Verified with `git merge-base --is-ancestor` before deletion. |
 | `agent/zero-g-blade-swap` | 14 commits of an abandoned early experiment — "Autonomous Server Blade Swap in Zero-G" on a UR10e — last touched 2026-08-08, 6 ahead of a shared base and 293 behind. | Tagged **`archive/zero-g-blade-swap`**. Nothing on it existed anywhere else, so the tag is the only thing keeping it alive. |
 
@@ -66,6 +66,56 @@ git fetch --tags
 git checkout archive/assembly-recovery-training
 git checkout archive/zero-g-blade-swap
 ```
+
+---
+
+## Fifty-four reports came back out of that tag
+
+**Reachable is not the same as present, and the difference cost two days of this
+project's own measurements.**
+
+`research/assembly-recovery-training` was judged by its subject matter and the
+judgement was right about the last 600 commits. It was wrong about the first
+few. When `paper/serviceability-qualification` stopped being written to on
+2026-09-04, the servicing campaign did not stop — it carried on committing to
+what later became that branch. So between 2026-09-04 and 2026-09-06 the branch
+held **this** project's work: a second and third training seed of the seating
+policy, the overnight evaluation campaign, and a library correction with its
+tests.
+
+Retiring the branch was checked for reachability and the check passed: every
+commit stays alive through the tag. What the check could not see is that
+`evidence/` is what the manifest, every consistency check and every document
+actually read, and none of them look inside a tag. The reports were reachable
+and absent at the same time.
+
+Recovered on 2026-09-13, byte-for-byte out of the tag, at the branch's last
+servicing commit:
+
+| What came back | Count |
+| --- | ---: |
+| The seating experiment: the skill certificate, both chain arms at two cohort sizes, and the paired readings | 7 |
+| The camera-driven chain factorial: every remaining cell, the guard and gate arms, and their paired readings | 18 |
+| Prediction scorecards, the jam mechanism, capture attrition, release drift, hand-over residuals, and the controls that check whether recording a trace perturbs the run | 16 |
+| A gravity ladder: the same chain released unheld at 0, −1.62, −3.71 and −9.81 m/s² | 5 |
+| Paired n=192 arms for the rack prescription, the retention fixture and two module sections | 5 |
+| The rack-requirement sweep and the workcell check re-run under the seating bound, with their pre-fix arms preserved beside them | 3 |
+
+Every one is classified `historical` by
+[`evidence/MANIFEST.json`](../evidence/MANIFEST.json) on arrival, because
+`canonical` is a hand-written list in `scripts/build_evidence_manifest.py` and
+each entry carries a sentence saying what it holds up. Recovering a file does not
+promote it. Promotion takes reading the report.
+
+The library correction recovered with them is described in
+[`NOW.md`](NOW.md) under the seating bound: `section_verdict` consulted one of
+the two bounds its own file publishes, so the tool accepted a bay it elsewhere
+called 3.897 mm too wide.
+
+**The lesson is about the check, not the branch.** A branch is safe to retire
+when its commits are reachable. A *directory the tooling reads* is safe to prune
+only when the files are present somewhere the tooling reads. Those are different
+tests and only the first one was run.
 
 ---
 
