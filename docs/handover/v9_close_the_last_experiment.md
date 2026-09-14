@@ -10,6 +10,35 @@ the repository misrepresents what it shows.
 This session runs the experiment, surfaces the finding, and makes the honest state
 legible. Then it stops.
 
+**EXECUTED 2026-09-13. This file is now history; do not run it again.**
+
+The experiment had already run and its evidence had been lost. The play
+configuration's `TypeError` was fixed on 2026-09-04, the runs were retried the same
+day, and the certificates went into a branch retired two days later as a different
+project. Fifty-four reports came back out of `archive/assembly-recovery-training`
+along with nineteen generator files and a library correction; the premise that the
+skill half had never been scored was wrong on both counts, and the recovery is the
+larger part of what this session did. `docs/REPO_MAP.md` has the inventory.
+
+What the experiment decided: the skill certifies at **99.20%** on 3,001 episodes,
+the first learned seating skill here to pass its own gate, and scores **24/96** in
+the chain against the scripted advance's **23/96**. The missing cell of the 2x2 ran
+on 2026-09-13 and the answer is that the *bay* is the variable and the effect
+crosses over -- the shipped relief is worth +41.7 points to the scripted controller
+and -16.7 to the learned one. `evidence/seating_bay_factorial_v1.json`.
+
+Also done: the two skills' gap attributed to a failure mode each; `2c/L` given a
+single runnable entry point with the measured rack pinned in a test; the kinematics
+check made per environment without touching its tolerance; two clips of the
+certified chain recorded and checked against their own reports; two falsely named
+clips renamed; the document counts pinned by tests; and the working frame removed
+from the reader-facing documents with a lint to keep it out. No gate moved and
+nothing was produced for a website.
+
+Still open, with prices, in `ROADMAP.md`: fifty-one recovered reports unread
+(**T21**), the nineteen restored generators unverified against their own reports
+(**T22**), and the pooled camera-driven certification (**T1**).
+
 Prepared 2026-09-13, after the two-repository reorganisation
 ([v8](v8_two_repo_reorganisation.md)) left this repository with one branch, 1,049
 tests and a README a stranger can read.
