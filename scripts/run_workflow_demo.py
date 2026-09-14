@@ -1627,8 +1627,16 @@ class WorkflowDriver:
         self.solved_ik_refusals = torch.zeros(count, dtype=torch.long, device=device)
         self.solved_ik_worst_position_residual_m = torch.zeros(count, device=device)
         self.solved_ik_worst_attitude_residual_rad = torch.zeros(count, device=device)
+        # The worst residual over every environment that has been checked, so the
+        # reported figure is a maximum over what was actually validated rather
+        # than over whatever the last reset left in environments nobody asked to
+        # move. -1.0 means no environment has reached a solved leg yet.
         self.solved_ik_forward_agreement_m = -1.0
         self.solved_ik_forward_agreement_rad = -1.0
+        #: Which environments have had their kinematics chain validated. Each is
+        #: checked the first time it is about to be commanded a solved target and
+        #: never commanded before.
+        self.solved_ik_forward_checked = torch.zeros(count, dtype=torch.bool, device=device)
         self.transit_leg_forced = torch.zeros((RIGID_TRANSIT_LEGS, count), dtype=torch.bool, device=device)
         self.transit_leg_residual_rad = torch.zeros((RIGID_TRANSIT_LEGS, count), device=device)
         self.transit_leg_residual_m = torch.zeros((RIGID_TRANSIT_LEGS, count), device=device)
@@ -3862,7 +3870,9 @@ class WorkflowDriver:
         if command_gain is not None:
             self.actions[ids, :6] *= command_gain.unsqueeze(-1)
 
-    def _check_forward_kinematics(self, tool: torch.Tensor, tool_rot: torch.Tensor) -> None:
+    def _check_forward_kinematics(
+        self, ids: torch.Tensor, tool: torch.Tensor, tool_rot: torch.Tensor
+    ) -> None:
         """Refuse to command a solved pose until the chain agrees with the sim.
 
         ``scripts/check_workcell_geometry.py`` validates the same closed-form
@@ -3873,34 +3883,67 @@ class WorkflowDriver:
         the tool frame the solver aims is the tool frame the driver measures.
 
         Both are needed. The first cannot see a permuted joint list or a changed
-        ``body_offset``; the second cannot see a wrong link length. Run once, on
-        the real configuration, before the first solved leg is commanded.
+        ``body_offset``; the second cannot see a wrong link length.
+
+        **Per environment, and only the environments about to be commanded.** This
+        used to take ``.max()`` across every environment at one instant, the first
+        time any environment reached a solved leg. An environment that has not
+        transited yet has not had its joints written for this leg, its tool frame
+        is whatever the last reset left, and one of those was enough to fail the
+        check for all of them -- about one run in fifteen, costing a sweep point
+        each time. The tolerance was never the problem: it is 0.5 mm against a
+        chain that agrees to 0.006 mm, and it has caught real defects.
+
+        So the check now follows the commanding. Each environment is validated the
+        first time it is about to be given a solved target, it is never commanded
+        before it has been, and the error names the environment and its own
+        residual rather than a maximum over environments that were not being asked
+        for anything. A permuted joint list or a wrong link length fails on the
+        first environment, exactly as before; a not-yet-written one is simply not
+        part of the question yet.
+
+        The reported agreement stays the worst over every environment that has been
+        checked, so ``forward_kinematics_agreement_m`` in the report means what it
+        has always meant once the run is over.
         """
 
-        if self.solved_ik_forward_agreement_m >= 0.0:
+        if ids.numel() == 0:
+            return
+        pending = ids[~self.solved_ik_forward_checked[ids]]
+        if pending.numel() == 0:
             return
         robot = self.task.scene["robot"]
-        joints = robot.data.joint_pos[:, self.arm_joint_ids][:, self.arm_dh_permutation]
+        joints = robot.data.joint_pos[pending][:, self.arm_joint_ids][:, self.arm_dh_permutation]
         position, rotation = batched_tool_pose(joints)
-        inverse_root = quat_inv(robot.data.root_quat_w)
-        measured_position = quat_apply(inverse_root, tool - robot.data.root_pos_w)
-        measured_rotation = matrix_from_quat(quat_mul(inverse_root, tool_rot))
-        worst_position = float((position - measured_position).abs().max())
-        worst_attitude = float(
-            torch.linalg.vector_norm(
-                batched_rotation_vector(rotation.transpose(-1, -2) @ measured_rotation), dim=-1
-            ).max()
+        inverse_root = quat_inv(robot.data.root_quat_w[pending])
+        measured_position = quat_apply(inverse_root, tool[pending] - robot.data.root_pos_w[pending])
+        measured_rotation = matrix_from_quat(quat_mul(inverse_root, tool_rot[pending]))
+        position_residual = (position - measured_position).abs().amax(dim=-1)
+        attitude_residual = torch.linalg.vector_norm(
+            batched_rotation_vector(rotation.transpose(-1, -2) @ measured_rotation), dim=-1
         )
-        self.solved_ik_forward_agreement_m = worst_position
-        self.solved_ik_forward_agreement_rad = worst_attitude
-        if worst_position > SOLVED_IK_FK_AGREEMENT_M or worst_attitude > SOLVED_IK_FK_AGREEMENT_RAD:
+        disagrees = (position_residual > SOLVED_IK_FK_AGREEMENT_M) | (
+            attitude_residual > SOLVED_IK_FK_AGREEMENT_RAD
+        )
+        if bool(disagrees.any()):
+            first = int(torch.nonzero(disagrees, as_tuple=False)[0])
             raise RuntimeError(
-                "The closed-form arm kinematics disagree with the simulator's tool frame by "
-                f"{worst_position * 1000:.3f} mm and {worst_attitude * 1000:.3f} mrad, against "
+                "The closed-form arm kinematics disagree with the simulator's tool frame in "
+                f"environment {int(pending[first])} by "
+                f"{float(position_residual[first]) * 1000:.3f} mm and "
+                f"{float(attitude_residual[first]) * 1000:.3f} mrad, against "
                 f"{SOLVED_IK_FK_AGREEMENT_M * 1000:.3f} mm and "
-                f"{SOLVED_IK_FK_AGREEMENT_RAD * 1000:.3f} mrad. Refusing to command joint "
-                "targets from a chain that is not this arm."
+                f"{SOLVED_IK_FK_AGREEMENT_RAD * 1000:.3f} mrad. "
+                f"{int(disagrees.sum())} of {int(pending.numel())} environments checked on this step "
+                "disagree. Refusing to command joint targets from a chain that is not this arm."
             )
+        self.solved_ik_forward_agreement_m = max(
+            self.solved_ik_forward_agreement_m, float(position_residual.max())
+        )
+        self.solved_ik_forward_agreement_rad = max(
+            self.solved_ik_forward_agreement_rad, float(attitude_residual.max())
+        )
+        self.solved_ik_forward_checked[pending] = True
 
     def _seed_solved_setpoints(
         self, ids: torch.Tensor, leg: torch.Tensor, tool: torch.Tensor, tool_rot: torch.Tensor
@@ -4288,7 +4331,7 @@ class WorkflowDriver:
         # holds its posture, which ``_index_robot_rail`` has already arranged.
         solved = torch.zeros_like(leg, dtype=torch.bool)
         if TRANSIT_SOLVED_IK:
-            self._check_forward_kinematics(tool, tool_rot)
+            self._check_forward_kinematics(ids, tool, tool_rot)
             solved = grapple_latch_rigid(task)[ids] & ~self.latch_softened[ids]
             if self.robot_rail_enabled:
                 solved &= leg != 2
