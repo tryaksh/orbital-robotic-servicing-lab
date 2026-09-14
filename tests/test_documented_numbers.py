@@ -173,14 +173,29 @@ def test_the_manifest_counts_are_quoted_as_generated() -> None:
             )
 
 
+#: Test modules that skip at import when an optional package is absent. Their
+#: tests are collected on a workstation with torch, OpenCV and httpx installed and
+#: not on CI, which installs pytest and ruff and nothing else -- so a count that
+#: includes them is a different number on each machine. The first version of the
+#: test below did include them, quoted this machine's 1,210 in the README, and
+#: turned CI red against its own 1,184. Excluding them names one figure that both
+#: environments agree on.
+OPTIONAL_DEPENDENCY_MODULES = (
+    "tests/test_arm_kinematics.py",
+    "tests/test_pose_head.py",
+    "tests/test_rl_integration.py",
+    "tests/test_fiducial.py",
+    "tests/test_service_api.py",
+)
+
+
 def test_the_cpu_suite_size_is_quoted_as_collected() -> None:
     """The README names a test count, so the count is collected rather than trusted.
 
-    Collection takes about a second and runs in its own process. If this fails with
-    a number a little larger than the README's, the usual cause is an optional
-    dependency: ``tests/test_fiducial.py`` skips at import without OpenCV, and
-    installing it adds its tests to the collection. The README states the figure for
-    the dependency set ``docs/INSTALL.md`` installs.
+    Collection takes under a second and runs in its own process. The figure is the
+    part of the suite that needs nothing beyond the base install, which is what CI
+    runs and what the README describes; the modules that need torch, OpenCV or httpx
+    are excluded by name above so the number does not depend on the machine.
     """
 
     result = subprocess.run(
@@ -192,6 +207,7 @@ def test_the_cpu_suite_size_is_quoted_as_collected() -> None:
             "--collect-only",
             "-p",
             "no:cacheprovider",
+            *[f"--ignore={name}" for name in OPTIONAL_DEPENDENCY_MODULES],
             "-m",
             "not isaac and not camera and not benchmark",
         ],
@@ -204,6 +220,32 @@ def test_the_cpu_suite_size_is_quoted_as_collected() -> None:
     collected = int(match.group(1).replace(",", ""))
     assert f"{collected:,} tests" in README, (
         f"README does not quote the collected CPU suite size of {collected:,} tests"
+    )
+
+
+def test_the_generated_manifest_order_does_not_depend_on_the_platform() -> None:
+    """A generated file whose byte order changes per machine is not reproducible.
+
+    ``PurePath.__lt__`` is case-insensitive on Windows and case-sensitive on POSIX,
+    so ``sorted(EVIDENCE.glob("*.json"))`` writes one key order on a workstation and
+    another in CI. ``factorial_paired_NKL.json`` against
+    ``factorial_paired_bothchannels_NK0.json`` is the pair that exposed it -- 'N'
+    sorts before 'b' on Linux and after it on Windows -- and the manifest built on
+    Windows failed its own currency check in CI. The builder now sorts on
+    ``path.name``, which is a plain string comparison everywhere.
+    """
+
+    manifest = json.loads((EVIDENCE / "MANIFEST.json").read_text(encoding="utf-8"))
+    for group in ("canonical", "retracted", "historical"):
+        names = list(manifest[group])
+        assert names == sorted(names), (
+            f"the {group} group is not in plain string order, so this manifest was written with a "
+            "platform-dependent sort and will not match the one CI builds"
+        )
+
+    source = (ROOT / "scripts" / "build_evidence_manifest.py").read_text(encoding="utf-8")
+    assert 'sorted(EVIDENCE.glob("*.json"), key=lambda entry: entry.name)' in source, (
+        "the manifest builder must sort on the file name rather than on Path objects"
     )
 
 

@@ -567,7 +567,14 @@ def build() -> dict:
     # paging through 137 superseded runs. Historical entries are deliberately
     # thin -- a title and a date is enough to decide whether to open one.
     groups: dict[str, dict[str, dict]] = {"canonical": {}, "retracted": {}, "historical": {}}
-    for path in sorted(EVIDENCE.glob("*.json")):
+    # **Sorted by name as a string, not by Path.** `PurePath.__lt__` is
+    # case-insensitive on Windows and case-sensitive on POSIX, so sorting Path
+    # objects writes a different key order on each platform and this generated
+    # file stops being reproducible. `factorial_paired_NKL.json` against
+    # `factorial_paired_bothchannels_NK0.json` is the pair that exposed it: 'N'
+    # sorts before 'b' on Linux and after it on Windows, so the manifest built
+    # here failed its own currency check in CI.
+    for path in sorted(EVIDENCE.glob("*.json"), key=lambda entry: entry.name):
         if path.name == MANIFEST.name:
             continue
         try:

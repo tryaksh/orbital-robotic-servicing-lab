@@ -234,8 +234,9 @@ put the hand where you want it instead of learning them.
 Install steps and the exact Isaac Lab version are in
 [`docs/INSTALL.md`](docs/INSTALL.md).
 
-The checks that need no simulator, no GPU and no graphics — **1,210 tests in
-about twenty seconds**:
+The checks that need no simulator, no GPU and no graphics — **1,157 tests in
+about twenty seconds**, which is what the continuous-integration build runs on
+every push:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -m "not isaac and not camera and not benchmark"
