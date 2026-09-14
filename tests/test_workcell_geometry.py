@@ -405,7 +405,18 @@ def test_the_rack_states_which_module_sections_it_accepts():
 
     envelope = section_envelope()
     lookup = {(row["width_m"], row["height_m"]): row for row in envelope["sections"]}
-    assert lookup[(0.130, 0.020)]["accepted"], lookup[(0.130, 0.020)]
+    # **The shipped section is rejected here, on the criterion added 2026-09-04.**
+    # It enters and the pads can follow it; what it fails is the upper bound this
+    # same file publishes -- 15.678 mm of relieved clearance per side against
+    # 11.781 mm -- and the grid used to ignore that bound entirely. Rejecting the
+    # bay this project actually built is the tool being honest, and the margin is
+    # the 3.897 mm the rack has to give back.
+    shipped = lookup[(0.130, 0.020)]
+    assert shipped["lead_ins_admit_the_delivered_attitude"], shipped
+    assert shipped["pads_can_follow_the_corner"], shipped
+    assert not shipped["a_seated_module_stays_inside_the_tolerance"], shipped
+    assert shipped["seating_margin_m"] == pytest.approx(-0.003897, abs=1.0e-6)
+    assert not shipped["accepted"], shipped
     # The section this project used to run fails on the way in, which is the
     # finding that moved it, and it should stay visible.
     assert not lookup[(0.160, 0.035)]["lead_ins_admit_the_delivered_attitude"]

@@ -463,7 +463,7 @@
     "workcell_geometry_check.json": {
       "title": "Where the arm stands, what authority it has there, and what the channel admits",
       "evidence_type": "geometry_check_no_simulator",
-      "generated_utc": "2026-08-25T22:22:28.139095+00:00",
+      "generated_utc": "2026-09-14T01:32:37.052721+00:00",
       "holds_up": "Simulator-free: where the arm stands, what the channel admits, which sections fit."
     },
     "workflow_robot_carried_insert_v24rack_chain_policy_certification.json": {

@@ -49,6 +49,21 @@ SEEDS="${SEEDS:-4070 5070 6070}"
 # The guarded-advance arm on the same rack, same seeds, same everything but the
 # seating controller. Overridable so a later rack change can name its own.
 BASELINE="${BASELINE:-evidence/workflow_robot_carried_m130pin_guarded_c11065_certification.json}"
+# **The chain arm runs in the bay the default BASELINE was measured in, which is
+# the unrelieved one.** `run_robot_carried.sh` defaults to
+# `--destination_channel_relief_m 0.0046125`, a 15.678 mm channel that is
+# 3.897 mm past the design library's own upper bound; the baseline named above is
+# the 11.065 mm design point. Taking that default silently made the head to head
+# a controller change *and* a 4.6 mm geometry change, which the header of this
+# script says it must never be. The skill half needs no such setting: `play.py`
+# has no relief flag, so the skill task is always the design-point bay. Override
+# RELIEF only together with BASELINE.
+export RELIEF="${RELIEF:-0.0}"
+# `report_seating_head_to_head.py` at the end of this script reads `$PYTHON`,
+# which nothing set. Under `set -u` that aborted the run after both arms had been
+# paid for, so the 2026-09-04 force verification produced two evidence files and
+# no decision between them.
+PYTHON="${PYTHON:-C:/isaac-sim/python.bat}"
 
 if [ ! -f "$CKPT" ]; then echo "MISSING checkpoint: $CKPT"; exit 66; fi
 
@@ -64,7 +79,16 @@ say "STAGE 1/2  skill certification, stages '$STAGES', three held-out seeds"
 SKILL=Insert CKPT="$CKPT" TAG="$TAG" STAGES="$STAGES" PLAY_TASK="${PLAY_TASK:-}" \
   TITLE="Head-on grapple-pin insert skill, ${TAG}, orientation scaled to the channel" \
   scripts/certify_grapple_skills.sh
+skill_rc=$?
 say "  -> evidence/grapple_${TAG}_certification.json"
+# A skill half that writes nothing is the failure this script exists to expose,
+# and it used to scroll past as one line among forty. `InsertForce-Play-v0`
+# raised at construction, all three runs exited in ten seconds, and stage 2 began
+# as though stage 1 had been measured.
+if [ ! -f "evidence/grapple_${TAG}_certification.json" ]; then
+  say "  STAGE 1 PRODUCED NO CERTIFICATION (certify exit=$skill_rc) -- the skill half did not run"
+  say "  the chain half below still runs, but this verification is half a verification"
+fi
 
 if [ "${SKIP_CHAIN:-}" = "1" ]; then
   say "SKIP_CHAIN set; stopping before the chain arm"
