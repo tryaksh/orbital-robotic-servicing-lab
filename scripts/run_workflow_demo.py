@@ -736,6 +736,10 @@ def _parser() -> argparse.ArgumentParser:
         help="Retain historical increments or use synchronized speed/acceleration-bounded transit setpoints.",
     )
     parser.add_argument(
+        "--guarded_insert_solver", choices=("differential_ik", "absolute_ik"), default="differential_ik",
+        help="Keep the existing camera guard and compliant load path; select the physical arm joint-target solver.",
+    )
+    parser.add_argument(
         "--transit_joint_trim", action="store_true",
         help="Use bounded joint-encoder integral trim after each solved profile to remove static tracking bias.",
     )
@@ -844,6 +848,14 @@ if args.video and args.num_envs > 1:
     parser.error("--video records one workflow; use --num_envs 1")
 if args.insert_controller == "policy" and args.insert_checkpoint is None:
     parser.error("--insert_controller policy needs an --insert_checkpoint to run")
+if args.transit_joint_trim and args.transit_motion_profile != "quintic":
+    parser.error("--transit_joint_trim requires --transit_motion_profile quintic")
+if args.guarded_insert_solver == "absolute_ik" and (
+    args.workflow != "relocate" or args.insert_controller != "guarded"
+    or args.base_rail_on_relocation or not args.latch_on_release
+    or args.start_insert_station is not None
+):
+    parser.error("absolute guarded insertion requires the full robot-carried relocation with a release-time latch")
 if args.oracle and args.perception_backend == "fiducial_pnp":
     # **This used to be a silent deadlock and it cost a control run.** --oracle
     # puts the estimator in PERCEPTION_ORACLE mode, where _estimate_oracle never
@@ -1642,6 +1654,7 @@ class WorkflowDriver:
         self.profile_joint_bias_max = torch.zeros(count, device=device)
         self.profile_trim_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.profile_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.absolute_insert_steps = torch.zeros(count, dtype=torch.long, device=device)
         self.extract_finish_active = torch.zeros(count, dtype=torch.bool, device=device)
         self.extract_finish_target_pos = torch.zeros((count, 3), device=device)
         self.extract_finish_target_rot = torch.zeros((count, 4), device=device)
@@ -4082,6 +4095,7 @@ class WorkflowDriver:
         target_rot: torch.Tensor,
         scale: torch.Tensor,
         profile_limits: MotionLimits | None = None,
+        tracking: bool = False,
     ) -> None:
         """Generate a Cartesian setpoint and solve physical joint targets for it.
 
@@ -4104,7 +4118,7 @@ class WorkflowDriver:
         setpoint_pos = self.solved_setpoint_pos[ids]
         setpoint_rot = self.solved_setpoint_rot[ids]
         previous_pos, previous_rot = setpoint_pos.clone(), setpoint_rot.clone()
-        smooth = args.transit_motion_profile == "quintic" or profile_limits is not None
+        smooth = not tracking and (args.transit_motion_profile == "quintic" or profile_limits is not None)
         if smooth:
             start_pos = self.profile_start_pos[ids]
             start_rot = self.profile_start_rot[ids]
@@ -4173,7 +4187,9 @@ class WorkflowDriver:
             # joint stiffness. Correct the encoder-observed static residual
             # only after the trajectory has stopped. Do not increase actuator
             # force limits or bypass the robot's physical joint drives.
-            settled_target = reached & (self.profile_elapsed[ids] >= self.profile_duration[ids])
+            settled_target = reached & (
+                torch.ones_like(reached) if tracking else self.profile_elapsed[ids] >= self.profile_duration[ids]
+            )
             measured_joints = robot.data.joint_pos[ids][:, self.arm_joint_ids]
             error = targets - measured_joints
             error = torch.atan2(torch.sin(error), torch.cos(error))
@@ -4212,7 +4228,11 @@ class WorkflowDriver:
 
         if self.base_rail_enabled:
             return
-        self.solved_joint_hold &= (self.phase == TRANSIT) | ((self.phase == EXTRACT) & self.extract_finish_active)
+        self.solved_joint_hold &= (
+            (self.phase == TRANSIT)
+            | ((self.phase == EXTRACT) & self.extract_finish_active)
+            | ((self.phase == INSERT) & (args.guarded_insert_solver == "absolute_ik"))
+        )
         self.arm.set_joint_hold_mask(self.rail_indexing | self.solved_joint_hold)
         ids = torch.nonzero(self.solved_joint_hold, as_tuple=False).squeeze(-1)
         if ids.numel() > 0:
@@ -4934,10 +4954,21 @@ class WorkflowDriver:
             tool_rot[ids],
             module_pos + task.scene.env_origins[ids],
         )
-        self._drive_tool_to(
-            ids, tool, tool_rot, target_tool_pos, target_tool_rot, self.scales[INSERT],
-            RIGID_TRANSIT_ATTITUDE_AUTHORITY,
-        )
+        if args.guarded_insert_solver == "absolute_ik":
+            # Keep the same observed envelope, axial advance, lead limit and
+            # compliant module-space feedback. Change only the arm servo: an
+            # absolute bounded setpoint does not repeatedly integrate the
+            # current-pose-relative IK error near a folded wrist.
+            self._command_solved_tool_pose(
+                ids, target_tool_pos, target_tool_rot, self.scales[INSERT], tracking=True,
+            )
+            self.absolute_insert_steps[ids] += 1
+            self.actions[ids, :6] = 0.0
+        else:
+            self._drive_tool_to(
+                ids, tool, tool_rot, target_tool_pos, target_tool_rot, self.scales[INSERT],
+                RIGID_TRANSIT_ATTITUDE_AUTHORITY,
+            )
         # The compliant form lock, not the wedge pads, carries the mating load.
         # Full closure adds a persistent axial thrust and rotates the module as
         # the rack begins to constrain it. Gentle retention keeps the physical
@@ -6545,6 +6576,8 @@ def main() -> dict[str, object]:
                 "quintic_control_steps": driver.profile_steps.cpu().tolist(),
                 "joint_trim_enabled": args.transit_joint_trim,
                 "joint_trim_steps": driver.profile_trim_steps.cpu().tolist(),
+                "guarded_insert_solver": args.guarded_insert_solver,
+                "absolute_insert_steps": driver.absolute_insert_steps.cpu().tolist(),
                 "joint_trim_max_abs_bias_rad": driver.profile_joint_bias_max.cpu().tolist(),
                 "joint_trim_bounds": {"max_bias_rad": 0.06, "max_bias_rate_radps": 0.03, "integral_gain_per_s": 1.5},
                 "profile_limits": {
