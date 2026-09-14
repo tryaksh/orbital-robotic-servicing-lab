@@ -1,0 +1,5 @@
+# Keep Python source byte-stable across Windows and Linux checkouts.
+*.py text eol=lf
+
+# Historical execution snapshots retain the exact bytes that were hashed.
+/evidence/source_snapshots/** -text

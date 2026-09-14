@@ -282,7 +282,7 @@ class PresetRegistry:
                 reasons.append(f"{label} does not bind {path.as_posix()}")
                 continue
             current = self._project_path(path)
-            if current.is_file() and sha256_file(current) != str(recorded).strip().lower():
+            if current.is_file() and not _source_digest_matches(current, str(recorded).strip().lower()):
                 reasons.append(f"{label} is stale for {path.as_posix()}")
         return reasons
 
@@ -696,6 +696,24 @@ def sha256_file(path: Path) -> str:
         while block := stream.read(1024 * 1024):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _source_digest_matches(path: Path, recorded: str) -> bool:
+    """Accept exact Python content across Git's uniform LF/CRLF checkouts.
+
+    Only the source-admission check uses this equivalence. Input provenance,
+    checkpoints, videos and artifact verification retain exact byte hashes.
+    A mixed-ending historical execution requires its exact archived source;
+    this does not guess or normalize an unknown recorded digest.
+    """
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() == recorded:
+        return True
+    if path.suffix != ".py":
+        return False
+    lf = raw.replace(b"\r\n", b"\n")
+    return any(hashlib.sha256(value).hexdigest() == recorded
+               for value in (lf, lf.replace(b"\n", b"\r\n")))
 
 
 def _git_revision(project_root: Path) -> str | None:
