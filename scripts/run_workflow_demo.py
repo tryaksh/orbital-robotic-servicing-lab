@@ -54,6 +54,7 @@ assert hasattr(jinja2, "Environment"), "The Jinja2 installation is incomplete."
 TASK = "Isaac-ZeroG-Blade-GrapplePin-Workflow-v0"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_RUNTIME_SOURCES = (
+    Path('src/zero_g_blade_swap/motion_profile.py'),
     Path('src/zero_g_blade_swap/rack_retention.py'),
     Path('src/zero_g_blade_swap/servicing_camera.py'),
     Path("scripts/run_workflow_demo.py"),
@@ -731,6 +732,14 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--transit_motion_profile", choices=("legacy", "quintic"), default="legacy",
+        help="Retain historical increments or use synchronized speed/acceleration-bounded transit setpoints.",
+    )
+    parser.add_argument(
+        "--extraction_finish", choices=("policy", "guarded"), default="policy",
+        help="Keep PPO alone or blend in a camera-guarded final axial pull without changing extraction success.",
+    )
+    parser.add_argument(
         "--robot_rail_step_m",
         type=float,
         default=0.001,
@@ -963,6 +972,11 @@ from zero_g_blade_swap.arm_kinematics import (
     batched_tool_pose,
 )
 from zero_g_blade_swap.checkpoint_policy import CheckpointPolicy
+from zero_g_blade_swap.motion_profile import (
+    DEFAULT_MOTION_LIMITS,
+    QUINTIC_PEAK_ACCELERATION,
+    QUINTIC_PEAK_VELOCITY,
+)
 from zero_g_blade_swap.provenance import git_source_revision
 from zero_g_blade_swap.grapple_geometry import (
     BLADE_LENGTH_M,
@@ -1614,6 +1628,15 @@ class WorkflowDriver:
         # remembers which leg it belongs to, so a leg change reseeds it at the
         # pose the arm is actually in and no boundary is a step change.
         self.solved_setpoint_pos = torch.zeros((count, 3), device=device)
+        self.profile_start_pos = torch.zeros((count, 3), device=device)
+        self.profile_start_rot = torch.zeros((count, 4), device=device)
+        self.profile_start_rot[:, 0] = 1.0
+        self.profile_elapsed = torch.full((count,), -1.0, device=device)
+        self.profile_duration = torch.zeros(count, device=device)
+        self.extract_finish_active = torch.zeros(count, dtype=torch.bool, device=device)
+        self.extract_finish_steps = torch.zeros(count, dtype=torch.long, device=device)
+        self.extract_finish_holds = torch.zeros(count, dtype=torch.long, device=device)
+        self.extract_finish_started = torch.full((count,), -1, dtype=torch.long, device=device)
         self.solved_setpoint_rot = torch.zeros((count, 4), device=device)
         self.solved_setpoint_rot[:, 0] = 1.0
         self.solved_setpoint_leg = torch.full((count,), -1, dtype=torch.long, device=device)
@@ -1883,6 +1906,11 @@ class WorkflowDriver:
         self.done_at[env_ids] = -1
         self.done_steps[env_ids] = 0
         self.transit_started[env_ids] = 0
+        self.profile_elapsed[env_ids] = -1.0
+        self.extract_finish_active[env_ids] = False
+        self.extract_finish_steps[env_ids] = 0
+        self.extract_finish_holds[env_ids] = 0
+        self.extract_finish_started[env_ids] = -1
         # Only the *reference* is per-episode. The accumulators below it are
         # deliberately left alone, for the same reason the latch evidence is:
         # every environment is reset before the report is formatted, so a
@@ -2647,6 +2675,8 @@ class WorkflowDriver:
 
         # --- extract -> clear ------------------------------------------------
         extracting = self.phase == EXTRACT
+        if args.extraction_finish == "guarded" and bool(extracting.any()):
+            self._finish_extraction_smoothly(extracting, established, step)
         if step % TRANSIT_WAYPOINT_STRIDE == 0 and bool(extracting.any()):
             ids = torch.nonzero(extracting, as_tuple=False).squeeze(-1)
             slots = self.waypoint_write[ids].clamp(max=self.max_waypoints - 1)
@@ -3945,6 +3975,45 @@ class WorkflowDriver:
         )
         self.solved_ik_forward_checked[pending] = True
 
+    def _finish_extraction_smoothly(
+        self, extracting: torch.Tensor, established: torch.Tensor, step: int,
+    ) -> None:
+        """Finish the last 20 mm using fresh estimated pose, retaining PPO's other axes.
+
+        The target is 4 mm beyond the unchanged clearance plane. This removes
+        the learned controller's asymptotic approach to the exact success
+        boundary; it does not relax that boundary, its hold duration, grip,
+        velocity conditions, or the rule that the form lock engages only after
+        extraction actually succeeds. Limits here are an experimental control
+        choice, not a qualified hardware operating envelope.
+        """
+        position, _, _ = self._payload_feedback()
+        ready = torch.isfinite(position).all(dim=-1)
+        estimator = getattr(self.task, "_module_state_estimator", None)
+        if estimator is not None and estimator.backend == "fiducial_pnp":
+            ready &= estimator.fiducial_current_detection
+        enter = extracting & established & ready & (position[:, 0] <= EXTRACTED_BLADE_CENTRE_X + 0.020)
+        fresh = enter & ~self.extract_finish_active
+        self.extract_finish_started[fresh] = step
+        self.extract_finish_active |= enter
+        active = extracting & self.extract_finish_active
+        blocked = active & ~ready
+        self.actions[blocked, :6] = 0.0
+        self.extract_finish_holds[blocked] += 1
+        moving = active & ready
+        if not bool(moving.any()):
+            return
+        ids = torch.nonzero(moving, as_tuple=False).squeeze(-1)
+        self.extract_finish_steps[ids] += 1
+        progress = (self.extract_finish_steps[ids] * float(self.task.step_dt) / 0.4).clamp(0.0, 1.0)
+        blend = progress.pow(3) * (10.0 - 15.0 * progress + 6.0 * progress.square())
+        remaining = position[ids, 0] - (EXTRACTED_BLADE_CENTRE_X - 0.004)
+        # A 0.5 mm increment at 30 Hz. Never push back into the rack in the
+        # terminal pull; the unchanged predicate judges the final held state.
+        delta = -(remaining.clamp_min(0.0) * 0.15).clamp(max=0.015 * float(self.task.step_dt))
+        finish_action = delta / self.scales[EXTRACT][0]
+        self.actions[ids, 0] = (1.0 - blend) * self.actions[ids, 0] + blend * finish_action
+
     def _seed_solved_setpoints(
         self, ids: torch.Tensor, leg: torch.Tensor, tool: torch.Tensor, tool_rot: torch.Tensor
     ) -> None:
@@ -3961,6 +4030,9 @@ class WorkflowDriver:
             return
         self.solved_setpoint_pos[ids] = tool[ids]
         self.solved_setpoint_rot[ids] = tool_rot[ids]
+        self.profile_start_pos[ids] = tool[ids]
+        self.profile_start_rot[ids] = tool_rot[ids]
+        self.profile_elapsed[ids] = -1.0
         self.solved_setpoint_leg[ids] = leg
         # And the joint target starts at the joints, so a refused solve holds the
         # arm where it is rather than commanding a pose nothing has produced.
@@ -3975,11 +4047,12 @@ class WorkflowDriver:
         target_rot: torch.Tensor,
         scale: torch.Tensor,
     ) -> None:
-        """Walk the setpoint one action scale on and solve joint targets for it.
+        """Generate a Cartesian setpoint and solve physical joint targets for it.
 
-        The bound is the same action scale the Cartesian follower used -- 2 mm
-        along the rack axis, 1 mm across it, 8 mrad -- so the legs take about the
-        same time. What changes is where the command is anchored. The follower
+        The legacy branch uses the supplied extraction action scale (currently
+        8/4/4 mm and 20 mrad), not a dedicated transit speed. The quintic branch
+        uses separately declared speed and acceleration bounds with zero
+        endpoint velocity and acceleration. The historical follower
         drove *current pose plus delta* and re-read the current pose every control
         step, which integrates the joints' lag into the command. This drives an
         absolute setpoint that converges to the leg's target and then stops, so
@@ -3994,10 +4067,34 @@ class WorkflowDriver:
         robot = self.task.scene["robot"]
         setpoint_pos = self.solved_setpoint_pos[ids]
         setpoint_rot = self.solved_setpoint_rot[ids]
-        setpoint_pos = setpoint_pos + (target_pos - setpoint_pos).clamp(-scale[:3], scale[:3])
-        turn = axis_angle_from_quat(quat_mul(target_rot, quat_inv(setpoint_rot))).clamp(
-            -scale[3:6], scale[3:6]
-        )
+        if args.transit_motion_profile == "quintic":
+            start_pos = self.profile_start_pos[ids]
+            start_rot = self.profile_start_rot[ids]
+            rotation_vector = axis_angle_from_quat(quat_mul(target_rot, quat_inv(start_rot)))
+            fresh = self.profile_elapsed[ids] < 0.0
+            if bool(fresh.any()):
+                distance = torch.linalg.vector_norm(target_pos - start_pos, dim=-1)
+                rotation = torch.linalg.vector_norm(rotation_vector, dim=-1)
+                limits = DEFAULT_MOTION_LIMITS
+                duration = torch.stack((
+                    QUINTIC_PEAK_VELOCITY * distance / limits.linear_velocity_mps,
+                    (QUINTIC_PEAK_ACCELERATION * distance / limits.linear_acceleration_mps2).sqrt(),
+                    QUINTIC_PEAK_VELOCITY * rotation / limits.angular_velocity_radps,
+                    (QUINTIC_PEAK_ACCELERATION * rotation / limits.angular_acceleration_radps2).sqrt(),
+                )).amax(dim=0).clamp_min(float(self.task.step_dt))
+                self.profile_duration[ids[fresh]] = duration[fresh]
+                self.profile_elapsed[ids[fresh]] = 0.0
+            self.profile_elapsed[ids] += float(self.task.step_dt)
+            progress = (self.profile_elapsed[ids] / self.profile_duration[ids]).clamp(0.0, 1.0)
+            blend = progress.pow(3) * (10.0 - 15.0 * progress + 6.0 * progress.square())
+            setpoint_pos = start_pos + blend.unsqueeze(-1) * (target_pos - start_pos)
+            turn = blend.unsqueeze(-1) * rotation_vector
+            setpoint_rot = start_rot
+        else:
+            setpoint_pos = setpoint_pos + (target_pos - setpoint_pos).clamp(-scale[:3], scale[:3])
+            turn = axis_angle_from_quat(quat_mul(target_rot, quat_inv(setpoint_rot))).clamp(
+                -scale[3:6], scale[3:6]
+            )
         angle = torch.linalg.vector_norm(turn, dim=-1)
         axis = turn / angle.clamp_min(1.0e-12).unsqueeze(-1)
         setpoint_rot = quat_mul(quat_from_angle_axis(angle, axis), setpoint_rot)
@@ -4407,6 +4504,11 @@ class WorkflowDriver:
         cross_done = (leg == 2) & (position_error[:, cross_axes].abs().amax(dim=-1) <= 0.005)
         square_done = ((leg == 3) | (leg == 1)) & squared
         met = retreat_done | cross_done | square_done
+        if args.transit_motion_profile == "quintic":
+            # Reaching the geometric tolerance early must not cut an in-flight
+            # profile short and create a new velocity discontinuity.
+            profile_done = self.profile_elapsed[ids] >= self.profile_duration[ids]
+            met &= ~solved | profile_done
         # A leg that has converged as far as this arm's own branch allows is
         # finished whether or not it met its gate, and the residual it stopped
         # at is the measurement. Recorded per leg, per environment.
@@ -6372,6 +6474,22 @@ def main() -> dict[str, object]:
             "loaded_but_not_executed_policies": loaded_but_not_executed,
             "learned_phases": learned_phases,
             "scripted_phases": scripted_phases,
+            "motion_refinement": {
+                "transit_profile": args.transit_motion_profile,
+                "profile_limits": {
+                    "linear_velocity_mps": DEFAULT_MOTION_LIMITS.linear_velocity_mps,
+                    "linear_acceleration_mps2": DEFAULT_MOTION_LIMITS.linear_acceleration_mps2,
+                    "angular_velocity_radps": DEFAULT_MOTION_LIMITS.angular_velocity_radps,
+                    "angular_acceleration_radps2": DEFAULT_MOTION_LIMITS.angular_acceleration_radps2,
+                } if args.transit_motion_profile == "quintic" else None,
+                "limits_scope": "Cartesian setpoint bounds; physical tracking is measured separately.",
+                "extraction_finish": args.extraction_finish,
+                "hybrid_extraction_executed": bool((driver.extract_finish_steps > 0).any()),
+                "extraction_finish_steps": driver.extract_finish_steps.cpu().tolist(),
+                "extraction_finish_sensor_holds": driver.extract_finish_holds.cpu().tolist(),
+                "extraction_finish_started_at_step": driver.extract_finish_started.cpu().tolist(),
+                "extraction_finish_scope": "PPO transverse/orientation actions with a blended, fresh-estimate axial finish; unchanged success and lock-engagement predicates.",
+            },
             # Whether the robot carried the module, as a number rather than as
             # a claim. Present on every workflow that has a transit, including
             # the payload-stage baseline, so the two can be read side by side
