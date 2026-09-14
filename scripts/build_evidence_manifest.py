@@ -45,6 +45,13 @@ RETRACTED = EVIDENCE / "RETRACTED.md"
 #: filename alone does not say which sentence in the README it holds up.
 CANONICAL: tuple[tuple[str, str], ...] = (
     (
+        "live_service_stability_validation_seed6070.json",
+        "Fixed-base v3 service profile validated on clean commit 88235d8: all nine original checks pass, "
+        "1192/1192 camera detections, 0.138 mm maximum transit drift and 0.733333 s rack-only hold. "
+        "One recorded episode at development seed 6070 with stable lighting, not a reliability rate. "
+        "Quintic transit, guarded extraction finish and absolute-IK insertion; physical criteria unchanged.",
+    ),
+    (
         "workflow_robot_carried_m130pin_guarded_certification.json",
         "Legacy supported-settle baseline: 97.92% over 96 episodes; it predates the independent robot-support release recheck.",
     ),
@@ -71,7 +78,7 @@ CANONICAL: tuple[tuple[str, str], ...] = (
     ),
     (
         "live_service_current_validation_seed6070.json",
-        "Current service recipe, clean-source recorded validation at seed 6070: all nine strict checks pass. "
+        "Preserved v2 service recipe, clean-source recorded validation at seed 6070: all nine strict checks pass. "
         "1304/1304 RGB-D detections, 1.436 mm maximum transit drift and 0.733333 s rack-only hold. "
         "One environment with stable lighting; not a success rate. Noised extraction, kinematic velocity "
         "and the existing lead-in guard; final seating criteria unchanged. Idealized joint load paths.",

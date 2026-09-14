@@ -340,11 +340,47 @@ def test_the_solved_setpoint_is_absolute_rather_than_pose_relative() -> None:
     body = source.split("def _command_solved_tool_pose(")[1].split("def _apply_joint_overrides(")[0]
     assert "setpoint_pos = setpoint_pos + (target_pos - setpoint_pos).clamp(-scale[:3], scale[:3])" in body
     assert "quat_mul(target_rot, quat_inv(setpoint_rot))" in body
-    # Seeded at the pose the arm is in, once per leg, so a leg boundary is not a
-    # step change in the command.
-    assert "def _seed_solved_setpoints(" in source
-    seed_body = source.split("def _seed_solved_setpoints(")[1].split("def _command_solved_tool_pose(")[0]
-    assert "self.solved_setpoint_pos[ids] = tool[ids]" in seed_body
+    # Execute the actual seeding method: fresh profiles use measured pose,
+    # while a continuing biased profile retains its accepted nominal pose and
+    # joint command. Re-anchoring that second case on measurement would put the
+    # actuator's tracking error into the next command and restore the old pulse.
+    import ast
+    from types import SimpleNamespace
+
+    torch = pytest.importorskip("torch")
+    tree = ast.parse(source)
+    cls = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "WorkflowDriver")
+    method = next(node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name == "_seed_solved_setpoints")
+    module = ast.Module(body=[
+        ast.ImportFrom(module="__future__", names=[ast.alias(name="annotations")], level=0), method,
+    ], type_ignores=[])
+    namespace = {"torch": torch, "args": SimpleNamespace(transit_joint_trim=True)}
+    exec(compile(ast.fix_missing_locations(module), str(DRIVER), "exec"), namespace)
+    measured_joints = torch.arange(24, dtype=torch.float32).reshape(3, 8) / 10
+    driver = SimpleNamespace(
+        task=SimpleNamespace(scene={"robot": SimpleNamespace(data=SimpleNamespace(joint_pos=measured_joints))}),
+        arm_joint_ids=[7, 0, 5, 2, 6, 3],
+        profile_elapsed=torch.tensor([-1.0, 2.0, -1.0]),
+        solved_setpoint_pos=torch.tensor([[0., 0., 0.], [0.3, 0.4, 0.5], [2., 2., 2.]]),
+        solved_setpoint_rot=torch.tensor([[1., 0., 0., 0.]]).repeat(3, 1),
+        solved_joint_targets=torch.arange(18, dtype=torch.float32).reshape(3, 6) / 20,
+        profile_start_pos=torch.zeros((3, 3)),
+        profile_start_rot=torch.zeros((3, 4)),
+        solved_setpoint_leg=torch.full((3,), -1, dtype=torch.long),
+    )
+    accepted_position = driver.solved_setpoint_pos.clone()
+    accepted_rotation = driver.solved_setpoint_rot.clone()
+    accepted_joints = driver.solved_joint_targets.clone()
+    tool = torch.full((3, 3), 10.0)
+    rotation = torch.tensor([[0., 1., 0., 0.]]).repeat(3, 1)
+    namespace[method.name](driver, torch.tensor([1, 0]), torch.tensor([4, 2]), tool, rotation)
+    torch.testing.assert_close(driver.solved_setpoint_pos[0], tool[0], rtol=0, atol=0)
+    torch.testing.assert_close(driver.solved_setpoint_rot[0], rotation[0], rtol=0, atol=0)
+    torch.testing.assert_close(driver.solved_joint_targets[0], measured_joints[0, driver.arm_joint_ids], rtol=0, atol=0)
+    torch.testing.assert_close(driver.solved_setpoint_pos[1:], accepted_position[1:], rtol=0, atol=0)
+    torch.testing.assert_close(driver.solved_setpoint_rot[1:], accepted_rotation[1:], rtol=0, atol=0)
+    torch.testing.assert_close(driver.solved_joint_targets[1:], accepted_joints[1:], rtol=0, atol=0)
+    torch.testing.assert_close(driver.profile_start_pos[1], accepted_position[1], rtol=0, atol=0)
 
 
 def test_the_solved_solve_is_checked_against_the_simulator_before_it_commands() -> None:

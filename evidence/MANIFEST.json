@@ -9,7 +9,7 @@
     "included_mission_checkpoints": "policies/servicing_v2/MANIFEST.json"
   },
   "counts": {
-    "canonical": 75,
+    "canonical": 76,
     "retracted": 12,
     "historical": 218
   },
@@ -358,7 +358,21 @@
         "extract": "5971A916C9C7B8F77A2973E25EB504C9B31794BC9C3F2E64EACF83EB7FDC0B95",
         "insert": "CFBB09E2DDC7AF11E180DD772C42F5D86AB20EA56BD0A00F2FEB2EA378B4EC69"
       },
-      "holds_up": "Current service recipe, clean-source recorded validation at seed 6070: all nine strict checks pass. 1304/1304 RGB-D detections, 1.436 mm maximum transit drift and 0.733333 s rack-only hold. One environment with stable lighting; not a success rate. Noised extraction, kinematic velocity and the existing lead-in guard; final seating criteria unchanged. Idealized joint load paths."
+      "holds_up": "Preserved v2 service recipe, clean-source recorded validation at seed 6070: all nine strict checks pass. 1304/1304 RGB-D detections, 1.436 mm maximum transit drift and 0.733333 s rack-only hold. One environment with stable lighting; not a success rate. Noised extraction, kinematic velocity and the existing lead-in guard; final seating criteria unchanged. Idealized joint load paths."
+    },
+    "live_service_stability_validation_seed6070.json": {
+      "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
+      "source_revision": {
+        "commit": "88235d8c27314b6092b0aac38506af9526ceea40",
+        "dirty": false
+      },
+      "policy_sha256": "1AFE41D3AFBC8C6B6A26C3A426863F37ADF8C44B3B10849ECF0F4B88FBEFAEA3",
+      "checkpoints_sha256": {
+        "capture": "DB5B2887C8BB70D92D604220EFC6BC747695C8E18A2FB7F405F047D132CD975E",
+        "extract": "5971A916C9C7B8F77A2973E25EB504C9B31794BC9C3F2E64EACF83EB7FDC0B95",
+        "insert": "CFBB09E2DDC7AF11E180DD772C42F5D86AB20EA56BD0A00F2FEB2EA378B4EC69"
+      },
+      "holds_up": "Fixed-base v3 service profile validated on clean commit 88235d8: all nine original checks pass, 1192/1192 camera detections, 0.138 mm maximum transit drift and 0.733333 s rack-only hold. One recorded episode at development seed 6070 with stable lighting, not a reliability rate. Quintic transit, guarded extraction finish and absolute-IK insertion; physical criteria unchanged."
     },
     "rack_requirement_sweep_v1.json": {
       "title": "The rack requirement as a function of the manipulator's delivered attitude",
