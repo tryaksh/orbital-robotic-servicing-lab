@@ -22,9 +22,6 @@ Source-level and CPU-only: no simulator, no GPU, no checkpoints.
 from __future__ import annotations
 
 import json
-import re
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -44,7 +41,7 @@ def test_the_strict_chain_rate_is_quoted_as_measured() -> None:
     overall = _overall("workflow_robot_carried_release_rack_retention_v1_certification.json")
     rate = f"{overall['success_rate'] * 100:.2f}%"
     assert overall["successes"] == 22 and overall["episodes"] == 24
-    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+    for document, label in ((NOW, "docs/NOW.md"),):
         assert rate in document, f"{label} does not quote the chain rate {rate}"
 
     wilson = overall["success_rate_wilson_95"]
@@ -56,7 +53,7 @@ def test_the_strict_chain_rate_is_quoted_as_measured() -> None:
 def test_the_legacy_supported_settle_rate_is_not_presented_as_current() -> None:
     overall = _overall("workflow_robot_carried_m130pin_guarded_certification.json")
     assert overall["successes"] == 94 and overall["episodes"] == 96
-    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+    for document, label in ((NOW, "docs/NOW.md"),):
         assert "97.92%" in document, f"{label} loses the preserved legacy comparator"
         assert "legacy" in document.lower(), f"{label} presents the old criterion as current"
 
@@ -71,7 +68,7 @@ def test_the_legacy_supported_settle_rate_is_not_presented_as_current() -> None:
 def test_the_skill_rates_are_quoted_as_measured(report: str, description: str) -> None:
     """Both miss the 95% gate, and both numbers are published rather than rounded away."""
     rate = f"{_overall(report)['success_rate'] * 100:.2f}%"
-    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+    for document, label in ((NOW, "docs/NOW.md"),):
         assert rate in document, f"{label} does not quote the {description} rate {rate}"
 
 
@@ -79,7 +76,7 @@ def test_the_insert_negative_result_is_quoted_with_its_sample_size() -> None:
     """A 0.00% is only meaningful with the episode count beside it."""
     overall = _overall("grapple_insert_v20chain_certification.json")
     assert overall["success_rate"] == 0.0
-    assert f"{overall['episodes']:,}" in README or str(overall["episodes"]) in README
+    assert "docs/NOW.md" in README
     assert f"{overall['episodes']:,}" in NOW or str(overall["episodes"]) in NOW
 
 
@@ -88,8 +85,8 @@ def test_the_interface_limit_is_quoted_from_its_own_gate() -> None:
     gate = json.loads((EVIDENCE / "grasp_axial_pull_gate.json").read_text(encoding="utf-8"))["gate"]
     required = gate["required_axial_force_n"]
     assert round(required, 1) == 66.4, f"the required axial force moved to {required}"
-    assert "66.4 N" in README, "README no longer quotes the axial force the task demands"
-    assert "not a hardware load rating" in README
+    assert "66.4 N" in NOW, "README no longer quotes the axial force the task demands"
+    assert "not a hardware load rating" in NOW
 
 
 def test_the_insert_diagnosis_is_quoted_against_the_tolerance_it_missed() -> None:
@@ -102,7 +99,7 @@ def test_the_insert_diagnosis_is_quoted_against_the_tolerance_it_missed() -> Non
     report = json.loads((EVIDENCE / "insert_attitude_diagnosis.json").read_text(encoding="utf-8"))
     tolerance = report["success_orientation_tolerance_mrad"]
     assert round(tolerance, 1) == 52.4, f"the orientation tolerance moved to {tolerance}"
-    for document, label in ((README, "docs"), (NOW, "docs/NOW.md")):
+    for document, label in ((NOW, "docs/NOW.md"),):
         assert f"{tolerance:.1f} mrad" in document, f"{label} does not quote the {tolerance:.1f} mrad tolerance"
 
     # The three OBJECTIVE arms must agree to within a milliradian; that
@@ -120,7 +117,7 @@ def test_the_insert_diagnosis_is_quoted_against_the_tolerance_it_missed() -> Non
         f"the three objectives no longer agree ({angles}); the 'interface, not reward' "
         "conclusion rests on them landing together"
     )
-    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+    for document, label in ((NOW, "docs/NOW.md"),):
         assert "84.26" in document and "84.58" in document, (
             f"{label} does not show the objectives landing together, which is the result"
         )
@@ -144,7 +141,7 @@ def test_the_provenance_caveat_is_stated_where_the_number_is() -> None:
         f"only {len(bound)} reports carry runtime source bindings; the documents describe a larger "
         "provenance gap than the evidence now shows"
     )
-    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+    for document, label in ((NOW, "docs/NOW.md"),):
         assert "uncommitted" in document, f"{label} drops the provenance caveat (NEXT_WORK T0)"
         assert "T0" in document, f"{label} does not point at the task that closes it"
         assert "recovered" in document.lower(), f"{label} drops the recovered current run"
@@ -165,7 +162,7 @@ def test_the_manifest_counts_are_quoted_as_generated() -> None:
     """
 
     counts = json.loads((EVIDENCE / "MANIFEST.json").read_text(encoding="utf-8"))["counts"]
-    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+    for document, label in ((NOW, "docs/NOW.md"),):
         for group in ("canonical", "retracted", "historical"):
             number = counts[group]
             assert f"{number} {group}" in document or f"**{number} {group}" in document, (
@@ -173,54 +170,13 @@ def test_the_manifest_counts_are_quoted_as_generated() -> None:
             )
 
 
-#: Test modules that skip at import when an optional package is absent. Their
-#: tests are collected on a workstation with torch, OpenCV and httpx installed and
-#: not on CI, which installs pytest and ruff and nothing else -- so a count that
-#: includes them is a different number on each machine. The first version of the
-#: test below did include them, quoted this machine's 1,210 in the README, and
-#: turned CI red against its own 1,184. Excluding them names one figure that both
-#: environments agree on.
-OPTIONAL_DEPENDENCY_MODULES = (
-    "tests/test_arm_kinematics.py",
-    "tests/test_pose_head.py",
-    "tests/test_rl_integration.py",
-    "tests/test_fiducial.py",
-    "tests/test_service_api.py",
-)
-
-
-def test_the_cpu_suite_size_is_quoted_as_collected() -> None:
-    """The README names a test count, so the count is collected rather than trusted.
-
-    Collection takes under a second and runs in its own process. The figure is the
-    part of the suite that needs nothing beyond the base install, which is what CI
-    runs and what the README describes; the modules that need torch, OpenCV or httpx
-    are excluded by name above so the number does not depend on the machine.
-    """
-
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pytest",
-            "-q",
-            "--collect-only",
-            "-p",
-            "no:cacheprovider",
-            *[f"--ignore={name}" for name in OPTIONAL_DEPENDENCY_MODULES],
-            "-m",
-            "not isaac and not camera and not benchmark",
-        ],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-    )
-    match = re.search(r"(\d[\d,]*) tests collected", result.stdout)
-    assert match, f"could not read a collected count from pytest:\n{result.stdout[-2000:]}"
-    collected = int(match.group(1).replace(",", ""))
-    assert f"{collected:,} tests" in README, (
-        f"README does not quote the collected CPU suite size of {collected:,} tests"
-    )
+def test_overview_links_to_the_detailed_results_and_validation_commands() -> None:
+    """The overview links to the owner of detailed numbers rather than duplicating them."""
+    assert "docs/NOW.md" in README
+    assert "docs/INSTALL.md" in README
+    assert "zero-g-mission verify" in README
+    assert "91.67%" in README
+    assert "95%" in README
 
 
 def test_the_generated_manifest_order_does_not_depend_on_the_platform() -> None:
@@ -254,7 +210,7 @@ def test_the_boundary_is_not_overstated() -> None:
         (EVIDENCE / "serviceability_boundary_validation_v2.json").read_text(encoding="utf-8")
     )
     assert report["decision"]["qualified"] is False
-    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+    for document, label in ((NOW, "docs/NOW.md"),):
         assert "not qualified" in document.lower(), f"{label} overstates the current boundary"
         assert "idealized" in document.lower(), f"{label} hides the load-path limitation"
 
@@ -276,7 +232,7 @@ def test_the_contact_feeling_seating_policy_is_reported_as_a_rate_not_a_reward()
     assert guarded["episodes"] == 96 and policy["episodes"] == 96
     assert guarded["successes"] == 23 and policy["successes"] == 24
 
-    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+    for document, label in ((NOW, "docs/NOW.md"),):
         assert skill_rate in document, (
             f"{label} does not quote the contact-feeling skill rate {skill_rate}"
         )
@@ -299,7 +255,7 @@ def test_the_skill_gate_attribution_is_quoted_with_its_denominator() -> None:
 
     assert capture["failures"] == 1180 and grip == 1170
     assert extraction["failures"] == 1113 and settling == 1024
-    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+    for document, label in ((NOW, "docs/NOW.md"),):
         assert f"{grip:,} of its {capture['failures']:,}" in document or (
             f"{grip:,}" in document and f"{capture['failures']:,}" in document
         ), f"{label} does not give the capture attribution its denominator"
@@ -319,7 +275,7 @@ def test_the_shipped_bay_verdict_is_quoted_as_the_tool_computes_it() -> None:
     held = verdict["what_the_gate_would_have_to_accept"]["attitude_rad"] * 1000.0
     allowed = verdict["what_the_gate_does_accept"]["attitude_rad"] * 1000.0
     assert round(allowed, 2) == 52.36, f"the acceptance tolerance moved to {allowed:.2f} mrad"
-    for document, label in ((README, "README.md"), (NOW, "docs/NOW.md")):
+    for document, label in ((NOW, "docs/NOW.md"),):
         assert f"{held:.2f} mrad" in document, (
             f"{label} does not quote the {held:.2f} mrad this bay can hold a resting module at"
         )

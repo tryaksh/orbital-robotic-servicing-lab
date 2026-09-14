@@ -63,6 +63,13 @@ CANONICAL: tuple[tuple[str, str], ...] = (
         "Rendered held poses with the robot still; error statistics are conditional on detection.",
     ),
     (
+        "live_service_application_seed6070_v1.json",
+        "Normal mission application through the service worker, clean commit f7cdf23: all nine "
+        "completion checks and five artifact hashes pass. 1320/1320 detections, 1.370 mm maximum "
+        "transit drift and 0.733333 s rack-only hold. One recorded simulation episode at seed 6070 "
+        "with stable lighting; not a reliability rate. Mission checkpoint files are included in git.",
+    ),
+    (
         "live_service_current_validation_seed6070.json",
         "Current service recipe, clean-source recorded validation at seed 6070: all nine strict checks pass. "
         "1304/1304 RGB-D detections, 1.436 mm maximum transit drift and 0.733333 s rack-only hold. "
@@ -619,12 +626,13 @@ def build() -> dict:
         "generated_by": "scripts/build_evidence_manifest.py",
         "checkpoints_live_outside_git": {
             "note": (
-                "logs/ and checkpoints/ are gitignored, so a clone does not carry the weights any "
-                "learned number depends on. A report whose checkpoint is unreachable can be read "
-                "but not reproduced."
+                "Full logs/ and checkpoints/ archives are gitignored. The three frozen mission checkpoints "
+                "are included under policies/servicing_v2/ with hashes; other experimental weights "
+                "remain local. A report whose checkpoint is unreachable can be read but not reproduced."
             ),
             "policy_checkpoints": "logs/rl_games/zero_g_blade_insertion_contact/<run>/nn/",
             "pose_head_checkpoints": "checkpoints/",
+            "included_mission_checkpoints": "policies/servicing_v2/MANIFEST.json",
         },
         "counts": counts,
         "canonical": groups["canonical"],

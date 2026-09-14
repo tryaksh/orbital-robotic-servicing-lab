@@ -26,3 +26,10 @@ in commit `0b28191`. Its content was split: the current state went into
 [`../NOW.md`](../NOW.md) and the reasoning behind superseded decisions is
 in the handoffs above. Read those citations as "the project's status record"
 rather than as a path.
+
+## Archived state and backlog
+
+- [State before the mission application](state_before_mission_application.md): complete prior investigations, including superseded interpretations.
+- [Backlog before the mission application](backlog_before_mission_application.md): detailed original task commands and publication plans.
+
+Both are historical. Current priorities and validated claims live in `docs/NOW.md` and `docs/NEXT_WORK.md`.

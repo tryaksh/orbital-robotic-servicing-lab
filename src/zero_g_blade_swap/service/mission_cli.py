@@ -49,6 +49,9 @@ def verify_job(job_file: Path) -> dict:
             errors.append(f"Unbound required artifact: {required}")
     if not any(name.startswith("video/") and name.endswith(".mp4") for name in seen):
         errors.append("No hashed mission video")
+    for path in (root / "video").glob("*.mp4"):
+        if path.relative_to(root).as_posix() not in seen:
+            errors.append(f"Unbound video: {path.name}")
     report = {}
     # Do not parse a report whose integrity check failed or whose path escaped.
     if not errors:
@@ -66,6 +69,20 @@ def verify_job(job_file: Path) -> dict:
     verification = verify_mission(report, video_dir=root / "video")
     live = job.provenance.backend == BackendKind.ISAAC and job.status == JobStatus.SUCCEEDED
     return {
+        "title": "Recorded live service mission and artifact audit",
+        "evidence_type": "live_service_mission_artifact_audit",
+        "source_revision": {"commit": job.provenance.source_revision, "dirty": job.provenance.source_dirty},
+        "preset_revision": job.provenance.preset_revision,
+        "seed": job.seed,
+        "job_id": job.id,
+        "artifacts": [artifact.model_dump(mode="json") for artifact in job.artifacts],
+        "inputs": [item.model_dump(mode="json") for item in job.provenance.inputs],
+        "scope_and_limitations": [
+            "One recorded simulation episode at one seed, with stable lighting; not a reliability rate.",
+            "Module pose is RGB-D-derived; velocity uses robot kinematics after capture.",
+            "Robot and rack locks use idealized joint load paths; no hardware validation.",
+            "Artifact hashes establish integrity relative to job.json, not an authenticity signature.",
+        ],
         "passed": not errors and live and verification.passed,
         "artifact_integrity": not errors,
         "integrity_errors": errors,

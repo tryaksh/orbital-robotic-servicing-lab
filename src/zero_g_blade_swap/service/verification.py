@@ -115,7 +115,7 @@ def verify_mission(report: object, *, video_dir: Path | None = None) -> MissionV
     return MissionVerification(
         passed=all(checks.values()), checks=checks,
         failed_checks=[name for name, passed in checks.items() if not passed],
-        transit_position_drift_mm=(carried["max_position_drift_m"] * 1000
+        transit_position_drift_mm=(round(carried["max_position_drift_m"] * 1000, 6)
                                    if _number(carried.get("max_position_drift_m")) else None),
         rack_only_hold_s=(held["rack_only_interval_s"] if _number(held.get("rack_only_interval_s")) else None),
         detections=detections if type(detections) is int and detections >= 0 else None,

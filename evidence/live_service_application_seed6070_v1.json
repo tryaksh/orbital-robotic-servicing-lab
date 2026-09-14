@@ -1,0 +1,178 @@
+{
+  "title": "Recorded live service mission and artifact audit",
+  "evidence_type": "live_service_mission_artifact_audit",
+  "source_revision": {
+    "commit": "f7cdf238f14a67e409cdf4ea78960a45315c4ea2",
+    "dirty": false
+  },
+  "preset_revision": "isaac-rgbd-strict-mission-v2",
+  "seed": 6070,
+  "job_id": "65461e26-e57f-4374-af19-913c3312d9c9",
+  "artifacts": [
+    {
+      "path": "execution.log",
+      "media_type": "application/octet-stream",
+      "size_bytes": 16989,
+      "sha256": "c4ae357190ba30730f6165270cd642ffdcae93c325a45f6ba63f76b2a0776f68"
+    },
+    {
+      "path": "handoff_trace.npz",
+      "media_type": "application/octet-stream",
+      "size_bytes": 28269,
+      "sha256": "6c2169e1971f52ee96602ae4a13a86ddf4f72798c14ac28fc347add6688d2a0e"
+    },
+    {
+      "path": "mission_verification.json",
+      "media_type": "application/json",
+      "size_bytes": 511,
+      "sha256": "8476ab1e6f1f86b8f9bbf557b8b6f5be552113e176246bf9bdc37196bded64ab"
+    },
+    {
+      "path": "video/rl-video-step-0.mp4",
+      "media_type": "video/mp4",
+      "size_bytes": 38367761,
+      "sha256": "b1fbe1200875bcccd6174437e482826e4fa1bd6eb997c3e021ec7acd0926d176"
+    },
+    {
+      "path": "workflow_report.json",
+      "media_type": "application/json",
+      "size_bytes": 24176,
+      "sha256": "3362e708a12a8621a084488482537793eb06dcddc27de8a3c27716a7ae9c83b9"
+    }
+  ],
+  "inputs": [
+    {
+      "role": "workflow_driver",
+      "path": "scripts/run_workflow_demo.py",
+      "sha256": "c0ba1824fc900a366038af329caf06e26cd96cf1cce178076df8ad00e733294e",
+      "size_bytes": 396441
+    },
+    {
+      "role": "capture_policy",
+      "path": "policies/servicing_v2/capture_v7m130.pth",
+      "sha256": "db5b2887c8bb70d92d604220efc6bc747695c8e18a2fb7f405f047d132cd975e",
+      "size_bytes": 1342781
+    },
+    {
+      "role": "extract_policy",
+      "path": "policies/servicing_v2/extract_v19noised.pth",
+      "sha256": "5971a916c9c7b8f77a2973e25eb504c9b31794bc9c3f2e64eacf83eb7fdc0b95",
+      "size_bytes": 1341301
+    },
+    {
+      "role": "insert_policy",
+      "path": "policies/servicing_v2/insert_v13m130.pth",
+      "sha256": "cfbb09e2ddc7af11e180dd772c42f5d86ab20ea56bd0a00f2feb2ea378b4ec69",
+      "size_bytes": 1356733
+    },
+    {
+      "role": "perception_evidence",
+      "path": "evidence/fiducial_rgbd_service_current_seed287.json",
+      "sha256": "3d58c4199a8b61ef0a85015bc33a4a328c0d8267d6cfb600b219805b3dfd57a0",
+      "size_bytes": 6588
+    },
+    {
+      "role": "workflow_evidence",
+      "path": "evidence/live_service_current_validation_seed6070.json",
+      "sha256": "2490789086346d20012d1a00d62d9f6b347d086c82ae01a61855c888f1c324e3",
+      "size_bytes": 27552
+    },
+    {
+      "role": "fiducial_estimator",
+      "path": "src/zero_g_blade_swap/fiducial.py",
+      "sha256": "9b3cc8dff252b8836c43eaf02b772f375fead994d2e588517a3e140ddd840ca1",
+      "size_bytes": 15942
+    },
+    {
+      "role": "service_plate_asset",
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/assets.py",
+      "sha256": "e861e1473cf6593402c657a0692af2ddd9ddf9d2d6e4fd4ff512175b0ba96840",
+      "size_bytes": 109423
+    },
+    {
+      "role": "perception_integration",
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/mdp/perception.py",
+      "sha256": "6d06b9bb08589598d8049d40cad47ee8ce36cdec1ea4c46f92481875ae1ed17b",
+      "size_bytes": 45175
+    },
+    {
+      "role": "camera_config",
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/scene_cfg.py",
+      "sha256": "ce7fb169a099210ffbb59a26e4696bf2b71975a0157a631e53d642fb5a154824",
+      "size_bytes": 11391
+    },
+    {
+      "role": "workcell_config",
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/grapple_pin_env_cfg.py",
+      "sha256": "a84ab31911fdf9416c0e9bc76315fa4ff030e36a6682136838a5ed86c90fbb3a",
+      "size_bytes": 82717
+    },
+    {
+      "role": "service_latch_geometry",
+      "path": "src/zero_g_blade_swap/service_latch.py",
+      "sha256": "6ca30fab914982edd01bc42fb7c133c1807235414b3501279ca797832ada28c2",
+      "size_bytes": 14104
+    },
+    {
+      "role": "camera_calibration",
+      "path": "src/zero_g_blade_swap/servicing_camera.py",
+      "sha256": "2951154a749101876bdaedde6ef38be012573ef6dd0b95ad52eae81aa3f39310",
+      "size_bytes": 2777
+    },
+    {
+      "role": "rack_retention",
+      "path": "src/zero_g_blade_swap/rack_retention.py",
+      "sha256": "7ecbf6156774fcf73a23c7ba169ccc99f2b49b182bfd75c4979091a65a9d76a3",
+      "size_bytes": 2764
+    },
+    {
+      "role": "provenance_source",
+      "path": "src/zero_g_blade_swap/provenance.py",
+      "sha256": "1ff3f1ab5ac18634391be3679e907bb29ed161e352306e3ee8d023ff1de5c16a",
+      "size_bytes": 2588
+    },
+    {
+      "role": "insert_reset_bank",
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/insert_reset_bank.py",
+      "sha256": "bd68186bce19144d838642c307819c22443473de009e7e42f03e8fe4ced0ceb6",
+      "size_bytes": 2506
+    },
+    {
+      "role": "two_slot_config",
+      "path": "src/zero_g_blade_swap/tasks/blade_swap/two_slot_env_cfg.py",
+      "sha256": "cc3372a530cbf795b6c7413584fe10c73f7ec2bbe3833c29a857ce47b86e1352",
+      "size_bytes": 16333
+    }
+  ],
+  "scope_and_limitations": [
+    "One recorded simulation episode at one seed, with stable lighting; not a reliability rate.",
+    "Module pose is RGB-D-derived; velocity uses robot kinematics after capture.",
+    "Robot and rack locks use idealized joint load paths; no hardware validation.",
+    "Artifact hashes establish integrity relative to job.json, not an authenticity signature."
+  ],
+  "passed": true,
+  "artifact_integrity": true,
+  "integrity_errors": [],
+  "artifacts_checked": 5,
+  "mission": {
+    "passed": true,
+    "checks": {
+      "single_camera_episode": true,
+      "terminal_seating": true,
+      "both_robot_supports_released": true,
+      "rack_only_hold": true,
+      "bounded_robot_carried_transit": true,
+      "live_rgbd": true,
+      "visual_occupancy_plan": true,
+      "executed_controllers": true,
+      "saved_video": true
+    },
+    "failed_checks": [],
+    "transit_position_drift_mm": 1.37,
+    "rack_only_hold_s": 0.733333,
+    "detections": 1320,
+    "detection_attempts": 1320
+  },
+  "job_file": "D:\\6axis-space-robotics\\artifacts\\mission_final_seed6070\\jobs\\65461e26-e57f-4374-af19-913c3312d9c9\\job.json",
+  "scope": "One recorded simulation episode. Hash integrity is relative to job.json, not an authenticity signature."
+}

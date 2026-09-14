@@ -3,12 +3,13 @@
   "what_this_is": "A queryable index of every report in evidence/. Status is derived: canonical from the list in scripts/build_evidence_manifest.py, retracted from evidence/RETRACTED.md, historical otherwise. Quote canonical reports. Never quote a retracted one.",
   "generated_by": "scripts/build_evidence_manifest.py",
   "checkpoints_live_outside_git": {
-    "note": "logs/ and checkpoints/ are gitignored, so a clone does not carry the weights any learned number depends on. A report whose checkpoint is unreachable can be read but not reproduced.",
+    "note": "Full logs/ and checkpoints/ archives are gitignored. The three frozen mission checkpoints are included under policies/servicing_v2/ with hashes; other experimental weights remain local. A report whose checkpoint is unreachable can be read but not reproduced.",
     "policy_checkpoints": "logs/rl_games/zero_g_blade_insertion_contact/<run>/nn/",
-    "pose_head_checkpoints": "checkpoints/"
+    "pose_head_checkpoints": "checkpoints/",
+    "included_mission_checkpoints": "policies/servicing_v2/MANIFEST.json"
   },
   "counts": {
-    "canonical": 74,
+    "canonical": 75,
     "retracted": 12,
     "historical": 218
   },
@@ -335,6 +336,15 @@
         "dirty": false
       },
       "holds_up": "Paired v24 and guarded insertion at all nine reset stations and real chain handoffs; every losing arm retained."
+    },
+    "live_service_application_seed6070_v1.json": {
+      "title": "Recorded live service mission and artifact audit",
+      "evidence_type": "live_service_mission_artifact_audit",
+      "source_revision": {
+        "commit": "f7cdf238f14a67e409cdf4ea78960a45315c4ea2",
+        "dirty": false
+      },
+      "holds_up": "Normal mission application through the service worker, clean commit f7cdf23: all nine completion checks and five artifact hashes pass. 1320/1320 detections, 1.370 mm maximum transit drift and 0.733333 s rack-only hold. One recorded simulation episode at seed 6070 with stable lighting; not a reliability rate. Mission checkpoint files are included in git."
     },
     "live_service_current_validation_seed6070.json": {
       "task": "Isaac-ZeroG-Blade-GrappleVisionTwoSlot-Workflow-v0",
